@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 REQUIRED_PYTHON_MODULES = [
+    "argon2",
     "fastapi",
     "httpx",
     "jsonschema",
@@ -23,11 +24,16 @@ REQUIRED_PYTHON_MODULES = [
 ]
 REQUIRED_FILES = [
     "api/factory_signal_board/main.py",
+    "api/factory_signal_board/identity.py",
+    "api/factory_signal_board/identity_models.py",
+    "api/factory_signal_board/identity_repository.py",
+    "api/factory_signal_board/ontology.py",
     "ml/src/factory_signal_ml/cli.py",
     "schemas/input-event.schema.json",
     "schemas/evidence-package.schema.json",
     "schemas/report.schema.json",
     "schemas/ui-block.schema.json",
+    "schemas/ontology-core.schema.json",
     "evaluation/gold_scenarios.yml",
     "web/package.json",
 ]

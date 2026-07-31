@@ -8,8 +8,10 @@ version = "0.1.0"
 description = "FastAPI service for grounded predictive-maintenance reports and governed layouts"
 requires-python = ">=3.11"
 dependencies = [
+  "argon2-cffi>=23.1",
   "fastapi>=0.115",
   "httpx>=0.28",
+  "google-genai>=1.0",
   "jsonschema>=4.23",
   "pydantic>=2.9",
   "PyYAML>=6.0",

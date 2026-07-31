@@ -57,7 +57,7 @@ def reserve_port() -> int:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run Factory Signal Board release gates")
+    parser = argparse.ArgumentParser(description="Run Ontology Dashboard release gates")
     parser.add_argument("--root", default=str(Path(__file__).resolve().parents[1]))
     parser.add_argument("--with-e2e", action="store_true")
     parser.add_argument("--output")
@@ -67,11 +67,13 @@ def main() -> None:
     environment = os.environ.copy()
     environment["PYTHONPATH"] = os.pathsep.join([str(root / "api"), str(root / "ml" / "src")])
     environment["PYTHONPYCACHEPREFIX"] = tempfile.mkdtemp(prefix="factory-signal-pycache-")
-    environment["FACTORY_SIGNAL_DB"] = str(Path(tempfile.mkdtemp(prefix="factory-signal-db-")) / "release.db")
+    environment["FACTORY_SIGNAL_DB"] = str(Path(tempfile.mkdtemp(prefix="ontology-dashboard-db-")) / "release.db")
+    environment["APP_ENV"] = "test"
+    environment["SEED_DEMO_ACCOUNTS"] = "1"
 
     checks: list[dict[str, Any]] = []
     checks.append(run([sys.executable, "-m", "factory_signal_ml.cli", "validate-fixtures", "--root", str(root)], cwd=root, env=environment))
-    checks.append(run([sys.executable, "-m", "pytest", "-q", "tests/test_mvp.py"], cwd=root, env=environment))
+    checks.append(run([sys.executable, "-m", "pytest", "-q", "tests"], cwd=root, env=environment))
     checks.append(run([sys.executable, "scripts/evaluate_gold.py", "--root", str(root)], cwd=root, env=environment))
     checks.append(run([sys.executable, "-m", "compileall", "-q", "api", "ml/src", "scripts"], cwd=root, env=environment))
 
@@ -79,7 +81,17 @@ def main() -> None:
     frontend_temp: Path | None = None
     if node_available:
         frontend_temp = Path(tempfile.mkdtemp(prefix="factory-signal-web-")) / "web"
-        shutil.copytree(root / "web", frontend_temp)
+        shutil.copytree(
+            root / "web",
+            frontend_temp,
+            ignore=shutil.ignore_patterns(
+                "node_modules",
+                "dist",
+                "test-results",
+                "playwright-report",
+                ".vite",
+            ),
+        )
         checks.append(run(["npm", "install", "--no-audit", "--no-fund"], cwd=frontend_temp, timeout=600))
         if checks[-1]["pass"]:
             checks.append(run(["npm", "test"], cwd=frontend_temp, timeout=300))
@@ -143,7 +155,7 @@ def main() -> None:
     e2e_requirement_passed = not args.with_e2e or (e2e_result is not None and e2e_result["pass"])
     passed = all(check["pass"] for check in checks) and e2e_requirement_passed
     report = {
-        "release_gate": "factory-signal-board-v1",
+        "release_gate": "ontology-dashboard-v0.2",
         "root": str(root),
         "with_e2e": args.with_e2e,
         "e2e_executed": e2e_result is not None,

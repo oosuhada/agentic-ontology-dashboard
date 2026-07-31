@@ -155,6 +155,10 @@ function Checklist({ evidence, onNote }: { evidence: Evidence; onNote: (body: st
   );
 }
 
+function ReadOnlyAction({ message }: { message: string }) {
+  return <div className="read-only-action"><strong>조회 전용</strong><p>{message}</p></div>;
+}
+
 function Conversation({ onAsk, lastFollowUp }: { onAsk: (question: string) => Promise<void>; lastFollowUp: FollowUp | null }) {
   const [question, setQuestion] = useState("");
   const examples = ["왜 위험한가?", "정상 설비와 비교해줘.", "매니저용으로 짧게 요약해줘.", "무엇을 먼저 점검해야 하는가?", "모델 상세를 보여줘."];
@@ -190,6 +194,8 @@ export interface BlockRendererProps {
   events: EventSummary[];
   selectedEventId: string;
   role: Role;
+  canRecordDecision: boolean;
+  canRecordNote: boolean;
   onSelectEvent: (id: string) => void;
   onDecision: (decision: string, note: string) => Promise<void>;
   onNote: (body: string) => Promise<void>;
@@ -198,7 +204,20 @@ export interface BlockRendererProps {
 }
 
 export function BlockRenderer(props: BlockRendererProps) {
-  const { block, evidence, report, events, selectedEventId, onSelectEvent, onDecision, onNote, onAsk, lastFollowUp } = props;
+  const {
+    block,
+    evidence,
+    report,
+    events,
+    selectedEventId,
+    canRecordDecision,
+    canRecordNote,
+    onSelectEvent,
+    onDecision,
+    onNote,
+    onAsk,
+    lastFollowUp,
+  } = props;
   const probability = evidence.failure_probability === null ? "산출 안 함" : `${(evidence.failure_probability * 100).toFixed(1)}%`;
   const history = useMemo(() => [...evidence.history, evidence.observation], [evidence]);
 
@@ -237,7 +256,15 @@ export function BlockRenderer(props: BlockRendererProps) {
         </Card>
       );
     case "ManagerDecisionCard":
-      return <Card title={block.title}><DecisionCard evidence={evidence} onDecision={onDecision} /></Card>;
+      return (
+        <Card title={block.title}>
+          {canRecordDecision ? (
+            <DecisionCard evidence={evidence} onDecision={onDecision} />
+          ) : (
+            <ReadOnlyAction message="현재 역할은 운영 판단을 조회할 수 있지만 새 판단을 기록할 수 없습니다." />
+          )}
+        </Card>
+      );
     case "SensorLineChart":
       return (
         <Card title={block.title}>
@@ -284,7 +311,20 @@ export function BlockRenderer(props: BlockRendererProps) {
     case "RecommendedActions":
       return <Card title={block.title}><ol className="action-list">{report.actions.map((action) => <li key={action.action_id}><strong>{action.label}</strong><small>{action.requires_human_approval ? "사람 승인 필요" : "자동"} · {action.source_refs.join(", ") || "Evidence 정책"}</small></li>)}</ol></Card>;
     case "EngineerChecklist":
-      return <Card title={block.title}><Checklist evidence={evidence} onNote={onNote} /></Card>;
+      return (
+        <Card title={block.title}>
+          {canRecordNote ? (
+            <Checklist evidence={evidence} onNote={onNote} />
+          ) : (
+            <>
+              <ul className="checklist read-only-checklist">
+                {evidence.maintenance_context.checklist.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+              <ReadOnlyAction message="현재 역할은 체크리스트를 검토할 수 있지만 점검 기록을 저장할 수 없습니다." />
+            </>
+          )}
+        </Card>
+      );
     case "DataQualityWarning":
       return (
         <Card title={block.title} className="warning-card">

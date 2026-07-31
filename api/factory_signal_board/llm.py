@@ -22,6 +22,40 @@ class ProviderUnavailable(RuntimeError):
     pass
 
 
+class VertexAIProvider:
+    """Gemini on Vertex AI using Application Default Credentials (ADC)."""
+
+    name = "vertex-ai"
+
+    def __init__(self) -> None:
+        self.project = os.getenv("GOOGLE_CLOUD_PROJECT", "")
+        self.location = os.getenv("GOOGLE_CLOUD_LOCATION", "global")
+        self.model = os.getenv("LLM_MODEL", "gemini-2.5-flash")
+
+    def generate_json(self, system_prompt: str, payload: dict[str, Any]) -> dict[str, Any]:
+        if not self.project:
+            raise ProviderUnavailable("GOOGLE_CLOUD_PROJECT is not configured for Vertex AI")
+        try:
+            from google import genai
+            from google.genai import types
+        except ImportError as exc:
+            raise ProviderUnavailable("google-genai is not installed") from exc
+
+        client = genai.Client(vertexai=True, project=self.project, location=self.location)
+        response = client.models.generate_content(
+            model=self.model,
+            contents=json.dumps(payload, ensure_ascii=False),
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0,
+                response_mime_type="application/json",
+            ),
+        )
+        if not response.text:
+            raise ProviderUnavailable("Vertex AI returned an empty response")
+        return json.loads(response.text)
+
+
 class OpenAICompatibleProvider:
     name = "openai-compatible"
 
@@ -51,6 +85,13 @@ class OpenAICompatibleProvider:
         response.raise_for_status()
         content = response.json()["choices"][0]["message"]["content"]
         return json.loads(content)
+
+
+def configured_provider() -> LLMProvider:
+    provider = os.getenv("LLM_PROVIDER", "deterministic").strip().lower()
+    if provider in {"vertex", "vertex-ai", "vertex_ai"}:
+        return VertexAIProvider()
+    return OpenAICompatibleProvider()
 
 
 class ReportAgent:

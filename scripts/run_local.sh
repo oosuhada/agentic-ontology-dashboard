@@ -39,11 +39,11 @@ export VITE_API_BASE_URL="${VITE_API_BASE_URL:-http://${API_HOST}:${API_PORT}}"
 "${VENV_DIR}/bin/python" scripts/preflight.py
 
 "${VENV_DIR}/bin/python" -m uvicorn factory_signal_board.main:app \
-  --host "${API_HOST}" --port "${API_PORT}" > /tmp/factory-signal-board-api.log 2>&1 &
+  --host "${API_HOST}" --port "${API_PORT}" > /tmp/ontology-dashboard-api.log 2>&1 &
 API_PID=$!
 
 npm --prefix web run dev -- --host "${API_HOST}" --port "${WEB_PORT}" --strictPort \
-  > /tmp/factory-signal-board-web.log 2>&1 &
+  > /tmp/ontology-dashboard-web.log 2>&1 &
 WEB_PID=$!
 
 cleanup() {
@@ -60,23 +60,23 @@ for _ in $(seq 1 60); do
 done
 
 curl -fsS "http://${API_HOST}:${API_PORT}/health" >/dev/null || {
-  echo "API failed to start. See /tmp/factory-signal-board-api.log"
+  echo "API failed to start. See /tmp/ontology-dashboard-api.log"
   exit 1
 }
 curl -fsS "http://${API_HOST}:${WEB_PORT}/" >/dev/null || {
-  echo "Web failed to start. See /tmp/factory-signal-board-web.log"
+  echo "Web failed to start. See /tmp/ontology-dashboard-web.log"
   exit 1
 }
 
 echo
-printf 'Factory Signal Board is running\n'
-printf '  Web: http://%s:%s\n' "${API_HOST}" "${WEB_PORT}"
+printf 'Ontology Dashboard is running\n'
+printf '  Login: http://%s:%s/login\n' "${API_HOST}" "${WEB_PORT}"
 printf '  API: http://%s:%s/docs\n' "${API_HOST}" "${API_PORT}"
-printf '  Logs: /tmp/factory-signal-board-{api,web}.log\n'
+printf '  Logs: /tmp/ontology-dashboard-{api,web}.log\n'
 echo 'Press Ctrl+C to stop.'
 
 if command -v open >/dev/null 2>&1 && [[ "${OPEN_BROWSER:-1}" == "1" ]]; then
-  open "http://${API_HOST}:${WEB_PORT}" >/dev/null 2>&1 || true
+  open "http://${API_HOST}:${WEB_PORT}/login" >/dev/null 2>&1 || true
 fi
 
 wait
