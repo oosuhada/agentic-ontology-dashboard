@@ -1,0 +1,36 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+    environment:
+      FACTORY_SIGNAL_DB: /app/data/local/factory_signal_board.db
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      PROJECT3_API_URL: ${PROJECT3_API_URL:-}
+    ports:
+      - "8100:8000"
+    volumes:
+      - factory_signal_data:/app/data/local
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  web:
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
+      args:
+        VITE_API_BASE_URL: http://127.0.0.1:8100
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3100:3100"
+
+volumes:
+  factory_signal_data:

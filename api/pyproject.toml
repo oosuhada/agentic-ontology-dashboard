@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "factory-signal-board-api"
+version = "0.1.0"
+description = "FastAPI service for grounded predictive-maintenance reports and governed layouts"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "httpx>=0.28",
+  "jsonschema>=4.23",
+  "pydantic>=2.9",
+  "PyYAML>=6.0",
+  "uvicorn>=0.30"
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3"]
+
+[tool.setuptools]
+packages = ["factory_signal_board"]
+
+[tool.pytest.ini_options]
+testpaths = ["../tests", "tests"]

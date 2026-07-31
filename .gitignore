@@ -1,0 +1,78 @@
+# macOS
+.DS_Store
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# Node / React/Vite
+node_modules/
+.next/
+out/
+web/dist/
+web/test-results/
+web/playwright-report/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Logs and local state
+logs/
+*.log
+*.sqlite
+*.sqlite3
+*.db
+.tmp/
+tmp/
+
+# ML artifacts
+ml/artifacts/*
+!ml/artifacts/.gitkeep
+models/
+checkpoints/
+*.pkl
+*.joblib
+*.onnx
+
+# Data policy
+# Track documentation and small deterministic fixtures only.
+data/raw/*
+!data/raw/README.md
+data/processed/*
+!data/processed/.gitkeep
+data/local/
+evaluation/results/*
+!evaluation/results/README.md
+
+# Generated reports
+reports/
+artifacts/
+
+# Docker/local overrides
+docker-compose.override.yml

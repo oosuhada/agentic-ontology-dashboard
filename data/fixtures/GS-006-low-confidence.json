@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0", "scenario_id": "GS-006", "event_id": "EVT-GS-006",
+  "equipment": {"equipment_id": "M-055", "display_name": "조립 설비 55", "line": "조립 1라인", "criticality": "medium", "assigned_engineer": "윤하린", "last_maintenance_date": "2026-07-22", "estimated_downtime_minutes": 60, "spare_part_available": true},
+  "observation": {"timestamp": "2026-08-01T00:00:00+09:00", "product_type": "M", "air_temperature_k": 300.0, "process_temperature_k": 308.8, "rotational_speed_rpm": 1445, "torque_nm": 48.0, "tool_wear_min": 170},
+  "history": [
+    {"timestamp": "2026-07-31T23:45:00+09:00", "product_type": "M", "air_temperature_k": 299.9, "process_temperature_k": 309.2, "rotational_speed_rpm": 1460, "torque_nm": 47.0, "tool_wear_min": 168},
+    {"timestamp": "2026-07-31T23:50:00+09:00", "product_type": "M", "air_temperature_k": 300.0, "process_temperature_k": 309.0, "rotational_speed_rpm": 1455, "torque_nm": 49.0, "tool_wear_min": 169},
+    {"timestamp": "2026-07-31T23:55:00+09:00", "product_type": "M", "air_temperature_k": 300.1, "process_temperature_k": 308.7, "rotational_speed_rpm": 1430, "torque_nm": 47.5, "tool_wear_min": 170},
+    {"timestamp": "2026-08-01T00:00:00+09:00", "product_type": "M", "air_temperature_k": 300.0, "process_temperature_k": 308.8, "rotational_speed_rpm": 1445, "torque_nm": 48.0, "tool_wear_min": 170}
+  ],
+  "runtime": {"llm_available": true, "planner_available": true, "context_provider": "fixture"},
+  "expected": {"risk_band": "attention", "recommended_decision": "request_inspection", "confidence": "low", "predicted_failure_type": "uncertain"}
+}
