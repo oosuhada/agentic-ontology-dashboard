@@ -1,10 +1,10 @@
 # Ontology Dashboard
 
-조직의 Object, Link, Evidence와 Action을 역할·권한·workspace 범위에 맞는 업무 화면으로 구성하는 온톨로지 기반 운영 애플리케이션 MVP다. 기존 `Factory Signal Board` 제조 예지보전 기능은 첫 번째 **Manufacturing Predictive Maintenance Pack**으로 유지한다.
+조직의 Object, Link, Evidence와 Action을 역할·권한·workspace 범위에 맞는 업무 화면으로 구성하는 온톨로지 기반 운영 애플리케이션 MVP다. 초기 제조 예지보전 vertical slice는 첫 번째 **Manufacturing Predictive Maintenance Pack**으로 유지한다.
 
 ## 구현 상태
 
-2단계 데이터 계약부터 18단계 제품 reframe, 인증과 RBAC·관리자 foundation까지 구현했다.
+2단계 데이터 계약부터 31단계 Ontology Planner·Export·보안·성능 릴리스 hardening까지 구현했다.
 
 - AI4I 2020 데이터 검증·누수 방지·재현 가능한 모델 학습
 - 모델 버전별 운영 임계값 정책
@@ -13,11 +13,30 @@
 - 미등록 컴포넌트를 차단하는 governed UI Planner
 - FastAPI, SQLite 감사 기록, 제한된 후속 질문
 - React 역할별 Ontology Dashboard와 Manufacturing Predictive Maintenance Pack
-- 기능별 frontend 분리: `features/auth`, `features/manufacturing`, `features/admin`, `features/ontology`
+- 기능별 frontend 분리: `features/auth`, `features/manufacturing`, `features/dashboard`, `features/roles`, `features/planner`, `features/admin`, `features/ontology`
 - `/login`, `/register`, `/pending`, protected `/app`, tenant-admin-only `/admin`
 - SQLite identity/session/RBAC/resource scope, Argon2id, HttpOnly cookie, CSRF, 관리자 audit
 - 8개 개발·데모 test account와 production seed 차단
 - domain-neutral Object·Link·Action·Evidence·Dashboard·Board contract foundation
+- 제조 fixture·Evidence·activity의 ObjectRecord·LinkRecord projection
+- workspace-scoped object query와 최대 5-hop relation traversal
+- permission-aware, idempotent Ontology Action과 explicit operational audit
+- 기존 decision·note API의 Ontology Action 전환
+- SQLite 역할별 Dashboard template·version·tab·board persistence
+- 상단 workspace·tabs, 좌측 context, 12-column canvas, 우측 inspector 기반 새 shell
+- drag order·resize·hide/show·custom tab·saved view·role default restore
+- 역할별 Board Catalog, plain text board, FDE template 승인 요청과 tenant-admin publish
+- parameter dependency graph, affected board 표시, fullscreen, permission-aware share link
+- 임원 조직 위험·영향 집계, 미조치 중요 사건과 가정 기반 drill-down
+- 품질·감사 사건 재구성, Evidence→Report trace, export checkpoint hash
+- 390px 모바일 현장 task, 안전·측정·사진 metadata와 idempotent 완료·문제·blocked Action
+- FDE customer workspace·ontology·deployment·diagnostic Workbench와 four-eyes template approval
+- 데이터 사이언티스트 model·dataset·threshold·slice·drift·Gold regression Console과 release approval
+- 검증된 자연어 Object query, preference-aware Board 추천, grounded narrative와 FDE Dashboard draft preview
+- Catalog·role·Evidence reference 위반 또는 provider 장애 시 deterministic fail-closed fallback
+- permission-scoped JSON·CSV·PDF export, snapshot·artifact SHA-256와 export checkpoint audit
+- login·Planner·Export rate limit, 60분 idle timeout, session rotation·client binding·다른 세션 revoke
+- security header와 10+ Board mean·p95 성능 budget
 - 프로젝트 3 Maintenance Context HTTP Adapter와 fallback
 - Gold 평가, Vitest, TypeScript, production build, Playwright E2E 릴리스 게이트
 
@@ -124,10 +143,10 @@ python scripts/release_gate.py --with-e2e
 최종 확인 결과:
 
 - Release checks: **10/10 PASS**
-- Python unit/integration/auth/RBAC/safety tests: **23 PASS**
+- Python unit/integration/auth/RBAC/Ontology/Dashboard/Planner/Export/Security tests: **53 PASS**
 - Gold scenarios: **8/8 PASS**
 - Vitest: **1 PASS**
-- Playwright E2E: **4 PASS**
+- Playwright E2E: **13 PASS**
 - 금지 운영 단정: **0건**
 - Evidence 추적 불가 Report section: **0건**
 
@@ -183,10 +202,10 @@ Held-out test, Recall-constrained threshold 0.20:
 ## 폴더 구조
 
 ```text
-api/          FastAPI, identity/RBAC, ontology registry, report/LLM/planner services
-web/          Vite React auth, manufacturing user app, admin app and Playwright tests
+api/          FastAPI, identity/RBAC, ontology registry, Planner, export and security services
+web/          Vite React auth, dashboard, role/planner workspaces, admin app and Playwright tests
 ml/           dataset audit, training, thresholding, evidence generation
-schemas/      input, Evidence, Report, Layout and ontology core contracts
+schemas/      input, Evidence, Report, Layout, ontology, dashboard, role, planner and export contracts
 prompts/      manager, engineer, UI planner grounding rules
 data/         Gold fixtures and optional local/raw data
 evaluation/   accepted Gold scenarios and evaluation result location
@@ -200,6 +219,10 @@ tests/        backend contract/integration/safety tests
 
 - [`docs/stage2-15-implementation-summary.md`](./docs/stage2-15-implementation-summary.md)
 - [`docs/stage16-18-implementation-summary.md`](./docs/stage16-18-implementation-summary.md)
+- [`docs/stage19-implementation-summary.md`](./docs/stage19-implementation-summary.md)
+- [`docs/stage20-24-implementation-summary.md`](./docs/stage20-24-implementation-summary.md)
+- [`docs/stage25-29-implementation-summary.md`](./docs/stage25-29-implementation-summary.md)
+- [`docs/stage30-31-implementation-summary.md`](./docs/stage30-31-implementation-summary.md)
 - [`docs/mvp-scope.md`](./docs/mvp-scope.md)
 - [`docs/personas.md`](./docs/personas.md)
 - [`docs/role-needs-research.md`](./docs/role-needs-research.md)
