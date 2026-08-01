@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://factory-signal-board.local/schemas/report.schema.json",
+  "title": "Role-aware grounded report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "report_id", "event_id", "role", "mode", "headline", "summary", "status", "confidence", "recommended_decision", "sections", "actions", "citations", "limitations", "generated_at"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "report_id": {"type": "string"},
+    "event_id": {"type": "string"},
+    "role": {"enum": ["manager", "engineer"]},
+    "mode": {"enum": ["deterministic", "llm", "deterministic_fallback"]},
+    "headline": {"type": "string", "minLength": 1},
+    "summary": {"type": "string", "minLength": 1},
+    "status": {"type": "string"},
+    "confidence": {"type": "string"},
+    "recommended_decision": {"type": "string"},
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["section_id", "title", "body", "evidence_field_ids"],
+        "properties": {
+          "section_id": {"type": "string"},
+          "title": {"type": "string"},
+          "body": {"type": "string"},
+          "evidence_field_ids": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action_id", "label", "kind", "requires_human_approval", "source_refs"],
+        "properties": {
+          "action_id": {"type": "string"},
+          "label": {"type": "string"},
+          "kind": {"enum": ["monitor", "inspect", "review_shutdown", "verify_data", "report"]},
+          "requires_human_approval": {"type": "boolean"},
+          "source_refs": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "citations": {"type": "array", "items": {"type": "string"}},
+    "limitations": {"type": "array", "items": {"type": "string"}},
+    "generated_at": {"type": "string"}
+  }
+}

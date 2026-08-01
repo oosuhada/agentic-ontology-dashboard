@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://factory-signal-board.local/schemas/evidence-package.schema.json",
+  "title": "Factory Signal Board Evidence Package",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "evidence_id", "event_id", "scenario_id", "equipment", "model", "status", "recommended_decision", "confidence", "failure_probability", "threshold", "predicted_failure_type", "observation", "history", "detected_interval", "top_factors", "maintenance_context", "data_quality_warnings", "lineage", "generated_at"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "evidence_id": {"type": "string"},
+    "event_id": {"type": "string"},
+    "scenario_id": {"type": "string"},
+    "equipment": {"type": "object"},
+    "model": {
+      "type": "object",
+      "required": ["model_version", "policy_version", "mode"],
+      "properties": {
+        "model_version": {"type": "string"},
+        "policy_version": {"type": "string"},
+        "mode": {"enum": ["trained", "deterministic_fallback"]}
+      }
+    },
+    "status": {"enum": ["normal", "attention", "warning", "critical", "data_quality_hold"]},
+    "recommended_decision": {"enum": ["continue_monitoring", "request_inspection", "review_shutdown", "hold_for_data_check"]},
+    "confidence": {"enum": ["high", "medium", "low", "unavailable"]},
+    "failure_probability": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "threshold": {"type": "number", "minimum": 0, "maximum": 1},
+    "predicted_failure_type": {"type": "string"},
+    "observation": {"type": "object"},
+    "history": {"type": "array", "items": {"type": "object"}},
+    "detected_interval": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {"start": {"type": "string"}, "end": {"type": "string"}}
+    },
+    "top_factors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["evidence_field_id", "feature", "display_name", "value", "unit", "normal_range", "direction", "contribution", "source_type"],
+        "properties": {
+          "evidence_field_id": {"type": "string"},
+          "feature": {"type": "string"},
+          "display_name": {"type": "string"},
+          "value": {"type": "number"},
+          "unit": {"type": "string"},
+          "normal_range": {"type": "string"},
+          "direction": {"enum": ["risk_up", "risk_down"]},
+          "contribution": {"type": "number", "minimum": 0, "maximum": 1},
+          "source_type": {"enum": ["observed", "derived", "predicted"]}
+        }
+      }
+    },
+    "maintenance_context": {
+      "type": "object",
+      "required": ["provider", "version", "source_type", "source_refs", "checklist", "recommended_actions"],
+      "properties": {
+        "provider": {"type": "string"},
+        "version": {"type": "string"},
+        "source_type": {"type": "string"},
+        "source_refs": {"type": "array", "items": {"type": "string"}},
+        "checklist": {"type": "array", "items": {"type": "string"}},
+        "recommended_actions": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "data_quality_warnings": {"type": "array", "items": {"type": "object"}},
+    "lineage": {
+      "type": "object",
+      "required": ["fixture_id", "fixture_schema_version", "sensor_source", "context_source"],
+      "properties": {
+        "fixture_id": {"type": "string"},
+        "fixture_schema_version": {"type": "string"},
+        "sensor_source": {"type": "string"},
+        "context_source": {"type": "string"}
+      }
+    },
+    "generated_at": {"type": "string"}
+  }
+}

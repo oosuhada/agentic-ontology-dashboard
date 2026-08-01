@@ -1,0 +1,42 @@
+{
+  "version": "fixture-context-v1",
+  "source_type": "synthetic",
+  "contexts": {
+    "tool_wear_failure": {
+      "title": "공구 마모 점검 컨텍스트",
+      "source_refs": ["FIXTURE-SOP-TOOL-001"],
+      "checklist": ["공구 날끝의 마모·파손 상태 확인", "토크 센서와 가공 부하 재확인", "예비 공구 재고와 교체 가능 시간 확인"],
+      "recommended_actions": ["다음 교대 전 현장 점검", "점검 결과를 매니저에게 보고", "마모가 확인되면 계획 교체 검토"]
+    },
+    "heat_dissipation_failure": {
+      "title": "열 방출 이상 점검 컨텍스트",
+      "source_refs": ["FIXTURE-SOP-THERMAL-001"],
+      "checklist": ["냉각 경로와 흡·배기 막힘 확인", "공정·공기 온도 센서 교차 확인", "열교환 또는 냉각수 조건 확인"],
+      "recommended_actions": ["냉각 계통 현장 점검", "온도 측정값 재검증", "지속 상승 시 계획 정지 검토"]
+    },
+    "power_or_overstrain_failure": {
+      "title": "동력·과부하 점검 컨텍스트",
+      "source_refs": ["FIXTURE-SOP-LOAD-001"],
+      "checklist": ["토크와 회전 속도 계측값 확인", "기계적 걸림·과부하 여부 확인", "공구·구동부 상태와 안전 조건 점검"],
+      "recommended_actions": ["즉시 엔지니어 검토", "사람의 판단으로 정지 여부 검토", "점검 전 자동 제어 금지"]
+    },
+    "multi_factor_risk": {
+      "title": "복합 이상 점검 컨텍스트",
+      "source_refs": ["FIXTURE-SOP-MULTI-001"],
+      "checklist": ["가장 큰 기여 요인부터 확인", "열·부하 보조 요인 교차 점검", "단일 근본 원인으로 성급히 확정하지 않기"],
+      "recommended_actions": ["주요 요인 우선 점검", "보조 요인 기록", "추가 데이터 수집"]
+    },
+    "uncertain": {
+      "title": "저신뢰 결과 확인 컨텍스트",
+      "source_refs": ["FIXTURE-SOP-VERIFY-001"],
+      "checklist": ["센서 상태와 단위 확인", "추가 관측 구간 수집", "동일 조건 재측정"],
+      "recommended_actions": ["모니터링 지속", "간단 현장 확인", "확정 고장 표현 금지"]
+    },
+    "none": {
+      "title": "정상 모니터링 컨텍스트",
+      "source_refs": ["FIXTURE-SOP-NORMAL-001"],
+      "checklist": ["정기 모니터링 유지"],
+      "recommended_actions": ["계속 운전하며 모니터링"]
+    }
+  }
+}

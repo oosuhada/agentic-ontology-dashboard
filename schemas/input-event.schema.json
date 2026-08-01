@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://factory-signal-board.local/schemas/input-event.schema.json",
+  "title": "Factory Signal Board Gold Input Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "scenario_id", "event_id", "equipment", "observation", "history", "runtime", "expected"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "scenario_id": {"type": "string", "pattern": "^GS-[0-9]{3}$"},
+    "event_id": {"type": "string", "minLength": 1},
+    "equipment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["equipment_id", "display_name", "line", "criticality", "assigned_engineer", "last_maintenance_date", "estimated_downtime_minutes"],
+      "properties": {
+        "equipment_id": {"type": "string"},
+        "display_name": {"type": "string"},
+        "line": {"type": "string"},
+        "criticality": {"enum": ["low", "medium", "high"]},
+        "assigned_engineer": {"type": "string"},
+        "last_maintenance_date": {"type": "string", "format": "date"},
+        "estimated_downtime_minutes": {"type": "integer", "minimum": 0},
+        "spare_part_available": {"type": "boolean"}
+      }
+    },
+    "observation": {"$ref": "#/$defs/observation"},
+    "history": {
+      "type": "array",
+      "minItems": 2,
+      "items": {"$ref": "#/$defs/observation"}
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["llm_available", "planner_available", "context_provider"],
+      "properties": {
+        "llm_available": {"type": "boolean"},
+        "planner_available": {"type": "boolean"},
+        "context_provider": {"enum": ["fixture", "project3_http", "none"]}
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["risk_band", "recommended_decision", "confidence", "predicted_failure_type"],
+      "properties": {
+        "risk_band": {"enum": ["normal", "attention", "warning", "critical", "data_quality_hold"]},
+        "recommended_decision": {"enum": ["continue_monitoring", "request_inspection", "review_shutdown", "hold_for_data_check"]},
+        "confidence": {"enum": ["high", "medium", "low", "unavailable"]},
+        "predicted_failure_type": {"type": "string"}
+      }
+    }
+  },
+  "$defs": {
+    "nullableNumber": {"type": ["number", "null"]},
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timestamp", "product_type", "air_temperature_k", "process_temperature_k", "rotational_speed_rpm", "torque_nm", "tool_wear_min"],
+      "properties": {
+        "timestamp": {"type": "string", "format": "date-time"},
+        "product_type": {"enum": ["L", "M", "H"]},
+        "air_temperature_k": {"$ref": "#/$defs/nullableNumber"},
+        "process_temperature_k": {"$ref": "#/$defs/nullableNumber"},
+        "rotational_speed_rpm": {"$ref": "#/$defs/nullableNumber"},
+        "torque_nm": {"$ref": "#/$defs/nullableNumber"},
+        "tool_wear_min": {"$ref": "#/$defs/nullableNumber"}
+      }
+    }
+  }
+}
