@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "factory-signal-ml"
+version = "0.1.0"
+description = "Reproducible AI4I validation, training, thresholding, and evidence generation"
+requires-python = ">=3.11"
+dependencies = [
+  "joblib>=1.4",
+  "jsonschema>=4.23",
+  "numpy>=2.0",
+  "pandas>=2.2",
+  "pydantic>=2.9",
+  "PyYAML>=6.0",
+  "scikit-learn>=1.5"
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3"]
+
+[project.scripts]
+factory-signal-ml = "factory_signal_ml.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["../tests", "tests"]
