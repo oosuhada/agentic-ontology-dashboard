@@ -7,6 +7,7 @@ import os
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
+from threading import Lock
 from typing import Callable
 
 from argon2 import PasswordHasher
@@ -43,6 +44,7 @@ from .settings import database_location, trust_proxy_headers, trusted_proxy_netw
 
 ROOT = Path(__file__).resolve().parents[2]
 MANUFACTURING_WORKSPACE = "manufacturing-demo"
+_MIGRATION_LOCK = Lock()
 
 
 def database_target() -> str:
@@ -56,7 +58,11 @@ def database_path() -> str:
 
 @lru_cache(maxsize=1)
 def ensure_database_migrations() -> tuple[str, ...]:
-    return tuple(migrate(database_target()))
+    # functools.lru_cache can execute concurrent cache misses more than once.
+    # Serialize the initial migration pass so parallel FastAPI dependencies do
+    # not race while inserting the same schema_migrations version in SQLite.
+    with _MIGRATION_LOCK:
+        return tuple(migrate(database_target()))
 
 
 @lru_cache(maxsize=1)
