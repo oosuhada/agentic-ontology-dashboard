@@ -4,7 +4,10 @@ services:
       context: ..
       dockerfile: api/Dockerfile
     environment:
-      FACTORY_SIGNAL_DB: /app/data/local/factory_signal_board.db
+      APP_ENV: ${APP_ENV:-development}
+      SEED_DEMO_ACCOUNTS: ${SEED_DEMO_ACCOUNTS:-1}
+      ONTOLOGY_DASHBOARD_ALLOWED_ORIGINS: ${ONTOLOGY_DASHBOARD_ALLOWED_ORIGINS:-}
+      ONTOLOGY_DASHBOARD_DB: /app/data/local/ontology_dashboard.db
       LLM_API_KEY: ${LLM_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-}

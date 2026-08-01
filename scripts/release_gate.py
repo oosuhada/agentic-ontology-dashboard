@@ -67,12 +67,15 @@ def main() -> None:
     environment = os.environ.copy()
     environment["PYTHONPATH"] = os.pathsep.join([str(root / "api"), str(root / "ml" / "src")])
     environment["PYTHONPYCACHEPREFIX"] = tempfile.mkdtemp(prefix="factory-signal-pycache-")
-    environment["FACTORY_SIGNAL_DB"] = str(Path(tempfile.mkdtemp(prefix="ontology-dashboard-db-")) / "release.db")
+    environment["ONTOLOGY_DASHBOARD_DB"] = str(Path(tempfile.mkdtemp(prefix="ontology-dashboard-db-")) / "release.db")
     environment["APP_ENV"] = "test"
     environment["SEED_DEMO_ACCOUNTS"] = "1"
 
     checks: list[dict[str, Any]] = []
-    checks.append(run([sys.executable, "-m", "factory_signal_ml.cli", "validate-fixtures", "--root", str(root)], cwd=root, env=environment))
+    checks.append(run([sys.executable, "scripts/check_canonical_naming.py"], cwd=root, env=environment))
+    checks.append(run([sys.executable, "scripts/check_postgresql_migration.py"], cwd=root, env=environment, timeout=180))
+    checks.append(run([sys.executable, "scripts/check_postgresql_runtime.py"], cwd=root, env=environment, timeout=240))
+    checks.append(run([sys.executable, "-m", "ontology_dashboard_manufacturing_ml.cli", "validate-fixtures", "--root", str(root)], cwd=root, env=environment))
     checks.append(run([sys.executable, "-m", "pytest", "-q", "tests"], cwd=root, env=environment))
     checks.append(run([sys.executable, "scripts/evaluate_gold.py", "--root", str(root)], cwd=root, env=environment))
     checks.append(run([sys.executable, "-m", "compileall", "-q", "api", "ml/src", "scripts"], cwd=root, env=environment))
@@ -115,7 +118,7 @@ def main() -> None:
             web_environment["VITE_API_BASE_URL"] = api_url
             web_environment["PLAYWRIGHT_BASE_URL"] = web_url
             api_process = subprocess.Popen(
-                [sys.executable, "-m", "uvicorn", "factory_signal_board.main:app", "--host", "127.0.0.1", "--port", str(api_port)],
+                [sys.executable, "-m", "uvicorn", "ontology_dashboard.app:app", "--host", "127.0.0.1", "--port", str(api_port)],
                 cwd=root,
                 env=environment,
                 stdout=subprocess.PIPE,
@@ -155,7 +158,7 @@ def main() -> None:
     e2e_requirement_passed = not args.with_e2e or (e2e_result is not None and e2e_result["pass"])
     passed = all(check["pass"] for check in checks) and e2e_requirement_passed
     report = {
-        "release_gate": "ontology-dashboard-v0.2",
+        "release_gate": "ontology-dashboard-v0.7",
         "root": str(root),
         "with_e2e": args.with_e2e,
         "e2e_executed": e2e_result is not None,

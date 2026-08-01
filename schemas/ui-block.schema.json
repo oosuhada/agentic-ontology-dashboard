@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://factory-signal-board.local/schemas/ui-block.schema.json",
+  "$id": "https://ontology-dashboard.local/schemas/ui-block.schema.json",
   "title": "Governed UI Block Layout",
   "type": "object",
   "additionalProperties": false,

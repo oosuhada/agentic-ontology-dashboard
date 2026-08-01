@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import hmac
 import os
 import secrets
@@ -17,10 +18,12 @@ from .identity_models import (
     ROLE_PERMISSIONS,
     SESSION_COOKIE,
     SESSION_TTL_HOURS,
+    ActiveProjectRequest,
     AdminUserUpdateRequest,
     AuthError,
     LoginRequest,
     Principal,
+    ProjectMembershipUpdateRequest,
     RegisterRequest,
     UserStatus,
 )
@@ -34,6 +37,7 @@ class IdentityService:
         *,
         app_env: str | None = None,
         seed_demo: bool | None = None,
+        repository: IdentityRepository | None = None,
     ) -> None:
         self.app_env = (app_env or os.getenv("APP_ENV", "development")).lower()
         self.secure_cookies = self.app_env == "production"
@@ -44,7 +48,10 @@ class IdentityService:
             hash_len=32,
             salt_len=16,
         )
-        self.repository = IdentityRepository(database_path, password_hasher=self.password_hasher)
+        self.repository = repository or IdentityRepository(
+            database_path,
+            password_hasher=self.password_hasher,
+        )
         should_seed = seed_demo
         if should_seed is None:
             configured = os.getenv("SEED_DEMO_ACCOUNTS")
@@ -61,15 +68,81 @@ class IdentityService:
     def register(self, request: RegisterRequest) -> dict[str, Any]:
         return self.repository.create_pending_user(request)
 
-    def login(self, request: LoginRequest) -> tuple[Principal, str, datetime, str]:
-        user = self.repository.authenticate(request.email, request.password)
-        token, expires_at = self.repository.create_session(user["id"])
-        csrf_token = secrets.token_urlsafe(32)
-        return self.repository.principal(user["id"]), token, expires_at, csrf_token
+    @staticmethod
+    def _client_hash(value: str | None) -> str | None:
+        if not value:
+            return None
+        return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
-    def principal_for_token(self, token: str) -> Principal:
-        user = self.repository.user_for_session(token)
-        return self.repository.principal(user["id"])
+    def login(
+        self,
+        request: LoginRequest,
+        *,
+        user_agent: str | None = None,
+        client_ip: str | None = None,
+    ) -> tuple[Principal, str, datetime, str]:
+        user = self.repository.authenticate(request.email, request.password)
+        principal = self.repository.principal(user["id"])
+        token, expires_at = self.repository.create_session(
+            user["id"],
+            user_agent_hash=self._client_hash(user_agent),
+            ip_hash=self._client_hash(client_ip),
+            active_project_id=principal.active_project_id,
+        )
+        csrf_token = secrets.token_urlsafe(32)
+        return principal, token, expires_at, csrf_token
+
+    def principal_for_token(
+        self,
+        token: str,
+        *,
+        user_agent: str | None = None,
+        client_ip: str | None = None,
+    ) -> Principal:
+        user = self.repository.user_for_session(
+            token,
+            user_agent_hash=self._client_hash(user_agent),
+            ip_hash=self._client_hash(client_ip),
+        )
+        return self.repository.principal(
+            user["id"],
+            active_project_id=user.get("active_project_id"),
+        )
+
+    def rotate_session(
+        self,
+        token: str,
+        *,
+        user_agent: str | None = None,
+        client_ip: str | None = None,
+    ) -> tuple[Principal, str, datetime, str]:
+        new_token, expires_at, user = self.repository.rotate_session(
+            token,
+            user_agent_hash=self._client_hash(user_agent),
+            ip_hash=self._client_hash(client_ip),
+        )
+        csrf_token = secrets.token_urlsafe(32)
+        return (
+            self.repository.principal(
+                user["id"],
+                active_project_id=user.get("active_project_id"),
+            ),
+            new_token,
+            expires_at,
+            csrf_token,
+        )
+
+    def active_sessions(self, *, principal: Principal, current_token: str) -> list[dict[str, Any]]:
+        return self.repository.list_active_sessions(
+            user_id=principal.user_id,
+            current_token=current_token,
+        )
+
+    def revoke_other_sessions(self, *, principal: Principal, current_token: str) -> int:
+        return self.repository.revoke_other_sessions(
+            user_id=principal.user_id,
+            current_token=current_token,
+        )
 
     def logout(self, token: str) -> None:
         self.repository.revoke_session(token)
@@ -88,10 +161,81 @@ class IdentityService:
         if permission not in principal.permissions:
             raise AuthError(403, "permission_denied", "이 작업을 수행할 권한이 없습니다.")
 
+    def set_active_project(
+        self,
+        *,
+        token: str,
+        principal: Principal,
+        request: ActiveProjectRequest,
+    ) -> Principal:
+        self.require_project(principal, request.project_id)
+        self.repository.set_session_active_project(
+            token,
+            user_id=principal.user_id,
+            project_id=request.project_id,
+        )
+        return self.repository.principal(
+            principal.user_id,
+            active_project_id=request.project_id,
+        )
+
+    def list_project_members(
+        self,
+        *,
+        principal: Principal,
+        project_id: str,
+    ) -> list[dict[str, Any]]:
+        self.require_permission(principal, "admin.users.read")
+        self.require_project(principal, project_id)
+        return self.repository.list_project_members(
+            organization_id=principal.organization_id,
+            project_id=project_id,
+        )
+
+    def update_project_membership(
+        self,
+        *,
+        principal: Principal,
+        project_id: str,
+        target_user_id: str,
+        request: ProjectMembershipUpdateRequest,
+    ) -> dict[str, Any]:
+        self.require_permission(principal, "admin.users.manage")
+        self.require_project(principal, project_id)
+        return self.repository.update_project_membership(
+            actor_user_id=principal.user_id,
+            organization_id=principal.organization_id,
+            project_id=project_id,
+            target_user_id=target_user_id,
+            status=request.status,
+            roles=request.roles,
+        )
+
     @staticmethod
-    def require_workspace(principal: Principal, workspace_id: str) -> None:
+    def require_project(principal: Principal, project_id: str) -> None:
+        if project_id not in principal.project_scopes:
+            raise AuthError(403, "project_scope_denied", "허용된 Project 범위를 벗어난 요청입니다.")
+
+    def require_workspace(self, principal: Principal, workspace_id: str) -> None:
         if workspace_id not in principal.workspace_scopes:
             raise AuthError(403, "workspace_scope_denied", "허용된 workspace 범위를 벗어난 요청입니다.")
+        workspace = next(
+            (
+                item
+                for item in self.repository.list_workspaces(
+                    organization_id=principal.organization_id,
+                )
+                if item["id"] == workspace_id
+            ),
+            None,
+        )
+        if workspace is None:
+            raise AuthError(403, "workspace_scope_denied", "허용된 workspace 범위를 벗어난 요청입니다.")
+        project_id = workspace.get("project_id")
+        if not project_id or project_id not in principal.project_scopes:
+            raise AuthError(403, "project_scope_denied", "허용된 Project 범위를 벗어난 요청입니다.")
+        if principal.active_project_id and project_id != principal.active_project_id:
+            raise AuthError(409, "active_project_mismatch", "먼저 해당 Project를 활성화해야 합니다.")
 
     @staticmethod
     def legacy_dashboard_role(
@@ -118,6 +262,7 @@ class IdentityService:
 
 
 __all__ = [
+    "ActiveProjectRequest",
     "AdminUserUpdateRequest",
     "AuthError",
     "CSRF_COOKIE",
@@ -127,6 +272,7 @@ __all__ = [
     "LoginRequest",
     "PERMISSION_DEFINITIONS",
     "Principal",
+    "ProjectMembershipUpdateRequest",
     "ROLE_DEFINITIONS",
     "ROLE_PERMISSIONS",
     "RegisterRequest",

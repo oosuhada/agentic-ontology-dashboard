@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { navigate, usePathname } from "./routing";
+import { matchAnalysisPath, navigate, usePathname } from "./routing";
 import { AdminApp } from "./features/admin/AdminApp";
 import { AuthProvider, useAuth } from "./features/auth/AuthContext";
 import { LoginPage } from "./features/auth/LoginPage";
@@ -50,6 +50,8 @@ function AppRouter() {
   }
 
   if (pathname === "/admin") return user.is_admin ? <AdminApp /> : <ForbiddenPage />;
+  const analysisId = matchAnalysisPath(pathname);
+  if (analysisId) return <ManufacturingApp initialWorkspaceView="analysis" analysisId={analysisId} />;
   if (pathname === "/app" || pathname.startsWith("/app/")) return <ManufacturingApp />;
   if (pathname === "/login" || pathname === "/register" || pathname === "/pending" || pathname === "/") {
     return <Redirect to={user.default_path} />;

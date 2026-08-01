@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class OntologyProperty(BaseModel):
@@ -70,11 +70,34 @@ class ActionTypeDefinition(BaseModel):
 
 
 class ActionInvocation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    action_type: str = Field(min_length=1, max_length=120)
+    object_id: str = Field(min_length=3, max_length=240)
+    workspace_id: str = Field(min_length=1, max_length=120)
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    idempotency_key: str = Field(min_length=8, max_length=200)
+
+
+class ActionExecutionResult(BaseModel):
+    invocation_id: str
     action_type: str
     object_id: str
     workspace_id: str
-    parameters: dict[str, Any] = Field(default_factory=dict)
-    idempotency_key: str
+    state: Literal["succeeded"] = "succeeded"
+    replayed: bool = False
+    result: dict[str, Any]
+    audit_id: str
+    created_at: str
+    completed_at: str
+
+
+class OntologyTraversal(BaseModel):
+    root: ObjectRecord
+    nodes: list[ObjectRecord]
+    edges: list[LinkRecord]
+    direction: Literal["outgoing", "incoming", "both"]
+    depth: int
 
 
 class EvidenceReference(BaseModel):
@@ -226,7 +249,7 @@ ACTION_TYPES: tuple[ActionTypeDefinition, ...] = (
         object_type="risk_event",
         parameters=[
             ActionParameter(id="decision", display_name="판단", value_type="string"),
-            ActionParameter(id="note", display_name="근거 메모", value_type="string"),
+            ActionParameter(id="note", display_name="근거 메모", value_type="string", required=False),
         ],
         required_permissions=["events.decision"],
         domain_pack="manufacturing-predictive-maintenance",
@@ -240,12 +263,60 @@ ACTION_TYPES: tuple[ActionTypeDefinition, ...] = (
         required_permissions=["events.note"],
         domain_pack="manufacturing-predictive-maintenance",
     ),
+    ActionTypeDefinition(
+        id="complete_inspection",
+        display_name="현장 작업 완료",
+        description="체크리스트, 측정값, 사진 metadata와 handoff 메모를 포함해 점검을 완료합니다.",
+        object_type="inspection",
+        parameters=[
+            ActionParameter(id="checklist", display_name="완료 체크리스트", value_type="array"),
+            ActionParameter(id="measurements", display_name="측정값", value_type="object", required=False),
+            ActionParameter(id="photo_metadata", display_name="사진 metadata", value_type="array", required=False),
+            ActionParameter(id="note", display_name="Handoff 메모", value_type="string", required=False),
+            ActionParameter(id="location", display_name="작업 위치", value_type="string", required=False),
+        ],
+        required_permissions=["field.tasks.update"],
+        domain_pack="manufacturing-predictive-maintenance",
+    ),
+    ActionTypeDefinition(
+        id="report_inspection_issue",
+        display_name="문제 발견 기록",
+        description="현장 문제, 측정값과 사진 metadata를 기록하고 엔지니어 handoff를 생성합니다.",
+        object_type="inspection",
+        parameters=[
+            ActionParameter(id="checklist", display_name="확인 체크리스트", value_type="array", required=False),
+            ActionParameter(id="measurements", display_name="측정값", value_type="object", required=False),
+            ActionParameter(id="photo_metadata", display_name="사진 metadata", value_type="array", required=False),
+            ActionParameter(id="note", display_name="문제 설명", value_type="string"),
+            ActionParameter(id="location", display_name="발견 위치", value_type="string", required=False),
+        ],
+        required_permissions=["field.tasks.update"],
+        domain_pack="manufacturing-predictive-maintenance",
+    ),
+    ActionTypeDefinition(
+        id="mark_inspection_blocked",
+        display_name="작업 불가 기록",
+        description="안전·접근·부품 문제로 작업할 수 없음을 기록합니다.",
+        object_type="inspection",
+        parameters=[
+            ActionParameter(id="note", display_name="작업 불가 사유", value_type="string"),
+            ActionParameter(id="location", display_name="작업 위치", value_type="string", required=False),
+            ActionParameter(id="safety_risk", display_name="안전 위험", value_type="boolean", required=False),
+        ],
+        required_permissions=["field.tasks.update"],
+        domain_pack="manufacturing-predictive-maintenance",
+    ),
 )
+
+OBJECT_TYPE_BY_ID = {item.id: item for item in OBJECT_TYPES}
+LINK_TYPE_BY_ID = {item.id: item for item in LINK_TYPES}
+ACTION_TYPE_BY_ID = {item.id: item for item in ACTION_TYPES}
+
 
 MANUFACTURING_PACK = DomainPackDefinition(
     id="manufacturing-predictive-maintenance",
     display_name="Manufacturing Predictive Maintenance Pack",
-    description="기존 Factory Signal Board의 예지보전 기능을 유지하는 Ontology Dashboard의 첫 domain pack입니다.",
+    description="초기 제조 예지보전 vertical slice를 유지하는 Ontology Dashboard의 첫 domain pack입니다.",
     workspace_ids=["manufacturing-demo"],
     object_type_ids=[item.id for item in OBJECT_TYPES],
     link_type_ids=[item.id for item in LINK_TYPES],

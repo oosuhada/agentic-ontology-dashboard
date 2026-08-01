@@ -1,5 +1,3 @@
-"""Factory Signal Board API package."""
-
-from .main import app
-
-__all__ = ["app"]
+raise ImportError(
+    "factory_signal_board has been removed. Import from ontology_dashboard instead."
+)

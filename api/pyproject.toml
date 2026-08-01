@@ -3,9 +3,9 @@ requires = ["setuptools>=75", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "factory-signal-board-api"
+name = "ontology-dashboard-api"
 version = "0.1.0"
-description = "FastAPI service for grounded predictive-maintenance reports and governed layouts"
+description = "FastAPI service for ontology-aware dashboards, governed actions, and domain packs"
 requires-python = ">=3.11"
 dependencies = [
   "argon2-cffi>=23.1",
@@ -15,14 +15,17 @@ dependencies = [
   "jsonschema>=4.23",
   "pydantic>=2.9",
   "PyYAML>=6.0",
+  "reportlab>=4.2",
   "uvicorn>=0.30"
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.3"]
+postgres = ["psycopg[binary]>=3.2", "psycopg_pool>=3.2"]
+production = ["psycopg[binary]>=3.2", "psycopg_pool>=3.2", "redis>=5.0"]
 
 [tool.setuptools]
-packages = ["factory_signal_board"]
+packages = ["ontology_dashboard", "factory_signal_board"]
 
 [tool.pytest.ini_options]
 testpaths = ["../tests", "tests"]

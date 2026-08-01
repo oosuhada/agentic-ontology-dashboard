@@ -10,8 +10,8 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
-from factory_signal_board.contracts import LayoutRequest, ReportRequest
-from factory_signal_board.service import FactorySignalService
+from ontology_dashboard.contracts import LayoutRequest, ReportRequest
+from ontology_dashboard.service import ManufacturingPredictiveMaintenanceService
 
 FORBIDDEN_PHRASES = [
     "자동 정지 완료",
@@ -32,7 +32,7 @@ def evaluate(root: Path) -> dict[str, Any]:
     layout_validator = Draft202012Validator(load_schema(root, "ui-block.schema.json"))
     result_rows: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(prefix="factory-signal-eval-") as temp_dir:
-        service = FactorySignalService(root, database_path=Path(temp_dir) / "eval.db")
+        service = ManufacturingPredictiveMaintenanceService(root, database_path=Path(temp_dir) / "eval.db")
         for scenario in suite["scenarios"]:
             event_id = f"EVT-{scenario['id']}"
             fixture_expected = service.fixtures[event_id]["expected"]

@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/ontology-planner.schema.json",
+  "title": "Ontology Dashboard Planner Responses",
+  "$defs": {
+    "plannerMode": {
+      "enum": ["deterministic", "llm", "deterministic_fallback"]
+    },
+    "filter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "operator", "value"],
+      "properties": {
+        "field": { "type": "string", "minLength": 1 },
+        "operator": { "enum": ["eq", "contains", "gte", "lte"] },
+        "value": { "type": ["string", "number", "integer", "boolean"] }
+      }
+    },
+    "queryIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["object_type", "search", "filters", "limit", "rationale", "source_terms"],
+      "properties": {
+        "object_type": { "type": "string", "minLength": 1 },
+        "search": { "type": ["string", "null"] },
+        "filters": { "type": "array", "items": { "$ref": "#/$defs/filter" } },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 50 },
+        "rationale": { "type": "string", "minLength": 1 },
+        "source_terms": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "objectQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "provider", "fallback_reason", "intent", "preview_total", "preview_items", "validation", "requires_approval"],
+      "properties": {
+        "mode": { "$ref": "#/$defs/plannerMode" },
+        "provider": { "type": "string" },
+        "fallback_reason": { "type": ["string", "null"] },
+        "intent": { "$ref": "#/$defs/queryIntent" },
+        "preview_total": { "type": "integer", "minimum": 0 },
+        "preview_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "object_type", "workspace_id", "properties", "source_refs", "version"]
+          }
+        },
+        "validation": { "type": "object", "additionalProperties": { "type": "boolean" } },
+        "requires_approval": { "const": false }
+      }
+    },
+    "boardRecommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "provider", "fallback_reason", "role_code", "goal", "recommendations", "current_board_ids", "requires_approval", "persisted"],
+      "properties": {
+        "mode": { "$ref": "#/$defs/plannerMode" },
+        "provider": { "type": "string" },
+        "fallback_reason": { "type": ["string", "null"] },
+        "role_code": { "type": "string" },
+        "goal": { "type": "string" },
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["definition_id", "display_name", "category", "score", "reason", "already_present", "preference_signals"],
+            "properties": {
+              "definition_id": { "type": "string" },
+              "display_name": { "type": "string" },
+              "category": { "type": "string" },
+              "score": { "type": "number", "minimum": 0, "maximum": 1 },
+              "reason": { "type": "string" },
+              "already_present": { "type": "boolean" },
+              "preference_signals": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "current_board_ids": { "type": "array", "items": { "type": "string" } },
+        "requires_approval": { "const": true },
+        "persisted": { "const": false }
+      }
+    },
+    "dashboardDraft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "provider", "fallback_reason", "workspace_id", "target_role", "display_name", "tabs", "parameter_definitions", "recommended_definition_ids", "validation", "requires_approval", "persisted"],
+      "properties": {
+        "mode": { "$ref": "#/$defs/plannerMode" },
+        "provider": { "type": "string" },
+        "fallback_reason": { "type": ["string", "null"] },
+        "workspace_id": { "type": "string" },
+        "target_role": { "type": "string" },
+        "display_name": { "type": "string" },
+        "tabs": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["id", "title", "order", "boards"] } },
+        "parameter_definitions": { "type": "array", "items": { "type": "object", "required": ["id", "display_name", "value_type"] } },
+        "recommended_definition_ids": { "type": "array", "items": { "type": "string" } },
+        "validation": { "type": "object", "additionalProperties": { "type": "boolean" } },
+        "requires_approval": { "const": true },
+        "persisted": { "const": false }
+      }
+    },
+    "groundedNarrative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "provider", "fallback_reason", "event_id", "goal", "headline", "summary", "claims", "citations", "grounded", "requires_approval"],
+      "properties": {
+        "mode": { "$ref": "#/$defs/plannerMode" },
+        "provider": { "type": "string" },
+        "fallback_reason": { "type": ["string", "null"] },
+        "event_id": { "type": "string" },
+        "goal": { "type": "string" },
+        "headline": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 },
+        "claims": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["text", "evidence_field_ids"],
+            "properties": {
+              "text": { "type": "string", "minLength": 1 },
+              "evidence_field_ids": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+            }
+          }
+        },
+        "citations": { "type": "array", "items": { "type": "string" } },
+        "grounded": { "const": true },
+        "requires_approval": { "const": false }
+      }
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/objectQuery" },
+    { "$ref": "#/$defs/boardRecommendation" },
+    { "$ref": "#/$defs/dashboardDraft" },
+    { "$ref": "#/$defs/groundedNarrative" }
+  ]
+}

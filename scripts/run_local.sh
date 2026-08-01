@@ -33,12 +33,12 @@ if [[ ! -d web/node_modules ]]; then
 fi
 
 export PYTHONPATH="${ROOT_DIR}/api:${ROOT_DIR}/ml/src"
-export FACTORY_SIGNAL_DB="${FACTORY_SIGNAL_DB:-${ROOT_DIR}/data/local/factory_signal_board.db}"
+export ONTOLOGY_DASHBOARD_DB="${ONTOLOGY_DASHBOARD_DB:-${FACTORY_SIGNAL_DB:-${ROOT_DIR}/data/local/ontology_dashboard.db}}"
 export VITE_API_BASE_URL="${VITE_API_BASE_URL:-http://${API_HOST}:${API_PORT}}"
 
 "${VENV_DIR}/bin/python" scripts/preflight.py
 
-"${VENV_DIR}/bin/python" -m uvicorn factory_signal_board.main:app \
+"${VENV_DIR}/bin/python" -m uvicorn ontology_dashboard.app:app \
   --host "${API_HOST}" --port "${API_PORT}" > /tmp/ontology-dashboard-api.log 2>&1 &
 API_PID=$!
 

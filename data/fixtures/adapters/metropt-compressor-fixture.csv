@@ -1,0 +1,4 @@
+timestamp,TP2,TP3,H1,DV_pressure,Reservoirs,Oil_temperature,Motor_current,COMP,DV_eletric,Towers,MPG,LPS,Pressure_switch,Oil_level,Caudal_impulses
+2026-01-01T00:00:00Z,8.0,9.2,8.5,0.4,9.0,62.0,4.0,1,1,1,1,0,1,1,1
+2026-01-01T00:01:00Z,8.4,9.4,8.8,0.5,9.1,62.5,4.4,1,1,1,1,0,1,1,1
+2026-01-01T00:02:00Z,7.8,9.0,8.2,0.3,8.9,61.8,2.1,0,0,1,0,0,1,1,0

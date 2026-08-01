@@ -49,7 +49,7 @@ The default 0.5 threshold was not used for the final test. The selected 0.20 thr
 The trained artifact was generated in a temporary validation directory during implementation. Reproducible generation is available through:
 
 ```bash
-PYTHONPATH=ml/src python -m factory_signal_ml.cli train data/raw/ai4i2020.csv --output ml/artifacts
+PYTHONPATH=ml/src python -m ontology_dashboard_manufacturing_ml.cli train data/raw/ai4i2020.csv --output ml/artifacts
 ```
 
 Generated binary artifacts are intentionally ignored by Git. Model metadata and policy are reproducible from code and the verified dataset checksum.

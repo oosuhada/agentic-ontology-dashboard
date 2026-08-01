@@ -5,7 +5,8 @@ import argparse
 import os
 from pathlib import Path
 
-from factory_signal_board.identity import DEMO_ACCOUNTS, IdentityService
+from ontology_dashboard.identity import DEMO_ACCOUNTS, IdentityService
+from ontology_dashboard.settings import database_location
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -14,7 +15,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Seed Ontology Dashboard development demo accounts")
     parser.add_argument(
         "--database",
-        default=os.getenv("FACTORY_SIGNAL_DB", str(ROOT / "data" / "local" / "factory_signal_board.db")),
+        default=database_location(ROOT),
     )
     args = parser.parse_args()
 

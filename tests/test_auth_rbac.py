@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from factory_signal_board.identity import CSRF_COOKIE, DEMO_ACCOUNTS, AuthError, IdentityService
-from factory_signal_board.main import app, get_identity_service, get_service
-from factory_signal_board.service import FactorySignalService
+from ontology_dashboard.identity import CSRF_COOKIE, DEMO_ACCOUNTS, AuthError, IdentityService
+from ontology_dashboard.main import app, get_identity_service, get_service
+from ontology_dashboard.service import ManufacturingPredictiveMaintenanceService as FactorySignalService
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -69,7 +69,11 @@ def test_eight_demo_accounts_login_with_argon2id_hashes(client: TestClient, iden
         assert response.status_code == 200, response.text
         user = response.json()["user"]
         assert user["roles"] == [expected_roles[account["email"]]]
-        assert user["workspace_scopes"] == ["manufacturing-demo"]
+        assert user["workspace_scopes"] == [
+            "azure-fleet-maintenance",
+            "manufacturing-demo",
+            "metropt-compressor-monitoring",
+        ]
         password_hash = identity.repository.password_hash_for_email(account["email"])
         assert password_hash is not None
         assert password_hash.startswith("$argon2id$")

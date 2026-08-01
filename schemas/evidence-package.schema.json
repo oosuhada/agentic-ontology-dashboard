@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://factory-signal-board.local/schemas/evidence-package.schema.json",
-  "title": "Factory Signal Board Evidence Package",
+  "$id": "https://ontology-dashboard.local/schemas/evidence-package.schema.json",
+  "title": "Ontology Dashboard Manufacturing Evidence Package",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "evidence_id", "event_id", "scenario_id", "equipment", "model", "status", "recommended_decision", "confidence", "failure_probability", "threshold", "predicted_failure_type", "observation", "history", "detected_interval", "top_factors", "maintenance_context", "data_quality_warnings", "lineage", "generated_at"],

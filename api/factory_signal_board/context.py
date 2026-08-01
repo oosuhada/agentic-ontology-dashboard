@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-from factory_signal_ml.evidence import FixtureContextProvider
+from ontology_dashboard_manufacturing_ml.evidence import FixtureContextProvider
 
 
 class Project3HttpContextProvider:

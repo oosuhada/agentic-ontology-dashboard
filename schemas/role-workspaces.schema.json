@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/role-workspaces.schema.json",
+  "title": "Ontology Dashboard Role Workspace Contracts",
+  "$defs": {
+    "executiveOverview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace_id", "generated_at", "aggregate", "status_distribution", "risk_trend", "unresolved_critical_events", "business_impact", "assumptions"],
+      "properties": {
+        "workspace_id": { "type": "string", "minLength": 1 },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "aggregate": {
+          "type": "object",
+          "required": ["equipment_count", "event_count", "affected_event_count", "unresolved_critical_count", "average_failure_probability", "estimated_downtime_minutes"],
+          "properties": {
+            "equipment_count": { "type": "integer", "minimum": 0 },
+            "event_count": { "type": "integer", "minimum": 0 },
+            "affected_event_count": { "type": "integer", "minimum": 0 },
+            "unresolved_critical_count": { "type": "integer", "minimum": 0 },
+            "average_failure_probability": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+            "estimated_downtime_minutes": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "status_distribution": { "type": "array", "items": { "type": "object", "required": ["status", "count"] } },
+        "risk_trend": { "type": "array", "items": { "type": "object", "required": ["observed_at", "event_id", "equipment", "status", "risk_score"] } },
+        "unresolved_critical_events": { "type": "array", "items": { "type": "object", "required": ["event_id", "equipment", "status", "decision_count"] } },
+        "business_impact": { "type": "object", "required": ["estimated_downtime_minutes", "currency_impact", "basis"] },
+        "assumptions": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      }
+    },
+    "auditReconstruction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace_id", "event_id", "reconstructed_at", "input_snapshot", "version_snapshot", "evidence_to_report_trace", "action_history", "export_checkpoints"],
+      "properties": {
+        "workspace_id": { "type": "string" },
+        "event_id": { "type": "string" },
+        "reconstructed_at": { "type": "string", "format": "date-time" },
+        "input_snapshot": { "type": "object", "required": ["schema_version", "scenario_id", "equipment", "observation", "history", "runtime"] },
+        "version_snapshot": { "type": "object", "required": ["model_version", "policy_version", "evidence_id", "report_id"] },
+        "evidence_to_report_trace": { "type": "array", "items": { "type": "object", "required": ["section_id", "title", "evidence_field_ids", "report_id"] } },
+        "action_history": { "type": "array", "items": { "type": "object" } },
+        "export_checkpoints": { "type": "array", "items": { "type": "object", "required": ["id", "content_hash", "created_at"] } }
+      }
+    },
+    "fieldTaskWorkspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace_id", "generated_at", "tasks", "offline_queue_design"],
+      "properties": {
+        "workspace_id": { "type": "string" },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["task_id", "event_id", "equipment", "risk_status", "task_status", "location", "safety", "checklist", "measurement_schema", "photo_policy", "latest_action"]
+          }
+        },
+        "offline_queue_design": { "type": "object", "required": ["implemented", "future_option", "queue_key", "conflict_policy", "note"] }
+      }
+    },
+    "fdeWorkbench": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace_id", "generated_at", "customer_workspace", "ontology_registry", "integration_health", "deployment_checklist", "diagnostic_events", "template_requests", "security_boundaries"],
+      "properties": {
+        "workspace_id": { "type": "string" },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "customer_workspace": { "type": "object" },
+        "ontology_registry": { "type": "object", "required": ["object_type_count", "link_type_count", "action_type_count", "object_types", "link_types", "action_types"] },
+        "integration_health": { "type": "array", "items": { "type": "object" } },
+        "deployment_checklist": { "type": "array", "items": { "type": "object", "required": ["id", "label", "status"] } },
+        "diagnostic_events": { "type": "array", "items": { "type": "object" } },
+        "template_requests": { "type": "array", "items": { "$ref": "#/$defs/workflowRequest" } },
+        "security_boundaries": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      }
+    },
+    "modelConsole": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace_id", "generated_at", "model_versions", "dataset_versions", "training_metrics", "operational_thresholds", "threshold_cost", "slices", "drift_and_schema", "gold_regression", "release_requests"],
+      "properties": {
+        "workspace_id": { "type": "string" },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "model_versions": { "type": "array", "items": { "type": "object" } },
+        "dataset_versions": { "type": "array", "items": { "type": "object" } },
+        "training_metrics": { "type": "object", "required": ["scope", "available", "metrics"] },
+        "operational_thresholds": { "type": "object", "required": ["scope", "policy_versions", "threshold_values", "note"] },
+        "threshold_cost": { "type": "array", "items": { "type": "object", "required": ["threshold", "relative_cost"] } },
+        "slices": { "type": "array", "items": { "type": "object" } },
+        "drift_and_schema": { "type": "array", "items": { "type": "object" } },
+        "gold_regression": { "type": "object", "required": ["scenario_count", "passed", "failed", "pass", "items"] },
+        "release_requests": { "type": "array", "items": { "$ref": "#/$defs/workflowRequest" } }
+      }
+    },
+    "workflowRequest": {
+      "type": "object",
+      "required": ["id", "workflow_type", "workspace_id", "status", "requested_by", "requested_by_name", "payload", "decision_by", "decision_by_name", "decision_note", "created_at", "updated_at"],
+      "properties": {
+        "id": { "type": "string" },
+        "workflow_type": { "enum": ["template_publish", "model_release"] },
+        "workspace_id": { "type": "string" },
+        "target_role": { "type": "string" },
+        "status": { "enum": ["pending_approval", "approved", "rejected"] },
+        "requested_by": { "type": "string" },
+        "requested_by_name": { "type": "string" },
+        "payload": { "type": "object" },
+        "decision_by": { "type": ["string", "null"] },
+        "decision_by_name": { "type": ["string", "null"] },
+        "decision_note": { "type": ["string", "null"] },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/executiveOverview" },
+    { "$ref": "#/$defs/auditReconstruction" },
+    { "$ref": "#/$defs/fieldTaskWorkspace" },
+    { "$ref": "#/$defs/fdeWorkbench" },
+    { "$ref": "#/$defs/modelConsole" },
+    { "$ref": "#/$defs/workflowRequest" }
+  ]
+}

@@ -1,4 +1,4 @@
-name: factory-signal-board-ci
+name: ontology-dashboard-ci
 
 on:
   push:
@@ -41,10 +41,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Install PostgreSQL runtime tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql postgresql-client
+          echo "$(pg_config --bindir)" >> "$GITHUB_PATH"
       - name: Install Python packages
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e 'ml[dev]' -e 'api[dev]'
+          python -m pip install -e 'ml[dev]' -e 'api[dev,production]'
       - name: Prepare Playwright system dependencies
         working-directory: web
         run: |

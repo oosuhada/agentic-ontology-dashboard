@@ -39,7 +39,36 @@
         "object_id": { "type": "string", "minLength": 1 },
         "workspace_id": { "type": "string", "minLength": 1 },
         "parameters": { "type": "object" },
-        "idempotency_key": { "type": "string", "minLength": 1 }
+        "idempotency_key": { "type": "string", "minLength": 8, "maxLength": 200 }
+      }
+    },
+    "actionExecutionResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["invocation_id", "action_type", "object_id", "workspace_id", "state", "replayed", "result", "audit_id", "created_at", "completed_at"],
+      "properties": {
+        "invocation_id": { "type": "string", "minLength": 1 },
+        "action_type": { "type": "string", "minLength": 1 },
+        "object_id": { "type": "string", "minLength": 1 },
+        "workspace_id": { "type": "string", "minLength": 1 },
+        "state": { "const": "succeeded" },
+        "replayed": { "type": "boolean" },
+        "result": { "type": "object" },
+        "audit_id": { "type": "string", "minLength": 1 },
+        "created_at": { "type": "string", "format": "date-time" },
+        "completed_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "traversal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root", "nodes", "edges", "direction", "depth"],
+      "properties": {
+        "root": { "$ref": "#/$defs/object" },
+        "nodes": { "type": "array", "items": { "$ref": "#/$defs/object" } },
+        "edges": { "type": "array", "items": { "$ref": "#/$defs/link" } },
+        "direction": { "enum": ["outgoing", "incoming", "both"] },
+        "depth": { "type": "integer", "minimum": 1, "maximum": 5 }
       }
     },
     "evidenceReference": {
@@ -60,6 +89,8 @@
     { "$ref": "#/$defs/object" },
     { "$ref": "#/$defs/link" },
     { "$ref": "#/$defs/actionInvocation" },
+    { "$ref": "#/$defs/actionExecutionResult" },
+    { "$ref": "#/$defs/traversal" },
     { "$ref": "#/$defs/evidenceReference" }
   ]
 }
