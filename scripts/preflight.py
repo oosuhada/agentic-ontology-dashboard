@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import importlib.util
+import json
+import os
+import shutil
+import socket
+import sys
+from pathlib import Path
+
+REQUIRED_PYTHON_MODULES = [
+    "fastapi",
+    "httpx",
+    "jsonschema",
+    "joblib",
+    "numpy",
+    "pandas",
+    "pydantic",
+    "sklearn",
+    "uvicorn",
+    "yaml",
+]
+REQUIRED_FILES = [
+    "api/factory_signal_board/main.py",
+    "ml/src/factory_signal_ml/cli.py",
+    "schemas/input-event.schema.json",
+    "schemas/evidence-package.schema.json",
+    "schemas/report.schema.json",
+    "schemas/ui-block.schema.json",
+    "evaluation/gold_scenarios.yml",
+    "web/package.json",
+]
+
+
+def port_available(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        return sock.connect_ex(("127.0.0.1", port)) != 0
+
+
+def main() -> None:
+    root = Path(__file__).resolve().parents[1]
+    checks: list[dict[str, object]] = []
+
+    for name in REQUIRED_PYTHON_MODULES:
+        present = importlib.util.find_spec(name) is not None
+        checks.append({"name": f"python:{name}", "pass": present})
+
+    for command in ["node", "npm"]:
+        path = shutil.which(command)
+        checks.append({"name": f"command:{command}", "pass": path is not None, "path": path})
+
+    for relative in REQUIRED_FILES:
+        present = (root / relative).is_file()
+        checks.append({"name": f"file:{relative}", "pass": present})
+
+    fixture_count = len(list((root / "data" / "fixtures").glob("GS-*.json")))
+    checks.append({"name": "gold_fixture_count", "pass": fixture_count == 8, "value": fixture_count})
+    api_port = int(os.getenv("API_PORT", "8100"))
+    web_port = int(os.getenv("WEB_PORT", "3100"))
+    checks.append({"name": f"port:{api_port}", "pass": port_available(api_port)})
+    checks.append({"name": f"port:{web_port}", "pass": port_available(web_port)})
+
+    failed = [check for check in checks if not check["pass"]]
+    report = {
+        "python": sys.version,
+        "root": str(root),
+        "checks": checks,
+        "failed": failed,
+        "pass": not failed,
+    }
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+    raise SystemExit(0 if report["pass"] else 1)
+
+
+if __name__ == "__main__":
+    main()
