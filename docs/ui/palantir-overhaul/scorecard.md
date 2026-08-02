@@ -78,7 +78,7 @@ Same-platform candidate checks:
 Cross-platform candidate checks:
 
 - raw pixel checks disabled to avoid operating-system font rasterization false positives
-- grayscale 180×125 downsample + Gaussian blur structural mean delta ≤ 2.0%
+- grayscale 180×125 downsample + Gaussian blur structural mean delta ≤ 2.4%
 
 Latest local candidate result:
 
@@ -89,7 +89,19 @@ Changed pixel ratio max                  0.2074% / 0.75% PASS
 Structural mean delta max                0.0079% / 0.10% PASS
 ```
 
-The first Ubuntu CI artifact should be reviewed to determine whether the 2.0% cross-platform ceiling can be tightened.
+First successful Ubuntu candidate result:
+
+```text
+GitHub Actions run                      30748701960 PASS
+Ubuntu image                            ubuntu24 / 20260720.247.2
+Playwright                              1.62.1
+Candidate images                        24 / 24
+Cross-platform structural max           1.5436% / 2.4% PASS
+Observed × 1.5                          2.3154%
+Calibrated ceiling                      2.4%
+```
+
+The maximum is the `720x500/project-home.png` font-fallback reflow. The next highest result is `720x500/analysis.png` at 1.3674%. The successful artifact and review are recorded in `ubuntu-calibration.md`.
 
 ## Final validation
 
@@ -108,11 +120,11 @@ Final overhaul acceptance                8 PASS
 Legacy comparison manifest               PASS
 48-image committed visual manifest       PASS
 Candidate visual thresholds              PASS
-Release gate                             13/13 PASS
+Ubuntu release gate                      16/16 PASS
 ```
 
-## Remaining review work
+## Review outcome
 
-1. Inspect the first Ubuntu structural-diff artifact and tighten the cross-platform threshold where justified.
-2. Perform product design review of the final 48-image set.
-3. Resume production-environment, connector, IdP, object-storage and observability work after visual approval.
+The final evidence set passed the surface hierarchy, information density, 720px overflow, degraded-state, inspector priority, Analysis connector, and Object Explore/Graph differentiation review. No approved screenshot needed replacement. Dashboard capture now waits for the lazy metric board instead of accepting a loading placeholder.
+
+The next local priority is Phase 3 physical namespace relocation. Managed production, connector, IdP, object-storage, and observability work remains externally blocked on this host.

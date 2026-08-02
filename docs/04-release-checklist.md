@@ -182,7 +182,9 @@ TypeScript: PASS
 Production build: PASS
 Initial JavaScript: 214.48 KiB / 300 KiB
 Largest deferred JavaScript: 443.24 KiB / 500 KiB
-Playwright: 34 PASS
-Visual baseline manifest: PASS
+Playwright: 49 PASS / 3 intentional skip
+48-image visual manifest: PASS
+Ubuntu structural visual gate: 1.5436% / 2.4% PASS
+Ubuntu release gate: 16/16 PASS
 Live three-store Agent gate: PASS
 ```

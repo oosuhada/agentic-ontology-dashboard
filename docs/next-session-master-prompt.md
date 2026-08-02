@@ -2,9 +2,9 @@
 
 이 파일은 새로운 ChatGPT/AI 작업 세션의 공식 진입점이다.
 
-> **Temporary product priority override — 2026-08-02**
+> **UI completion handoff — 2026-08-02**
 >
-> 현재 최우선 작업은 backend/infra 확장이 아니라 Palantir/Foundry 스타일 UI 전면 개편이다. UI 작업 세션은 가장 먼저 `docs/next-session-palantir-ui-overhaul-prompt.md`와 `docs/palantir-ui-overhaul-master-plan.md`를 읽고 그 지시를 이 문서의 일반 운영 우선순위보다 앞서 적용한다. UI를 직접 막지 않는 connector, SSO, managed infrastructure, physical namespace relocation은 후순위다.
+> Palantir/Foundry 스타일 UI-00~UI-08과 Ubuntu visual calibration은 완료됐다. 현재 실행 기준은 `docs/next-session-remaining-work-execution-plan.md`이며, 완료된 UI를 반복 구현하지 않는다.
 
 ## 1. Role
 
@@ -139,8 +139,10 @@ TypeScript: PASS
 Production build: PASS
 Initial JavaScript: 214.48 KiB / 300 KiB
 Largest deferred JavaScript: 443.24 KiB / 500 KiB
-Playwright E2E: 34 PASS
-Visual baseline manifest: PASS
+Playwright E2E: 49 PASS / 3 intentional skip
+48-image visual manifest: PASS
+Ubuntu structural visual gate: 1.5436% / 2.4% PASS
+Ubuntu release gate: 16/16 PASS
 Live Project 2→Project 3 evidence: PostgreSQL 1 + Neo4j 3 + Project 3 RAG 1 PASS
 ```
 
@@ -160,7 +162,7 @@ Stage 44~55의 제품 수렴과 Stage 56의 product hardening은 완료됐다. D
 5. 첫 production connector를 REST부터 선택하고 credentials/retry/replay 검증
 6. 선택된 IdP의 OIDC, invitation/reset와 Project role mapping
 7. S3-compatible artifact storage와 OpenTelemetry 운영 증거
-8. cross-platform pixel-diff visual regression CI
+8. cross-platform pixel-diff visual regression CI — COMPLETE
 ```
 
 이미 완료된 Dataset Catalog, Agent/Governance pagination, WorkOrder, Analysis job lifecycle, bundle split 또는 Project 3 three-store 경로를 반복 구현하지 않는다.

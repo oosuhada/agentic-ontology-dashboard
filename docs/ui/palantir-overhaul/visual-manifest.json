@@ -9,7 +9,7 @@
     "candidate_mean_pixel_delta_percent_max": 0.15,
     "candidate_changed_pixel_percent_max": 0.75,
     "candidate_structural_mean_pixel_delta_percent_max_same_platform": 0.1,
-    "candidate_structural_mean_pixel_delta_percent_max_cross_platform": 2.0,
+    "candidate_structural_mean_pixel_delta_percent_max_cross_platform": 2.4,
     "baseline_final_mean_pixel_delta_percent_min": 3.0,
     "baseline_final_mean_pixel_delta_percent_max": 35.0
   },

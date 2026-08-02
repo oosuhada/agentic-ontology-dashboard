@@ -164,6 +164,7 @@ def main() -> int:
         "candidate_root": str(candidate_root) if candidate_requested else None,
         "candidate_available": candidate_available,
         "candidate_count": len(candidate_results),
+        "candidate_results": candidate_results,
         "capture_platform": capture_platform,
         "current_platform": current_platform,
         "same_platform_raw_pixel_gate": same_platform,
