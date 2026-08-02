@@ -17,6 +17,7 @@ def test_stage44_architecture_inventory_has_no_regression() -> None:
     assert by_id["planner_legacy_router_imports"].state == "resolved"
     assert by_id["validated_project3_query_boundary"].state == "resolved"
     assert by_id["foundation_identity_physical_relocation"].state == "resolved"
+    assert by_id["dashboard_physical_relocation"].state == "resolved"
 
 
 def test_remaining_legacy_debt_is_explicitly_owned_by_stage55() -> None:
@@ -46,3 +47,25 @@ def test_foundation_identity_modules_load_from_canonical_directory() -> None:
     identity = importlib.import_module("ontology_dashboard.identity")
     identity_repository = importlib.import_module("ontology_dashboard.identity_repository")
     assert identity.IdentityRepository is identity_repository.IdentityRepository
+
+
+def test_dashboard_modules_load_from_canonical_directory() -> None:
+    module_names = (
+        "dashboard_models",
+        "dashboard_catalog",
+        "dashboard_repository",
+        "dashboard_service",
+    )
+    canonical_root = ROOT / "api" / "ontology_dashboard"
+    for name in module_names:
+        module = importlib.import_module(f"ontology_dashboard.{name}")
+        assert Path(module.__file__).resolve().parent == canonical_root.resolve()
+
+    dashboard_repository = importlib.import_module("ontology_dashboard.dashboard_repository")
+    dashboard_service = importlib.import_module("ontology_dashboard.dashboard_service")
+    postgresql_repositories = importlib.import_module("ontology_dashboard.postgresql_repositories")
+    assert dashboard_service.DashboardRepository is dashboard_repository.DashboardRepository
+    assert issubclass(
+        postgresql_repositories.PostgreSQLDashboardRepository,
+        dashboard_repository.DashboardRepository,
+    )
