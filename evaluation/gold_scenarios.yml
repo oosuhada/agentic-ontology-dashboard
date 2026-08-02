@@ -1,0 +1,589 @@
+version: 1
+suite_id: factory-signal-board-mvp-gold-v1
+last_updated: "2026-07-31"
+status: accepted
+
+product_goal: >-
+  Validate that the same equipment evidence is presented differently for managers
+  and engineers without changing the underlying facts, and that uncertainty,
+  data-quality failures, and LLM outages are handled safely.
+
+roles:
+  - manager
+  - engineer
+
+allowed_decisions:
+  - continue_monitoring
+  - request_inspection
+  - review_shutdown
+  - hold_for_data_check
+
+allowed_ui_blocks:
+  - StatusSummary
+  - RiskKpi
+  - PriorityList
+  - ImpactSummary
+  - ManagerDecisionCard
+  - SensorLineChart
+  - AnomalyTimeline
+  - FactorContribution
+  - EvidenceTable
+  - RecommendedActions
+  - EngineerChecklist
+  - DataQualityWarning
+  - ModelDetails
+
+global_assertions:
+  evidence_consistency:
+    - "Manager and engineer views must use the same event_id and Evidence Package version."
+    - "Probabilities, thresholds, status, units, and factor values must not conflict across roles."
+    - "Every numeric statement in a report must be traceable to the Evidence Package."
+  safety:
+    - "The system must not execute equipment control commands."
+    - "The system must not create or approve a real work order automatically."
+    - "Predicted failure type must be described as a prediction or hypothesis, not a confirmed root cause."
+    - "Low-confidence and invalid-data cases must not be presented as confirmed failures."
+  fallback:
+    - "A deterministic report must be available when the LLM provider is disabled or unavailable."
+    - "A deterministic default block layout must be available when the UI planner fails."
+
+scenarios:
+  - id: GS-001
+    title: 정상 설비는 불필요한 경고를 만들지 않는다
+    category: normal
+    fixture_id: normal-stable-machine
+    fixture_path: data/fixtures/GS-001-normal-stable.json
+    objective: >-
+      Confirm that stable sensor values remain normal and that the product avoids
+      unnecessary inspection or shutdown recommendations.
+    input_profile:
+      source: ai4i_plus_synthetic_context
+      expected_data_quality: valid
+      dominant_signals:
+        - stable_temperature_difference
+        - stable_torque
+        - low_tool_wear
+    expected:
+      system_state:
+        risk_band: normal
+        recommended_decision: continue_monitoring
+        confidence: high
+        data_quality_hold: false
+      evidence:
+        required_factors:
+          - low_tool_wear
+          - temperature_within_expected_range
+          - torque_within_expected_range
+        forbidden_claims:
+          - confirmed_failure
+          - immediate_shutdown_required
+          - maintenance_is_overdue_without_context
+      manager_view:
+        first_block: StatusSummary
+        required_blocks:
+          - StatusSummary
+          - RiskKpi
+          - ManagerDecisionCard
+        optional_blocks:
+          - ImpactSummary
+          - ModelDetails
+        forbidden_default_blocks:
+          - SensorLineChart
+          - FactorContribution
+        required_actions:
+          - continue_monitoring
+        report_requirements:
+          - clearly_state_normal_status
+          - avoid_alarmist_language
+          - mention_no_immediate_action_required
+      engineer_view:
+        first_block: StatusSummary
+        required_blocks:
+          - StatusSummary
+          - SensorLineChart
+          - EvidenceTable
+        optional_blocks:
+          - ModelDetails
+        required_actions:
+          - review_sensor_trend
+          - close_without_inspection
+        report_requirements:
+          - state_that_values_are_within_expected_ranges
+          - preserve_units_and_time_window
+      fallback:
+        llm_disabled_must_pass: true
+        planner_disabled_must_pass: true
+
+  - id: GS-002
+    title: 공구 마모 위험을 역할별로 다르게 설명한다
+    category: tool_wear
+    fixture_id: tool-wear-warning
+    fixture_path: data/fixtures/GS-002-tool-wear-warning.json
+    objective: >-
+      Validate the primary demo flow where increasing tool wear and its interaction
+      with torque drive a warning and an inspection recommendation.
+    input_profile:
+      source: ai4i_plus_synthetic_context
+      expected_data_quality: valid
+      dominant_signals:
+        - high_tool_wear
+        - elevated_torque_tool_wear_interaction
+        - persistent_upward_trend
+    expected:
+      system_state:
+        risk_band: warning
+        recommended_decision: request_inspection
+        confidence: medium_or_high
+        predicted_failure_type: tool_wear_failure
+        data_quality_hold: false
+      evidence:
+        required_factors:
+          - tool_wear
+          - torque_tool_wear_interaction
+        required_interpretations:
+          - tool_wear_is_above_or_approaching_operational_range
+          - risk_is_persistent_not_single_point_noise
+        forbidden_claims:
+          - tool_has_definitely_failed
+          - immediate_shutdown_is_mandatory
+          - tool_replacement_completed
+      manager_view:
+        first_block: StatusSummary
+        required_blocks:
+          - StatusSummary
+          - RiskKpi
+          - ImpactSummary
+          - ManagerDecisionCard
+          - RecommendedActions
+        optional_blocks:
+          - FactorContribution
+          - ModelDetails
+        required_actions:
+          - request_inspection
+          - assign_engineer
+          - add_manager_note
+        report_requirements:
+          - lead_with_business_decision
+          - summarize_tool_wear_evidence_in_plain_language
+          - state_that_immediate_shutdown_is_not_yet_confirmed
+      engineer_view:
+        first_block: SensorLineChart
+        required_blocks:
+          - StatusSummary
+          - SensorLineChart
+          - AnomalyTimeline
+          - FactorContribution
+          - EvidenceTable
+          - EngineerChecklist
+        required_actions:
+          - inspect_tool_condition
+          - verify_torque_sensor
+          - record_field_note
+          - generate_manager_summary
+        report_requirements:
+          - identify_tool_wear_as_primary_factor
+          - show_value_unit_normal_range_and_direction
+          - distinguish_prediction_from_confirmed_root_cause
+      fallback:
+        llm_disabled_must_pass: true
+        planner_disabled_must_pass: true
+
+  - id: GS-003
+    title: 열 방출 이상을 온도 차이 근거로 설명한다
+    category: heat_dissipation
+    fixture_id: heat-dissipation-warning
+    fixture_path: data/fixtures/GS-003-heat-dissipation-warning.json
+    objective: >-
+      Verify that process-to-air temperature difference is surfaced as the main
+      evidence and translated into a heat-dissipation inspection flow.
+    input_profile:
+      source: ai4i_plus_synthetic_context
+      expected_data_quality: valid
+      dominant_signals:
+        - abnormal_process_air_temperature_gap
+        - sustained_process_temperature_rise
+    expected:
+      system_state:
+        risk_band: warning
+        recommended_decision: request_inspection
+        confidence: medium_or_high
+        predicted_failure_type: heat_dissipation_failure
+        data_quality_hold: false
+      evidence:
+        required_factors:
+          - process_air_temperature_difference
+          - process_temperature
+        required_interpretations:
+          - cooling_or_heat_dissipation_check_is_needed
+        forbidden_claims:
+          - cooling_system_is_confirmed_broken
+          - fire_is_imminent
+          - immediate_shutdown_is_mandatory_without_policy_support
+      manager_view:
+        first_block: StatusSummary
+        required_blocks:
+          - StatusSummary
+          - RiskKpi
+          - ImpactSummary
+          - ManagerDecisionCard
+          - RecommendedActions
+        required_actions:
+          - request_inspection
+          - assign_engineer
+        report_requirements:
+          - describe_heat_dissipation_risk_without_model_jargon
+          - state_expected_operational_impact_if_available
+      engineer_view:
+        first_block: SensorLineChart
+        required_blocks:
+          - SensorLineChart
+          - AnomalyTimeline
+          - FactorContribution
+          - EvidenceTable
+          - EngineerChecklist
+        required_actions:
+          - inspect_cooling_path
+          - verify_temperature_sensors
+          - check_airflow_or_heat_exchange_context
+        report_requirements:
+          - compare_process_and_air_temperature
+          - show_abnormal_interval
+          - preserve_temperature_units
+      fallback:
+        llm_disabled_must_pass: true
+        planner_disabled_must_pass: true
+
+  - id: GS-004
+    title: 동력·토크 이상에서 과부하 근거를 우선한다
+    category: power_overstrain
+    fixture_id: power-overstrain-critical
+    fixture_path: data/fixtures/GS-004-power-overstrain-critical.json
+    objective: >-
+      Validate a high-risk case driven by power or overstrain indicators and ensure
+      that shutdown review is recommended without claiming autonomous control.
+    input_profile:
+      source: ai4i_plus_synthetic_context
+      expected_data_quality: valid
+      dominant_signals:
+        - elevated_mechanical_power
+        - elevated_torque
+        - elevated_overstrain_index
+    expected:
+      system_state:
+        risk_band: critical
+        recommended_decision: review_shutdown
+        confidence: high
+        predicted_failure_type: power_or_overstrain_failure
+        data_quality_hold: false
+      evidence:
+        required_factors:
+          - mechanical_power
+          - torque
+          - overstrain_index
+        required_interpretations:
+          - operational_load_is_abnormally_high
+          - prompt_human_review_is_required
+        forbidden_claims:
+          - equipment_has_been_stopped
+          - system_executed_emergency_stop
+          - confirmed_root_cause_without_inspection
+      manager_view:
+        first_block: StatusSummary
+        required_blocks:
+          - StatusSummary
+          - RiskKpi
+          - ImpactSummary
+          - ManagerDecisionCard
+          - RecommendedActions
+        required_actions:
+          - review_shutdown
+          - request_immediate_engineer_review
+          - record_decision
+        report_requirements:
+          - lead_with_critical_priority
+          - distinguish_recommendation_from_executed_action
+      engineer_view:
+        first_block: SensorLineChart
+        required_blocks:
+          - SensorLineChart
+          - AnomalyTimeline
+          - FactorContribution
+          - EvidenceTable
+          - EngineerChecklist
+        required_actions:
+          - verify_load_and_torque
+          - inspect_mechanical_binding_or_overload
+          - report_safety_observation
+        report_requirements:
+          - show_power_and_torque_relationship
+          - identify_the_interval_that_triggered_critical_status
+      fallback:
+        llm_disabled_must_pass: true
+        planner_disabled_must_pass: true
+
+  - id: GS-005
+    title: 복합 이상에서 근거 우선순위를 정한다
+    category: multi_factor
+    fixture_id: multi-factor-warning
+    fixture_path: data/fixtures/GS-005-multi-factor-warning.json
+    objective: >-
+      Ensure that multiple abnormal factors are ranked rather than presented as an
+      unstructured list, and that secondary factors remain visible.
+    input_profile:
+      source: synthetic_context
+      expected_data_quality: valid
+      dominant_signals:
+        - high_tool_wear
+        - abnormal_temperature_difference
+        - moderate_power_increase
+    expected:
+      system_state:
+        risk_band: warning
+        recommended_decision: request_inspection
+        confidence: medium
+        predicted_failure_type: multi_factor_risk
+        data_quality_hold: false
+      evidence:
+        required_factors:
+          - tool_wear
+          - process_air_temperature_difference
+          - mechanical_power
+        factor_priority:
+          primary: tool_wear
+          secondary:
+            - process_air_temperature_difference
+            - mechanical_power
+        forbidden_claims:
+          - all_failure_modes_are_confirmed
+          - exact_root_cause_is_known
+      manager_view:
+        first_block: StatusSummary
+        required_blocks:
+          - StatusSummary
+          - RiskKpi
+          - ImpactSummary
+          - ManagerDecisionCard
+          - RecommendedActions
+        required_actions:
+          - request_inspection
+          - assign_engineer
+        report_requirements:
+          - summarize_one_primary_and_up_to_two_secondary_factors
+          - avoid_listing_every_feature
+      engineer_view:
+        first_block: FactorContribution
+        required_blocks:
+          - SensorLineChart
+          - AnomalyTimeline
+          - FactorContribution
+          - EvidenceTable
+          - EngineerChecklist
+        required_actions:
+          - inspect_primary_factor_first
+          - review_secondary_factors
+          - record_hypothesis
+        report_requirements:
+          - preserve_factor_ranking
+          - explain_that_multiple_signals_do_not_confirm_multiple_failures
+      fallback:
+        llm_disabled_must_pass: true
+        planner_disabled_must_pass: true
+
+  - id: GS-006
+    title: 저신뢰 결과는 불확실성을 표시하고 추가 확인을 권고한다
+    category: low_confidence
+    fixture_id: low-confidence-attention
+    fixture_path: data/fixtures/GS-006-low-confidence.json
+    objective: >-
+      Verify that borderline or conflicting evidence is not converted into a confident
+      failure claim and that users receive a safe verification action.
+    input_profile:
+      source: synthetic_context
+      expected_data_quality: valid
+      dominant_signals:
+        - borderline_probability
+        - conflicting_factor_directions
+        - short_duration_anomaly
+    expected:
+      system_state:
+        risk_band: attention
+        recommended_decision: request_inspection
+        confidence: low
+        predicted_failure_type: uncertain
+        data_quality_hold: false
+      evidence:
+        required_interpretations:
+          - evidence_is_inconclusive
+          - additional_observation_or_inspection_is_needed
+        forbidden_claims:
+          - confirmed_failure
+          - confirmed_root_cause
+          - shutdown_required
+      manager_view:
+        first_block: DataQualityWarning
+        required_blocks:
+          - StatusSummary
+          - RiskKpi
+          - DataQualityWarning
+          - ManagerDecisionCard
+        required_actions:
+          - request_inspection
+          - continue_monitoring
+        report_requirements:
+          - explicitly_state_low_confidence
+          - avoid_false_precision
+      engineer_view:
+        first_block: DataQualityWarning
+        required_blocks:
+          - DataQualityWarning
+          - SensorLineChart
+          - EvidenceTable
+          - EngineerChecklist
+        required_actions:
+          - verify_sensor_context
+          - collect_additional_observations
+          - avoid_confirming_root_cause
+        report_requirements:
+          - explain_conflicting_or_short_duration_evidence
+          - identify_what_additional_data_is_needed
+      fallback:
+        llm_disabled_must_pass: true
+        planner_disabled_must_pass: true
+
+  - id: GS-007
+    title: 데이터 품질 문제를 설비 고장으로 단정하지 않는다
+    category: data_quality
+    fixture_id: invalid-sensor-data
+    fixture_path: data/fixtures/GS-007-invalid-sensor-data.json
+    objective: >-
+      Confirm that impossible values, missing fields, or timestamp problems trigger a
+      data-quality hold before model-based operational decisions are shown.
+    input_profile:
+      source: synthetic_context
+      expected_data_quality: invalid
+      dominant_signals:
+        - missing_required_sensor
+        - impossible_value_or_unit
+        - timestamp_gap
+    expected:
+      system_state:
+        risk_band: data_quality_hold
+        recommended_decision: hold_for_data_check
+        confidence: unavailable
+        predicted_failure_type: unavailable
+        data_quality_hold: true
+      evidence:
+        required_quality_flags:
+          - missing_or_invalid_sensor_value
+          - inference_suppressed_or_marked_unreliable
+        forbidden_claims:
+          - confirmed_failure
+          - normal_operation_confirmed
+          - maintenance_action_required_from_invalid_data
+      manager_view:
+        first_block: DataQualityWarning
+        required_blocks:
+          - DataQualityWarning
+          - StatusSummary
+          - ManagerDecisionCard
+        forbidden_blocks:
+          - ImpactSummary
+        required_actions:
+          - hold_for_data_check
+          - notify_data_owner_or_engineer
+        report_requirements:
+          - state_that_operational_judgment_is_on_hold
+          - identify_the_quality_problem_in_plain_language
+      engineer_view:
+        first_block: DataQualityWarning
+        required_blocks:
+          - DataQualityWarning
+          - EvidenceTable
+          - EngineerChecklist
+        required_actions:
+          - verify_sensor_and_unit
+          - repair_or_recollect_data
+          - rerun_inference_after_validation
+        report_requirements:
+          - list_invalid_fields
+          - avoid_failure_diagnosis
+      fallback:
+        llm_disabled_must_pass: true
+        planner_disabled_must_pass: true
+
+  - id: GS-008
+    title: LLM 장애 시 규칙 기반 리포트와 기본 레이아웃이 동작한다
+    category: llm_fallback
+    fixture_id: tool-wear-warning-llm-offline
+    fixture_path: data/fixtures/GS-008-llm-offline.json
+    objective: >-
+      Verify that a valid warning event remains fully usable when the LLM report
+      provider and dynamic planner are unavailable.
+    input_profile:
+      source: ai4i_plus_synthetic_context
+      expected_data_quality: valid
+      dominant_signals:
+        - high_tool_wear
+        - llm_provider_unavailable
+        - planner_provider_unavailable
+    expected:
+      system_state:
+        risk_band: warning
+        recommended_decision: request_inspection
+        confidence: medium_or_high
+        predicted_failure_type: tool_wear_failure
+        data_quality_hold: false
+      service_state:
+        report_mode: deterministic_fallback
+        layout_mode: deterministic_default
+        llm_error_visible_to_user: false
+        operational_fallback_badge_visible: true
+      evidence:
+        required_factors:
+          - tool_wear
+          - torque_tool_wear_interaction
+        forbidden_claims:
+          - analysis_failed_completely
+          - no_report_available
+          - no_action_can_be_taken
+      manager_view:
+        first_block: StatusSummary
+        required_blocks:
+          - StatusSummary
+          - RiskKpi
+          - ImpactSummary
+          - ManagerDecisionCard
+          - RecommendedActions
+        required_actions:
+          - request_inspection
+          - assign_engineer
+        report_requirements:
+          - use_deterministic_template
+          - preserve_all_core_numbers
+          - indicate_fallback_mode_without_exposing_secret_error_details
+      engineer_view:
+        first_block: SensorLineChart
+        required_blocks:
+          - SensorLineChart
+          - FactorContribution
+          - EvidenceTable
+          - EngineerChecklist
+        required_actions:
+          - inspect_tool_condition
+          - generate_deterministic_manager_summary
+        report_requirements:
+          - use_deterministic_template
+          - preserve_factor_values_and_units
+      fallback:
+        llm_disabled_must_pass: true
+        planner_disabled_must_pass: true
+        fallback_output_is_primary_assertion: true
+
+suite_completion_criteria:
+  - "All eight scenarios have a fixture that passes schema validation."
+  - "All scenario system states match the accepted operational policy."
+  - "Manager and engineer reports contain no conflicting facts."
+  - "Required role-specific UI blocks are present and forbidden blocks are absent."
+  - "All forbidden claims are rejected by automated or review-based evaluation."
+  - "GS-007 suppresses unsafe inference from invalid data."
+  - "GS-008 passes with no network access to an LLM provider."
