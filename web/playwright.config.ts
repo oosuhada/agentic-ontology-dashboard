@@ -18,7 +18,7 @@ export default defineConfig({
   },
   webServer: process.env.PLAYWRIGHT_EXTERNAL_SERVERS === "1" ? undefined : [
     {
-      command: `sh -c 'DB=/tmp/ontology-dashboard-playwright-$$.db; rm -f "$DB"; APP_ENV=test SEED_DEMO_ACCOUNTS=1 ONTOLOGY_DASHBOARD_DB="$DB" PYTHONPATH=../api:../ml/src ../.venv/bin/python -m uvicorn ontology_dashboard.main:app --host 127.0.0.1 --port ${apiPort}'`,
+      command: `sh -c 'DB=/tmp/ontology-dashboard-playwright-$$.db; ARTIFACTS=/tmp/ontology-dashboard-playwright-$$-datasets; rm -f "$DB"; rm -rf "$ARTIFACTS"; APP_ENV=test SEED_DEMO_ACCOUNTS=1 ONTOLOGY_DASHBOARD_DB="$DB" PYTHONPATH=../api:../ml/src ../.venv/bin/python ../scripts/seed_demo_dataset_catalog.py --database "$DB" --artifact-root "$ARTIFACTS" >/tmp/ontology-dashboard-playwright-seed.log && APP_ENV=test SEED_DEMO_ACCOUNTS=1 ONTOLOGY_DASHBOARD_DB="$DB" PYTHONPATH=../api:../ml/src ../.venv/bin/python -m uvicorn ontology_dashboard.main:app --host 127.0.0.1 --port ${apiPort}'`,
       url: `${apiURL}/health`,
       timeout: 120_000,
       reuseExistingServer: false,

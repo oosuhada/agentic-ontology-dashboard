@@ -404,7 +404,7 @@ export function DashboardShell({
         <main className="od-workbench-main">
           {workspaceView === "dashboard" ? (
             <div className={`dashboard-workspace-layout ${mode === "edit" ? "with-inspector" : ""}`}>
-              {contextPanel}
+              <div className="dashboard-context-rail">{contextPanel}</div>
               <section className="dashboard-canvas-region">{boardCanvas}</section>
               {mode === "edit" ? inspector : null}
             </div>

@@ -1,6 +1,17 @@
+import { Database, ExternalLink, PlugZap, Rows3 } from "lucide-react";
 import type { EventSummary } from "../../types";
 import { StatusBadge } from "../../components/StatusBadge";
 import type { DashboardParameterDefinition, SavedView } from "./types";
+
+export interface DashboardDataConnection {
+  loading: boolean;
+  datasetCount: number;
+  recordCount: number;
+  relationalReadyCount: number;
+  sourceTypes: string[];
+  externalConnection: boolean;
+  error: string | null;
+}
 
 interface ContextPanelProps {
   events: EventSummary[];
@@ -11,7 +22,9 @@ interface ContextPanelProps {
   savedViews: SavedView[];
   selectedSavedViewId: string;
   activeSelectionCount: number;
+  dataConnection: DashboardDataConnection;
   onSelectEvent: (eventId: string) => void;
+  onOpenDatasets: () => void;
   onClearSelections: () => void;
   onParameterChange: (parameterId: string, value: unknown) => void;
   onSelectSavedView: (viewId: string) => void;
@@ -28,7 +41,9 @@ export function ContextPanel({
   savedViews,
   selectedSavedViewId,
   activeSelectionCount,
+  dataConnection,
   onSelectEvent,
+  onOpenDatasets,
   onClearSelections,
   onParameterChange,
   onSelectSavedView,
@@ -45,6 +60,51 @@ export function ContextPanel({
 
   return (
     <aside className="dashboard-context-panel">
+      <section className="dashboard-data-connections">
+        <div className="context-section-heading">
+          <span className="section-label">Connected Resources</span>
+          <strong className={dataConnection.externalConnection ? "is-live" : "is-local"}>
+            {dataConnection.loading
+              ? "checking"
+              : dataConnection.error
+                ? "degraded"
+                : dataConnection.externalConnection
+                  ? "external"
+                  : "local fixture"}
+          </strong>
+        </div>
+        <div className="dashboard-connection-grid">
+          <article>
+            <span><PlugZap size={12} /> Events API</span>
+            <strong>{events.length.toLocaleString()}</strong>
+            <small>workspace-scoped objects</small>
+          </article>
+          <article>
+            <span><Database size={12} /> Datasets</span>
+            <strong>{dataConnection.loading ? "—" : dataConnection.datasetCount.toLocaleString()}</strong>
+            <small>{dataConnection.recordCount.toLocaleString()} versioned rows</small>
+          </article>
+          <article>
+            <span><Rows3 size={12} /> Relational</span>
+            <strong>{dataConnection.loading ? "—" : `${dataConnection.relationalReadyCount}/${dataConnection.datasetCount}`}</strong>
+            <small>ready projections</small>
+          </article>
+        </div>
+        <div className={`dashboard-source-disclosure ${dataConnection.error ? "has-error" : ""}`}>
+          <div>
+            <strong>{dataConnection.externalConnection ? "External connector source" : "Local demonstration source"}</strong>
+            <small>
+              {dataConnection.error
+                ? dataConnection.error
+                : dataConnection.externalConnection
+                  ? dataConnection.sourceTypes.join(", ")
+                  : "Gold fixture snapshot · immutable Dataset versions · 외부 설비 connector 미연결"}
+            </small>
+          </div>
+          <button type="button" onClick={onOpenDatasets}>Inspect <ExternalLink size={11} /></button>
+        </div>
+      </section>
+
       <section>
         <span className="section-label">Object Context</span>
         {selected ? (

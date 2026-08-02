@@ -9,6 +9,7 @@ import {
   deleteSavedView,
   followUp,
   getBoardCatalog,
+  getDatasetCatalogPage,
   getDashboardTemplatePreview,
   getResolvedDashboard,
   getSavedView,
@@ -21,7 +22,7 @@ import {
   restoreDashboardDefaults,
   saveDashboardPreferences,
 } from "../../api";
-import { analysisPath, navigate } from "../../routing";
+import { analysisPath, datasetCatalogPath, navigate } from "../../routing";
 import type { AppRole, Intent } from "../../types";
 import { useAuth } from "../auth/AuthContext";
 import type { AddAnalysisBoardRequest } from "../analysis/types";
@@ -29,7 +30,7 @@ import { BoardCanvas } from "../dashboard/BoardCanvas";
 import { BoardCatalogPanel } from "../dashboard/BoardCatalogPanel";
 import { BoardInspector } from "../dashboard/BoardInspector";
 import { BoardRuntimeSurface } from "../dashboard/BoardRuntimeSurface";
-import { ContextPanel } from "../dashboard/ContextPanel";
+import { ContextPanel, type DashboardDataConnection } from "../dashboard/ContextPanel";
 import { DashboardShell } from "../dashboard/DashboardShell";
 import type {
   BoardCatalogDefinition,
@@ -202,6 +203,15 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [dataConnection, setDataConnection] = useState<DashboardDataConnection>({
+    loading: true,
+    datasetCount: 0,
+    recordCount: 0,
+    relationalReadyCount: 0,
+    sourceTypes: [],
+    externalConnection: false,
+    error: null,
+  });
 
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [fullscreenBoardId, setFullscreenBoardId] = useState<string | null>(null);
@@ -217,6 +227,51 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
   const dashboardRequestSequence = useRef(0);
   const shareApplied = useRef(false);
   const shareToken = useMemo(() => new URLSearchParams(window.location.search).get("share"), []);
+
+  useEffect(() => {
+    if (!selectedProjectId || !selectedWorkspaceId) {
+      setDataConnection((current) => ({ ...current, loading: false, datasetCount: 0, recordCount: 0 }));
+      return;
+    }
+    if (authenticatedUser.active_project_id !== selectedProjectId) {
+      setDataConnection((current) => ({ ...current, loading: true, error: null }));
+      return;
+    }
+    let cancelled = false;
+    setDataConnection((current) => ({ ...current, loading: true, error: null }));
+    getDatasetCatalogPage({
+      project_id: selectedProjectId,
+      workspace_id: selectedWorkspaceId,
+      offset: 0,
+      limit: 200,
+    })
+      .then((page) => {
+        if (cancelled) return;
+        const sourceTypes = [...new Set(page.items.map((item) => item.source_type))].sort();
+        setDataConnection({
+          loading: false,
+          datasetCount: page.total,
+          recordCount: page.items.reduce((sum, item) => sum + item.record_count, 0),
+          relationalReadyCount: page.items.filter((item) => item.projection_health.relational === "ready").length,
+          sourceTypes,
+          externalConnection: sourceTypes.some((source) => source !== "local_fixture"),
+          error: null,
+        });
+      })
+      .catch((reason: unknown) => {
+        if (cancelled) return;
+        setDataConnection({
+          loading: false,
+          datasetCount: 0,
+          recordCount: 0,
+          relationalReadyCount: 0,
+          sourceTypes: [],
+          externalConnection: false,
+          error: reason instanceof Error ? reason.message : "Dataset connection status unavailable",
+        });
+      });
+    return () => { cancelled = true; };
+  }, [authenticatedUser.active_project_id, selectedProjectId, selectedWorkspaceId]);
 
   const loadDashboardFoundation = useCallback(async (workspaceId: string) => {
     if (!workspaceId) return;
@@ -968,7 +1023,9 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       savedViews={savedViews}
       selectedSavedViewId={selectedSavedViewId}
       activeSelectionCount={selectionFilters.length}
+      dataConnection={dataConnection}
       onSelectEvent={(eventId) => handleSelectEvent("context-panel", eventId)}
+      onOpenDatasets={() => navigate(datasetCatalogPath(selectedProjectId))}
       onClearSelections={() => setSelectionFilters((current) => clearSelectionFilters(current))}
       onParameterChange={handleParameterChange}
       onSelectSavedView={setSelectedSavedViewId}

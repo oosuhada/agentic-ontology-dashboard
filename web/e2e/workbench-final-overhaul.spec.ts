@@ -73,6 +73,7 @@ async function capture(page: Page, viewportName: string, name: string, route: st
   if (name === "dashboard") {
     await expect(page.locator(".dashboard-board-frame .fd-metric-strip").first()).toBeVisible({ timeout: 45_000 });
     await expect(page.getByText("Board module을 불러오고 있습니다.")).toHaveCount(0);
+    await expect(page.locator(".dashboard-data-connections")).not.toContainText("checking", { timeout: 45_000 });
   }
   if (name === "ontology") {
     const objectSearch = page.getByLabel("Ontology object property search");

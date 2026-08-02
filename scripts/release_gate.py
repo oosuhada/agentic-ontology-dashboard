@@ -120,7 +120,26 @@ def main() -> None:
         checks.append({"command": ["npm"], "returncode": 127, "duration_seconds": 0, "output": "npm not found", "pass": False})
 
     e2e_result: dict[str, Any] | None = None
+    visual_capture_result: dict[str, Any] | None = None
     visual_candidate_result: dict[str, Any] | None = None
+    if args.with_e2e and frontend_temp is not None and all(check["pass"] for check in checks):
+        demo_dataset_seed = run(
+            [
+                sys.executable,
+                "scripts/seed_demo_dataset_catalog.py",
+                "--database",
+                environment["ONTOLOGY_DASHBOARD_DB"],
+                "--artifact-root",
+                str(Path(environment["ONTOLOGY_DASHBOARD_DB"]).parent / "demo-datasets"),
+            ],
+            cwd=root,
+            env=environment,
+            timeout=120,
+        )
+        checks.append(demo_dataset_seed)
+        if not demo_dataset_seed["pass"]:
+            args.with_e2e = False
+
     if args.with_e2e and frontend_temp is not None and all(check["pass"] for check in checks):
         install_browser = run(["npx", "playwright", "install", "chromium"], cwd=frontend_temp, timeout=600)
         checks.append(install_browser)
@@ -174,19 +193,111 @@ def main() -> None:
                         process.kill()
             checks.append(e2e_result)
             if e2e_result["pass"]:
-                visual_candidate_result = run(
+                visual_database_root = Path(tempfile.mkdtemp(prefix="ontology-dashboard-visual-db-"))
+                visual_environment = environment.copy()
+                visual_environment["ONTOLOGY_DASHBOARD_DB"] = str(visual_database_root / "visual.db")
+                visual_seed_result = run(
                     [
                         sys.executable,
-                        "scripts/check_palantir_overhaul_visuals.py",
-                        "--candidate-root",
-                        str(frontend_temp / "test-results" / "palantir-overhaul-candidate"),
-                        "--require-candidate",
+                        "scripts/seed_demo_dataset_catalog.py",
+                        "--database",
+                        visual_environment["ONTOLOGY_DASHBOARD_DB"],
+                        "--artifact-root",
+                        str(visual_database_root / "demo-datasets"),
                     ],
                     cwd=root,
-                    env=environment,
-                    timeout=180,
+                    env=visual_environment,
+                    timeout=120,
                 )
-                checks.append(visual_candidate_result)
+                checks.append(visual_seed_result)
+
+                if visual_seed_result["pass"]:
+                    candidate_root = frontend_temp / "test-results" / "palantir-overhaul-candidate"
+                    shutil.rmtree(candidate_root, ignore_errors=True)
+                    visual_api_port = reserve_port()
+                    visual_web_port = reserve_port()
+                    while visual_web_port == visual_api_port:
+                        visual_web_port = reserve_port()
+                    visual_api_url = f"http://127.0.0.1:{visual_api_port}"
+                    visual_web_url = f"http://127.0.0.1:{visual_web_port}"
+                    visual_web_environment = os.environ.copy()
+                    visual_web_environment["VITE_API_BASE_URL"] = visual_api_url
+                    visual_web_environment["PLAYWRIGHT_BASE_URL"] = visual_web_url
+                    visual_web_environment["PLAYWRIGHT_API_URL"] = visual_api_url
+                    visual_web_environment["PLAYWRIGHT_EXTERNAL_SERVERS"] = "1"
+                    visual_api_process = subprocess.Popen(
+                        [
+                            sys.executable,
+                            "-m",
+                            "uvicorn",
+                            "ontology_dashboard.app:app",
+                            "--host",
+                            "127.0.0.1",
+                            "--port",
+                            str(visual_api_port),
+                        ],
+                        cwd=root,
+                        env=visual_environment,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                    )
+                    visual_web_process = subprocess.Popen(
+                        [
+                            str(frontend_temp / "node_modules" / ".bin" / "vite"),
+                            "--host",
+                            "127.0.0.1",
+                            "--port",
+                            str(visual_web_port),
+                            "--strictPort",
+                        ],
+                        cwd=frontend_temp,
+                        env=visual_web_environment,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                    )
+                    try:
+                        wait_http(f"{visual_api_url}/health")
+                        wait_http(f"{visual_web_url}/")
+                        visual_capture_result = run(
+                            ["npm", "run", "test:e2e:overhaul"],
+                            cwd=frontend_temp,
+                            env=visual_web_environment,
+                            timeout=600,
+                        )
+                    except Exception as exc:  # noqa: BLE001
+                        visual_capture_result = {
+                            "command": ["npm", "run", "test:e2e:overhaul"],
+                            "returncode": 1,
+                            "duration_seconds": 0,
+                            "output": str(exc),
+                            "pass": False,
+                        }
+                    finally:
+                        for process in (visual_api_process, visual_web_process):
+                            process.terminate()
+                        for process in (visual_api_process, visual_web_process):
+                            try:
+                                process.wait(timeout=10)
+                            except subprocess.TimeoutExpired:
+                                process.kill()
+                    checks.append(visual_capture_result)
+
+                    if visual_capture_result["pass"]:
+                        visual_candidate_result = run(
+                            [
+                                sys.executable,
+                                "scripts/check_palantir_overhaul_visuals.py",
+                                "--candidate-root",
+                                str(candidate_root),
+                                "--require-candidate",
+                            ],
+                            cwd=root,
+                            env=visual_environment,
+                            timeout=180,
+                        )
+                        checks.append(visual_candidate_result)
 
     if args.e2e_artifact_dir:
         artifact_dir = Path(args.e2e_artifact_dir)

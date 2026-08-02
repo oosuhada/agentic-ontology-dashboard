@@ -37,6 +37,12 @@ export ONTOLOGY_DASHBOARD_DB="${ONTOLOGY_DASHBOARD_DB:-${FACTORY_SIGNAL_DB:-${RO
 export VITE_API_BASE_URL="${VITE_API_BASE_URL:-http://${API_HOST}:${API_PORT}}"
 
 "${VENV_DIR}/bin/python" scripts/preflight.py
+if [[ "${ONTOLOGY_DASHBOARD_SEED_DEMO_DATASETS:-1}" == "1" \
+  && "${ONTOLOGY_DASHBOARD_DB}" != postgresql://* \
+  && "${ONTOLOGY_DASHBOARD_DB}" != postgresql+psycopg://* ]]; then
+  "${VENV_DIR}/bin/python" scripts/seed_demo_dataset_catalog.py \
+    --database "${ONTOLOGY_DASHBOARD_DB}" >/tmp/ontology-dashboard-demo-datasets.log
+fi
 
 "${VENV_DIR}/bin/python" -m uvicorn ontology_dashboard.app:app \
   --host "${API_HOST}" --port "${API_PORT}" > /tmp/ontology-dashboard-api.log 2>&1 &
