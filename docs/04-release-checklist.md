@@ -1,7 +1,7 @@
 # Ontology Dashboard Release Checklist
 
-- Last updated: 2026-08-01
-- Current automated release gate: 12 checks
+- Last updated: 2026-08-02
+- Current automated release gate: 12 checks without E2E, 14 checks with browser installation and E2E
 
 ## 1. Automated Gate
 
@@ -28,12 +28,12 @@ PYTHONPATH=api:ml/src .venv/bin/python scripts/release_gate.py --with-e2e
 
 ## 2. Naming and Architecture
 
-- [ ] 사용자 노출 영역에 `Factory Signal Board`가 없다.
-- [ ] 신규 Python import는 `ontology_dashboard`를 사용한다.
-- [ ] 신규 ML import는 `ontology_dashboard_manufacturing_ml`을 사용한다.
-- [ ] Project scope 없이 신규 dataset을 global workspace에 추가하지 않았다.
-- [ ] Prediction logic이 Dashboard UI나 presentation service에 들어가지 않았다.
-- [ ] Project, workspace, role 경계가 문서와 코드에서 일치한다.
+- [x] 사용자 노출 영역에 `Factory Signal Board`가 없다.
+- [x] 신규 Python import는 `ontology_dashboard`를 사용한다.
+- [x] 신규 ML import는 `ontology_dashboard_manufacturing_ml`을 사용한다.
+- [x] Project scope 없이 신규 dataset을 global workspace에 추가하지 않았다.
+- [x] Prediction logic이 Dashboard UI나 presentation service에 들어가지 않았다.
+- [x] Project, workspace, role 경계가 문서와 코드에서 일치한다.
 
 ## 3. Backend
 
@@ -43,7 +43,7 @@ PYTHONPATH=api:ml/src .venv/bin/python scripts/release_gate.py --with-e2e
 - [x] permission negative test 통과
 - [x] tenant isolation test 통과
 - [x] Project list/detail API tenant/project negative test 통과
-- [ ] Ontology·Dashboard·Action 전체 repository의 project isolation test 통과
+- [x] Ontology·Dashboard·Action·Workflow·Export repository의 project isolation matrix 통과
 - [x] migration idempotency 통과
 - [x] transaction rollback/retry test 통과
 - [x] outbox 기록이 domain write와 같은 transaction에 저장됨
@@ -74,13 +74,13 @@ PYTHONPATH=api:ml/src .venv/bin/python scripts/release_gate.py --with-e2e
 - [x] `/app/projects/:projectId` route 초기 복원
 - [x] workspace selector가 Project별 Workspace API를 따른다.
 - [x] invalid Project route를 접근 가능한 Project로 복원하는 E2E
-- [ ] deleted Project tombstone UX
+- [x] archived/deleted Project tombstone UX
 - [x] 다중 Project switch와 resource isolation E2E
 - [x] role dashboard가 project별 template과 active role context를 사용한다.
 - [x] Dashboard cross-filter가 dependency/accepted parameter scope를 server query에 재적용하고 전체 matching object ID를 downstream renderer에 전달한다.
 - [x] server cross-filter 실패 시 client fallback을 명시적인 badge로 표시한다.
 - [x] error/loading/empty 상태 존재
-- [ ] unsaved dashboard edit 경고 또는 복구 존재
+- [x] Dashboard undo/redo, autosave, reload recovery와 unsaved navigation 경고 존재
 
 ## 6. End-to-End
 
@@ -140,14 +140,14 @@ PYTHONPATH=api:ml/src .venv/bin/python scripts/release_gate.py --with-e2e
 - [x] modal focus 관리
 - [x] form label
 - [x] light/dark semantic contrast baseline
-- [ ] 200% zoom 전 route 수동 점검
+- [x] 주요 Workbench 전 route 720px viewport 기반 200% zoom-equivalent 자동 점검
 - [x] mobile field flow
 - [x] axe critical violation 0 baseline
 - [x] canonical WorkOrder/한국어 용어 일관성
 
 ## 10. Documentation
 
-- [ ] `00-project-charter.md`가 현재 방향과 일치
+- [x] `00-project-charter.md`가 현재 방향과 일치
 - [x] architecture 업데이트
 - [x] domain model/ADR 업데이트
 - [x] roadmap 상태 업데이트
@@ -175,13 +175,14 @@ Release candidate로 표시하려면:
 ```text
 Canonical naming: PASS
 PostgreSQL organization/project migration/RLS/runtime: PASS
-Backend: 118 PASS
+Backend: 122 PASS
 Gold scenarios: 8/8 PASS
-Frontend unit: 3 PASS
+Frontend unit: 6 PASS
 TypeScript: PASS
 Production build: PASS
-Initial JavaScript: 213.87 KiB / 300 KiB
-Largest deferred JavaScript: 443.24 KiB
-Playwright: 28 PASS
+Initial JavaScript: 214.48 KiB / 300 KiB
+Largest deferred JavaScript: 443.24 KiB / 500 KiB
+Playwright: 34 PASS
+Visual baseline manifest: PASS
 Live three-store Agent gate: PASS
 ```

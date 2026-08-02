@@ -184,7 +184,7 @@ export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPag
           <section className="agent-recent-runs agent-server-runs">
             <header><span className="eyebrow">PERSISTED RUNS</span><strong>{runPage.total}</strong></header>
             <div className="agent-run-filters">
-              <InputGroup leftIcon="search" placeholder="Question filter" value={runSearch} onChange={(event) => setRunSearch(event.currentTarget.value)} />
+              <InputGroup aria-label="Agent question filter" leftIcon="search" placeholder="Question filter" value={runSearch} onChange={(event) => setRunSearch(event.currentTarget.value)} />
               <HTMLSelect fill value={runStatus} onChange={(event) => setRunStatus(event.currentTarget.value)}>
                 <option value="">All status</option><option value="succeeded">Succeeded</option><option value="failed">Failed</option><option value="running">Running</option>
               </HTMLSelect>

@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "project_id": "azure-fleet-maintenance-project",
+  "dataset_version": "azure-showcase-v1",
+  "scenario_id": "AZ-002",
+  "event_id": "EVT-AZ-002",
+  "equipment": {
+    "equipment_id": "AZ-MACHINE-042",
+    "display_name": "Fleet Machine 042",
+    "line": "Model 3 · West Fleet",
+    "criticality": "high",
+    "assigned_engineer": "West Fleet Operations",
+    "last_maintenance_date": "2026-06-30",
+    "estimated_downtime_minutes": 360,
+    "spare_part_available": false
+  },
+  "observation": {
+    "timestamp": "2026-08-01T10:00:00+00:00",
+    "product_type": "model-3",
+    "air_temperature_k": 300.2,
+    "process_temperature_k": 310.1,
+    "rotational_speed_rpm": 1810,
+    "torque_nm": 82.0,
+    "tool_wear_min": 190
+  },
+  "history": [
+    {"timestamp": "2026-08-01T07:00:00+00:00", "product_type": "model-3", "air_temperature_k": 299.6, "process_temperature_k": 309.4, "rotational_speed_rpm": 1670, "torque_nm": 64.0, "tool_wear_min": 171},
+    {"timestamp": "2026-08-01T08:00:00+00:00", "product_type": "model-3", "air_temperature_k": 299.8, "process_temperature_k": 309.7, "rotational_speed_rpm": 1725, "torque_nm": 71.0, "tool_wear_min": 178},
+    {"timestamp": "2026-08-01T09:00:00+00:00", "product_type": "model-3", "air_temperature_k": 300.0, "process_temperature_k": 309.9, "rotational_speed_rpm": 1770, "torque_nm": 77.0, "tool_wear_min": 184},
+    {"timestamp": "2026-08-01T10:00:00+00:00", "product_type": "model-3", "air_temperature_k": 300.2, "process_temperature_k": 310.1, "rotational_speed_rpm": 1810, "torque_nm": 82.0, "tool_wear_min": 190}
+  ],
+  "runtime": {"llm_available": true, "planner_available": true, "context_provider": "fixture"},
+  "expected": {"risk_band": "critical", "recommended_decision": "review_shutdown", "confidence": "high", "predicted_failure_type": "power_or_overstrain_failure"}
+}

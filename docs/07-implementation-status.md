@@ -1,290 +1,206 @@
 # Ontology Dashboard Implementation Status
 
 - Last updated: 2026-08-02
-- Baseline: backend 118 PASS, frontend unit 6 PASS, Playwright 30 PASS, live three-store Agent gate PASS
-- Current execution plan: `docs/10-product-convergence-polyglot-agentic-roadmap.md`
+- Current branch baseline: `main`
+- Authoritative execution entrypoint: `docs/next-session-master-prompt.md`
+- External operations runbook: `docs/production-environment-completion-runbook.md`
 
-## Current Maturity
-
-```text
-Backend        97%
-Frontend       96%
-Architecture   96%
-PostgreSQL     85%
-Project Layer  90%
-Adapter Layer  80%
-```
-
-이 비율은 단순 파일 개수가 아니라 목표 아키텍처 대비 구현·검증·운영 준비도를 반영한 추정치다. 모든 외부 streaming connector와 실제 다중 인스턴스 운영을 완료했다는 의미는 아니다. Project Home, Analysis lifecycle, Agent/Ontology/Dataset/Governance Workbench와 live Project 3 three-store 경로는 실제 route·persistence·E2E 또는 live HTTP gate까지 연결됐다.
-
-## User-Visible Product Surface
+## Current maturity
 
 ```text
-Dashboards   CONNECTED
-Analysis     CONNECTED
-Agent        CONNECTED EVIDENCE WORKBENCH
-Ontology     CONNECTED WORKBENCH / DEGRADED GRAPH SAFE
-Datasets     CONNECTED CATALOG / IMMUTABLE MATERIALIZATION / REUSABLE INPUT
-Governance   CONNECTED PROJECT WORKBENCH
+Backend        98%
+Frontend       98%
+Architecture   97%
+PostgreSQL     88%
+Project Layer  96%
+Adapter Layer  84%
 ```
 
-- Agent Evidence Workbench는 scoped query, persisted run restore, claim→evidence navigation, store/version/object trace와 orchestration lineage를 제공한다.
-- Ontology Workbench는 exact project/workspace route, object search, graph/inspector, Add Graph Board, multi-store Ask, route restore와 isolation E2E를 제공한다.
-- Dataset Catalog는 server pagination/filter, immutable versions, schema/profile, files, projection readiness, mappings, ingestion/quarantine, lineage와 Analysis result materialization→reusable Dataset input을 제공한다.
-- Governance Workbench는 project-scoped access, approvals, server-paginated Agent runs, claims/evidence/traces/checkpoints, lineage, projection health와 permission-gated retry를 통합한다.
-- Project Home은 Project KPI, Workspace entry points, active role context와 Project 3 readiness를 제공한다.
-- Dashboard cross-filter는 dependency graph와 accepted parameter binding으로 downstream scope를 계산하고, server board query가 반환하는 전체 `matching_object_ids`로 legacy/advanced risk-event renderer까지 재조회한다. API 오류에서만 명시적 client fallback badge가 표시된다.
+These percentages measure implementation, automated verification and operational evidence against the target architecture. They do not claim that managed infrastructure, external identity or production protocol credentials are available.
 
-## Backend — 93%
+## User-visible product surface
 
-### Implemented
+```text
+Project Home  CONNECTED
+Dashboards    CONNECTED / SERVER-FIRST CROSS-FILTER
+Analysis      CONNECTED / JOB LIFECYCLE / MATERIALIZATION
+Agent         CONNECTED EVIDENCE WORKBENCH
+Ontology      CONNECTED WORKBENCH / DEGRADED GRAPH SAFE
+Datasets      CONNECTED CATALOG / DEFAULT NAVIGATION ENABLED
+Governance    CONNECTED PROJECT WORKBENCH
+Admin         CONNECTED MEMBERSHIP / APPROVAL CONTROL PLANE
+```
 
-- FastAPI application factory
-- security middleware와 production fail-fast
-- feature router 분리 기반
-- cookie authentication
-- Argon2id password hashing
-- session rotation·revocation
-- CSRF
-- RBAC
-- organization tenant isolation의 주요 경계
-- canonical Project model/repository/service/API
-- Project scope를 포함한 principal과 Project별 Workspace 조회
-- Ontology registry
-- object/link/action API
-- persistent SQLite Ontology object/link store
-- dashboard template/preferences/saved views/share
-- role workspaces
-- approval workflows
-- planner safety boundary
-- export and audit
-- transactional outbox foundation
-- migration runner
-- typed multi-store orchestrator와 persisted run/checkpoint/trace
-- Analysis create/update 시 Join whitelist와 DAG cycle validation
-- server-computed Analysis quality summary
-- polyglot health capability boundary
+### Newly completed product hardening
 
-### Remaining
+- Dataset Catalog is enabled in the default Product Navigation and no longer appears as `SOON`.
+- archived Project deep links render a dedicated tombstone instead of silently switching resource context.
+- Dashboard editing supports undo, redo, keyboard shortcuts, autosaved local recovery, reload recovery and unsaved navigation warnings.
+- Azure Fleet Maintenance and MetroPT Compressor Projects contain project-scoped governed showcase events and Evidence lineage.
+- Azure and MetroPT remain read-only for operational Actions until project-specific Action mappings are published.
+- all primary Workbench routes pass automated accessible-name, single-main-landmark, duplicate-ID and 720px viewport overflow checks.
+- Dashboard cross-filtering is server-first with explicit client fallback state.
 
-- legacy `factory_signal_board` physical package의 canonical namespace 이동
-- Identity/Dashboard/Workflow/Export 전체 PostgreSQL repository 전환
-- production IdP 기반 SSO와 invitation/reset lifecycle
-- 다중 인스턴스 Redis/worker 운영 부하 검증
+## Project showcase state
 
-## Frontend — 89%
+| Project | Current runtime state | Evidence |
+|---|---|---|
+| Manufacturing Demo | Full regression baseline with governed Actions | Gold GS-001..GS-008, role workflows and E2E |
+| Azure Fleet Maintenance | Project-scoped showcase Dashboard with critical and warning Events | AZ-001/AZ-002 fixtures, Evidence lineage and Project-switch E2E |
+| MetroPT Compressor | Project-scoped compressor warning Dashboard | MPT-001 fixture, server table, Evidence lineage and E2E |
+
+The Azure and MetroPT fixtures prove multi-project abstraction and user flow. They are not a substitute for ingesting the complete public datasets. Full Azure five-file ingestion and high-density MetroPT ingestion still require approved source files and provenance review.
+
+## Backend
 
 ### Implemented
 
-- login and registration
-- role-aware landing
-- governed dashboard runtime
-- dashboard editor
-- saved view and share
-- role-specific executive/audit/field/FDE/ML views
-- planner preview
-- export flow
-- workspace/event/detail hooks
-- dashboard editor command hook
-- mobile field E2E
-- Project selector와 `/app/projects/:projectId` route foundation
-- Project별 Workspace loading
-- `/app/projects/:projectId/workspaces/:workspaceId/agent` Evidence Workbench
-- `/app/projects/:projectId/workspaces/:workspaceId/ontology` Workbench
-- `/app/projects/:projectId/workspaces/:workspaceId/governance` Workbench
-- Agent/Ontology/Governance route restore, project/workspace isolation, screenshot artifact E2E
-- Agent claim→evidence drill-down과 persisted run reload
-- Governance agent trace·evidence·lineage·projection retry
-- Agent persisted run server pagination/status/route/search filter와 Governance 양방향 deep link
-- Admin/Manufacturing/Analysis/Board renderer route-level lazy boundary
-- build-time 300 KiB initial JavaScript budget gate (`213.91 KiB` verified)
-- Project Home과 Project별 active role selector
-- Dataset Catalog server pagination/filter와 Analysis materialization flow
-- Governance server Agent run filter/pagination
-- shared visual token/density system and `docs/ui/palantir-visual-language.md`
-- Dashboard·Analysis·Agent·Governance·Datasets의 고정 viewport 캡처와 공식 Palantir reference side-by-side 비교 sheet (`docs/ui/screenshots/palantir-gap-v2/`)
-- ECharts Pie/Cartesian runtime split과 lightweight virtual DataTable
+- canonical FastAPI composition root at `ontology_dashboard.main`
+- compatibility-only `factory_signal_board.main` shim
+- application factory and feature routers
+- cookie authentication, Argon2id, CSRF, session rotation/revocation and RBAC
+- Organization → Project → Workspace → Role hierarchy
+- project memberships, project-specific roles, active Project persistence and self-lockout protection
+- Project-scoped Dashboard, Action, Workflow, Export and Dataset records
+- repository project-isolation matrix for Dashboard preferences, Ontology Action, Workflow and Export
+- persistent Ontology object/link/action runtime
+- Dataset Version, projection, quarantine, materialization and reusable Analysis input
+- Analysis queued/running/progress/cancel/cache/cursor lifecycle
+- checkpointed multi-store Agent orchestration and persisted evidence/trace
+- typed Project 3 boundary without raw Cypher execution
+- PostgreSQL repository graph for Identity, Project, Dashboard, Audit, Action, Workflow, Export, Adapter and Prediction Result
+- migration, RLS, connection pool, outbox retry/dead-letter and ephemeral PostgreSQL runtime checks
 
-### Remaining
+### Remaining local architecture debt
 
-- Dashboard editor undo/redo와 unsaved draft recovery
-- Project Home·Dataset screenshot baseline의 장기 visual regression 관리
-- 접근성 자동 검사를 Workbench 전체 route로 확대
+- remaining physical modules under `api/factory_signal_board/` still depend on the temporary `ontology_dashboard.__path__` extension
+- the executable composition root has moved, but the remaining service/model/repository modules must be relocated in controlled slices before deleting the path extension
 
-## Architecture — 95%
+### Externally blocked backend work
+
+- managed PostgreSQL backup/restore and failover drill
+- long-duration pool and outbox worker load test
+- distributed Redis rate-limit test across multiple API instances
+- production OIDC/IdP lifecycle
+- live production connector credentials
+
+## Frontend
 
 ### Implemented
 
-- canonical product naming
-- application factory
-- router boundaries
-- dependency composition
-- service/repository separation
-- organization/project/workspace target hierarchy documented
-- Ontology Core and domain-pack strategy
-- Prediction/Dashboard separation
-- migration and outbox strategy
-- PostgreSQL RLS strategy
-- multi-project dataset strategy
+- role-aware product shell and Project/Workspace/Role selectors
+- Project Home, Dashboard, Analysis, Agent, Ontology, Datasets and Governance navigation
+- project tombstone and permission fallback routes
+- Dashboard editor with grid persistence, mandatory-board protection, undo/redo and recovery
+- saved views, shares and exports
+- server pagination and cross-filter state
+- Analysis path canvas, result quality inspector and upstream lineage mini graph
+- Agent claims/evidence/trace navigation
+- Dataset Catalog and Analysis materialization flow
+- Governance trace/evidence/projection retry
+- fixed light-theme Palantir comparison screenshots and side-by-side comparison sheet
+- initial/deferred JavaScript budget gate
+- mobile field flow and primary Workbench accessibility/viewport gate
 
 ### Remaining
 
-- physical canonical source relocation
-- feature modules가 legacy handler container를 전혀 참조하지 않는 상태
-- Docker/Kubernetes 기반 다중 인스턴스 deployment drill
+- CI-owned pixel-diff baseline across supported operating systems and fonts
+- production design review for the side-by-side Palantir comparison sheet
+- real customer connector setup screens after the first protocol is selected
 
-## PostgreSQL — 70%
+## PostgreSQL and project isolation
 
-### Implemented
+The active Python repository graph is already wired for PostgreSQL. The remaining work is operational evidence, not first-time repository implementation.
 
-- PostgreSQL DDL
-- schema migration runner
-- real ephemeral PostgreSQL migration test
-- RLS policy creation
-- non-superuser tenant RLS verification
-- JSONB and indexes
-- Ontology PostgreSQL repository foundation
-- tenant/project-scoped session helper
-- `projects` table과 `workspaces.project_id`
-- Project/Workspace/Ontology/outbox의 선택적 project RLS predicate
-- ephemeral PostgreSQL project isolation negative check
-- transactional outbox schema
+Verified locally or ephemerally:
 
-### Remaining
+- ordered migrations and idempotency
+- RLS creation and non-superuser Organization/Project denial
+- pooled project context
+- Identity and active Project session
+- Dashboard template resolution
+- Audit and Ontology Action writes
+- Workflow and transactional outbox
+- Export checkpoint
+- Adapter manifest and Prediction Result
+- Dataset, Analysis and Agent project-aware repositories
+- SQLite project-isolation matrix for Dashboard, Action, Workflow and Export
 
-- Identity, Dashboard, Workflow, Export repository의 PostgreSQL 완전 전환
-- managed PostgreSQL에서의 실제 backup/restore 및 failover drill
-- connection pool/Redis/outbox worker의 장시간 부하 검증
+Still requiring an external environment:
 
-Ephemeral PostgreSQL migration·RLS·runtime repository, pooled tenant connection, transactional outbox retry/dead-letter와 SQLite backup/restore tamper detection은 테스트됐다. 현재 host에는 Docker CLI가 없어 compose 기반 PostgreSQL/pgvector 재현은 별도 환경에서 수행해야 한다.
+- managed service credentials
+- failover and recovery-time evidence
+- long-duration concurrency and pool exhaustion
+- multi-instance Redis consistency
+- production backup restoration into a new environment
 
-## Project Layer — 60%
-
-### Implemented
-
-- architecture and domain definition
-- project catalog
-- Project != Dataset principle
-- SQLite/PostgreSQL projects table과 migration
-- canonical Project repository/service/API
-- organization/project access negative tests
-- `workspaces.project_id`
-- `user_project_scopes`, principal `project_scopes`, 초기 `active_project_id`
-- Manufacturing Demo Project migration
-- Project selector와 project route foundation
-- Project별 Workspace query
-- PostgreSQL project RLS verification
-- 기존 Gold/E2E 회귀 유지
-
-### Remaining
-
-- 삭제된 Project deep link의 전용 tombstone UX
-- PostgreSQL로 완전 전환되지 않은 legacy operational repository의 project predicate 통합
-
-## Adapter Layer — 80%
+## Adapter and connector layer
 
 ### Implemented
 
 - adapter protocol and registry
-- Dataset Manifest schema and checksum/source version
-- strict Prediction Result contract
-- CSV/JSON/JSONL/Parquet file ingestion
-- ingestion run state and invalid-row quarantine
-- Azure PdM and MetroPT adapters
-- Dataset Version/projection registration
-- adapter contract and quarantine API tests
+- Dataset Manifest and Prediction Result contracts
+- CSV, JSON, JSONL and Parquet file ingestion
+- checksums, immutable versions, quarantine and schema/profile data
+- Azure and MetroPT file adapters and contract fixtures
+- project-scoped showcase events with Dataset Version lineage
 
-### Remaining
+### Externally blocked
 
-- production REST/Kafka/MQTT/OPC-UA connector credentials and retry policy
-- schema evolution compatibility matrix for external connector versions
-- streaming backpressure and replay load test
+- complete Azure public dataset five-file ingestion
+- complete MetroPT high-density time-series ingestion
+- production REST/Kafka/MQTT/OPC-UA endpoints and credentials
+- streaming checkpoint, backpressure and replay load evidence
 
-## Test Baseline
+## Production environment status
 
-```text
-Canonical naming: PASS
-PostgreSQL organization/project migration/RLS/runtime: PASS
-Backend tests: 118 PASS
-Gold scenarios: 8/8 PASS
-Frontend unit tests: 3 PASS
-TypeScript: PASS
-Production build: PASS
-Initial JavaScript: 213.87 KiB / 300 KiB PASS
-Largest deferred chunk: 443.24 KiB / 500 KiB target PASS
-Playwright E2E: 28 PASS
-Live Project 2→Project 3 stores: PostgreSQL 1 + Neo4j 3 + Project 3 RAG 1 PASS
+Run:
+
+```bash
+PYTHONPATH=api:ml/src .venv/bin/python scripts/verify_production_environment.py
 ```
 
-## Current Technical Debt
+On the current host the verifier reports Docker, managed PostgreSQL, Redis, Neo4j credentials, Project 3 URL, OIDC, production connectors, object storage and OTLP as `blocked`. This is an environment fact, not a hidden test failure.
 
-### High Priority
+Strict staging example:
 
-- `ontology_dashboard.__init__`의 legacy path extension과 `api/factory_signal_board` physical source 잔존
-- planner logic이 단일 legacy `ontology_planner_service.py`에 집중
-- Project 3의 Neo4j/LangGraph/RAG capability가 flat context adapter로 축소돼 연결됨
-- Project 2에 Neo4j GraphQueryPort, vector retrieval, multi-store LangGraph orchestration 없음
-- Ontology/Datasets/Governance 전용 Workbench 없음
-- Project entity foundation은 구현되었으나 operational repository의 project_id 전환 미완료
-- active PostgreSQL runtime 미완료
-- Project scope가 persistence record에 없음
-- source files가 물리적으로 legacy directory에 남아 있음
-- `main.py` 일부 handler container 역할 유지
-
-### Medium Priority
-
-- frontend unit test 부족
-- accessibility gate 없음
-- rate limiter가 process-local
-- actual object storage 없음
-- actual LLM provider quality evaluation 부족
-
-### Low Priority / Deferred
-
-- real-time collaborative editing
-- domain pack marketplace
-- complete protocol adapter set
-
-## Architecture Risks
-
-1. Project Layer 전에 dataset-specific 기능을 추가하면 global manufacturing workspace에 결합된다.
-2. SQLite repository를 유지하며 production 기능을 늘리면 transaction과 concurrency 위험이 커진다.
-3. Azure 수치를 코드로 재현하지 않고 문서 숫자로만 사용하면 발표 신뢰성이 떨어진다.
-4. Ontology Core에 dataset-specific 속성을 계속 추가하면 multi-project 재사용성이 무너진다.
-5. `main.py` handler 이동을 중단하면 router 분리가 형식적인 구조로 남는다.
-
-## Release Risks
-
-- PostgreSQL production runtime unavailable
-- Project API와 PostgreSQL RLS isolation은 구현되었으나 Dashboard·Ontology·Action runtime isolation은 Workspace scope에 의존
-- dataset license/provenance review pending
-- no real-data Azure ingestion yet
-- no second-project abstraction validation
-- no automated accessibility gate
-
-## Immediate Next Work
-
-`docs/10-product-convergence-polyglot-agentic-roadmap.md`의 Stage 44~45를 우선한다.
-
-```text
-1. product/architecture rebaseline와 ADR 갱신
-2. planner canonical physical migration
-3. Project 3 typed health/query/RAG/graph client
-4. read-only Ontology Workbench vertical slice
-5. PostgreSQL + pgvector + Neo4j local integration foundation
-6. Dataset Version과 multi-store projection
-7. 기존 Project scope/PostgreSQL repository 작업을 새 vertical slice에 통합
+```bash
+PYTHONPATH=api:ml/src .venv/bin/python scripts/verify_production_environment.py \
+  --strict --require compose --require postgresql --require redis --require neo4j --require project3
 ```
 
-## Status Update Rule
+## Current test baseline
 
-작업 완료 후 다음을 함께 수정한다.
+Verified on 2026-08-02:
 
-- maturity percentage
-- implemented items
-- remaining items
-- test baseline
-- architecture and release risks
-- immediate next work
+```text
+Canonical naming                          PASS
+Architecture debt guard                  PASS
+PostgreSQL migration/RLS/runtime         PASS
+Backend pytest                           122 PASS
+Gold scenarios                           8/8 PASS
+Frontend Vitest                          6 PASS
+TypeScript                               PASS
+Production build                         PASS
+Initial JavaScript                       214.48 KiB / 300 KiB PASS
+Largest deferred JavaScript              443.24 KiB / 500 KiB PASS
+Playwright E2E                           34 PASS
+Primary Workbench accessibility          PASS
+Visual baseline manifest                 PASS
+Release gate                             12/12 PASS
+Production environment verifier          BLOCKED EXTERNAL CAPABILITIES REPORTED
+```
 
-근거 없는 비율 변경은 하지 않는다.
+## Remaining priority order
+
+```text
+1. Run the production-environment runbook on a Docker/managed-service host.
+2. Relocate the remaining physical legacy modules and remove the namespace path extension.
+3. Ingest approved complete Azure and MetroPT datasets with provenance artifacts.
+4. Select and productionize one external connector, starting with REST.
+5. Implement the selected IdP integration and invitation/reset policy.
+6. Add S3-compatible artifact storage and OpenTelemetry-backed observability.
+7. Establish cross-platform pixel-diff visual regression in CI.
+```
+
+Do not repeat already completed Workbench, pagination, Analysis lifecycle, WorkOrder, Dataset materialization, Project 3 typed boundary, Dashboard recovery or server-first cross-filter work.

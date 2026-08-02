@@ -76,6 +76,7 @@ def main() -> None:
 
     checks: list[dict[str, Any]] = []
     checks.append(run([sys.executable, "scripts/check_canonical_naming.py"], cwd=root, env=environment))
+    checks.append(run([sys.executable, "scripts/check_visual_baselines.py"], cwd=root, env=environment))
     checks.append(run([sys.executable, "scripts/check_postgresql_migration.py"], cwd=root, env=environment, timeout=180))
     checks.append(run([sys.executable, "scripts/check_postgresql_runtime.py"], cwd=root, env=environment, timeout=240))
     checks.append(run([sys.executable, "-m", "ontology_dashboard_manufacturing_ml.cli", "validate-fixtures", "--root", str(root)], cwd=root, env=environment))

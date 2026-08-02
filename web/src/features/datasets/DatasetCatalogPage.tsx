@@ -142,6 +142,7 @@ export function DatasetCatalogPage({ projectId }: DatasetCatalogPageProps) {
             {loading ? <Spinner size={16} /> : null}
           </div>
           <InputGroup
+            aria-label="Dataset catalog search"
             leftIcon="search"
             placeholder="Search name, slug, description"
             value={search}

@@ -47,6 +47,15 @@ export function matchOntologyPath(pathname: string): { projectId: string; worksp
     : null;
 }
 
+export function projectDashboardPath(projectId: string) {
+  return `/app/projects/${encodeURIComponent(projectId)}`;
+}
+
+export function matchProjectDashboardPath(pathname: string): { projectId: string } | null {
+  const match = pathname.match(/^\/app\/projects\/([^/]+)$/);
+  return match ? { projectId: decodeURIComponent(match[1]) } : null;
+}
+
 export function projectHomePath(projectId: string) {
   return `/app/projects/${encodeURIComponent(projectId)}/home`;
 }

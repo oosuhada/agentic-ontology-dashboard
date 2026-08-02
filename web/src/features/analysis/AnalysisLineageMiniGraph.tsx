@@ -86,6 +86,7 @@ function AnalysisLineageMiniGraphInner({
       </header>
       <div className="analysis-lineage-mini-canvas">
         <ReactFlow
+          id="analysis-lineage-flow"
           nodes={graph.nodes}
           edges={graph.edges}
           fitView

@@ -207,6 +207,10 @@ export async function getProjects(): Promise<Project[]> {
   return (await request<{ items: Project[] }>("/api/projects")).items;
 }
 
+export function getProject(projectId: string): Promise<Project> {
+  return request<Project>(`/api/projects/${encodeURIComponent(projectId)}`);
+}
+
 export async function getProjectWorkspaces(projectId: string): Promise<Workspace[]> {
   return (await request<{ items: Workspace[] }>(
     `/api/projects/${encodeURIComponent(projectId)}/workspaces`,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import re
 from datetime import datetime, timezone
 from typing import Any, Callable, Iterable
@@ -81,6 +82,7 @@ class DashboardService:
         board_id: str,
         request: DashboardBoardQueryRequest,
         ontology: OntologyService,
+        event_rows: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         resolved = self.resolve(principal=principal, workspace_id=request.workspace_id)
         if dashboard_id != resolved.dashboard_id:
@@ -117,6 +119,12 @@ class DashboardService:
             limit=5000 if requires_filter_scan else request.limit,
         )
         rows = [self._dashboard_object_row(item, ontology, request.workspace_id) for item in payload["items"]]
+        if object_type == "risk_event" and event_rows is not None and not rows:
+            rows = [self._dashboard_event_row(item) for item in event_rows]
+            if request.search:
+                needle = request.search.casefold()
+                rows = [row for row in rows if needle in json.dumps(row, ensure_ascii=False).casefold()]
+            requires_filter_scan = True
 
         if isinstance(status_filter, str) and status_filter not in {"", "all"}:
             rows = [row for row in rows if str(row.get("status")) == status_filter]
@@ -148,6 +156,28 @@ class DashboardService:
             "source_freshness_at": max(freshness_values) if freshness_values else None,
             "timezone": "UTC",
             "warnings": [],
+        }
+
+    @staticmethod
+    def _dashboard_event_row(event: dict[str, Any]) -> dict[str, Any]:
+        equipment = event.get("equipment") or {}
+        event_id = str(event.get("event_id") or "")
+        return {
+            "object_id": f"risk_event:{event_id}",
+            "id": f"risk_event:{event_id}",
+            "object_type": "risk_event",
+            "event_id": event_id,
+            "equipment_id": equipment.get("equipment_id"),
+            "equipment": equipment.get("display_name"),
+            "line": equipment.get("line"),
+            "status": event.get("status"),
+            "failure_probability": event.get("failure_probability"),
+            "risk": event.get("failure_probability") or 0,
+            "predicted_failure_type": event.get("predicted_failure_type"),
+            "failure_type": event.get("predicted_failure_type"),
+            "confidence": event.get("confidence"),
+            "recommended_decision": event.get("recommended_decision"),
+            "downtime": equipment.get("estimated_downtime_minutes") or 0,
         }
 
     @staticmethod

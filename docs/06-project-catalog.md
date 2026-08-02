@@ -1,6 +1,6 @@
 # Ontology Dashboard Project Catalog
 
-- Last updated: 2026-08-01
+- Last updated: 2026-08-02
 - Purpose: multi-project showcase and validation catalog
 
 ## Catalog Principles
@@ -58,21 +58,22 @@ Default Workspace: `manufacturing-demo`
 - `/app/projects/manufacturing-demo-project` route foundation
 - PostgreSQL project RLS
 
-### Next Work
+### Remaining external work
 
-- Dashboard Template·preference·saved view key에 project_id 추가
-- Ontology·Action·Workflow·Export repository runtime에 project predicate 적용
-- 두 번째 Project를 이용한 selector switch와 resource isolation E2E
+- managed-store load/failover evidence
+- full public Azure/MetroPT source ingestion and provenance review
 
 ## 2. Azure Fleet Maintenance Project
 
-### Proposed ID
+### Canonical ID
 
-`azure-fleet-maintenance`
+`azure-fleet-maintenance-project`
+
+Default Workspace: `azure-fleet-maintenance`
 
 ### Status
 
-NEXT / primary showcase
+Active governed showcase / complete public dataset ingestion pending
 
 ### Dataset
 
@@ -134,22 +135,34 @@ Risk Result         → AnalysisRun output
 - operational impact assumptions
 - overdue actions
 
-### Required Derived Metrics
+### Current runtime evidence
+
+- Azure adapter and immutable Dataset Manifest contract
+- `AZ-001` fleet tool-wear warning and `AZ-002` power/overstrain critical showcase Events
+- Project-scoped Evidence lineage with `azure-showcase-v1`
+- Project switch, reload restore, server table and role Dashboard E2E
+- operational Action controls remain read-only until Azure Action mappings are published
+
+### Remaining full-dataset metrics
 
 - error type별 24시간 내 failure conversion
 - preventive/corrective maintenance interval
 - machine model and age cohort
 - failure and maintenance frequency
 
+These metrics require the approved complete machines/telemetry/errors/failures/maintenance files. The current showcase fixtures prove platform behavior but are not presented as full-dataset statistics.
+
 ## 3. MetroPT Compressor Monitoring Project
 
-### Proposed ID
+### Canonical ID
 
-`metropt-compressor-monitoring`
+`metropt-compressor-project`
+
+Default Workspace: `metropt-compressor-monitoring`
 
 ### Status
 
-Planned second project
+Active governed abstraction showcase / complete high-density ingestion pending
 
 ### Purpose
 
@@ -169,9 +182,19 @@ Azure와 다른 고밀도 시계열 구조를 통해 platform abstraction을 검
 - Manager: downtime and unresolved event summary
 - Data Scientist: detection quality and threshold
 
-### Validation Goal
+### Current runtime evidence
 
-Azure 전용 조건문 없이 같은 Project·Dashboard·Ontology platform 위에서 작동해야 한다.
+- MetroPT adapter and Dataset Manifest contract
+- `MPT-001` compressor thermal warning Event
+- `metropt-showcase-v1` Evidence lineage
+- server-paginated risk table and read-only governed Dashboard E2E
+- Azure-specific runtime modification 없이 공통 Project/Dashboard/Event/Evidence path 재사용
+
+### Remaining full-dataset validation
+
+- approved complete high-density time-series source ingestion
+- anomaly interval materialization and time-window analysis
+- replay/backpressure evidence for the selected production connector
 
 ## 4. AI4I Failure Classification Project
 
@@ -285,9 +308,9 @@ Project Home
 
 | Project | Data Adapter | Ontology Mapping | Dashboard | Prediction Contract | E2E | Overall |
 |---|---:|---:|---:|---:|---:|---:|
-| Manufacturing Demo | 100% | 95% | 96% | 90% | 100% | Active Project baseline |
-| Azure Fleet Maintenance | 70% adapter | 35% design | 20% design | 80% contract | contract tests | Data ingestion next |
-| MetroPT | 70% adapter | 30% design | 15% design | 80% contract | contract tests | Time-series data ingestion next |
+| Manufacturing Demo | 100% | 98% | 98% | 95% | Full Gold/E2E | Active governed baseline |
+| Azure Fleet Maintenance | 85% adapter/showcase | 75% | 80% | 90% | Project switch/Evidence E2E | Complete public dataset ingestion pending |
+| MetroPT | 85% adapter/showcase | 70% | 78% | 90% | Scoped compressor E2E | Complete high-density ingestion pending |
 | AI4I | 0% | 10% design | 5% design | 5% design | 0% | Later |
 | C-MAPSS | 0% | 10% design | 5% design | 5% design | 0% | Later |
 | CiP-DMD | 0% | 10% design | 5% design | 5% design | 0% | Later |

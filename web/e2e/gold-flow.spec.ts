@@ -5,6 +5,14 @@ async function login(page: Page, email: string, password: string) {
   await page.getByLabel("이메일").fill(email);
   await page.getByLabel("비밀번호").fill(password);
   await page.getByRole("button", { name: "로그인", exact: true }).click();
+  await expect(page).toHaveURL(/\/app\/projects\/|\/admin$/);
+  if (!page.url().endsWith("/admin")) {
+    await expect(page.getByLabel("Project")).toBeVisible();
+    if (await page.getByLabel("Project").inputValue() !== "manufacturing-demo-project") {
+      await page.getByLabel("Project").selectOption("manufacturing-demo-project");
+      await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project$/);
+    }
+  }
 }
 
 test("manager and engineer accounts see different governed views for the same event", async ({ page }) => {
@@ -65,6 +73,8 @@ test("project switch persists active context and isolates project resources", as
   await expect(page).toHaveURL(/\/app\/projects\/azure-fleet-maintenance-project$/);
   await expect(page.getByLabel("Workspace")).toHaveValue("azure-fleet-maintenance");
   await expect(page.getByRole("button", { name: /GS-002/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /AZ-002/ })).toBeVisible();
+  await expect(page.getByText("Fleet Machine 042", { exact: true }).first()).toBeVisible();
 
   await page.reload();
   await expect(page).toHaveURL(/\/app\/projects\/azure-fleet-maintenance-project$/);
@@ -72,12 +82,26 @@ test("project switch persists active context and isolates project resources", as
   await expect(page.getByLabel("Workspace")).toHaveValue("azure-fleet-maintenance");
 
   await page.goto("/app/projects/deleted-project");
-  await expect(page).toHaveURL(/\/app\/projects\/azure-fleet-maintenance-project$/);
+  await expect(page).not.toHaveURL(/deleted-project/);
+  await expect(page).toHaveURL(/\/app\/projects\/(azure-fleet-maintenance-project|manufacturing-demo-project)$/);
 
-  await page.getByLabel("Project").selectOption("manufacturing-demo-project");
+  await page.goto("/app/projects/manufacturing-demo-project");
   await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project$/);
   await expect(page.getByLabel("Workspace")).toHaveValue("manufacturing-demo");
   await expect(page.getByRole("button", { name: /GS-002/ })).toBeVisible();
+});
+
+test("MetroPT project renders a scoped compressor evidence dashboard", async ({ page }) => {
+  await login(page, "manager@ontology.local", "Manager!2026");
+  await page.getByLabel("Project").selectOption("metropt-compressor-project");
+  await expect(page).toHaveURL(/\/app\/projects\/metropt-compressor-project$/);
+  await expect(page.getByLabel("Workspace")).toHaveValue("metropt-compressor-monitoring");
+  await expect(page.getByRole("button", { name: /MPT-001/ })).toBeVisible();
+  await expect(page.getByText("MetroPT Air Production Unit", { exact: true }).first()).toBeVisible();
+  await expect(page.locator(".generic-data-table-body")).toContainText("EVT-MPT-001");
+  await expect(page.locator(".data-grid-footer")).toContainText("Server pagination");
+  await expect(page.getByText("조회 전용", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/새 판단을 기록할 수 없습니다/).first()).toBeVisible();
 });
 
 test("data-quality and provider fallback states remain usable after authentication", async ({ page }) => {
@@ -176,8 +200,14 @@ test("cross-filter selection saved view and share preserve governed parameter st
   await expect(page.getByRole("option", { name: "Playwright 공구 마모 View" })).toBeAttached({ timeout: 15_000 });
   await expect(page.getByText(/Saved View 'Playwright 공구 마모 View'/)).toBeVisible({ timeout: 15_000 });
 
+  const shareCreated = page.waitForResponse((response) => (
+    response.request().method() === "POST"
+    && response.url().includes("/api/dashboards/shares")
+    && response.ok()
+  ));
   await page.getByRole("button", { name: "공유", exact: true }).click();
-  await expect(page.getByText(/공유 링크를 생성했습니다:.*share=/)).toBeVisible();
+  await shareCreated;
+  await expect(page.getByText(/공유 링크를 생성했습니다:.*share=/)).toBeVisible({ timeout: 15_000 });
 });
 
 test("executive viewer understands aggregate risk and drills into an unresolved event", async ({ page }) => {

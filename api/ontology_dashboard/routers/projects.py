@@ -51,7 +51,7 @@ def list_project_events(
     projects.get_for_principal(principal, project_id)
     if principal.active_project_id != project_id:
         raise AuthError(409, "active_project_mismatch", "먼저 해당 Project를 활성화해야 합니다.")
-    items = service.list_events() if project_id == "manufacturing-demo-project" else []
+    items = service.list_events(project_id)
     return {"items": items}
 
 

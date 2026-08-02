@@ -26,8 +26,8 @@ REQUIRED_PYTHON_MODULES = [
 REQUIRED_FILES = [
     "api/ontology_dashboard/__init__.py",
     "api/ontology_dashboard/app.py",
+    "api/ontology_dashboard/main.py",
     "api/ontology_dashboard/settings.py",
-    "api/factory_signal_board/main.py",
     "api/factory_signal_board/identity.py",
     "api/factory_signal_board/identity_models.py",
     "api/factory_signal_board/identity_repository.py",

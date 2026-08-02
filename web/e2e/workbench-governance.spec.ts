@@ -6,6 +6,13 @@ async function login(page: Page, email: string, password: string) {
   await page.getByLabel("비밀번호").fill(password);
   await page.getByRole("button", { name: "로그인", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/(projects\/|$)|\/admin$/);
+  if (!page.url().endsWith("/admin")) {
+    await expect(page.getByLabel("Project")).toBeVisible();
+    if (await page.getByLabel("Project").inputValue() !== "manufacturing-demo-project") {
+      await page.getByLabel("Project").selectOption("manufacturing-demo-project");
+      await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project$/);
+    }
+  }
 }
 
 const ontologyRoute = "/app/projects/manufacturing-demo-project/workspaces/manufacturing-demo/ontology";
