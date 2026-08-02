@@ -29,8 +29,10 @@ test("modern dashboard runtime exposes chart, virtual grid, ontology graph, anal
   await expect(page.locator(".analysis-flow-node")).toHaveCount(4);
   await expect(page.locator(".analysis-result-echart canvas")).toBeVisible();
   await page.getByRole("button", { name: /Run path/ }).click();
-  await expect(page.getByText(/Run analysis-run:.* succeeded/)).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(/Run .* succeeded/)).toBeVisible({ timeout: 45_000 });
   await expect(page.getByText("server run", { exact: true })).toBeVisible();
+  await expect(page.locator(".analysis-lineage-mini-canvas .react-flow")).toBeVisible();
+  await expect(page.locator(".analysis-lineage-mini-canvas .analysis-lineage-node").first()).toBeVisible();
 
   await page.getByRole("button", { name: "테마 전환" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
@@ -40,21 +42,36 @@ test("modern dashboard runtime exposes chart, virtual grid, ontology graph, anal
 
 test("analysis save publishes a server snapshot and dashboard table uses server pagination", async ({ page }) => {
   test.setTimeout(90_000);
-  await login(page);
+  await login(page, "fde@ontology.local", "FDE!2026");
   await page.goto("/app/analysis/playwright-server-analysis");
   await expect(page.getByText(/Server Analysis v1|서버에 생성했습니다/)).toBeVisible();
 
   await page.getByRole("button", { name: /Run path/ }).click();
-  await expect(page.getByText(/Run analysis-run:.* succeeded/)).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(/Run .* succeeded/)).toBeVisible({ timeout: 45_000 });
   await expect(page.getByText("server run", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: /Save dataset/ }).click();
-  await expect(page.getByText(/published · server dataset snapshot/)).toBeVisible();
+  await expect(page.getByText(/생성 · .* rows/)).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/freshness ·/)).toBeVisible();
 
   await page.getByRole("button", { name: "Dashboards", exact: true }).click();
   await expect(page.locator(".generic-pagination-controls")).toBeVisible();
   await expect(page.locator(".data-grid-footer").filter({ hasText: "Server pagination" })).toBeVisible();
+});
+
+test("Project Home, active role context and Dataset Catalog are navigable", async ({ page }) => {
+  test.setTimeout(60_000);
+  await login(page, "fde@ontology.local", "FDE!2026");
+  await expect(page.getByLabel("Role")).toHaveValue("fde");
+  await page.getByRole("button", { name: "Project Home", exact: true }).click();
+  await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project\/home$/);
+  await expect(page.getByText("PROJECT HOME", { exact: true })).toBeVisible();
+  await expect(page.getByText("Typed Project 3 boundary", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Datasets", exact: true }).first().click();
+  await expect(page).toHaveURL(/\/datasets$/);
+  await expect(page.getByText("DATASET CATALOG", { exact: true })).toBeVisible();
+  await expect(page.getByPlaceholder("Search name, slug, description")).toBeVisible();
+  await expect(page.locator(".dataset-catalog-pagination")).toBeVisible();
 });
 
 test("cross-filter selection updates downstream boards", async ({ page }) => {

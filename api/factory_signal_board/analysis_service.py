@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 import time
 from collections import defaultdict, deque
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Callable
 
 from .analysis_models import (
     AnalysisCreateRequest,
     AnalysisNodeResultResponse,
+    AnalysisNodeRowsPage,
     AnalysisRunRequest,
     AnalysisRunResult,
     AnalysisSnapshot,
@@ -24,6 +27,13 @@ class AnalysisNotFound(KeyError):
     pass
 
 
+class AnalysisCancelled(RuntimeError):
+    pass
+
+
+DatasetLoader = Callable[..., tuple[list[dict[str, Any]], str | None, dict[str, Any]]]
+
+
 class AnalysisService:
     ALLOWED_JOIN_RELATIONSHIPS = {
         "risk_event_equipment": "RiskEvent ↔ Equipment",
@@ -36,8 +46,10 @@ class AnalysisService:
         database_target: str,
         *,
         repository: AnalysisRepository | None = None,
+        dataset_loader: DatasetLoader | None = None,
     ) -> None:
         self.repository = repository or AnalysisRepository(database_target)
+        self.dataset_loader = dataset_loader
 
     @staticmethod
     def _scope(principal: Principal, workspace_id: str) -> tuple[str, str]:
@@ -174,6 +186,250 @@ class AnalysisService:
             return AnalysisRunResult.model_validate(payload)
         return AnalysisRunResult.model_validate(payload)
 
+    def queue_run(
+        self,
+        *,
+        analysis_id: str,
+        request: AnalysisRunRequest,
+        principal: Principal,
+    ) -> AnalysisRunResult:
+        organization_id, project_id = self._scope(principal, request.workspace_id)
+        current = self.repository.get(
+            analysis_id=analysis_id,
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=request.workspace_id,
+        )
+        if current is None:
+            raise AnalysisNotFound(analysis_id)
+        version = self._resolve_version(current, request.version_policy, request.version)
+        snapshot = self.repository.get(
+            analysis_id=analysis_id,
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=request.workspace_id,
+            version=version,
+        )
+        if snapshot is None:
+            raise AnalysisNotFound(f"{analysis_id}:v{version}")
+        now = self._now()
+        payload = self.repository.record_run(
+            run_id=self.repository.new_id("analysis-run"),
+            analysis_id=analysis_id,
+            analysis_version=version,
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=request.workspace_id,
+            requested_by=principal.user_id,
+            status="queued",
+            parameters=request.parameters,
+            node_results={},
+            started_at=now,
+            finished_at=None,
+            progress_percent=0,
+            cache_key=self._cache_key(snapshot, request),
+        )
+        return AnalysisRunResult.model_validate(payload)
+
+    def execute_queued_run(
+        self,
+        *,
+        run_id: str,
+        request: AnalysisRunRequest,
+        principal: Principal,
+        ontology: OntologyService,
+    ) -> AnalysisRunResult:
+        organization_id, project_id = self._scope(principal, request.workspace_id)
+        queued = self.repository.get_run(
+            run_id=run_id,
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=request.workspace_id,
+        )
+        if queued is None:
+            raise AnalysisNotFound(run_id)
+        if queued["status"] not in {"queued", "running"}:
+            return AnalysisRunResult.model_validate(queued)
+        if queued.get("cancel_requested"):
+            payload = self.repository.update_run_lifecycle(
+                run_id=run_id,
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=request.workspace_id,
+                status="cancelled",
+                progress_percent=int(queued.get("progress_percent") or 0),
+                finished_at=self._now(),
+                error={"code": "cancelled", "message": "Analysis run was cancelled before execution."},
+            )
+            return AnalysisRunResult.model_validate(payload)
+        snapshot = self.repository.get(
+            analysis_id=queued["analysis_id"],
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=request.workspace_id,
+            version=int(queued["analysis_version"]),
+        )
+        if snapshot is None:
+            raise AnalysisNotFound(f"{queued['analysis_id']}:v{queued['analysis_version']}")
+        cache_key = str(queued.get("cache_key") or self._cache_key(snapshot, request))
+        cached = self.repository.find_cached_run(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=request.workspace_id,
+            analysis_id=queued["analysis_id"],
+            analysis_version=int(queued["analysis_version"]),
+            cache_key=cache_key,
+        )
+        if cached is not None and cached["id"] != run_id:
+            payload = self.repository.update_run_lifecycle(
+                run_id=run_id,
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=request.workspace_id,
+                status="succeeded",
+                progress_percent=100,
+                node_results=cached["node_results"],
+                finished_at=self._now(),
+                rows_scanned=int(cached.get("rows_scanned") or 0),
+                cache_hit=True,
+            )
+            return AnalysisRunResult.model_validate(payload)
+
+        self.repository.update_run_lifecycle(
+            run_id=run_id,
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=request.workspace_id,
+            status="running",
+            progress_percent=0,
+        )
+        partial_results: dict[str, dict[str, Any]] = {}
+        rows_scanned = 0
+
+        def cancelled() -> bool:
+            return self.repository.is_cancel_requested(
+                run_id=run_id,
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=request.workspace_id,
+            )
+
+        def progress(
+            node_id: str,
+            completed: int,
+            total: int,
+            result: dict[str, Any],
+            current_results: dict[str, dict[str, Any]],
+        ) -> None:
+            nonlocal partial_results, rows_scanned
+            partial_results = dict(current_results)
+            rows_scanned = sum(int(item.get("row_count") or 0) for item in partial_results.values())
+            self.repository.update_run_lifecycle(
+                run_id=run_id,
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=request.workspace_id,
+                status="running",
+                progress_percent=round((completed / max(1, total)) * 100),
+                current_node_id=node_id,
+                node_results=partial_results,
+                rows_scanned=rows_scanned,
+            )
+
+        try:
+            results = self._execute(
+                snapshot,
+                ontology,
+                request.preview_limit,
+                cancel_check=cancelled,
+                progress_callback=progress,
+            )
+            payload = self.repository.update_run_lifecycle(
+                run_id=run_id,
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=request.workspace_id,
+                status="succeeded",
+                progress_percent=100,
+                current_node_id=None,
+                node_results=results,
+                finished_at=self._now(),
+                rows_scanned=sum(int(item.get("row_count") or 0) for item in results.values()),
+                cache_hit=False,
+            )
+        except AnalysisCancelled as error:
+            payload = self.repository.update_run_lifecycle(
+                run_id=run_id,
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=request.workspace_id,
+                status="cancelled",
+                node_results=partial_results,
+                finished_at=self._now(),
+                rows_scanned=rows_scanned,
+                error={"code": "cancelled", "message": str(error)},
+            )
+        except Exception as error:
+            payload = self.repository.update_run_lifecycle(
+                run_id=run_id,
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=request.workspace_id,
+                status="failed",
+                node_results=partial_results,
+                finished_at=self._now(),
+                rows_scanned=rows_scanned,
+                error={"code": type(error).__name__, "message": str(error)},
+            )
+        return AnalysisRunResult.model_validate(payload)
+
+    def cancel_run(
+        self,
+        *,
+        run_id: str,
+        workspace_id: str,
+        principal: Principal,
+    ) -> AnalysisRunResult:
+        organization_id, project_id = self._scope(principal, workspace_id)
+        payload = self.repository.request_cancel(
+            run_id=run_id,
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+        )
+        return AnalysisRunResult.model_validate(payload)
+
+    def node_rows_page(
+        self,
+        *,
+        run_id: str,
+        node_id: str,
+        workspace_id: str,
+        principal: Principal,
+        cursor: str | None,
+        limit: int,
+    ) -> AnalysisNodeRowsPage:
+        run = self.get_run(run_id=run_id, workspace_id=workspace_id, principal=principal)
+        node = run.node_results.get(node_id)
+        if node is None:
+            raise AnalysisNotFound(f"{run_id}:{node_id}")
+        rows = node.get("rows") if isinstance(node.get("rows"), list) else []
+        try:
+            offset = max(0, int(cursor or "0"))
+        except ValueError as error:
+            raise ValueError("analysis row cursor must be a non-negative integer") from error
+        safe_limit = min(500, max(1, limit))
+        next_offset = offset + safe_limit
+        return AnalysisNodeRowsPage(
+            run_id=run_id,
+            node_id=node_id,
+            rows=rows[offset:next_offset],
+            cursor=str(offset) if cursor is not None else None,
+            next_cursor=str(next_offset) if next_offset < len(rows) else None,
+            limit=safe_limit,
+            total=len(rows),
+        )
+
     def get_run(
         self,
         *,
@@ -249,6 +505,20 @@ class AnalysisService:
         )
 
     @staticmethod
+    def _cache_key(snapshot: AnalysisSnapshot, request: AnalysisRunRequest) -> str:
+        payload = {
+            "analysis_id": snapshot.id,
+            "analysis_version": snapshot.current_version,
+            "nodes": [node.model_dump(mode="json") for node in snapshot.nodes],
+            "edges": [edge.model_dump(mode="json") for edge in snapshot.edges],
+            "parameters": request.parameters,
+            "preview_limit": request.preview_limit,
+        }
+        return hashlib.sha256(
+            json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+
+    @staticmethod
     def _resolve_version(snapshot: AnalysisSnapshot, policy: str, version: int | None) -> int:
         if policy == "latest_published":
             if snapshot.published_version is None:
@@ -265,6 +535,9 @@ class AnalysisService:
         snapshot: AnalysisSnapshot,
         ontology: OntologyService,
         preview_limit: int,
+        *,
+        cancel_check: Callable[[], bool] | None = None,
+        progress_callback: Callable[[str, int, int, dict[str, Any], dict[str, dict[str, Any]]], None] | None = None,
     ) -> dict[str, dict[str, Any]]:
         nodes = {node.id: node for node in snapshot.nodes}
         order = self._topological_order(nodes, snapshot.edges)
@@ -273,7 +546,10 @@ class AnalysisService:
             predecessors[edge.target].append(edge.source)
 
         results: dict[str, dict[str, Any]] = {}
-        for node_id in order:
+        total_nodes = len(order)
+        for index, node_id in enumerate(order, start=1):
+            if cancel_check is not None and cancel_check():
+                raise AnalysisCancelled(f"Analysis run cancelled before node {node_id}")
             started = time.perf_counter()
             node = nodes[node_id]
             data = node.data
@@ -282,17 +558,35 @@ class AnalysisService:
             upstream_ids = predecessors.get(node_id, [])
             upstream_rows = self._upstream_rows(results, upstream_ids)
 
+            source_metadata: dict[str, Any] = {}
             if kind == "input":
                 source = str(config.get("source") or "risk_event")
-                object_type = "risk_event" if source in {"risk_event", "events"} else source
-                rows, source_freshness = self._load_object_rows(
-                    ontology,
-                    workspace_id=snapshot.workspace_id,
-                    object_type=object_type,
-                )
+                if source.startswith("dataset:"):
+                    if self.dataset_loader is None:
+                        raise RuntimeError("materialized Dataset Analysis sources are not configured")
+                    dataset_id = source.split(":", 1)[1].strip()
+                    if not dataset_id:
+                        raise ValueError("Dataset Analysis source requires a Dataset ID")
+                    rows, source_freshness, source_metadata = self.dataset_loader(
+                        organization_id=snapshot.organization_id,
+                        project_id=snapshot.project_id,
+                        workspace_id=snapshot.workspace_id,
+                        dataset_id=dataset_id,
+                        version_id=str(config.get("dataset_version_id") or "").strip() or None,
+                        limit=preview_limit,
+                    )
+                else:
+                    object_type = "risk_event" if source in {"risk_event", "events"} else source
+                    rows, source_freshness = self._load_object_rows(
+                        ontology,
+                        workspace_id=snapshot.workspace_id,
+                        object_type=object_type,
+                    )
+                    source_metadata = {"object_type": object_type, "source": "ontology"}
             else:
                 rows = upstream_rows
                 source_freshness = self._oldest_freshness(results, upstream_ids)
+                source_metadata = self._upstream_source_metadata(results, upstream_ids)
 
             warnings: list[str] = []
             render_spec: dict[str, Any] = {"kind": "table"}
@@ -339,10 +633,13 @@ class AnalysisService:
                 "cache_hit": False,
                 "generated_at": generated_at,
                 "source_freshness_at": source_freshness,
+                "source_metadata": source_metadata,
                 "timezone": "UTC",
                 "warnings": warnings,
             }
             results[node_id] = result
+            if progress_callback is not None:
+                progress_callback(node_id, index, total_nodes, result, results)
         return results
 
     def _validate_definition(self, nodes: list[Any], edges: list[Any]) -> None:
@@ -557,9 +854,9 @@ class AnalysisService:
                     object_id=event_id,
                     direction="outgoing",
                     depth=1,
-                    link_type="risk_event_requires_inspection",
+                    link_type="risk_event_requires_work_order",
                 )
-                targets = [node for node in event_traversal.nodes if node.object_type == "inspection"]
+                targets = [node for node in event_traversal.nodes if node.object_type == "work_order"]
                 enriched.extend({**row, **self._prefixed_properties(node, "work_order")} for node in targets)
         return enriched
 
@@ -639,6 +936,22 @@ class AnalysisService:
             return number if math.isfinite(number) else 0.0
         except (TypeError, ValueError):
             return 0.0
+
+    @staticmethod
+    def _upstream_source_metadata(
+        results: dict[str, dict[str, Any]],
+        node_ids: list[str],
+    ) -> dict[str, Any]:
+        sources = [
+            results[node_id].get("source_metadata")
+            for node_id in node_ids
+            if isinstance(results.get(node_id, {}).get("source_metadata"), dict)
+        ]
+        if not sources:
+            return {}
+        if len(sources) == 1:
+            return dict(sources[0])
+        return {"upstream_sources": sources}
 
     @staticmethod
     def _oldest_freshness(results: dict[str, dict[str, Any]], node_ids: list[str]) -> str | None:

@@ -165,7 +165,7 @@ Azure와 다른 고밀도 시계열 구조를 통해 platform abstraction을 검
 ### Main Role Views
 
 - Engineer: time-series and anomaly interval
-- Technician: inspection checklist
+- Technician: canonical WorkOrder checklist and field action
 - Manager: downtime and unresolved event summary
 - Data Scientist: detection quality and threshold
 
@@ -256,16 +256,23 @@ Later / domain-specific project
 
 설비 수가 제한되어 fleet comparison에는 적합하지 않다.
 
-## Project Selector Target UI
+## Project Selector and Home UI
 
 ```text
-Project Home
+Project selector
 ├── Manufacturing Demo
 ├── Azure Fleet Maintenance
 ├── MetroPT Compressor Monitoring
 ├── AI4I Failure Classification
 ├── NASA C-MAPSS RUL
 └── CiP-DMD Cylinder Quality
+
+Project Home
+├── Project/Workspace KPIs
+├── Dataset count and risk events
+├── Project 3 readiness
+├── allowed role context
+└── Dashboard / Agent / Ontology / Governance / Dataset entry points
 ```
 
 상단 context switcher:
@@ -278,9 +285,9 @@ Project Home
 
 | Project | Data Adapter | Ontology Mapping | Dashboard | Prediction Contract | E2E | Overall |
 |---|---:|---:|---:|---:|---:|---:|
-| Manufacturing Demo | 90% | 85% | 90% | 50% | 90% | Active Project baseline |
-| Azure Fleet Maintenance | 0% | 20% design | 10% design | 10% design | 0% | NEXT |
-| MetroPT | 0% | 10% design | 5% design | 5% design | 0% | Planned |
+| Manufacturing Demo | 100% | 95% | 96% | 90% | 100% | Active Project baseline |
+| Azure Fleet Maintenance | 70% adapter | 35% design | 20% design | 80% contract | contract tests | Data ingestion next |
+| MetroPT | 70% adapter | 30% design | 15% design | 80% contract | contract tests | Time-series data ingestion next |
 | AI4I | 0% | 10% design | 5% design | 5% design | 0% | Later |
 | C-MAPSS | 0% | 10% design | 5% design | 5% design | 0% | Later |
 | CiP-DMD | 0% | 10% design | 5% design | 5% design | 0% | Later |

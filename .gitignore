@@ -68,6 +68,7 @@ data/raw/*
 data/processed/*
 !data/processed/.gitkeep
 data/local/
+data/materializations/
 evaluation/results/*
 !evaluation/results/README.md
 

@@ -1,13 +1,8 @@
 import { FormEvent, useMemo, useState } from "react";
+import { StatusBadge } from "./components/StatusBadge";
 import type { Evidence, EventSummary, FollowUp, Report, Role, UIBlock } from "./types";
 
-const STATUS_LABEL: Record<string, string> = {
-  normal: "정상",
-  attention: "관심",
-  warning: "경고",
-  critical: "긴급 검토",
-  data_quality_hold: "데이터 확인",
-};
+export { StatusBadge } from "./components/StatusBadge";
 
 const DECISION_LABEL: Record<string, string> = {
   continue_monitoring: "계속 모니터링",
@@ -15,10 +10,6 @@ const DECISION_LABEL: Record<string, string> = {
   review_shutdown: "정지 여부 검토",
   hold_for_data_check: "데이터 확인 전 보류",
 };
-
-export function StatusBadge({ status }: { status: string }) {
-  return <span className={`status-badge status-${status}`}>{STATUS_LABEL[status] ?? status}</span>;
-}
 
 function Card({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
   return (

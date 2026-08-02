@@ -92,6 +92,24 @@ Project에서 사용한 데이터 snapshot 또는 dataset release.
 - schema_snapshot
 - imported_at
 
+### DatasetMaterialization
+
+Analysis node 결과 또는 adapter output을 immutable Dataset Version artifact로 등록한 기록.
+
+주요 속성:
+
+- id
+- project_id / workspace_id
+- dataset_id / dataset_version_id
+- source_kind / source_reference
+- artifact_uri / format
+- checksum_sha256
+- record_count
+- schema/profile metadata
+- created_at
+
+등록된 materialization만 다른 Analysis의 Dataset input으로 재사용할 수 있다. 임의 filesystem path는 허용하지 않는다.
+
 ### DomainPack
 
 Project별 object type, link type, action type, dashboard capability를 정의하는 package.
@@ -127,9 +145,13 @@ Prediction 또는 분석 작업의 실행 기록.
 - dataset_version_id
 - analysis_profile_id
 - model_version
-- status
-- started_at
-- completed_at
+- status (`queued`, `running`, `succeeded`, `failed`, `cancelled`)
+- progress_percent / current_node_id
+- cancel_requested
+- cache_key / cache_hit
+- rows_scanned
+- started_at / updated_at / completed_at
+- partial node results and cursor pages
 - metrics
 - source_revision
 
@@ -177,6 +199,20 @@ Project별 schema는 다음 공통 Core에 mapping한다.
 
 근거 기반 권장 조치.
 
+### WorkOrder
+
+점검, 정비, 교체, 안전 차단과 후속 handoff를 표현하는 canonical operational task.
+
+주요 관계:
+
+```text
+Asset HAS_WORK_ORDER WorkOrder
+Event REQUIRES_WORK_ORDER WorkOrder
+WorkOrder RECORDS_ACTION Action
+```
+
+기존 `Inspection` identity는 저장 데이터와 외부 호출 호환을 위한 deprecated alias이며 신규 구현은 WorkOrder를 사용한다.
+
 ### Action
 
 사용자가 실행하거나 승인하는 통제된 업무 행동.
@@ -188,8 +224,10 @@ Organization HAS_PROJECT Project
 Project HAS_WORKSPACE Workspace
 Project USES_DATA_SOURCE DataSource
 Project HAS_DATASET_VERSION DatasetVersion
+DatasetVersion HAS_MATERIALIZATION DatasetMaterialization
 Project USES_DOMAIN_PACK DomainPack
 Project HAS_ANALYSIS_RUN AnalysisRun
+AnalysisRun MATERIALIZES DatasetVersion
 Workspace CONTAINS Asset
 Asset HAS_OBSERVATION Observation
 Asset HAS_EVENT Event
@@ -197,6 +235,9 @@ Event SUPPORTED_BY Evidence
 Event RECOMMENDS Recommendation
 Recommendation MAY_TRIGGER Action
 Asset HAS_MAINTENANCE Maintenance
+Asset HAS_WORK_ORDER WorkOrder
+Event REQUIRES_WORK_ORDER WorkOrder
+WorkOrder RECORDS_ACTION Action
 AnalysisRun PRODUCES Event
 AnalysisRun PRODUCES Evidence
 ```

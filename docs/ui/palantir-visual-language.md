@@ -118,15 +118,19 @@ A claim cannot visually appear as verified when its evidence link is missing. Cl
 
 Dark mode uses the same hierarchy, dimensions and semantic meaning. It is not a separate visual theme. Borders remain visible, selected surfaces use a restrained accent background, and state colors preserve their meaning.
 
-## 7. Applied first slice
+## 7. Applied workbenches
 
-The first tokenized workbench is:
+The shared semantic tokens and compact density rules now apply to:
 
 ```text
+/app/projects/:projectId/home
+/app/projects/:projectId/datasets
 /app/projects/:projectId/workspaces/:workspaceId/agent
+/app/projects/:projectId/workspaces/:workspaceId/ontology
+/app/projects/:projectId/workspaces/:workspaceId/governance
 ```
 
-It applies compact panel radii, low elevation, fixed rail/inspector proportions, semantic store/status tags and evidence-first hierarchy. Ontology, Dataset and Governance surfaces should migrate to the same variables incrementally rather than through a single risky global rewrite.
+Agent retains the three-pane evidence-first composition. Ontology, Governance and Dataset surfaces use the same canvas, surface, border, text, selection and focus tokens. Project Home uses the same compact operational hierarchy instead of a marketing landing-page layout. Light and dark mode therefore share dimensions, status meaning and selection treatment across all governed workbenches.
 
 ## 8. Performance budget
 
@@ -135,10 +139,19 @@ High-density workbenches must not force every renderer into the authentication a
 - Initial JavaScript loaded from `index.html`: maximum 300 KiB raw.
 - Admin, Manufacturing, Agent, Ontology, Dataset and Governance surfaces use route-level lazy boundaries.
 - Analysis and board renderer implementations use runtime lazy boundaries inside Manufacturing.
-- Large table/chart dependencies may remain deferred chunks, but they must not re-enter the initial route payload.
+- Large table/chart dependencies remain deferred and must not re-enter the initial route payload.
+- Table filtering, sorting, column visibility, virtual scrolling and server pagination use a lightweight local renderer rather than loading a full table framework into every route.
+- Pie and Cartesian ECharts runtimes are split so each board loads only its required chart modules.
 - `npm run build` executes `web/scripts/check-initial-bundle.mjs` and fails when the initial budget regresses.
 
-Current verified initial payload: `212.25 KiB / 300 KiB`.
+Current verified budgets:
+
+```text
+initial JavaScript       213.87 KiB / 300 KiB
+largest deferred chunk   443.24 KiB / 500 KiB target
+DataTable renderer         6.42 KiB
+Dashboard board router    10.25 KiB
+```
 
 ## 9. Acceptance
 

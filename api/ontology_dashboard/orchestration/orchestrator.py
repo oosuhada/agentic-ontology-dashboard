@@ -324,7 +324,7 @@ class MultiStoreOrchestrator:
         return {
             "relational": "postgresql",
             "graph": "neo4j",
-            "vector": "pgvector",
+            "vector": "project3_rag",
         }[port_name]
 
     @staticmethod

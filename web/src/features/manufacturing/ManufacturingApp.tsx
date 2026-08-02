@@ -79,8 +79,23 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
   const { user, logout, setActiveProject } = useAuth();
   if (!user) throw new Error("ManufacturingApp requires an authenticated user");
   const authenticatedUser = user;
-
-  const appRole = primaryRole(authenticatedUser.roles);
+  const availableRoles = (authenticatedUser.active_project_roles.length
+    ? authenticatedUser.active_project_roles
+    : authenticatedUser.roles
+  ).filter((role): role is AppRole => role in ROLE_LANDING);
+  const roleStorageKey = `ontology-dashboard:active-role:${authenticatedUser.active_project_id ?? "default"}`;
+  const [appRole, setAppRole] = useState<AppRole>(() => {
+    const saved = window.localStorage.getItem(roleStorageKey) as AppRole | null;
+    return saved && availableRoles.includes(saved) ? saved : primaryRole(availableRoles);
+  });
+  useEffect(() => {
+    setAppRole((current) => {
+      const saved = window.localStorage.getItem(roleStorageKey) as AppRole | null;
+      if (saved && availableRoles.includes(saved)) return saved;
+      if (availableRoles.includes(current)) return current;
+      return primaryRole(availableRoles);
+    });
+  }, [authenticatedUser.active_project_id, authenticatedUser.active_project_roles.join("|")]);
   const roleConfig = ROLE_LANDING[appRole];
   const role = roleConfig.legacyRole;
   const canRecordDecision = authenticatedUser.permissions.includes("events.decision");
@@ -495,10 +510,10 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
   ) {
     if (!selectedEventId) return;
     const actionType = action === "complete"
-      ? "complete_inspection"
+      ? "complete_work_order"
       : action === "issue_found"
-        ? "report_inspection_issue"
-        : "mark_inspection_blocked";
+        ? "report_work_order_issue"
+        : "mark_work_order_blocked";
     const parameters = action === "blocked"
       ? { note: input.note, location: input.location, safety_risk: input.safety_risk }
       : {
@@ -510,7 +525,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
         };
     await invokeOntologyAction({
       action_type: actionType,
-      object_id: `inspection:${selectedEventId}`,
+      object_id: `work_order:${selectedEventId}`,
       workspace_id: selectedWorkspaceId,
       parameters,
       idempotency_key: `field:${action}:${crypto.randomUUID()}`,
@@ -932,6 +947,8 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       canManageTemplates={canManageTemplates}
       templateActionLabel={appRole === "fde" ? "Template 승인 요청" : "Template 게시"}
       targetTemplateRole={targetTemplateRole}
+      availableRoles={availableRoles}
+      activeRole={appRole}
       contextPanel={contextPanel}
       boardCanvas={boardCanvas}
       inspector={inspector}
@@ -940,6 +957,8 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
         <Suspense fallback={<div className="loading-panel"><div className="spinner" /><p>Analysis Workbench를 불러오고 있습니다.</p></div>}>
           <AnalysisWorkbench
             analysisId={analysisId}
+            projectId={selectedProjectId}
+            canMaterialize={authenticatedUser.permissions.includes("datasets.ingest")}
             events={events}
             selectedEventId={selectedEventId}
             evidence={evidence}
@@ -981,6 +1000,12 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       onExport={(format) => void handleExport(format)}
       onPublishTemplate={() => void handlePublishTemplate()}
       onTargetTemplateRoleChange={(nextRole) => void handleTargetTemplateRoleChange(nextRole)}
+      onActiveRoleChange={(nextRole) => {
+        window.localStorage.setItem(roleStorageKey, nextRole);
+        setAppRole(nextRole);
+        setTargetTemplateRole(nextRole);
+        setNotice(`${ROLE_LANDING[nextRole].label} 역할 관점으로 전환했습니다.`);
+      }}
       onDismissNotice={() => setNotice("")}
       onRetry={() => {
         void loadDashboardFoundation(selectedWorkspaceId);

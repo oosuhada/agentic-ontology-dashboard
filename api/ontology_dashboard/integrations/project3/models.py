@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class Project3Model(BaseModel):
@@ -103,7 +103,11 @@ class Project3RagResult(Project3Model):
     query: str | None = None
     answer: str | None = None
     status: str | None = None
-    results: list[dict[str, Any]] = Field(default_factory=list)
+    results: list[dict[str, Any]] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("results", "matches"),
+    )
+    citations: list[dict[str, Any]] = Field(default_factory=list)
     evidence: dict[str, Any] = Field(default_factory=dict)
 
 

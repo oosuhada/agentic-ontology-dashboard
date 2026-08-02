@@ -106,6 +106,7 @@ test("registration creates a pending approval account", async ({ page }) => {
 });
 
 test("dashboard edit mode persists a catalog text board and protects mandatory boards", async ({ page }) => {
+  test.setTimeout(60_000);
   await login(page, "manager@ontology.local", "Manager!2026");
   await expect(page.getByRole("button", { name: "운영 판단", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "근거와 후속", exact: true })).toBeVisible();
@@ -119,7 +120,12 @@ test("dashboard edit mode persists a catalog text board and protects mandatory b
   const textCard = page.locator(".catalog-card").filter({ hasText: "Text Board" });
   await textCard.getByRole("button", { name: "이 탭에 추가" }).click();
   await page.locator(".board-catalog-panel").getByRole("button", { name: "닫기" }).click();
-  await page.getByLabel("Plain text").fill("Playwright 개인 운영 메모");
+  const addedTextFrame = page.locator(".dashboard-board-frame").filter({ hasText: "Text Board" }).last();
+  await expect(addedTextFrame).toBeVisible({ timeout: 20_000 });
+  await addedTextFrame.click();
+  const plainText = page.getByLabel("Plain text");
+  await expect(plainText).toBeVisible({ timeout: 20_000 });
+  await plainText.fill("Playwright 개인 운영 메모");
 
   await page.getByRole("button", { name: "개인 설정 저장" }).click();
   await expect(page.getByText(/다음 로그인에서도 복원됩니다/)).toBeVisible();

@@ -40,6 +40,13 @@ Target integrated client:
 
 새 기능은 flat context payload를 확장하는 대신 versioned typed contract로 추가한다.
 
+RAG 응답 compatibility:
+
+- Project 3 current API는 검색 결과 배열을 `matches`로 반환한다.
+- Project 2 typed model은 `matches`와 legacy `results`를 모두 받아 canonical `results`로 정규화한다.
+- runtime evidence store는 `project3_rag`로 기록한다. Project 2 local pgvector evidence로 표시하지 않는다.
+- citation ID, document ID/version/type와 score는 Evidence metadata와 source reference에 보존한다.
+
 ## 3. HTTP 요청 계약
 
 ```http
@@ -117,4 +124,17 @@ Context가 늘어나더라도 기존 필드를 제거하지 않고 새 계약 �
 
 ## 8. 검증
 
-`tests/test_mvp.py::test_project3_context_failure_falls_back`는 연결 실패 시 fixture fallback과 source reference 보존을 검증한다.
+- `tests/test_mvp.py::test_project3_context_failure_falls_back`는 연결 실패 시 fixture fallback과 source reference 보존을 검증한다.
+- `tests/test_project3_client_stage45.py`는 `matches`/`results` alias와 citation 보존을 검증한다.
+- `scripts/verify_live_project3_hybrid.py`는 public HTTP contract만 사용해 한 persisted Agent run에 `postgresql`, `neo4j`, `project3_rag` evidence가 모두 존재하는지 검증한다.
+
+2026-08-02 live evidence:
+
+```text
+Project 3 health     ready
+PostgreSQL evidence  1
+Neo4j evidence       3
+Project 3 RAG        1
+Grounded claims      5
+Checkpoints          4
+```

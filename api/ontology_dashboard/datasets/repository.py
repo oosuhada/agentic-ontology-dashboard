@@ -134,10 +134,55 @@ class DatasetRepository:
         organization_id: str,
         project_id: str,
     ) -> list[dict[str, Any]]:
+        return self.list_dataset_page(
+            organization_id=organization_id,
+            project_id=project_id,
+            offset=0,
+            limit=10_000,
+        )["items"]
+
+    def list_dataset_page(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        offset: int = 0,
+        limit: int = 50,
+        search: str | None = None,
+        workspace_id: str | None = None,
+        status: str | None = None,
+        source_type: str | None = None,
+    ) -> dict[str, Any]:
+        safe_offset = max(0, offset)
+        safe_limit = min(200, max(1, limit))
+        clauses = ["d.organization_id=?", "d.project_id=?"]
+        params: list[Any] = [organization_id, project_id]
+        if status:
+            clauses.append("d.status=?")
+            params.append(status)
+        else:
+            clauses.append("d.status <> 'archived'")
+        if workspace_id:
+            clauses.append("d.workspace_id=?")
+            params.append(workspace_id)
+        if source_type:
+            clauses.append("d.source_type=?")
+            params.append(source_type)
+        if search:
+            clauses.append(
+                "(LOWER(d.display_name) LIKE ? OR LOWER(d.slug) LIKE ? OR LOWER(d.description) LIKE ?)"
+            )
+            pattern = f"%{search.strip().lower()}%"
+            params.extend([pattern, pattern, pattern])
+        where = " AND ".join(clauses)
         with self._connect(organization_id, project_id) as connection:
+            total_row = connection.execute(
+                self._sql(f"SELECT COUNT(*) AS total FROM datasets d WHERE {where}"),
+                tuple(params),
+            ).fetchone()
             rows = connection.execute(
                 self._sql(
-                    """
+                    f"""
                     SELECT d.*,
                            v.id AS latest_version_id,
                            v.version_label AS latest_version_label,
@@ -149,28 +194,34 @@ class DatasetRepository:
                         WHERE v2.dataset_id=d.id
                         ORDER BY v2.version_number DESC LIMIT 1
                     )
-                    WHERE d.organization_id=? AND d.project_id=? AND d.status <> 'archived'
+                    WHERE {where}
                     ORDER BY d.updated_at DESC,d.display_name,d.id
+                    LIMIT ? OFFSET ?
                     """
                 ),
-                (organization_id, project_id),
+                tuple([*params, safe_limit, safe_offset]),
             ).fetchall()
             datasets = [self._dict(row) for row in rows]
-            projections = connection.execute(
-                self._sql(
-                    """
-                    SELECT p.dataset_id,p.store_kind,p.status
-                    FROM store_projections p
-                    JOIN dataset_versions v ON v.id=p.dataset_version_id
-                    WHERE p.organization_id=? AND p.project_id=?
-                      AND v.version_number=(
-                        SELECT MAX(v2.version_number) FROM dataset_versions v2
-                        WHERE v2.dataset_id=p.dataset_id
-                      )
-                    """
-                ),
-                (organization_id, project_id),
-            ).fetchall()
+            dataset_ids = [item["id"] for item in datasets]
+            projections: list[Any] = []
+            if dataset_ids:
+                placeholders = ",".join("?" for _ in dataset_ids)
+                projections = connection.execute(
+                    self._sql(
+                        f"""
+                        SELECT p.dataset_id,p.store_kind,p.status
+                        FROM store_projections p
+                        JOIN dataset_versions v ON v.id=p.dataset_version_id
+                        WHERE p.organization_id=? AND p.project_id=?
+                          AND p.dataset_id IN ({placeholders})
+                          AND v.version_number=(
+                            SELECT MAX(v2.version_number) FROM dataset_versions v2
+                            WHERE v2.dataset_id=p.dataset_id
+                          )
+                        """
+                    ),
+                    tuple([organization_id, project_id, *dataset_ids]),
+                ).fetchall()
         health_by_dataset: dict[str, dict[str, str]] = {}
         for row in projections:
             item = self._dict(row)
@@ -180,7 +231,12 @@ class DatasetRepository:
                 store: health_by_dataset.get(item["id"], {}).get(store, "missing")
                 for store in ("relational", "graph", "vector")
             }
-        return datasets
+        return {
+            "items": datasets,
+            "offset": safe_offset,
+            "limit": safe_limit,
+            "total": int(self._dict(total_row)["total"]),
+        }
 
     def get_dataset(
         self,
@@ -386,6 +442,109 @@ class DatasetRepository:
         item["schema"] = self._decode_json(item.pop("schema_json"))
         item["profile"] = self._decode_json(item.pop("profile_json"))
         return item
+
+    def list_files(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        dataset_id: str,
+        version_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        params: list[Any] = [organization_id, project_id, dataset_id]
+        where = "organization_id=? AND project_id=? AND dataset_id=?"
+        if version_id:
+            where += " AND dataset_version_id=?"
+            params.append(version_id)
+        with self._connect(organization_id, project_id) as connection:
+            rows = connection.execute(
+                self._sql(
+                    f"SELECT * FROM dataset_files WHERE {where} ORDER BY created_at DESC,id"
+                ),
+                tuple(params),
+            ).fetchall()
+        return [self._dict(row) for row in rows]
+
+    def list_ingestion_runs(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        manifest_ids: list[str],
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        if not manifest_ids:
+            return []
+        placeholders = ",".join("?" for _ in manifest_ids)
+        with self._connect(organization_id, project_id) as connection:
+            rows = connection.execute(
+                self._sql(
+                    f"""
+                    SELECT * FROM adapter_ingestion_runs
+                    WHERE organization_id=? AND project_id=?
+                      AND manifest_id IN ({placeholders})
+                    ORDER BY started_at DESC,id
+                    LIMIT ?
+                    """
+                ),
+                tuple([organization_id, project_id, *manifest_ids, min(200, max(1, limit))]),
+            ).fetchall()
+        return [self._dict(row) for row in rows]
+
+    def list_quarantine_records(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        ingestion_run_ids: list[str],
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        if not ingestion_run_ids:
+            return []
+        placeholders = ",".join("?" for _ in ingestion_run_ids)
+        with self._connect(organization_id, project_id) as connection:
+            rows = connection.execute(
+                self._sql(
+                    f"""
+                    SELECT * FROM adapter_quarantine_records
+                    WHERE organization_id=? AND project_id=?
+                      AND ingestion_run_id IN ({placeholders})
+                    ORDER BY created_at DESC,id
+                    LIMIT ?
+                    """
+                ),
+                tuple([organization_id, project_id, *ingestion_run_ids, min(500, max(1, limit))]),
+            ).fetchall()
+        result: list[dict[str, Any]] = []
+        for row in rows:
+            item = self._dict(row)
+            item["record"] = self._decode_json(item.pop("record_json"))
+            result.append(item)
+        return result
+
+    def latest_materialization(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        dataset_id: str,
+        version_id: str | None = None,
+    ) -> dict[str, Any]:
+        params: list[Any] = [organization_id, project_id, dataset_id]
+        where = "organization_id=? AND project_id=? AND dataset_id=? AND status='ready'"
+        if version_id:
+            where += " AND dataset_version_id=?"
+            params.append(version_id)
+        with self._connect(organization_id, project_id) as connection:
+            row = connection.execute(
+                self._sql(
+                    f"SELECT * FROM materializations WHERE {where} ORDER BY created_at DESC,id DESC LIMIT 1"
+                ),
+                tuple(params),
+            ).fetchone()
+        if row is None:
+            raise KeyError(f"materialization:{dataset_id}")
+        return self._materialization_row(row)
 
     def save_mapping(
         self,

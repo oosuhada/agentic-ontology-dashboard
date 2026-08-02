@@ -33,7 +33,7 @@ class FixturePort:
         store = {
             "relational": "postgresql",
             "graph": "neo4j",
-            "vector": "pgvector",
+            "vector": "project3_rag",
         }[self.store_name]
         return [
             EvidenceItem(

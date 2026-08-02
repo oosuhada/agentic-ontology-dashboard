@@ -96,14 +96,21 @@ def test_compose_defines_reproducible_polyglot_profile_and_health_checks() -> No
     ).read_text(encoding="utf-8").strip() == "CREATE EXTENSION IF NOT EXISTS vector;"
 
 
-def test_api_package_discovery_includes_canonical_subpackages() -> None:
+def test_api_package_discovery_and_runtime_dependencies_match_boundaries() -> None:
     pyproject = (ROOT / "api" / "pyproject.toml").read_text(encoding="utf-8")
     assert 'include = ["ontology_dashboard*", "factory_signal_board*"]' in pyproject
     for dependency in (
-        '"pgvector>=0.3"',
+        '"psycopg[binary]>=3.2"',
+        '"psycopg_pool>=3.2"',
         '"neo4j>=5"',
+        '"redis>=5.0"',
+        '"pyarrow>=17"',
+    ):
+        assert dependency in pyproject
+    for unused_dependency in (
+        '"pgvector>=0.3"',
         '"langgraph>=0.2"',
         '"langgraph-checkpoint-postgres>=2"',
         '"llama-index-vector-stores-postgres>=0.3"',
     ):
-        assert dependency in pyproject
+        assert unused_dependency not in pyproject

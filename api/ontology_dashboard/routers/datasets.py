@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ..datasets import (
     DatasetCatalogService,
@@ -20,15 +20,26 @@ router = APIRouter(prefix="/api", tags=["datasets"])
 @router.get("/projects/{project_id}/dataset-catalog")
 def list_datasets(
     project_id: str,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=200),
+    search: str | None = Query(default=None, max_length=240),
+    workspace_id: str | None = Query(default=None, max_length=160),
+    status_filter: str | None = Query(default=None, alias="status", pattern="^(draft|active|archived)$"),
+    source_type: str | None = Query(default=None, max_length=80),
     principal: Principal = Depends(require_permission("datasets.read")),
     service: DatasetCatalogService = Depends(get_dataset_catalog_service),
 ):
-    return {
-        "items": [
-            item.model_dump(mode="json", by_alias=True)
-            for item in service.list_datasets(principal=principal, project_id=project_id)
-        ]
-    }
+    page = service.list_dataset_page(
+        principal=principal,
+        project_id=project_id,
+        offset=offset,
+        limit=limit,
+        search=search,
+        workspace_id=workspace_id,
+        status=status_filter,
+        source_type=source_type,
+    )
+    return page.model_dump(mode="json", by_alias=True)
 
 
 @router.post("/projects/{project_id}/dataset-catalog", status_code=status.HTTP_201_CREATED)

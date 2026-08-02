@@ -361,7 +361,24 @@ kbd { border: 1px solid var(--od-border); border-bottom-width: 2px; border-radiu
 .analysis-sample-table button { display: grid; grid-template-columns: minmax(65px,1fr) minmax(65px,1fr) auto; gap: 4px; border: 1px solid transparent; border-radius: 4px; padding: 5px; color: var(--od-text); background: var(--od-surface-muted); text-align: left; }
 .analysis-sample-table button:hover, .analysis-sample-table button.active { border-color: var(--od-accent); background: var(--od-accent-soft); }
 .analysis-sample-table code, .analysis-sample-table span, .analysis-sample-table strong { overflow: hidden; font-size: 6px; text-overflow: ellipsis; white-space: nowrap; }
-.analysis-lineage-mini ol { display: flex; flex-direction: column; gap: 3px; margin: 0; padding-left: 16px; color: var(--od-text-muted); font-size: 7px; }
+.analysis-lineage-mini > header { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.analysis-lineage-mini > header h3 { margin: 0; }
+.analysis-lineage-mini > header span { color: var(--od-text-subtle); font-size: 6px; }
+.analysis-lineage-mini-canvas { height: 190px; overflow: hidden; border: 1px solid var(--od-border); border-radius: 5px; background: var(--od-canvas); }
+.analysis-lineage-mini-canvas .react-flow__pane { cursor: default; }
+.analysis-lineage-mini-canvas .react-flow__node { width: 112px; border: 1px solid var(--od-border-strong); border-radius: 5px; padding: 6px 7px; color: var(--od-text); background: var(--od-surface-raised); box-shadow: var(--od-shadow-sm); }
+.analysis-lineage-mini-canvas .react-flow__node.selected { border-color: var(--od-accent); box-shadow: 0 0 0 2px color-mix(in srgb,var(--od-accent) 20%,transparent); }
+.analysis-lineage-mini-canvas .react-flow__node.status-success { border-top: 3px solid var(--od-success); }
+.analysis-lineage-mini-canvas .react-flow__node.status-running { border-top: 3px solid var(--od-warning); }
+.analysis-lineage-mini-canvas .react-flow__node.status-error { border-top: 3px solid var(--od-danger); }
+.analysis-lineage-mini-canvas .react-flow__node.status-idle { border-top: 3px solid var(--od-border-strong); }
+.analysis-lineage-mini-canvas .react-flow__edge-path { stroke: var(--od-border-strong); stroke-width: 1.4; }
+.analysis-lineage-node-copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.analysis-lineage-node-copy strong, .analysis-lineage-node-copy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.analysis-lineage-node-copy strong { font-size: 7px; }
+.analysis-lineage-node-copy span { color: var(--od-text-muted); font-size: 6px; }
+.analysis-lineage-meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.analysis-lineage-meta span { border: 1px solid var(--od-border); border-radius: 3px; padding: 3px 5px; color: var(--od-text-muted); background: var(--od-surface-muted); font-size: 6px; }
 
 .inspector-layout-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 5px; }
 .inspector-layout-grid input { width: 100%; box-sizing: border-box; }

@@ -117,6 +117,45 @@ def test_project3_contract_client_maps_project_and_validates_schema_and_subgraph
     )
 
 
+def test_project3_rag_matches_alias_is_preserved_by_typed_contract() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/v1/rag/search"
+        return response(
+            request,
+            200,
+            {
+                "project_id": "cip-dmd",
+                "query": "quality SOP",
+                "status": "success",
+                "matches": [
+                    {
+                        "citation_id": "quality-inspection-sop#chunk-1",
+                        "title": "Quality Inspection SOP",
+                        "text": "Trace the finished product to components and upstream process runs.",
+                        "score": 0.91,
+                        "document_type": "quality_standard",
+                    }
+                ],
+                "citations": [
+                    {
+                        "citation_id": "quality-inspection-sop#chunk-1",
+                        "document_id": "quality-inspection-sop",
+                    }
+                ],
+            },
+        )
+
+    client = Project3Client(
+        base_url="http://project3.test",
+        project_mapping={"manufacturing-demo-project": "cip-dmd"},
+        transport=httpx.MockTransport(handler),
+    )
+    result = client.rag_search("manufacturing-demo-project", query="quality SOP", top_k=3)
+    assert result.results[0]["citation_id"] == "quality-inspection-sop#chunk-1"
+    assert result.results[0]["score"] == 0.91
+    assert result.citations[0]["document_id"] == "quality-inspection-sop"
+
+
 def test_project3_client_returns_degraded_health_and_opens_circuit() -> None:
     calls = 0
 

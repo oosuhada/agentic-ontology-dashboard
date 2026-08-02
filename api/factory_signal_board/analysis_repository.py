@@ -97,6 +97,25 @@ class AnalysisRepository:
                     ON analysis_runs(analysis_id, analysis_version, finished_at DESC);
                 """
             )
+            columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(analysis_runs)").fetchall()
+            }
+            lifecycle_columns = {
+                "progress_percent": "INTEGER NOT NULL DEFAULT 0",
+                "current_node_id": "TEXT",
+                "cancel_requested": "INTEGER NOT NULL DEFAULT 0",
+                "cache_key": "TEXT",
+                "cache_hit": "INTEGER NOT NULL DEFAULT 0",
+                "rows_scanned": "INTEGER NOT NULL DEFAULT 0",
+                "updated_at": "TEXT",
+            }
+            for name, ddl in lifecycle_columns.items():
+                if name not in columns:
+                    connection.execute(f"ALTER TABLE analysis_runs ADD COLUMN {name} {ddl}")
+            connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_analysis_runs_cache ON analysis_runs(organization_id,project_id,workspace_id,analysis_id,analysis_version,cache_key,status,finished_at DESC)"
+            )
 
     @staticmethod
     def _json_timestamp(value: Any) -> Any:
@@ -301,7 +320,15 @@ class AnalysisRepository:
         started_at: str,
         finished_at: str | None,
         error: dict[str, Any] | None = None,
+        progress_percent: int | None = None,
+        current_node_id: str | None = None,
+        cancel_requested: bool = False,
+        cache_key: str | None = None,
+        cache_hit: bool = False,
+        rows_scanned: int = 0,
     ) -> dict[str, Any]:
+        updated_at = finished_at or started_at
+        resolved_progress = progress_percent if progress_percent is not None else (100 if status in {"succeeded", "failed", "cancelled"} else 0)
         values = (
             run_id,
             organization_id,
@@ -316,6 +343,13 @@ class AnalysisRepository:
             json.dumps(error, ensure_ascii=False) if error else None,
             started_at,
             finished_at,
+            resolved_progress,
+            current_node_id,
+            cancel_requested,
+            cache_key,
+            cache_hit,
+            max(0, rows_scanned),
+            updated_at,
         )
         if self.postgresql:
             with pooled_tenant_connection(self.target, organization_id, project_id=project_id) as connection:
@@ -323,8 +357,9 @@ class AnalysisRepository:
                     """
                     INSERT INTO analysis_runs (
                         id,organization_id,project_id,workspace_id,analysis_id,analysis_version,
-                        requested_by,status,parameters_json,node_results_json,error_json,started_at,finished_at
-                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s::jsonb,%s,%s)
+                        requested_by,status,parameters_json,node_results_json,error_json,started_at,finished_at,
+                        progress_percent,current_node_id,cancel_requested,cache_key,cache_hit,rows_scanned,updated_at
+                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s::jsonb,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """,
                     values,
                 )
@@ -334,8 +369,9 @@ class AnalysisRepository:
                     """
                     INSERT INTO analysis_runs (
                         id,organization_id,project_id,workspace_id,analysis_id,analysis_version,
-                        requested_by,status,parameters_json,node_results_json,error_json,started_at,finished_at
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                        requested_by,status,parameters_json,node_results_json,error_json,started_at,finished_at,
+                        progress_percent,current_node_id,cancel_requested,cache_key,cache_hit,rows_scanned,updated_at
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                     """,
                     values,
                 )
@@ -345,6 +381,153 @@ class AnalysisRepository:
             project_id=project_id,
             workspace_id=workspace_id,
         ) or {}
+
+    def update_run_lifecycle(
+        self,
+        *,
+        run_id: str,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        status: str | None = None,
+        progress_percent: int | None = None,
+        current_node_id: str | None = None,
+        node_results: dict[str, dict[str, Any]] | None = None,
+        error: dict[str, Any] | None = None,
+        finished_at: str | None = None,
+        rows_scanned: int | None = None,
+        cache_hit: bool | None = None,
+    ) -> dict[str, Any]:
+        assignments: list[str] = ["updated_at=?"]
+        params: list[Any] = [self._now()]
+        if status is not None:
+            assignments.append("status=?")
+            params.append(status)
+        if progress_percent is not None:
+            assignments.append("progress_percent=?")
+            params.append(min(100, max(0, progress_percent)))
+        if current_node_id is not None or status in {"succeeded", "failed", "cancelled"}:
+            assignments.append("current_node_id=?")
+            params.append(current_node_id)
+        if node_results is not None:
+            assignments.append("node_results_json=?::jsonb" if self.postgresql else "node_results_json=?")
+            params.append(json.dumps(node_results, ensure_ascii=False))
+        if error is not None or status in {"succeeded", "cancelled"}:
+            assignments.append("error_json=?::jsonb" if self.postgresql else "error_json=?")
+            params.append(json.dumps(error, ensure_ascii=False) if error else None)
+        if finished_at is not None:
+            assignments.append("finished_at=?")
+            params.append(finished_at)
+        if rows_scanned is not None:
+            assignments.append("rows_scanned=?")
+            params.append(max(0, rows_scanned))
+        if cache_hit is not None:
+            assignments.append("cache_hit=?")
+            params.append(cache_hit)
+        params.extend([run_id, organization_id, project_id, workspace_id])
+        sql = f"UPDATE analysis_runs SET {','.join(assignments)} WHERE id=? AND organization_id=? AND project_id=? AND workspace_id=?"
+        if self.postgresql:
+            with pooled_tenant_connection(self.target, organization_id, project_id=project_id) as connection:
+                cursor = connection.execute(sql.replace("?", "%s"), tuple(params))
+                if cursor.rowcount != 1:
+                    raise KeyError(run_id)
+        else:
+            with self._connect() as connection:
+                cursor = connection.execute(sql, tuple(params))
+                if cursor.rowcount != 1:
+                    raise KeyError(run_id)
+        return self.get_run(
+            run_id=run_id,
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+        ) or {}
+
+    def request_cancel(
+        self,
+        *,
+        run_id: str,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+    ) -> dict[str, Any]:
+        sql = """
+            UPDATE analysis_runs
+            SET cancel_requested=?,updated_at=?
+            WHERE id=? AND organization_id=? AND project_id=? AND workspace_id=?
+              AND status IN ('queued','running')
+        """
+        params = (True, self._now(), run_id, organization_id, project_id, workspace_id)
+        if self.postgresql:
+            with pooled_tenant_connection(self.target, organization_id, project_id=project_id) as connection:
+                connection.execute(sql.replace("?", "%s"), params)
+        else:
+            with self._connect() as connection:
+                connection.execute(sql, params)
+        payload = self.get_run(
+            run_id=run_id,
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+        )
+        if payload is None:
+            raise KeyError(run_id)
+        return payload
+
+    def is_cancel_requested(
+        self,
+        *,
+        run_id: str,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+    ) -> bool:
+        payload = self.get_run(
+            run_id=run_id,
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+        )
+        return bool(payload and payload.get("cancel_requested"))
+
+    def find_cached_run(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        analysis_id: str,
+        analysis_version: int,
+        cache_key: str,
+    ) -> dict[str, Any] | None:
+        query = """
+            SELECT id FROM analysis_runs
+            WHERE organization_id=? AND project_id=? AND workspace_id=?
+              AND analysis_id=? AND analysis_version=? AND cache_key=? AND status='succeeded'
+            ORDER BY finished_at DESC LIMIT 1
+        """
+        params = (
+            organization_id,
+            project_id,
+            workspace_id,
+            analysis_id,
+            analysis_version,
+            cache_key,
+        )
+        if self.postgresql:
+            with pooled_tenant_connection(self.target, organization_id, project_id=project_id) as connection:
+                row = connection.execute(query.replace("?", "%s"), params).fetchone()
+        else:
+            with self._connect() as connection:
+                row = connection.execute(query, params).fetchone()
+        if row is None:
+            return None
+        return self.get_run(
+            run_id=row["id"],
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+        )
 
     def get_run(
         self,
@@ -368,6 +551,7 @@ class AnalysisRepository:
                 payload = dict(row)
                 payload["started_at"] = self._json_timestamp(payload.get("started_at"))
                 payload["finished_at"] = self._json_timestamp(payload.get("finished_at"))
+                payload["updated_at"] = self._json_timestamp(payload.get("updated_at"))
                 payload["parameters"] = json.loads(payload.pop("parameters_text"))
                 payload["node_results"] = json.loads(payload.pop("results_text"))
                 error_text = payload.pop("error_text")
@@ -388,6 +572,8 @@ class AnalysisRepository:
         payload = dict(row)
         payload["parameters"] = json.loads(payload.pop("parameters_json"))
         payload["node_results"] = json.loads(payload.pop("node_results_json"))
+        payload["cancel_requested"] = bool(payload.get("cancel_requested"))
+        payload["cache_hit"] = bool(payload.get("cache_hit"))
         error_json = payload.pop("error_json")
         payload["error"] = json.loads(error_json) if error_json else None
         return payload

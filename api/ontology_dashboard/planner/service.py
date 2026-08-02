@@ -41,8 +41,8 @@ OBJECT_TYPE_TERMS = {
     "equipment": ["equipment", "설비", "장비", "기계", "라인"],
     "risk_event": ["risk event", "위험 사건", "위험", "이벤트", "경고", "고장"],
     "evidence_package": ["evidence", "근거", "증거", "lineage", "리니지"],
-    "inspection": ["inspection", "점검", "검사", "현장 작업"],
-    "work_order": ["work order", "작업 지시", "작업지시", "정비 오더"],
+    "work_order": ["work order", "작업 지시", "작업지시", "정비 오더", "점검", "검사", "현장 작업"],
+    "inspection": ["inspection legacy", "legacy inspection"],
     "maintenance_action": ["maintenance action", "정비 행동", "조치", "작업 기록"],
 }
 

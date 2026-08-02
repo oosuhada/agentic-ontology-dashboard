@@ -239,6 +239,7 @@ Project 2와 Project 3은 회사의 하나의 실제 업무를 구현 과제상 
 - PostgreSQL transaction과 outbox가 Neo4j/vector/object storage projection을 구동한다.
 - 모든 projection은 `organization_id`, `project_id`, `dataset_id`, `dataset_version`, `object_id`, `source_sha256`를 공유한다.
 - 세 저장소의 결과를 합치는 작업은 Project 2의 typed checkpointed multi-store orchestrator가 담당한다. 현재 직접 구현한 state/checkpoint/trace가 요구사항을 충족하므로 LangGraph 라이브러리는 필수 dependency가 아니다.
+- runtime import와 writer/search port가 없는 `langgraph`, `langgraph-checkpoint-postgres`, `pgvector` Python client, `llama-index-vector-stores-postgres`는 설치 extras에 선반영하지 않는다. 실제 소비 vertical과 contract test가 생길 때만 다시 추가한다.
 
 ### Consequences
 
@@ -260,3 +261,45 @@ Project 2와 Project 3은 회사의 하나의 실제 업무를 구현 과제상 
 - frontend maturity는 화면별 acceptance와 screenshot baseline을 포함한다.
 - feature flag 뒤의 구현은 완료율에 포함하지 않는다.
 - 각 Stage는 사용자에게 시연 가능한 URL을 completion report에 포함한다.
+
+## ADR-016 — WorkOrder Is the Canonical Operational Task
+
+### Context
+
+초기 제조 demo는 현장 작업 identity를 `inspection:<event_id>`로 표현했다. 그러나 점검, 정비, 부품 교체, 안전 차단과 후속 조치를 모두 Inspection으로 모델링하면 Ontology Action과 업무 lineage가 특정 workflow 이름에 종속된다.
+
+### Decision
+
+- canonical object identity는 `work_order:<event_id>`다.
+- Equipment → WorkOrder, RiskEvent → WorkOrder, WorkOrder → MaintenanceAction link를 사용한다.
+- 현장 complete/issue/blocked action은 WorkOrder를 대상으로 실행한다.
+- 기존 `inspection` object, links와 actions는 외부 호출과 저장 데이터 호환을 위한 deprecated alias로 유지한다.
+- adapter snapshot은 canonical WorkOrder와 legacy Inspection alias를 함께 materialize하되 신규 Dashboard, Analysis, Planner와 field UI는 WorkOrder를 사용한다.
+
+### Consequences
+
+- 기존 API와 E2E는 깨지지 않는다.
+- 신규 domain pack은 Inspection이라는 제조 전용 용어 없이 task/work-order interface를 재사용할 수 있다.
+- legacy alias 제거는 별도 migration과 소비자 확인 후에만 수행한다.
+
+## ADR-017 — Analysis Runs Are Durable Jobs and Results Become Dataset Versions
+
+### Context
+
+동기 preview 실행과 browser sample만으로는 장시간 Analysis, 취소, 재시도, cache, lineage와 downstream 재사용을 표현할 수 없다. Dashboard가 임시 row를 직접 복사하면 동일 결과를 재현하거나 audit하기 어렵다.
+
+### Decision
+
+- 기존 동기 `/run`은 compatibility preview API로 유지한다.
+- production lifecycle은 queued → running → succeeded/failed/cancelled durable run contract를 사용한다.
+- run은 node progress, current node, partial result, cancel flag, cache key/hit, rows scanned와 cursor page를 저장한다.
+- “Save dataset”은 선택 node 결과를 immutable Dataset Version과 registered materialization artifact로 만든다.
+- materialized Dataset만 다른 Analysis의 `dataset:<dataset_id>` input source로 재사용할 수 있다. 임의 filesystem path는 허용하지 않는다.
+- Parquet가 기본이며 pyarrow가 없는 개발 환경에서는 동일 checksum/lineage contract의 JSONL artifact로 안전하게 폴백한다.
+
+### Consequences
+
+- Analysis 결과와 Dashboard rendering이 분리된다.
+- Dataset Catalog가 schema, profile, file, checksum, materialization, lineage와 projection readiness를 설명할 수 있다.
+- 취소된 run도 partial result와 audit metadata를 유지한다.
+- 동일 version/config/parameters/limit 조합은 cache hit로 재사용할 수 있다.

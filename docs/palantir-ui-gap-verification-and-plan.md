@@ -283,8 +283,11 @@ Agent Evidence Workbench는 다음 원칙을 실제 적용한다.
 | Ontology Workbench | ✅ | ✅ | route restore/isolation/screenshot E2E |
 | Governance Workbench | ✅ | ✅ | trace/evidence/lineage/projection retry |
 | Agent Evidence Workbench | ✅ | ✅ | dedicated route와 reload/audit flow |
-| Project 2 local pgvector RAG | schema only | ❌ | Project 3 RAG와 구분 표기 |
-| visual token system | ✅ first slice | ✅ Agent | 나머지 workbench 확대 필요 |
+| Project 2 local pgvector RAG | projection schema only | 의도적 비사용 | runtime semantic retrieval은 `project3_rag` typed HTTP로 확정 |
+| visual token system | ✅ | ✅ | Agent/Ontology/Governance/Dataset/Project Home 공유 token 적용 |
+| Dataset materialization | ✅ | ✅ | Analysis result → immutable Dataset Version → reusable Analysis input |
+| Analysis lifecycle | ✅ | ✅ | queued/running/progress/cancel/cache/cursor |
+| canonical WorkOrder | ✅ | ✅ | `work_order` primary, `inspection` deprecated alias |
 
 ---
 
@@ -305,18 +308,25 @@ tests/test_multistore_orchestrator_stage49.py
 - routing, evidence grounding, degraded mode, isolation
 ```
 
-### Full release gate
+### Full release and live integration evidence
 
 ```text
-scripts/release_gate.py --with-e2e
-- 13/13 PASS
-- ephemeral PostgreSQL migration/RLS PASS
-- PostgreSQL runtime PASS
-- backend 114 PASS
-- Playwright 27 PASS
+Backend full suite: 118 PASS
+Frontend Vitest: 3 PASS
+Playwright full suite: 28 PASS
+Ephemeral PostgreSQL migration/RLS/runtime: PASS
+SQLite backup/restore + tamper detection: PASS
+
+scripts/verify_live_project3_hybrid.py
+- Project 3 status: ready
+- PostgreSQL evidence: 1
+- Neo4j evidence: 3
+- Project 3 RAG evidence: 1
+- grounded claims: 5
+- checkpoint sequence: 4
 ```
 
-Release runner는 외부 API/Vite 프로세스의 stdout을 `DEVNULL`로 처리해 로그 pipe saturation을 방지하고, 임시 frontend copy에서는 이미 실행한 외부 서버를 사용한다.
+`release_gate.py`는 `--with-live-project3` 옵션을 지원해 이미 실행 중인 Project 2/3 서비스에 같은 public HTTP gate를 적용한다. 외부 API/Vite 프로세스 stdout은 `DEVNULL`로 처리해 pipe saturation을 방지한다.
 
 ### Frontend build and initial bundle budget
 
@@ -324,15 +334,16 @@ Release runner는 외부 API/Vite 프로세스의 stdout을 `DEVNULL`로 처리�
 
 ```text
 npm run build
-- initial JavaScript: 212.25 KiB / 300 KiB PASS
+- initial JavaScript: 213.87 KiB / 300 KiB PASS
 - entry before split: 1,361.50 KiB
-- ManufacturingApp before inner split: 954.90 KiB
-- ManufacturingApp after inner split: 139.23 KiB
-- AnalysisWorkbench lazy chunk: 23.21 KiB
-- DashboardBoardRenderer lazy chunk: 54.91 KiB
+- DataTableRenderer: 6.42 KiB
+- DashboardBoardRenderer: 10.25 KiB
+- ECharts Cartesian runtime: 168.53 KiB
+- ECharts Pie runtime: 34.05 KiB
+- largest deferred common runtime: 443.24 KiB
 ```
 
-`DataTableRenderer` lazy chunk는 725.21 KiB로 Vite 경고가 남지만 초기 route payload에는 포함되지 않는다. 후속 작업은 경고를 숨기는 것이 아니라 TanStack table/virtualization vendor split 또는 renderer-level import 경계를 검토하는 것이다.
+TanStack/virtualizer 의존을 제거한 lightweight virtual table과 Pie/Cartesian ECharts runtime split으로 모든 deferred JavaScript chunk가 500 KiB 아래에 있다.
 
 ### Frontend / E2E
 
@@ -340,53 +351,41 @@ npm run build
 npm test -- --run
 - Vitest 3 PASS
 
-PLAYWRIGHT_API_PORT=8300 PLAYWRIGHT_WEB_PORT=3300 \
-  npx playwright test e2e/workbench-governance.spec.ts e2e/ui-modernization.spec.ts
-- Playwright 11 PASS
-- Dashboard/Analysis lazy loading regression PASS
-- Agent direct route
-- scoped query execution
+PLAYWRIGHT_API_PORT=8800 PLAYWRIGHT_WEB_PORT=3800 npx playwright test
+- Playwright 28 PASS
+- Project switch/resource isolation
+- Project Home and active role context
+- Dataset Catalog and Analysis materialization
+- queued Analysis lifecycle
+- Dashboard/Analysis lazy loading regression
+- Agent direct route and persisted run reload
 - claim → evidence navigation
-- persisted run reload
-- unauthorized project rejection
-- Agent screenshot artifact
-- Ontology/Governance regression flows
+- unauthorized project/workspace rejection
+- Ontology/Governance visual artifacts and regression flows
 ```
 
 ---
 
-## 7. 다음 우선순위
+## 7. 후속 운영 과제
 
-P0/P1을 반복 구현하지 않는다.
+이 문서에서 정의한 Palantir UI gap 구현 항목은 완료됐다. 다음 항목은 기능 미구현이 아니라 배포 환경·장기 운영 과제다.
 
-이번 후속 작업으로 다음 두 항목을 완료했다.
+1. Docker CLI가 있는 host에서 PostgreSQL+pgvector+Redis+Neo4j compose cold-start/rollback drill을 반복한다.
+2. managed PostgreSQL과 Redis에서 pool, rate limiter, outbox worker 장기 부하를 측정한다.
+3. production REST/Kafka/MQTT/OPC-UA connector credential·retry·backpressure 정책을 도메인별로 구성한다.
+4. Dashboard editor undo/redo와 unsaved draft recovery를 제품 편집성 개선 트랙으로 진행한다.
+5. Project Home/Dataset Workbench screenshot baseline을 정기 visual regression 대상으로 추가한다.
 
-1. Governance Agent Run 상세에 `Open Agent Evidence` deep link를 추가했다. Agent Workbench의 기존 Governance 이동과 결합되어 양방향 persisted-run 이동이 가능하다.
-2. `GET /api/agent/runs` server pagination/filter를 추가했다. Project/Workspace scope, status, route, question search, offset/limit을 서버에서 검증하고 Agent Workbench는 browser-local history 대신 persisted 목록을 기본 UI로 사용한다. Local history는 offline recovery 보조 정보로만 남긴다.
-
-남은 순서는 다음과 같다.
-
-3. 실제 Project 3 service가 실행되는 release profile에서 hybrid query의 Neo4j/RAG evidence를 검증한다.
-4. Project 2 local pgvector를 사용할지 명시적으로 결정한다.
-   - 사용하지 않으면 schema를 projection future boundary로 유지한다.
-   - 사용한다면 먼저 project/role-filtered evidence retrieval use case와 writer를 구현한다.
-5. `palantir-visual-language.md` token을 Governance와 Ontology에 점진적으로 적용한다.
-6. Governance Agent run 목록에도 Agent Workbench와 동일한 server pagination/filter contract를 직접 사용하게 해 overview snapshot 의존도를 줄인다.
-7. 725 KiB `DataTableRenderer` lazy chunk를 renderer/vendor 단위로 더 분리할지 실제 route 성능을 기준으로 결정한다.
-
-완료되어 남은 목록에서 제거한 항목:
-
-- Agent Workbench ↔ Governance 양방향 persisted-run deep link
-- `GET /api/agent/runs` server pagination, status/route/search filter
-- Stage 54 initial JavaScript 300 KiB budget과 build-time regression gate
-
-### 이번 추가 검증
+### 이번 최종 검증
 
 ```text
-Backend targeted: 12 PASS
+Backend: 118 PASS
 Frontend Vitest: 3 PASS
-Frontend build and 300 KiB initial budget: PASS
-Dashboard/Analysis + Agent/Ontology/Governance Playwright: 11 PASS
+TypeScript/build: PASS
+Initial JS: 213.87 KiB / 300 KiB
+All deferred JS chunks: < 500 KiB
+Playwright: 28 PASS
+Live Project 2 → Project 3 three-store gate: PASS
 ```
 
 ---

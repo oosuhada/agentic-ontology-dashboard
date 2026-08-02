@@ -10,6 +10,8 @@ from .models import (
     DatasetCreateRequest,
     DatasetDetail,
     DatasetFileCreate,
+    DatasetFileRecord,
+    DatasetPage,
     DatasetRecord,
     DatasetVersionCreateRequest,
     DatasetVersionRecord,
@@ -21,6 +23,7 @@ from .models import (
 )
 from .repository import DatasetRepository
 from .service import DatasetCatalogService
+from .source import DatasetMaterializationSource
 
 __all__ = [
     "AnalysisDatasetMaterializer",
@@ -31,6 +34,9 @@ __all__ = [
     "DatasetCreateRequest",
     "DatasetDetail",
     "DatasetFileCreate",
+    "DatasetFileRecord",
+    "DatasetMaterializationSource",
+    "DatasetPage",
     "DatasetRecord",
     "DatasetRepository",
     "DatasetVersionCreateRequest",

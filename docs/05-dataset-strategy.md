@@ -138,23 +138,32 @@ checksums: {}
 
 ```text
 inspect source
-→ validate manifest
-→ read records
-→ normalize records
+→ validate manifest and checksum
+→ create ingestion run
+→ read/normalize records
+→ quarantine invalid rows
 → validate Prediction Result Contract
-→ persist DatasetVersion and AnalysisRun
+→ persist immutable DatasetVersion and files
+→ register Ontology mapping and store projections
 → materialize Objects, Links, Evidence
 ```
 
-우선순위:
+현재 구현:
 
-1. File Adapter
-2. REST Adapter
-3. Kafka Adapter
-4. MQTT Adapter
-5. OPC-UA Adapter
+1. File Adapter protocol/registry — CSV, JSON, JSONL, Parquet
+2. Azure PdM adapter
+3. MetroPT adapter
+4. ingestion run/quarantine/checksum/version contract
+5. Dataset Catalog schema/profile/projection/lineage surface
 
-MVP에서는 file-based automatic analysis를 먼저 지원한다.
+운영 확장 순서:
+
+1. REST Adapter credential/retry
+2. Kafka Adapter replay/backpressure
+3. MQTT Adapter reconnect/QoS
+4. OPC-UA Adapter certificate/session policy
+
+MVP와 release baseline은 file-based automatic analysis를 지원한다.
 
 ```text
 Raw Files
@@ -190,7 +199,31 @@ Raw Files
 
 Project-specific extension은 별도 properties namespace에 둔다.
 
-## 9. Derived Metrics Governance
+## 9. Analysis Materialization and Reuse
+
+Analysis preview row를 Dashboard에 복사하지 않는다. 선택한 Analysis node를 재사용하려면 다음 identity pipeline을 통과한다.
+
+```text
+Analysis definition/version
+→ durable AnalysisRun
+→ selected node result
+→ immutable DatasetVersion
+→ registered Parquet or JSONL artifact
+→ checksum/schema/profile/lineage
+→ Dataset Catalog
+→ another Analysis input: dataset:<dataset_id>
+```
+
+규칙:
+
+- 등록된 materialization artifact만 Analysis input으로 허용한다.
+- 임의 local path와 browser row payload를 source로 받지 않는다.
+- Parquet가 기본이며 개발 환경에 pyarrow가 없으면 동일 checksum/lineage contract의 JSONL로 폴백한다.
+- source reference는 analysis ID/version/run/node를 포함한다.
+- Dataset Version은 수정하지 않고 새 version을 생성한다.
+- Project 2 local pgvector는 projection schema이며 runtime semantic retrieval은 Project 3 RAG를 사용한다.
+
+## 10. Derived Metrics Governance
 
 발표와 Dashboard에서 사용하는 모든 숫자는 다음을 가져야 한다.
 
@@ -208,14 +241,15 @@ Project-specific extension은 별도 properties namespace에 둔다.
 - model·age peer percentile
 - RUL threshold distribution
 
-## 10. Rollout Plan
+## 11. Rollout Plan
 
-### Phase A — PARTIAL COMPLETE
+### Phase A — COMPLETE
 
-- 현재 Gold fixture를 `manufacturing-demo-project`로 등록 완료
-- 기존 `manufacturing-demo` Workspace를 Project 하위로 migration 완료
-- Project list/detail, Project별 Workspace, selector와 invalid route 복원 E2E 검증 완료
-- Dashboard·Ontology operational record의 명시적 `project_id` runtime 전환과 다중 Project switch E2E는 잔여
+- Gold fixture를 `manufacturing-demo-project`로 등록
+- 기존 `manufacturing-demo` Workspace를 Project 하위로 migration
+- Project list/detail, Project Home, Project별 Workspace/role context와 selector
+- invalid route 복원, 다중 Project switch와 resource isolation E2E
+- Dataset Catalog와 Analysis materialization/reusable input flow
 
 ### Phase B
 
@@ -232,7 +266,12 @@ Project-specific extension은 별도 properties namespace에 둔다.
 
 - AI4I, C-MAPSS, CiP-DMD 순차 추가
 
-## 11. Dataset Selection Rule
+### Operations
+
+- Docker 사용 가능한 host에서 PostgreSQL+pgvector+Redis+Neo4j cold-start/rollback
+- managed services에서 connector replay, pool, outbox, rate-limit 부하 검증
+
+## 12. Dataset Selection Rule
 
 새 dataset은 다음 질문을 통과해야 한다.
 

@@ -60,6 +60,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run Ontology Dashboard release gates")
     parser.add_argument("--root", default=str(Path(__file__).resolve().parents[1]))
     parser.add_argument("--with-e2e", action="store_true")
+    parser.add_argument("--with-live-project3", action="store_true")
+    parser.add_argument("--live-project2-url", default="http://127.0.0.1:8000")
+    parser.add_argument("--live-project3-url", default="http://127.0.0.1:8001")
     parser.add_argument("--output")
     args = parser.parse_args()
 
@@ -157,13 +160,39 @@ def main() -> None:
                         process.kill()
             checks.append(e2e_result)
 
+    live_project3_result: dict[str, Any] | None = None
+    if args.with_live_project3 and all(check["pass"] for check in checks):
+        live_project3_result = run(
+            [
+                sys.executable,
+                "scripts/verify_live_project3_hybrid.py",
+                "--project2-url",
+                args.live_project2_url,
+                "--project3-url",
+                args.live_project3_url,
+            ],
+            cwd=root,
+            env=environment,
+            timeout=180,
+        )
+        checks.append(live_project3_result)
+
     e2e_requirement_passed = not args.with_e2e or (e2e_result is not None and e2e_result["pass"])
-    passed = all(check["pass"] for check in checks) and e2e_requirement_passed
+    live_project3_requirement_passed = not args.with_live_project3 or (
+        live_project3_result is not None and live_project3_result["pass"]
+    )
+    passed = (
+        all(check["pass"] for check in checks)
+        and e2e_requirement_passed
+        and live_project3_requirement_passed
+    )
     report = {
         "release_gate": "ontology-dashboard-v0.7",
         "root": str(root),
         "with_e2e": args.with_e2e,
         "e2e_executed": e2e_result is not None,
+        "with_live_project3": args.with_live_project3,
+        "live_project3_executed": live_project3_result is not None,
         "checks": checks,
         "passed_checks": sum(1 for check in checks if check["pass"]),
         "failed_checks": sum(1 for check in checks if not check["pass"]),
@@ -178,6 +207,8 @@ def main() -> None:
             "report_path": str(output_path),
             "with_e2e": report["with_e2e"],
             "e2e_executed": report["e2e_executed"],
+            "with_live_project3": report["with_live_project3"],
+            "live_project3_executed": report["live_project3_executed"],
             "passed_checks": report["passed_checks"],
             "failed_checks": report["failed_checks"],
             "pass": report["pass"],

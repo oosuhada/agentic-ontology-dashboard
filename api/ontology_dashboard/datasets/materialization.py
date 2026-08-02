@@ -147,13 +147,26 @@ class AnalysisDatasetMaterializer:
             node_id=request.node_id,
         )
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        materialization_format = "parquet"
+        media_type = "application/vnd.apache.parquet"
         temporary_path = artifact_path.with_suffix(".parquet.tmp")
-        self.parquet_writer(normalized_rows, temporary_path)
+        try:
+            self.parquet_writer(normalized_rows, temporary_path)
+        except RuntimeError as error:
+            if "pyarrow" not in str(error).lower() and "parquet" not in str(error).lower():
+                raise
+            temporary_path.unlink(missing_ok=True)
+            artifact_path = artifact_path.with_suffix(".jsonl")
+            temporary_path = artifact_path.with_suffix(".jsonl.tmp")
+            write_jsonl(normalized_rows, temporary_path)
+            materialization_format = "jsonl"
+            media_type = "application/x-ndjson"
         if not temporary_path.exists() or temporary_path.stat().st_size <= 0:
-            raise RuntimeError("Parquet writer did not create a non-empty artifact")
+            raise RuntimeError(f"{materialization_format} writer did not create a non-empty artifact")
         temporary_path.replace(artifact_path)
         checksum = sha256_file(artifact_path)
         schema = infer_schema(node, normalized_rows)
+        schema["format"] = materialization_format
         profile = {
             **(node.get("profile") if isinstance(node.get("profile"), dict) else {}),
             "analysis_id": analysis_id,
@@ -162,7 +175,7 @@ class AnalysisDatasetMaterializer:
             "analysis_node_id": request.node_id,
             "preview_row_count": int(preview_node.get("row_count") or len(preview_node.get("rows") or [])),
             "materialized_row_count": len(normalized_rows),
-            "materialization_format": "parquet",
+            "materialization_format": materialization_format,
             "source_freshness_at": node.get("source_freshness_at"),
             "generated_at": node.get("generated_at"),
             "warnings": node.get("warnings") if isinstance(node.get("warnings"), list) else [],
@@ -181,7 +194,7 @@ class AnalysisDatasetMaterializer:
                 files=[
                     DatasetFileCreate(
                         uri=artifact_path.as_uri(),
-                        media_type="application/vnd.apache.parquet",
+                        media_type=media_type,
                         checksum_sha256=checksum,
                         size_bytes=artifact_path.stat().st_size,
                     )
@@ -196,7 +209,7 @@ class AnalysisDatasetMaterializer:
             request=MaterializationCreateRequest(
                 source_kind="analysis_result",
                 source_reference=source_version,
-                format="parquet",
+                format=materialization_format,
                 artifact_uri=artifact_path.as_uri(),
                 checksum_sha256=checksum,
                 record_count=len(normalized_rows),
@@ -283,6 +296,13 @@ def write_parquet(rows: list[dict[str, Any]], path: Path) -> None:
     pq.write_table(table, path, compression="zstd", use_dictionary=True)
 
 
+def write_jsonl(rows: list[dict[str, Any]], path: Path) -> None:
+    with path.open("w", encoding="utf-8") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")))
+            handle.write("\n")
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -322,5 +342,6 @@ __all__ = [
     "infer_schema",
     "sha256_file",
     "slugify",
+    "write_jsonl",
     "write_parquet",
 ]

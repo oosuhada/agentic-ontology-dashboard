@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from ontology_dashboard.analysis_models import AnalysisRunRequest
+from ontology_dashboard.analysis_service import AnalysisService
 from ontology_dashboard.identity import CSRF_COOKIE, IdentityService
 from ontology_dashboard.main import app, get_identity_service, get_service
 from ontology_dashboard.service import ManufacturingPredictiveMaintenanceService
@@ -286,6 +288,110 @@ def test_analysis_definition_rejects_unknown_join_and_cycles_before_persistence(
     assert cycle.status_code == 422
     assert cycle.json()["error"]["code"] == "contract_validation_failed"
     assert cycle.json()["error"]["message"] == "analysis graph must be acyclic"
+
+
+def test_analysis_job_lifecycle_cache_cursor_and_cancel(
+    client: TestClient,
+    identity: IdentityService,
+    service: ManufacturingPredictiveMaintenanceService,
+) -> None:
+    login(client)
+    headers = csrf_headers(client)
+    created = client.post(
+        "/api/analyses",
+        headers=headers,
+        json={
+            "id": "analysis-job-lifecycle",
+            "workspace_id": WORKSPACE,
+            "display_name": "Analysis job lifecycle",
+            "nodes": analysis_nodes(),
+            "edges": analysis_edges(),
+            "publish": True,
+        },
+    )
+    assert created.status_code == 200, created.text
+
+    queued = client.post(
+        "/api/analyses/analysis-job-lifecycle/jobs",
+        headers=headers,
+        json={
+            "workspace_id": WORKSPACE,
+            "version_policy": "pinned",
+            "version": 1,
+            "preview_limit": 500,
+        },
+    )
+    assert queued.status_code == 202, queued.text
+    first_run_id = queued.json()["id"]
+    completed = client.get(
+        f"/api/analysis-runs/{first_run_id}",
+        params={"workspace_id": WORKSPACE},
+    )
+    assert completed.status_code == 200, completed.text
+    first = completed.json()
+    assert first["status"] == "succeeded"
+    assert first["progress_percent"] == 100
+    assert first["rows_scanned"] >= first["node_results"]["input:0"]["row_count"]
+    assert first["cache_hit"] is False
+
+    rows = client.get(
+        f"/api/analysis-runs/{first_run_id}/nodes/input:0/rows",
+        params={"workspace_id": WORKSPACE, "limit": 1},
+    )
+    assert rows.status_code == 200, rows.text
+    assert len(rows.json()["rows"]) == 1
+    assert rows.json()["total"] >= 1
+
+    cached = client.post(
+        "/api/analyses/analysis-job-lifecycle/jobs",
+        headers=headers,
+        json={
+            "workspace_id": WORKSPACE,
+            "version_policy": "pinned",
+            "version": 1,
+            "preview_limit": 500,
+        },
+    )
+    assert cached.status_code == 202, cached.text
+    cached_result = client.get(
+        f"/api/analysis-runs/{cached.json()['id']}",
+        params={"workspace_id": WORKSPACE},
+    ).json()
+    assert cached_result["status"] == "succeeded"
+    assert cached_result["cache_hit"] is True
+    assert cached_result["node_results"] == first["node_results"]
+
+    user = identity.repository.authenticate("fde@ontology.local", "FDE!2026")
+    principal = identity.repository.principal(
+        user["id"],
+        active_project_id="manufacturing-demo-project",
+    )
+    analysis_service = AnalysisService(str(service.repository.path))
+    request = AnalysisRunRequest(
+        workspace_id=WORKSPACE,
+        version_policy="pinned",
+        version=1,
+        preview_limit=100,
+    )
+    cancellable = analysis_service.queue_run(
+        analysis_id="analysis-job-lifecycle",
+        request=request,
+        principal=principal,
+    )
+    cancel_requested = analysis_service.cancel_run(
+        run_id=cancellable.id,
+        workspace_id=WORKSPACE,
+        principal=principal,
+    )
+    assert cancel_requested.cancel_requested is True
+    cancelled = analysis_service.execute_queued_run(
+        run_id=cancellable.id,
+        request=request,
+        principal=principal,
+        ontology=None,  # cancellation is checked before an Ontology query is attempted
+    )
+    assert cancelled.status == "cancelled"
+    assert cancelled.error and cancelled.error["code"] == "cancelled"
 
 
 def test_dashboard_board_query_reapplies_selection_on_server(client: TestClient) -> None:

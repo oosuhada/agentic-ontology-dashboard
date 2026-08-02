@@ -1,11 +1,13 @@
-import { Button, Callout, Card, Spinner, Tag } from "@blueprintjs/core";
+import { Button, Callout, Card, HTMLSelect, InputGroup, Spinner, Tag } from "@blueprintjs/core";
 import { useEffect, useMemo, useState } from "react";
 import {
   getGovernanceAgentRun,
   getGovernanceOverview,
+  listAgentRuns,
   retryGovernanceProjection,
 } from "../../api";
 import { agentPath, datasetCatalogPath, navigate, ontologyPath } from "../../routing";
+import type { AgentRunPage } from "../agent/types";
 import type {
   GovernanceAgentRunDetail,
   GovernanceOverview,
@@ -49,11 +51,42 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
   const [activeTab, setActiveTab] = useState<GovernanceTab>("overview");
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [runDetail, setRunDetail] = useState<GovernanceAgentRunDetail | null>(null);
+  const [runPage, setRunPage] = useState<AgentRunPage>({ items: [], offset: 0, limit: 20, total: 0 });
+  const [runSearch, setRunSearch] = useState("");
+  const [runStatus, setRunStatus] = useState("");
+  const [runRoute, setRunRoute] = useState("");
+  const [runOffset, setRunOffset] = useState(0);
+  const [runListLoading, setRunListLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [runLoading, setRunLoading] = useState(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+
+  async function refreshRunList(nextOffset = runOffset) {
+    setRunListLoading(true);
+    try {
+      const payload = await listAgentRuns({
+        project_id: projectId,
+        workspace_id: workspaceId,
+        offset: nextOffset,
+        limit: 20,
+        status: runStatus || undefined,
+        route: runRoute || undefined,
+        search: runSearch.trim() || undefined,
+      });
+      setRunPage(payload);
+      setRunOffset(payload.offset);
+      setSelectedRunId((current) => {
+        if (current && payload.items.some((item) => item.run_id === current)) return current;
+        return payload.items[0]?.run_id ?? null;
+      });
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : "Agent run 목록을 불러오지 못했습니다.");
+    } finally {
+      setRunListLoading(false);
+    }
+  }
 
   async function refresh() {
     setLoading(true);
@@ -62,6 +95,7 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
       setOverview(payload);
       setSelectedRunId((current) => current ?? payload.agent_runs[0]?.run_id ?? null);
       setError("");
+      await refreshRunList(0);
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : "Governance Workbench를 불러오지 못했습니다.");
     } finally {
@@ -72,6 +106,11 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
   useEffect(() => {
     void refresh();
   }, [projectId, workspaceId]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void refreshRunList(0), 250);
+    return () => window.clearTimeout(timer);
+  }, [runSearch, runStatus, runRoute]);
 
   useEffect(() => {
     if (!selectedRunId) {
@@ -187,15 +226,32 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
       {overview && activeTab === "agent-runs" ? (
         <section className="governance-agent-layout" aria-label="Agent run governance">
           <aside className="governance-agent-rail">
-            <div className="governance-panel-heading"><div><small>AGENT RUNS</small><strong>{overview.agent_runs.length} persisted runs</strong></div></div>
+            <div className="governance-panel-heading"><div><small>AGENT RUNS</small><strong>{runPage.total} persisted runs</strong></div>{runListLoading ? <Spinner size={16} /> : null}</div>
+            <div className="governance-run-filters">
+              <InputGroup leftIcon="search" placeholder="Question filter" value={runSearch} onChange={(event) => setRunSearch(event.currentTarget.value)} />
+              <div>
+                <HTMLSelect fill value={runStatus} onChange={(event) => setRunStatus(event.currentTarget.value)}>
+                  <option value="">All status</option><option value="succeeded">Succeeded</option><option value="failed">Failed</option><option value="running">Running</option>
+                </HTMLSelect>
+                <HTMLSelect fill value={runRoute} onChange={(event) => setRunRoute(event.currentTarget.value)}>
+                  <option value="">All routes</option><option value="relational">Relational</option><option value="graph">Graph</option><option value="vector">Vector</option><option value="hybrid">Hybrid</option>
+                </HTMLSelect>
+              </div>
+            </div>
             <div className="governance-run-list">
-              {overview.agent_runs.map((run) => (
+              {runPage.items.map((run) => (
                 <button key={run.run_id} type="button" className={selectedRunId === run.run_id ? "active" : ""} onClick={() => setSelectedRunId(run.run_id)}>
-                  <div><strong>{run.question}</strong><small>{run.run_id} · {run.evidence_count} evidence</small></div>
+                  <div><strong>{run.question}</strong><small>{run.run_id} · {run.evidence_count} evidence · {new Date(run.created_at).toLocaleString()}</small></div>
                   <Tag minimal intent={statusIntent(run.status)}>{run.status}</Tag>
                 </button>
               ))}
+              {!runListLoading && !runPage.items.length ? <p className="governance-empty">조건에 맞는 Agent run이 없습니다.</p> : null}
             </div>
+            <footer className="governance-run-pagination">
+              <Button small icon="chevron-left" disabled={runOffset === 0 || runListLoading} onClick={() => void refreshRunList(Math.max(0, runOffset - runPage.limit))}>Previous</Button>
+              <span>{runPage.total ? `${runOffset + 1}-${Math.min(runOffset + runPage.items.length, runPage.total)} / ${runPage.total}` : "0 runs"}</span>
+              <Button small rightIcon="chevron-right" disabled={runOffset + runPage.items.length >= runPage.total || runListLoading} onClick={() => void refreshRunList(runOffset + runPage.limit)}>Next</Button>
+            </footer>
           </aside>
           <section className="governance-agent-detail">
             {runLoading ? <div className="governance-detail-loading"><Spinner size={24} />Trace reconstruction</div> : null}
