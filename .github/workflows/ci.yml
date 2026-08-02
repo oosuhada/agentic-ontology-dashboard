@@ -1,0 +1,56 @@
+name: factory-signal-board-ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject tracked secrets and oversized files
+        shell: bash
+        run: |
+          set -euo pipefail
+          tracked_env_files="$(git ls-files | grep -E '(^|/)\.env($|\.)' | grep -v -E '(^|/)\.env\.example$' || true)"
+          if [[ -n "${tracked_env_files}" ]]; then
+            echo "Tracked environment files are not allowed:"
+            echo "${tracked_env_files}"
+            exit 1
+          fi
+          limit_bytes=$((10 * 1024 * 1024))
+          while IFS= read -r -d '' file; do
+            size="$(stat -c%s "${file}")"
+            if (( size > limit_bytes )); then
+              echo "Tracked file exceeds 10 MiB: ${file} (${size} bytes)"
+              exit 1
+            fi
+          done < <(git ls-files -z)
+
+  release-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Python packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e 'ml[dev]' -e 'api[dev]'
+      - name: Prepare Playwright system dependencies
+        working-directory: web
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Run full release gate
+        env:
+          PYTHONPATH: ${{ github.workspace }}/api:${{ github.workspace }}/ml/src
+        run: python scripts/release_gate.py --with-e2e
