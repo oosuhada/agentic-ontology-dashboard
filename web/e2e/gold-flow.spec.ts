@@ -106,9 +106,15 @@ test("MetroPT project renders a scoped compressor evidence dashboard", async ({ 
 
 test("data-quality and provider fallback states remain usable after authentication", async ({ page }) => {
   await login(page, "manager@ontology.local", "Manager!2026");
+  const gs007Details = Promise.all([
+    page.waitForResponse((response) => response.url().includes("/api/events/EVT-GS-007/evidence") && response.ok()),
+    page.waitForResponse((response) => response.url().includes("/api/events/EVT-GS-007/report") && response.ok()),
+    page.waitForResponse((response) => response.url().includes("/api/events/EVT-GS-007/layout") && response.ok()),
+  ]);
   await page.getByRole("button", { name: /GS-007/ }).click();
+  await gs007Details;
   await expect(page.getByText("데이터 품질 경고", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText(/정상 또는 고장으로 단정하지 않습니다/)).toBeVisible();
+  await expect(page.getByText(/정상 또는 고장으로 단정하지 않습니다/)).toBeVisible({ timeout: 15_000 });
 
   const gs008Details = Promise.all([
     page.waitForResponse((response) => response.url().includes("/api/events/EVT-GS-008/evidence") && response.ok()),
