@@ -8,7 +8,7 @@ Verified on 2026-08-02 against the actual checkout, isolated Playwright database
 |---|---|---|
 | UI-00 Baseline and reference register | Complete | 24 starting-SHA screenshots, reference review, license record and `baseline-provenance.json` |
 | UI-01 Tokens and primitives | Complete | Foundry token layer, EntityTitle, StatusPill, WorkbenchHeader/Toolbar and explicit Empty/Loading/Error states |
-| UI-02 Global application shell | Complete | Shared 48px/208px rail and 40px topbar across primary Workbenches and Admin |
+| UI-02 Global application shell | Complete + convergence pass | Shared 40px platform rail, 184px resource navigation and 34px topbar across primary Workbenches |
 | UI-03 Dashboard resource chrome | Complete | Resource header, compact tabs/actions, parameter rail, saved view, share, export and inspector |
 | UI-04 Shared board runtime | Complete | BoardFrame, MetricStrip, DenseDataTable, ChartPanel and runtime metadata |
 | UI-05 Object Explorer | Complete | Dense Object Set table, Table/Explore/Graph modes and Properties/Links/Actions/Lineage inspector |
@@ -32,12 +32,14 @@ Verified on 2026-08-02 against the actual checkout, isolated Playwright database
 
 The browser tests measure the live DOM:
 
-- global topbar: 40px
-- expanded product rail: 208px
-- collapsed product rail: 48px
-- Dashboard toolbar: 34px
-- BoardFrame header: 32px
-- DenseDataTable row: 30px
+- global topbar: 34px
+- platform rail: 40px
+- resource navigation: 184px
+- expanded navigation total: 224px
+- collapsed navigation: 40px
+- Dashboard toolbar: 32px
+- BoardFrame header: 29px
+- DenseDataTable row: 28px
 - Object Explorer desktop panes: 255px / flexible canvas / 300px
 - all primary Workbenches: no document-level horizontal overflow at 720x500
 
@@ -84,9 +86,9 @@ Latest local candidate result:
 
 ```text
 Candidate images                         24 / 24
-Mean raw pixel delta max                 0.0618% / 0.15% PASS
-Changed pixel ratio max                  0.2074% / 0.75% PASS
-Structural mean delta max                0.0079% / 0.10% PASS
+Mean raw pixel delta max                 0.0716% / 0.15% PASS
+Changed pixel ratio max                  0.2544% / 0.75% PASS
+Structural mean delta max                0.0425% / 0.10% PASS
 ```
 
 First successful Ubuntu candidate result:
@@ -127,4 +129,4 @@ Ubuntu release gate                      16/16 PASS
 
 The final evidence set passed the surface hierarchy, information density, 720px overflow, degraded-state, inspector priority, Analysis connector, and Object Explore/Graph differentiation review. No approved screenshot needed replacement. Dashboard capture now waits for the lazy metric board instead of accepting a loading placeholder.
 
-The next local priority is Phase 3 physical namespace relocation. Managed production, connector, IdP, object-storage, and observability work remains externally blocked on this host.
+The physical namespace relocation is complete. The 2026-08-03 convergence pass also replaced the generic SaaS sidebar with a platform rail + resource navigation hierarchy and approved a new 24-image final set. See `convergence-review.md` for the gap diagnosis and measured change. Managed production, connector, IdP, object-storage, and observability work remains externally blocked on this host.

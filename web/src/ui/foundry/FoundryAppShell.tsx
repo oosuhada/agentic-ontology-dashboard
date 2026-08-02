@@ -4,19 +4,14 @@ import {
   Bot,
   ChevronRight,
   Database,
-  GitBranch,
   Home,
   LayoutDashboard,
-  LogOut,
   Menu,
   Moon,
   Network,
-  PanelLeftClose,
-  PanelLeftOpen,
   Search,
   ShieldCheck,
   Sun,
-  UserCog,
   Workflow,
 } from "lucide-react";
 import { getProject, getProjectWorkspaces } from "../../api";
@@ -33,6 +28,7 @@ import {
 } from "../../routing";
 import { useAuth } from "../../features/auth/AuthContext";
 import type { AppRole, Project, Workspace } from "../../types";
+import { FoundryProductNavigation } from "./FoundryProductNavigation";
 
 export type FoundryRoute = "home" | "dashboard" | "analysis" | "agent" | "ontology" | "datasets" | "governance";
 
@@ -150,47 +146,24 @@ export function FoundryAppShell({ projectId, workspaceId, activeRoute, title, ch
 
   return (
     <div className={`od-product-shell fd-route-shell route-${activeRoute} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
-      <aside className={`od-primary-sidebar ${mobileNavOpen ? "mobile-open" : ""}`}>
-        <header className="od-sidebar-brand">
-          <span className="brand-mark">OD</span>
-          <span className="sr-only">Ontology Dashboard</span>
-          {!sidebarCollapsed ? <div><strong>Ontology</strong><small>Dashboard</small></div> : null}
-          <button type="button" className="od-sidebar-collapse" onClick={() => setSidebarCollapsed((current) => !current)} title={sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기"}>
-            {sidebarCollapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
-          </button>
-        </header>
-        <nav className="od-primary-nav" aria-label="Product navigation">
-          <span className="od-nav-section">{sidebarCollapsed ? "" : "WORKBENCH"}</span>
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const requiresWorkspace = item.id === "agent" || item.id === "ontology" || item.id === "governance";
-            const enabled = item.enabled && (!requiresWorkspace || Boolean(resolvedWorkspaceId));
-            return (
-              <button
-                type="button"
-                key={item.id}
-                className={item.id === activeRoute ? "active" : ""}
-                disabled={!enabled}
-                title={item.label}
-                aria-label={item.id === "governance" ? "Governance navigation" : undefined}
-                onClick={() => enabled && openRoute(item.id)}
-              >
-                <Icon size={16} />
-                {!sidebarCollapsed ? <span>{item.label}</span> : null}
-              </button>
-            );
-          })}
-        </nav>
-        <div className="od-sidebar-spacer" />
-        <section className="od-sidebar-scope">
-          {!sidebarCollapsed ? <span className="od-nav-section">PROJECT CONTEXT</span> : null}
-          <div><GitBranch size={14} />{!sidebarCollapsed ? <span><strong>{project?.display_name ?? projectId}</strong><small>{selectedWorkspace?.display_name ?? resolvedWorkspaceId ?? "Project scope"}</small></span> : null}</div>
-        </section>
-        <footer className="od-sidebar-footer">
-          {user.is_admin ? <button type="button" onClick={() => navigate("/admin")} title="관리자"><UserCog size={15} />{!sidebarCollapsed ? <span>Administration</span> : null}</button> : null}
-          <button type="button" onClick={() => void signOut()} title="로그아웃" aria-label="로그아웃"><LogOut size={15} />{!sidebarCollapsed ? <span>Sign out</span> : null}</button>
-        </footer>
-      </aside>
+      <FoundryProductNavigation
+        items={NAV_ITEMS.map((item) => ({
+          ...item,
+          enabled: item.enabled && (!(item.id === "agent" || item.id === "ontology" || item.id === "governance") || Boolean(resolvedWorkspaceId)),
+        }))}
+        activeId={activeRoute}
+        collapsed={sidebarCollapsed}
+        mobileOpen={mobileNavOpen}
+        projectName={project?.display_name ?? projectId}
+        workspaceName={selectedWorkspace?.display_name ?? resolvedWorkspaceId ?? "Project scope"}
+        userName={user.display_name}
+        roleLabel={roleLabel}
+        isAdmin={user.is_admin}
+        onNavigate={(id) => openRoute(id as FoundryRoute)}
+        onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
+        onAdmin={() => navigate("/admin")}
+        onLogout={() => void signOut()}
+      />
 
       <div className="od-shell-main fd-route-shell__main">
         <header className="od-global-topbar">
