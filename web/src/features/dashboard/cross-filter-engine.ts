@@ -61,15 +61,35 @@ function matches(event: EventSummary, filter: SelectionFilter): boolean {
   return true;
 }
 
+export function parameterIdForSelectionFilter(filter: SelectionFilter): string | null {
+  if (filter.field === "event_id") return "selected_event_id";
+  if (["equipment", "equipment_name", "equipment_id"].includes(filter.field)) return "selected_equipment_id";
+  if (filter.field === "status") return "status_filter";
+  return null;
+}
+
 export function filtersForBoard(
   filters: SelectionFilter[],
   targetBoardId: string,
   graph: DependencyEdge[],
+  acceptedParameterIds: string[] = [],
 ): SelectionFilter[] {
   return filters.filter((filter) => {
     if (filter.source_board_id === "context-panel" || filter.source_board_id === "analysis-path") return true;
-    return downstreamBoardIds(graph, filter.source_board_id).includes(targetBoardId);
+    const downstream = downstreamBoardIds(graph, filter.source_board_id);
+    if (downstream.includes(targetBoardId)) return true;
+    if (downstream.length) return false;
+    const parameterId = parameterIdForSelectionFilter(filter);
+    return parameterId !== null && acceptedParameterIds.includes(parameterId);
   });
+}
+
+export function filterEventsBySelection(
+  events: EventSummary[],
+  filters: SelectionFilter[],
+): EventSummary[] {
+  if (!filters.length) return events;
+  return events.filter((event) => filters.every((filter) => matches(event, filter)));
 }
 
 export function filterEventsForBoard(
@@ -78,9 +98,7 @@ export function filterEventsForBoard(
   targetBoardId: string,
   graph: DependencyEdge[],
 ): EventSummary[] {
-  const applicable = filtersForBoard(filters, targetBoardId, graph);
-  if (!applicable.length) return events;
-  return events.filter((event) => applicable.every((filter) => matches(event, filter)));
+  return filterEventsBySelection(events, filtersForBoard(filters, targetBoardId, graph));
 }
 
 export function selectionFilterFromEvent(sourceBoardId: string, event: EventSummary): SelectionFilter {

@@ -578,6 +578,7 @@ export interface DashboardBoardQueryResponse {
   board_id: string;
   rows: Array<Record<string, unknown>>;
   row_count: number;
+  matching_object_ids: string[];
   render_spec: Record<string, unknown>;
   generated_at: string;
   source_freshness_at: string | null;

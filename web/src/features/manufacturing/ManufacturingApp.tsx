@@ -44,7 +44,8 @@ import { cloneDashboard } from "../dashboard/utils";
 import {
   clearSelectionFilters,
   downstreamBoardIds,
-  filterEventsForBoard,
+  filtersForBoard,
+  parameterIdForSelectionFilter,
   selectionFilterFromEvent,
   upsertSelectionFilter,
 } from "../dashboard/cross-filter-engine";
@@ -319,7 +320,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
 
   function handleSelectionFilter(filter: SelectionFilter) {
     setSelectionFilters((current) => upsertSelectionFilter(current, filter));
-    showAffected(filter.source_board_id, filter.field === "event_id" ? "selected_event_id" : "selected_equipment_id");
+    showAffected(filter.source_board_id, parameterIdForSelectionFilter(filter) ?? filter.field);
   }
 
   function handleAddAnalysisBoard(request: AddAnalysisBoardRequest) {
@@ -854,7 +855,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
               evidence={evidence}
               report={report}
               layout={layout}
-              events={filterEventsForBoard(events, selectionFilters, board.id, draftDashboard.dependency_graph)}
+              events={events}
               selectedEventId={selectedEventId}
               dashboardId={draftDashboard.dashboard_id}
               projectId={selectedProjectId}
@@ -864,7 +865,12 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
               canRecordDecision={canRecordDecision}
               canRecordNote={canRecordNote}
               parameterState={draftDashboard.parameter_state}
-              selectionFilters={selectionFilters}
+              selectionFilters={filtersForBoard(
+                selectionFilters,
+                board.id,
+                draftDashboard.dependency_graph,
+                definition.accepts,
+              )}
               affectedCount={affectedBoards.length}
               roleWorkspaceData={roleWorkspaceData}
               onSelectEvent={handleSelectEvent}

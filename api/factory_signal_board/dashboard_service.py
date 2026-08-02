@@ -124,6 +124,11 @@ class DashboardService:
             rows = [row for row in rows if self._selection_matches(row, selection.field, selection.operator, selection.values)]
 
         total = len(rows) if requires_filter_scan else int(payload["total"])
+        matching_object_ids = [
+            str(row.get("event_id") or row.get("object_id") or row.get("id"))
+            for row in rows
+            if row.get("event_id") or row.get("object_id") or row.get("id")
+        ]
         page = rows[request.offset : request.offset + request.limit] if requires_filter_scan else rows
         freshness_values = [
             str(row[key])
@@ -135,6 +140,7 @@ class DashboardService:
             "board_id": board_id,
             "rows": page,
             "row_count": total,
+            "matching_object_ids": matching_object_ids,
             "offset": request.offset,
             "limit": request.limit,
             "render_spec": render_spec,

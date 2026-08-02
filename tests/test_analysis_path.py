@@ -431,4 +431,7 @@ def test_dashboard_board_query_reapplies_selection_on_server(client: TestClient)
     assert payload["limit"] == 1
     assert len(payload["rows"]) <= 1
     assert all(row["status"] == "critical" for row in payload["rows"])
+    assert payload["matching_object_ids"]
+    assert len(payload["matching_object_ids"]) == payload["row_count"]
+    assert all(not object_id.startswith("risk_event:") for object_id in payload["matching_object_ids"])
     assert payload["timezone"] == "UTC"

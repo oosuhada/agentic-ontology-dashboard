@@ -1,4 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const captureRoot = "../docs/ui/screenshots/palantir-gap-v2";
 
@@ -30,7 +32,7 @@ test("capture Palantir gap review surfaces", async ({ page }) => {
 
   await capture(page, "dashboard", ".od-product-shell .react-grid-layout");
 
-  await page.getByLabel("Workbench mode").getByRole("button", { name: "Analysis", exact: true }).click();
+  await page.goto("/app/analysis/palantir-visual-audit-analysis");
   await expect(page.locator(".analysis-flow-canvas .react-flow")).toBeVisible();
   await page.locator(".analysis-flow-node").filter({ hasText: "Risk by production line" }).click();
   await expect(page.locator(".analysis-lineage-mini-canvas .analysis-lineage-node").first()).toBeVisible();
@@ -44,4 +46,22 @@ test("capture Palantir gap review surfaces", async ({ page }) => {
 
   await page.goto("/app/projects/manufacturing-demo-project/datasets");
   await capture(page, "datasets", ".dataset-catalog-page");
+});
+
+test("render local and official references side by side", async ({ page }) => {
+  test.setTimeout(120_000);
+  const comparisonPath = resolve(process.cwd(), captureRoot, "comparison.html");
+  await page.goto(pathToFileURL(comparisonPath).href, { waitUntil: "networkidle" });
+  await expect(page.locator("article")).toHaveCount(5);
+  await expect(page.locator("img.local")).toHaveCount(5);
+  await expect(page.locator("img.official")).toHaveCount(5);
+  await page.waitForFunction(() => (
+    [...document.querySelectorAll<HTMLImageElement>("img")]
+      .every((image) => image.complete && image.naturalWidth > 0)
+  ));
+  await page.screenshot({
+    path: `${captureRoot}/comparison-sheet.png`,
+    fullPage: true,
+    animations: "disabled",
+  });
 });

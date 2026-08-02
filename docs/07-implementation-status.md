@@ -1,7 +1,7 @@
 # Ontology Dashboard Implementation Status
 
 - Last updated: 2026-08-02
-- Baseline: backend 118 PASS, frontend unit 3 PASS, Playwright 28 PASS, live three-store Agent gate PASS
+- Baseline: backend 118 PASS, frontend unit 6 PASS, Playwright 30 PASS, live three-store Agent gate PASS
 - Current execution plan: `docs/10-product-convergence-polyglot-agentic-roadmap.md`
 
 ## Current Maturity
@@ -33,6 +33,7 @@ Governance   CONNECTED PROJECT WORKBENCH
 - Dataset Catalog는 server pagination/filter, immutable versions, schema/profile, files, projection readiness, mappings, ingestion/quarantine, lineage와 Analysis result materialization→reusable Dataset input을 제공한다.
 - Governance Workbench는 project-scoped access, approvals, server-paginated Agent runs, claims/evidence/traces/checkpoints, lineage, projection health와 permission-gated retry를 통합한다.
 - Project Home은 Project KPI, Workspace entry points, active role context와 Project 3 readiness를 제공한다.
+- Dashboard cross-filter는 dependency graph와 accepted parameter binding으로 downstream scope를 계산하고, server board query가 반환하는 전체 `matching_object_ids`로 legacy/advanced risk-event renderer까지 재조회한다. API 오류에서만 명시적 client fallback badge가 표시된다.
 
 ## Backend — 93%
 
@@ -96,11 +97,12 @@ Governance   CONNECTED PROJECT WORKBENCH
 - Governance agent trace·evidence·lineage·projection retry
 - Agent persisted run server pagination/status/route/search filter와 Governance 양방향 deep link
 - Admin/Manufacturing/Analysis/Board renderer route-level lazy boundary
-- build-time 300 KiB initial JavaScript budget gate (`213.87 KiB` verified)
+- build-time 300 KiB initial JavaScript budget gate (`213.91 KiB` verified)
 - Project Home과 Project별 active role selector
 - Dataset Catalog server pagination/filter와 Analysis materialization flow
 - Governance server Agent run filter/pagination
 - shared visual token/density system and `docs/ui/palantir-visual-language.md`
+- Dashboard·Analysis·Agent·Governance·Datasets의 고정 viewport 캡처와 공식 Palantir reference side-by-side 비교 sheet (`docs/ui/screenshots/palantir-gap-v2/`)
 - ECharts Pie/Cartesian runtime split과 lightweight virtual DataTable
 
 ### Remaining
