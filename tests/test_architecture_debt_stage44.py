@@ -19,6 +19,7 @@ def test_stage44_architecture_inventory_has_no_regression() -> None:
     assert by_id["foundation_identity_physical_relocation"].state == "resolved"
     assert by_id["dashboard_physical_relocation"].state == "resolved"
     assert by_id["analysis_physical_relocation"].state == "resolved"
+    assert by_id["export_workflow_physical_relocation"].state == "resolved"
 
 
 def test_remaining_legacy_debt_is_explicitly_owned_by_stage55() -> None:
@@ -86,3 +87,34 @@ def test_analysis_modules_load_from_canonical_directory() -> None:
     analysis_repository = importlib.import_module("ontology_dashboard.analysis_repository")
     analysis_service = importlib.import_module("ontology_dashboard.analysis_service")
     assert analysis_service.AnalysisRepository is analysis_repository.AnalysisRepository
+
+
+def test_export_workflow_modules_load_from_canonical_directory() -> None:
+    module_names = (
+        "export_models",
+        "export_repository",
+        "export_service",
+        "role_workflow_models",
+        "role_workflow_repository",
+        "role_workflow_service",
+    )
+    canonical_root = ROOT / "api" / "ontology_dashboard"
+    for name in module_names:
+        module = importlib.import_module(f"ontology_dashboard.{name}")
+        assert Path(module.__file__).resolve().parent == canonical_root.resolve()
+
+    export_repository = importlib.import_module("ontology_dashboard.export_repository")
+    export_service = importlib.import_module("ontology_dashboard.export_service")
+    workflow_repository = importlib.import_module("ontology_dashboard.role_workflow_repository")
+    workflow_service = importlib.import_module("ontology_dashboard.role_workflow_service")
+    postgresql_repositories = importlib.import_module("ontology_dashboard.postgresql_repositories")
+    assert export_service.ExportRepository is export_repository.ExportRepository
+    assert workflow_service.RoleWorkflowRepository is workflow_repository.RoleWorkflowRepository
+    assert issubclass(
+        postgresql_repositories.PostgreSQLExportRepository,
+        export_repository.ExportRepository,
+    )
+    assert issubclass(
+        postgresql_repositories.PostgreSQLRoleWorkflowRepository,
+        workflow_repository.RoleWorkflowRepository,
+    )

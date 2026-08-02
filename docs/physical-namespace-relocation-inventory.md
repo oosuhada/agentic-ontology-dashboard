@@ -26,8 +26,8 @@
 | Foundation/identity | `context.py`, `contracts.py`, `security.py`, `identity_models.py`, `identity_repository.py`, `identity.py`, `repository.py`, `service.py` | same module names under `api/ontology_dashboard/` | identity repository and application service instances | complete; legacy files are thin re-export shims | auth, tenant, Project, persistence, architecture tests |
 | Dashboard | `dashboard_models.py`, `dashboard_catalog.py`, `dashboard_repository.py`, `dashboard_service.py` | same module names under `api/ontology_dashboard/` | repository cache, catalog constant identity, PostgreSQL subclass and template resolution | complete; legacy files are thin re-export shims | dashboard, Project, isolation, export and workflow tests |
 | Analysis | `analysis_models.py`, `analysis_repository.py`, `analysis_service.py` | same module names under `api/ontology_dashboard/` | durable run repository, cache identity, cursor/cancel/progress lifecycle and materialization service contract | complete; legacy files are thin re-export shims | analysis lifecycle, cache/cancel/cursor and materialization tests |
-| Export/workflow | export and role-workflow model/repository/service files | compatibility-preserving canonical module layout, then package consolidation if justified | outbox, workflow, export repositories | next | export, workflow, outbox tests |
-| Ontology/planner | ontology files plus conversation/LLM compatibility modules | canonical ontology/planner/orchestration boundaries | ontology repositories and registry constants | planner complete; ontology remainder pending | ontology, planner, Project 3 tests |
+| Export/workflow | export and role-workflow model/repository/service files | same module names under `api/ontology_dashboard/` | outbox, workflow, export repositories, approvals and checkpoints | complete; legacy files are thin re-export shims | export, workflow, governance, isolation and outbox tests |
+| Ontology/planner | ontology files plus conversation/LLM compatibility modules | canonical ontology/planner/orchestration boundaries | ontology repositories, registry constants, provider and legacy layout planner identity | next; canonical planner package already complete | ontology, planner, Project 3 tests |
 | Shim cleanup | all legacy re-export files | none | no business logic allowed | pending until all consumers are canonical | architecture guard and package build |
 | Path extension removal | `ontology_dashboard.__path__` legacy extension | canonical package only | import provenance | pending final slice | API boot, full tests, release gate |
 
@@ -73,6 +73,21 @@ ontology_dashboard.analysis_service
 
 `AnalysisService` imports the same canonical `AnalysisRepository` class exposed by the repository module. Durable run status, cache keys/hits, cursor pages, cancellation/progress checkpoints, Dataset materialization integration, and Project/Workspace predicates are unchanged. The legacy files contain only canonical re-exports.
 
+## Export/workflow completion evidence
+
+The following implementations now load from `api/ontology_dashboard/`:
+
+```text
+ontology_dashboard.export_models
+ontology_dashboard.export_repository
+ontology_dashboard.export_service
+ontology_dashboard.role_workflow_models
+ontology_dashboard.role_workflow_repository
+ontology_dashboard.role_workflow_service
+```
+
+`ExportService` and `RoleWorkflowService` import the same canonical repository classes exposed by their repository modules. PostgreSQL export/workflow repositories remain subclasses of those canonical classes. Audit/export checkpoints, field actions, template/model approvals, transactional outbox writes, WorkOrder compatibility, and Project/Workspace predicates are unchanged.
+
 ## Next slice
 
-Move Export and Role Workflow models, repositories, and services as the next compatibility slice. Preserve permission checks, export checkpoints, transactional outbox linkage, WorkOrder identity, approval state, and Project/Workspace scope. Do not remove the package path extension until every remaining slice is canonical.
+Move the remaining Ontology, provider, report, conversation, and legacy layout-planner compatibility modules next. Preserve registry constant identity, ontology repository/service identity, Project-scoped actions and traversal, deterministic fallback behavior, and the typed Project 3 boundary. Do not remove the package path extension until this final implementation slice and compatibility cleanup pass.
