@@ -117,19 +117,21 @@ def main() -> None:
             web_environment = os.environ.copy()
             web_environment["VITE_API_BASE_URL"] = api_url
             web_environment["PLAYWRIGHT_BASE_URL"] = web_url
+            web_environment["PLAYWRIGHT_API_URL"] = api_url
+            web_environment["PLAYWRIGHT_EXTERNAL_SERVERS"] = "1"
             api_process = subprocess.Popen(
                 [sys.executable, "-m", "uvicorn", "ontology_dashboard.app:app", "--host", "127.0.0.1", "--port", str(api_port)],
                 cwd=root,
                 env=environment,
-                stdout=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
                 stderr=subprocess.STDOUT,
                 text=True,
             )
             web_process = subprocess.Popen(
-                ["npx", "vite", "--host", "127.0.0.1", "--port", str(web_port), "--strictPort"],
+                [str(frontend_temp / "node_modules" / ".bin" / "vite"), "--host", "127.0.0.1", "--port", str(web_port), "--strictPort"],
                 cwd=frontend_temp,
                 env=web_environment,
-                stdout=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
                 stderr=subprocess.STDOUT,
                 text=True,
             )
@@ -169,8 +171,19 @@ def main() -> None:
     }
     rendered = json.dumps(report, ensure_ascii=False, indent=2)
     if args.output:
-        Path(args.output).write_text(rendered, encoding="utf-8")
-    print(rendered)
+        output_path = Path(args.output)
+        output_path.write_text(rendered, encoding="utf-8")
+        print(json.dumps({
+            "release_gate": report["release_gate"],
+            "report_path": str(output_path),
+            "with_e2e": report["with_e2e"],
+            "e2e_executed": report["e2e_executed"],
+            "passed_checks": report["passed_checks"],
+            "failed_checks": report["failed_checks"],
+            "pass": report["pass"],
+        }, ensure_ascii=False, indent=2))
+    else:
+        print(rendered)
     raise SystemExit(0 if passed else 1)
 
 

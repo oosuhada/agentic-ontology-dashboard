@@ -12,8 +12,14 @@ COPY schemas /app/schemas
 COPY prompts /app/prompts
 COPY data/fixtures /app/data/fixtures
 
+ARG API_EXTRAS=""
 RUN python -m pip install --no-cache-dir --upgrade pip \
-    && python -m pip install --no-cache-dir -e /app/ml -e /app/api
+    && python -m pip install --no-cache-dir -e /app/ml \
+    && if [ -n "$API_EXTRAS" ]; then \
+         python -m pip install --no-cache-dir -e "/app/api[$API_EXTRAS]"; \
+       else \
+         python -m pip install --no-cache-dir -e /app/api; \
+       fi
 
 EXPOSE 8000
 

@@ -1,9 +1,17 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from typing import Any
 
+from ontology_dashboard.datasets import (
+    DatasetCatalogService,
+    DatasetCreateRequest,
+    DatasetFileCreate,
+    DatasetRepository,
+    DatasetVersionCreateRequest,
+)
 from ontology_dashboard.identity import AuthError, IdentityService, Principal
 
 from .file_adapter import FileAdapter
@@ -22,6 +30,7 @@ class AdapterService:
         registry: AdapterRegistry | None = None,
         repository: AdapterRepository | None = None,
         prediction_repository: PredictionResultRepository | None = None,
+        dataset_catalog: DatasetCatalogService | None = None,
     ) -> None:
         self.path = Path(database_path)
         self.root = Path(root)
@@ -32,6 +41,7 @@ class AdapterService:
             roots = [self.root / "data" / "raw", self.root / "data" / "fixtures"]
         self.repository = repository or AdapterRepository(self.path)
         self.predictions = prediction_repository or PredictionResultRepository(self.path)
+        self.dataset_catalog = dataset_catalog or DatasetCatalogService(DatasetRepository(self.path))
         self.file_adapter = FileAdapter(
             self.path,
             allowed_roots=roots,
@@ -81,7 +91,74 @@ class AdapterService:
             raise AuthError(403, "tenant_scope_denied", "다른 조직의 Dataset은 수집할 수 없습니다.")
         if manifest.project_id != project_id:
             raise AuthError(422, "project_context_mismatch", "Manifest의 Project가 요청 경로와 일치하지 않습니다.")
-        return self.file_adapter.ingest(manifest)
+        result = self.file_adapter.ingest(manifest)
+        self._sync_dataset_catalog(principal, manifest, result)
+        return result
+
+    def _sync_dataset_catalog(
+        self,
+        principal: Principal,
+        manifest: DatasetManifest,
+        result: IngestionResult,
+    ) -> None:
+        """Promote a validated legacy manifest into the canonical Dataset Version model."""
+        datasets = self.dataset_catalog.list_datasets(
+            principal=principal,
+            project_id=manifest.project_id,
+        )
+        dataset = next((item for item in datasets if item.id == manifest.manifest_id), None)
+        if dataset is None:
+            raw_slug = f"{manifest.adapter_code}-{manifest.manifest_id}".lower()
+            slug = re.sub(r"[^a-z0-9-]+", "-", raw_slug).strip("-")[:120].rstrip("-")
+            if len(slug) < 3:
+                slug = f"dataset-{manifest.manifest_id.lower()}"
+            dataset = self.dataset_catalog.create_dataset(
+                principal=principal,
+                request=DatasetCreateRequest(
+                    id=manifest.manifest_id,
+                    project_id=manifest.project_id,
+                    workspace_id=manifest.workspace_id,
+                    slug=slug,
+                    display_name=manifest.dataset_name,
+                    description=f"Validated {manifest.adapter_code} adapter dataset",
+                    source_type=manifest.adapter_code,
+                ),
+            )
+        detail = self.dataset_catalog.detail(
+            principal=principal,
+            project_id=manifest.project_id,
+            dataset_id=dataset.id,
+        )
+        if any(item.source_version == manifest.dataset_version for item in detail.versions):
+            return
+        self.dataset_catalog.create_version(
+            principal=principal,
+            project_id=manifest.project_id,
+            dataset_id=dataset.id,
+            request=DatasetVersionCreateRequest(
+                source_version=manifest.dataset_version,
+                version_label=manifest.dataset_version,
+                manifest_id=manifest.manifest_id,
+                checksum_sha256=manifest.source.checksum_sha256,
+                schema=manifest.schema_.model_dump(mode="json"),
+                profile={
+                    "ingestion_status": result.status,
+                    "source_record_count": result.source_record_count,
+                    "accepted_record_count": result.accepted_record_count,
+                    "quarantined_record_count": result.quarantined_record_count,
+                    "metrics": result.metrics,
+                },
+                record_count=result.accepted_record_count,
+                files=[
+                    DatasetFileCreate(
+                        uri=manifest.source.uri,
+                        media_type=manifest.source.media_type,
+                        checksum_sha256=manifest.source.checksum_sha256,
+                        size_bytes=manifest.source.size_bytes,
+                    )
+                ],
+            ),
+        )
 
     def save_prediction(
         self,

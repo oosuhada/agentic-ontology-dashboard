@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addNote,
   createAuditExportCheckpoint,
@@ -24,14 +24,12 @@ import {
 import { analysisPath, navigate } from "../../routing";
 import type { AppRole, Intent } from "../../types";
 import { useAuth } from "../auth/AuthContext";
-import { AnalysisWorkbench } from "../dashboard/AnalysisWorkbench";
 import type { AddAnalysisBoardRequest } from "../analysis/types";
 import { BoardCanvas } from "../dashboard/BoardCanvas";
 import { BoardCatalogPanel } from "../dashboard/BoardCatalogPanel";
 import { BoardInspector } from "../dashboard/BoardInspector";
 import { BoardRuntimeSurface } from "../dashboard/BoardRuntimeSurface";
 import { ContextPanel } from "../dashboard/ContextPanel";
-import { DashboardBoardRenderer } from "../dashboard/DashboardBoardRenderer";
 import { DashboardShell } from "../dashboard/DashboardShell";
 import type {
   BoardCatalogDefinition,
@@ -55,10 +53,27 @@ import { primaryRole, ROLE_LANDING } from "./roleLanding";
 import { useEventDetail, useRoleWorkspace, useWorkspaceCatalog } from "./useManufacturingData";
 import { useDashboardEditor } from "./useDashboardEditor";
 
+const AnalysisWorkbench = lazy(() =>
+  import("../dashboard/AnalysisWorkbench").then((module) => ({ default: module.AnalysisWorkbench })),
+);
+const DashboardBoardRenderer = lazy(() =>
+  import("../dashboard/DashboardBoardRenderer").then((module) => ({ default: module.DashboardBoardRenderer })),
+);
+
 interface ManufacturingAppProps {
   initialWorkspaceView?: "dashboard" | "analysis";
   analysisId?: string;
 }
+
+interface PendingOntologyGraphBoard {
+  projectId: string;
+  workspaceId: string;
+  objectType: string;
+  objectId: string;
+  title: string;
+}
+
+const PENDING_ONTOLOGY_GRAPH_BOARD = "ontology-dashboard:add-graph-board";
 
 export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisId = "risk-event-portfolio" }: ManufacturingAppProps = {}) {
   const { user, logout, setActiveProject } = useAuth();
@@ -339,6 +354,81 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     setSelectedBoardId(boardId);
     setNotice(`${request.title}을 현재 Dashboard 탭에 Analysis reference로 추가했습니다.`);
   }
+
+  function handleAddOntologyGraphBoard(request: PendingOntologyGraphBoard) {
+    const definition = definitionById.get("ontology-relationship");
+    if (!definition || !draftDashboard) {
+      setError("Ontology Relationship board definition을 불러오지 못했습니다.");
+      return false;
+    }
+    const boardId = `custom:ontology-relationship:${crypto.randomUUID()}`;
+    updateDraft((current) => ({
+      ...current,
+      parameter_state: {
+        ...current.parameter_state,
+        selected_equipment_id: request.objectId,
+        selected_object_type: request.objectType,
+      },
+      tabs: current.tabs.map((tab) => {
+        if (tab.id !== current.active_tab_id) return tab;
+        const nextY = tab.boards.reduce(
+          (maximum, board) => Math.max(maximum, (board.layout?.y ?? board.order * 2) + (board.layout?.h ?? 2)),
+          0,
+        );
+        const board: DashboardBoard = {
+          id: boardId,
+          definition_id: definition.id,
+          title: request.title,
+          width: definition.default_width,
+          order: tab.boards.length,
+          layout: {
+            x: 0,
+            y: nextY,
+            w: definition.default_width,
+            h: Math.max(2, Number(definition.default_settings.height_units ?? 4)),
+            min_w: definition.minimum_width,
+            min_h: 2,
+            max_w: definition.maximum_width,
+            max_h: 12,
+          },
+          source: null,
+          hidden: false,
+          mandatory: false,
+          custom: true,
+          bindings: {
+            ...definition.default_bindings,
+            selected_object_id: request.objectId,
+            selected_object_type: request.objectType,
+          },
+          settings: {
+            ...definition.default_settings,
+            root_object_id: request.objectId,
+            root_object_type: request.objectType,
+            traversal_depth: 2,
+          },
+        };
+        return { ...tab, boards: [...tab.boards, board] };
+      }),
+    }));
+    setSelectedBoardId(boardId);
+    setNotice(`${request.title}을 현재 Dashboard 탭에 Graph board로 추가했습니다.`);
+    return true;
+  }
+
+  useEffect(() => {
+    if (!draftDashboard || !selectedProjectId || !selectedWorkspaceId) return;
+    const raw = sessionStorage.getItem(PENDING_ONTOLOGY_GRAPH_BOARD);
+    if (!raw) return;
+    try {
+      const request = JSON.parse(raw) as PendingOntologyGraphBoard;
+      if (request.projectId !== selectedProjectId || request.workspaceId !== selectedWorkspaceId) return;
+      if (handleAddOntologyGraphBoard(request)) {
+        sessionStorage.removeItem(PENDING_ONTOLOGY_GRAPH_BOARD);
+      }
+    } catch {
+      sessionStorage.removeItem(PENDING_ONTOLOGY_GRAPH_BOARD);
+    }
+  }, [draftDashboard?.dashboard_id, definitionById, selectedProjectId, selectedWorkspaceId]);
 
   function handleSelectEvent(sourceBoardId: string, eventId: string) {
     const event = events.find((item) => item.event_id === eventId);
@@ -742,7 +832,8 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
               parameterState={draftDashboard.parameter_state}
               affected={affectedBoards.includes(board.id)}
             >
-              <DashboardBoardRenderer
+              <Suspense fallback={<div className="loading-panel"><div className="spinner" /><p>Board renderer를 불러오고 있습니다.</p></div>}>
+                <DashboardBoardRenderer
               board={board}
               definition={definition}
               evidence={evidence}
@@ -751,6 +842,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
               events={filterEventsForBoard(events, selectionFilters, board.id, draftDashboard.dependency_graph)}
               selectedEventId={selectedEventId}
               dashboardId={draftDashboard.dashboard_id}
+              projectId={selectedProjectId}
               workspaceId={selectedWorkspaceId}
               appRole={appRole}
               role={role}
@@ -770,7 +862,8 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
               onNote={handleNote}
               onAsk={handleAsk}
               lastFollowUp={lastFollowUp}
-              />
+                />
+              </Suspense>
             </BoardRuntimeSurface>
           );
         }}
@@ -844,15 +937,17 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       inspector={inspector}
       catalog={catalog}
       analysisWorkbench={(
-        <AnalysisWorkbench
-          analysisId={analysisId}
-          events={events}
-          selectedEventId={selectedEventId}
-          evidence={evidence}
-          workspaceId={selectedWorkspaceId}
-          onSelectEvent={(eventId) => handleSelectEvent("analysis-path", eventId)}
-          onAddToDashboard={handleAddAnalysisBoard}
-        />
+        <Suspense fallback={<div className="loading-panel"><div className="spinner" /><p>Analysis Workbench를 불러오고 있습니다.</p></div>}>
+          <AnalysisWorkbench
+            analysisId={analysisId}
+            events={events}
+            selectedEventId={selectedEventId}
+            evidence={evidence}
+            workspaceId={selectedWorkspaceId}
+            onSelectEvent={(eventId) => handleSelectEvent("analysis-path", eventId)}
+            onAddToDashboard={handleAddAnalysisBoard}
+          />
+        </Suspense>
       )}
       initialWorkspaceView={initialWorkspaceView}
       onWorkspaceViewChange={(view) => {

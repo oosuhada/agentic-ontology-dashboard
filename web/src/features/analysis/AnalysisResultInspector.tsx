@@ -60,10 +60,11 @@ export function AnalysisResultInspector({
 
   const rows: Array<Record<string, unknown>> = serverResult?.rows ?? result.rows.map((row) => ({ ...row }));
   const profileEntries = Object.values(serverResult?.profile ?? {});
-  const nullRate = profileEntries.length
+  const nullRate = serverResult?.quality.null_rate ?? (profileEntries.length
     ? profileEntries.reduce((sum, item) => sum + item.null_rate, 0) / profileEntries.length
-    : 0;
-  const duplicateKey = rows.length - new Set(rows.map((row) => String(row.event_id ?? row.object_id ?? row.id ?? JSON.stringify(row)))).size;
+    : 0);
+  const duplicateKey = serverResult?.quality.duplicate_key_count
+    ?? rows.length - new Set(rows.map((row) => String(row.event_id ?? row.object_id ?? row.id ?? JSON.stringify(row)))).size;
   const warnings = Array.from(new Set([...(serverResult?.warnings ?? []), ...clientWarnings(node)]));
 
   return (
@@ -101,6 +102,7 @@ export function AnalysisResultInspector({
           <dt>Columns</dt><dd>{serverResult?.columns.length ?? (rows[0] ? Object.keys(rows[0]).length : 0)}</dd>
           <dt>Null rate</dt><dd>{(nullRate * 100).toFixed(1)}%</dd>
           <dt>Duplicate key</dt><dd>{duplicateKey}</dd>
+          <dt>Quality source</dt><dd>{serverResult?.quality.computed_by ?? "client preview"}</dd>
           <dt>Elapsed</dt><dd>{serverResult?.elapsed_ms ?? node.data.elapsedMs}ms</dd>
           <dt>Cache</dt><dd>{serverResult?.cache_hit ? "HIT" : "MISS"}</dd>
           <dt>Generated</dt><dd>{serverResult?.generated_at ? new Date(serverResult.generated_at).toLocaleString() : "preview"}</dd>

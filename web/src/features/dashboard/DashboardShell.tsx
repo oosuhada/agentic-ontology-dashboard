@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Bell,
+  Bot,
   Blocks,
   ChevronRight,
   Command,
@@ -29,6 +30,8 @@ import {
   UserCog,
   Workflow,
 } from "lucide-react";
+import { featureFlags } from "../../featureFlags";
+import { agentPath, datasetCatalogPath, governancePath, navigate, ontologyPath } from "../../routing";
 import type { AppRole, AuthUser, DomainPack, Project, Workspace } from "../../types";
 import type { DashboardMode, DashboardTab } from "./types";
 
@@ -100,9 +103,10 @@ const TEMPLATE_ROLES: AppRole[] = [
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboards", icon: LayoutDashboard, enabled: true },
   { id: "analysis", label: "Analysis", icon: Workflow, enabled: true },
-  { id: "ontology", label: "Ontology", icon: Network, enabled: false },
-  { id: "datasets", label: "Datasets", icon: Database, enabled: false },
-  { id: "governance", label: "Governance", icon: ShieldCheck, enabled: false },
+  { id: "agent", label: "Agent", icon: Bot, enabled: true },
+  { id: "ontology", label: "Ontology", icon: Network, enabled: featureFlags.ontologyWorkbench },
+  { id: "datasets", label: "Datasets", icon: Database, enabled: featureFlags.datasetCatalog },
+  { id: "governance", label: "Governance", icon: ShieldCheck, enabled: featureFlags.governanceWorkbench },
 ] as const;
 
 function initialTheme(): "light" | "dark" {
@@ -209,6 +213,29 @@ export function DashboardShell({
     onWorkspaceViewChange?.(next);
   }
 
+  function openProductView(itemId: (typeof NAV_ITEMS)[number]["id"]) {
+    if (itemId === "dashboard" || itemId === "analysis") {
+      openWorkspace(itemId);
+      return;
+    }
+    setMobileNavOpen(false);
+    if (itemId === "agent") {
+      navigate(agentPath(selectedProjectId, selectedWorkspaceId));
+      return;
+    }
+    if (itemId === "ontology") {
+      navigate(ontologyPath(selectedProjectId, selectedWorkspaceId));
+      return;
+    }
+    if (itemId === "datasets") {
+      navigate(datasetCatalogPath(selectedProjectId));
+      return;
+    }
+    if (itemId === "governance") {
+      navigate(governancePath(selectedProjectId, selectedWorkspaceId));
+    }
+  }
+
   return (
     <div className={`ontology-dashboard-shell od-product-shell mode-${mode} role-${user.landing_key} density-${density} workspace-${workspaceView} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <aside className={`od-primary-sidebar ${mobileNavOpen ? "mobile-open" : ""}`}>
@@ -233,7 +260,7 @@ export function DashboardShell({
                 className={active ? "active" : ""}
                 disabled={!item.enabled}
                 title={!item.enabled ? `${item.label} 전용 화면은 다음 backend vertical에서 연결됩니다.` : item.label}
-                onClick={() => item.enabled && openWorkspace(item.id as "dashboard" | "analysis")}
+                onClick={() => item.enabled && openProductView(item.id)}
               >
                 <Icon size={16} />
                 {!sidebarCollapsed ? <span>{item.label}</span> : null}

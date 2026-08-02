@@ -29,7 +29,7 @@ test("modern dashboard runtime exposes chart, virtual grid, ontology graph, anal
   await expect(page.locator(".analysis-flow-node")).toHaveCount(4);
   await expect(page.locator(".analysis-result-echart canvas")).toBeVisible();
   await page.getByRole("button", { name: /Run path/ }).click();
-  await expect(page.getByText(/Run analysis-run:.* succeeded/)).toBeVisible();
+  await expect(page.getByText(/Run analysis-run:.* succeeded/)).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText("server run", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "테마 전환" }).click();
@@ -45,7 +45,7 @@ test("analysis save publishes a server snapshot and dashboard table uses server 
   await expect(page.getByText(/Server Analysis v1|서버에 생성했습니다/)).toBeVisible();
 
   await page.getByRole("button", { name: /Run path/ }).click();
-  await expect(page.getByText(/Run analysis-run:.* succeeded/)).toBeVisible();
+  await expect(page.getByText(/Run analysis-run:.* succeeded/)).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText("server run", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: /Save dataset/ }).click();

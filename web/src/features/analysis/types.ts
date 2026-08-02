@@ -83,6 +83,14 @@ export interface AnalysisNodeExecutionResult {
   row_count: number;
   columns: Array<{ name: string; value_type: string }>;
   profile: Record<string, { null_count: number; null_rate: number; distinct_count: number }>;
+  quality: {
+    row_count: number;
+    column_count: number;
+    null_cell_count: number;
+    null_rate: number;
+    duplicate_key_count: number;
+    computed_by: "server";
+  };
   render_spec: Record<string, unknown>;
   elapsed_ms: number;
   cache_hit: boolean;

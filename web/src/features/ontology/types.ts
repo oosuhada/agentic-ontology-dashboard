@@ -146,6 +146,63 @@ export interface DashboardDefinition {
   version: number;
 }
 
+export interface Project3Health {
+  status: "ready" | "degraded" | "unavailable";
+  available: boolean;
+  mapped_project_id: string | null;
+  latency_ms: number | null;
+  error: string | null;
+  checks: Array<{ check: string; status: string; detail: string; required: boolean }>;
+}
+
+export interface Project3Readiness {
+  project_id: string;
+  lifecycle_status: string;
+  source_type: string;
+  schema_available: boolean;
+  node_count: number;
+  relationship_count: number;
+  can_query: boolean;
+  next_action: string;
+  versions: Record<string, string | null>;
+}
+
+export interface Project3GraphSchema {
+  project_id: string;
+  schema_version: string;
+  title: string;
+  schema_context: string;
+  node_identities: Array<{ label: string; identity_property: string }>;
+  relationship_types: string[];
+  nodes: Array<Record<string, unknown>>;
+  relationships: Array<Record<string, unknown>>;
+}
+
+export interface Project3Subgraph {
+  root: Record<string, unknown> | null;
+  nodes: Array<Record<string, unknown>>;
+  relationships: Array<Record<string, unknown>>;
+  node_count: number;
+  relationship_count: number;
+  depth: number;
+  truncated: boolean;
+}
+
+export interface Project3IntegrationSnapshot {
+  health: Project3Health;
+  readiness: Project3Readiness | null;
+  schema: Project3GraphSchema | null;
+  subgraph: Project3Subgraph | null;
+  degraded_reason: string | null;
+}
+
+export interface Project3DegradedResponse {
+  status: "degraded";
+  available: false;
+  project_id: string;
+  error: { code: string; message: string; retryable: boolean };
+}
+
 export interface OntologyRegistry {
   domain_packs: Array<{
     id: string;
