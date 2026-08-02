@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="600" viewBox="0 0 1600 600" role="img" aria-labelledby="title desc">
+  <title id="title">Data, Logic, Action lifecycle orbit reference</title>
+  <desc id="desc">An original three-panel reconstruction for the Ontology Dashboard loading animation. It is inspired by the user-provided reference but does not include Palantir branding or proprietary artwork.</desc>
+  <defs>
+    <filter id="blur" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+    <radialGradient id="dataGlow">
+      <stop offset="0" stop-color="#dbeafe" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#dbeafe" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="logicGlow">
+      <stop offset="0" stop-color="#ede9fe" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#ede9fe" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="actionGlow">
+      <stop offset="0" stop-color="#dfe7e5" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#dfe7e5" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1600" height="600" rx="24" fill="#f7f7f4"/>
+  <g stroke="#d2d6d7" stroke-width="1">
+    <line x1="533" y1="20" x2="533" y2="580"/>
+    <line x1="1066" y1="20" x2="1066" y2="580"/>
+  </g>
+
+  <g transform="translate(0 0)">
+    <text x="44" y="52" font-family="Inter, Arial, sans-serif" font-size="16" fill="#687078">01</text>
+    <line x1="44" y1="82" x2="172" y2="82" stroke="#111827" stroke-width="4"/>
+    <text x="44" y="132" font-family="Inter, Arial, sans-serif" font-size="46" font-weight="500" fill="#111827">Data</text>
+    <circle cx="275" cy="300" r="190" fill="url(#dataGlow)" filter="url(#blur)"/>
+    <g transform="translate(275 300)" fill="none" stroke="#6b7280" stroke-width="2.2" opacity="0.82">
+      <ellipse rx="162" ry="72"/>
+      <ellipse rx="162" ry="72" transform="rotate(60)"/>
+      <ellipse rx="162" ry="72" transform="rotate(120)"/>
+    </g>
+    <g fill="#4f8ff7" stroke="#2f6fd4" stroke-width="2">
+      <circle cx="117" cy="300" r="10"/>
+      <circle cx="433" cy="300" r="10"/>
+      <circle cx="275" cy="372" r="10"/>
+    </g>
+    <text x="44" y="510" font-family="Inter, Arial, sans-serif" font-size="15" fill="#4b5563">DATA</text>
+    <text x="44" y="530" font-family="Inter, Arial, sans-serif" font-size="15" fill="#9ca3af">LOGIC</text>
+    <text x="44" y="550" font-family="Inter, Arial, sans-serif" font-size="15" fill="#9ca3af">ACTION</text>
+  </g>
+
+  <g transform="translate(533 0)">
+    <text x="44" y="52" font-family="Inter, Arial, sans-serif" font-size="16" fill="#687078">02</text>
+    <line x1="44" y1="82" x2="172" y2="82" stroke="#111827" stroke-width="4"/>
+    <text x="44" y="132" font-family="Inter, Arial, sans-serif" font-size="46" font-weight="500" fill="#111827">+Logic</text>
+    <circle cx="275" cy="300" r="190" fill="url(#logicGlow)" filter="url(#blur)"/>
+    <g transform="translate(275 300)" fill="none" stroke="#6b7280" stroke-width="2.2" opacity="0.82">
+      <ellipse rx="162" ry="72"/>
+      <ellipse rx="162" ry="72" transform="rotate(60)"/>
+      <ellipse rx="162" ry="72" transform="rotate(120)"/>
+    </g>
+    <g stroke-width="2">
+      <circle cx="117" cy="300" r="10" fill="#111827" stroke="#030712"/>
+      <circle cx="433" cy="300" r="10" fill="#111827" stroke="#030712"/>
+      <circle cx="275" cy="372" r="10" fill="#111827" stroke="#030712"/>
+      <circle cx="220" cy="228" r="10" fill="#8b5cf6" stroke="#6d28d9"/>
+      <circle cx="340" cy="250" r="10" fill="#a78bfa" stroke="#7c3aed"/>
+      <circle cx="340" cy="372" r="10" fill="#a78bfa" stroke="#7c3aed"/>
+    </g>
+    <text x="44" y="510" font-family="Inter, Arial, sans-serif" font-size="15" fill="#9ca3af">DATA</text>
+    <text x="44" y="530" font-family="Inter, Arial, sans-serif" font-size="15" fill="#6d28d9">LOGIC</text>
+    <text x="44" y="550" font-family="Inter, Arial, sans-serif" font-size="15" fill="#9ca3af">ACTION</text>
+  </g>
+
+  <g transform="translate(1066 0)">
+    <text x="44" y="52" font-family="Inter, Arial, sans-serif" font-size="16" fill="#687078">03</text>
+    <line x1="44" y1="82" x2="172" y2="82" stroke="#111827" stroke-width="4"/>
+    <text x="44" y="132" font-family="Inter, Arial, sans-serif" font-size="46" font-weight="500" fill="#111827">+Action</text>
+    <circle cx="275" cy="300" r="190" fill="url(#actionGlow)" filter="url(#blur)"/>
+    <g transform="translate(275 300)" fill="none" stroke="#6b7280" stroke-width="2.2" opacity="0.82">
+      <ellipse rx="162" ry="72"/>
+      <ellipse rx="162" ry="72" transform="rotate(60)"/>
+      <ellipse rx="162" ry="72" transform="rotate(120)"/>
+    </g>
+    <g stroke-width="2">
+      <circle cx="117" cy="300" r="10" fill="#111827" stroke="#030712"/>
+      <circle cx="433" cy="300" r="10" fill="#111827" stroke="#030712"/>
+      <circle cx="275" cy="372" r="10" fill="#111827" stroke="#030712"/>
+      <circle cx="220" cy="228" r="10" fill="#567c76" stroke="#355b55"/>
+      <circle cx="340" cy="250" r="10" fill="#6f9992" stroke="#456e68"/>
+      <circle cx="340" cy="372" r="10" fill="#567c76" stroke="#355b55"/>
+      <circle cx="170" cy="360" r="10" fill="#6f9992" stroke="#456e68"/>
+      <circle cx="370" cy="190" r="10" fill="#6f9992" stroke="#456e68"/>
+    </g>
+    <text x="44" y="510" font-family="Inter, Arial, sans-serif" font-size="15" fill="#9ca3af">DATA</text>
+    <text x="44" y="530" font-family="Inter, Arial, sans-serif" font-size="15" fill="#9ca3af">LOGIC</text>
+    <text x="44" y="550" font-family="Inter, Arial, sans-serif" font-size="15" fill="#355b55">ACTION</text>
+  </g>
+</svg>
