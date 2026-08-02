@@ -157,12 +157,12 @@ Stage 44~55의 제품 수렴과 Stage 56의 product hardening은 완료됐다. D
 ```text
 1. scripts/verify_production_environment.py로 현재 host capability를 판정
 2. Docker/managed-service host에서는 production-environment-completion-runbook.md 실행
-3. 현재 host에서는 남은 factory_signal_board physical modules를 작은 compatibility slice로 이동
-4. 승인된 complete Azure/MetroPT source가 있으면 provenance와 함께 full ingestion
-5. 첫 production connector를 REST부터 선택하고 credentials/retry/replay 검증
-6. 선택된 IdP의 OIDC, invitation/reset와 Project role mapping
-7. S3-compatible artifact storage와 OpenTelemetry 운영 증거
-8. cross-platform pixel-diff visual regression CI — COMPLETE
+3. 승인된 complete Azure/MetroPT source가 있으면 provenance와 함께 full ingestion
+4. 첫 production connector를 REST부터 선택하고 credentials/retry/replay 검증
+5. 선택된 IdP의 OIDC, invitation/reset와 Project role mapping
+6. S3-compatible artifact storage와 OpenTelemetry 운영 증거
+7. cross-platform pixel-diff visual regression CI — COMPLETE
+8. physical namespace relocation — COMPLETE
 ```
 
 이미 완료된 Dataset Catalog, Agent/Governance pagination, WorkOrder, Analysis job lifecycle, bundle split 또는 Project 3 three-store 경로를 반복 구현하지 않는다.
@@ -185,13 +185,13 @@ Stage 44~55의 제품 수렴과 Stage 56의 product hardening은 완료됐다. D
 - Dashboard editor는 undo/redo, autosave와 reload recovery를 제공한다.
 - Azure와 MetroPT는 Project-scoped showcase Event와 Evidence lineage를 제공한다.
 - executable composition root는 `ontology_dashboard.main`이며 legacy main은 compatibility shim이다.
-- physical namespace relocation의 import inventory, foundation/identity, Dashboard, Analysis, Export/Workflow slice는 완료됐으며 다음 slice는 remaining Ontology다.
+- physical namespace relocation 전체가 완료됐고 `api/factory_signal_board/`와 `ontology_dashboard.__path__` extension이 제거됐다.
 
 다음 세션은 먼저 작업 환경을 확인한다.
 
 - 먼저 `scripts/verify_production_environment.py`를 실행한다.
 - Docker와 managed credentials가 있으면 runbook의 cold-start/rollback/load gate를 실행한다.
-- external capability가 blocked이면 remaining physical package relocation slice를 선택한다. 완료된 foundation/identity, Dashboard, Analysis, Export/Workflow를 반복하지 말고 remaining Ontology부터 진행한다. PostgreSQL repository graph와 Project 3 typed boundary는 이미 구현돼 있으므로 중복 작성하지 않는다.
+- external capability가 blocked이면 physical namespace relocation을 반복하지 않는다. 승인된 full Azure/MetroPT source가 있으면 provenance 기반 ingestion을 진행하고, source도 없으면 환경 blocker를 정확히 유지한 채 다음 실행 가능한 connector 또는 운영 evidence 입력을 기다린다. PostgreSQL repository graph와 Project 3 typed boundary는 이미 구현돼 있으므로 중복 작성하지 않는다.
 - Azure/MetroPT 전체 source 파일이 없으면 showcase fixture를 full-dataset 통계로 과장하지 않는다.
 - broad rewrite보다 migration, compatibility import, targeted tests, full release gate 순서로 진행한다.
 - 이미 완료된 사용자 route와 contract를 회귀시키지 않는다.

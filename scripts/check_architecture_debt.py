@@ -39,9 +39,27 @@ def _is_thin_reexport(path: Path, canonical_module: str) -> bool:
     return executable_lines == [f"from {canonical_module} import *  # noqa: F403"]
 
 
+def _canonical_with_optional_legacy_shim(
+    root: Path,
+    module: str,
+    canonical_module: str | None = None,
+) -> bool:
+    canonical_path = root / "api" / "ontology_dashboard" / f"{module}.py"
+    legacy_root = root / "api" / "factory_signal_board"
+    if not canonical_path.exists():
+        return False
+    if not any(legacy_root.glob("*.py")):
+        return True
+    return _is_thin_reexport(
+        legacy_root / f"{module}.py",
+        canonical_module or f"ontology_dashboard.{module}",
+    )
+
+
 def collect_architecture_debt(root: Path) -> list[DebtItem]:
     canonical_init = root / "api" / "ontology_dashboard" / "__init__.py"
     canonical_composition_root = root / "api" / "ontology_dashboard" / "main.py"
+    legacy_package = root / "api" / "factory_signal_board"
     legacy_composition_shim = root / "api" / "factory_signal_board" / "main.py"
     planner_router = root / "api" / "ontology_dashboard" / "routers" / "planner.py"
     dependencies = root / "api" / "ontology_dashboard" / "dependencies.py"
@@ -50,6 +68,7 @@ def collect_architecture_debt(root: Path) -> list[DebtItem]:
     roadmap = root / "docs" / "10-product-convergence-polyglot-agentic-roadmap.md"
     master_prompt = root / "docs" / "next-session-master-prompt.md"
     project3_client = root / "api" / "ontology_dashboard" / "integrations" / "project3" / "client.py"
+    pyproject = root / "api" / "pyproject.toml"
     foundation_modules = (
         "context",
         "contracts",
@@ -79,8 +98,21 @@ def collect_architecture_debt(root: Path) -> list[DebtItem]:
         "role_workflow_repository",
         "role_workflow_service",
     )
+    ontology_compatibility_modules = (
+        "conversation",
+        "llm",
+        "reports",
+        "ontology",
+        "ontology_adapter",
+        "ontology_repository",
+        "ontology_service",
+        "ontology_planner_models",
+        "ontology_planner_service",
+    )
 
     legacy_path_extension = _contains(canonical_init, "__path__.append")
+    legacy_python_sources = tuple(legacy_package.glob("*.py"))
+    legacy_package_discovered = _contains(pyproject, "factory_signal_board")
     canonical_root_present = canonical_composition_root.exists() and _contains(canonical_composition_root, "app = create_app()")
     legacy_root_executable = any(
         _contains(legacy_composition_shim, token)
@@ -115,36 +147,24 @@ def collect_architecture_debt(root: Path) -> list[DebtItem]:
         for token in ("def execute_cypher", "def cypher(", "raw_cypher")
     )
     foundation_identity_relocated = all(
-        (root / "api" / "ontology_dashboard" / f"{module}.py").exists()
-        and _is_thin_reexport(
-            root / "api" / "factory_signal_board" / f"{module}.py",
-            f"ontology_dashboard.{module}",
-        )
+        _canonical_with_optional_legacy_shim(root, module)
         for module in foundation_modules
     )
     dashboard_relocated = all(
-        (root / "api" / "ontology_dashboard" / f"{module}.py").exists()
-        and _is_thin_reexport(
-            root / "api" / "factory_signal_board" / f"{module}.py",
-            f"ontology_dashboard.{module}",
-        )
+        _canonical_with_optional_legacy_shim(root, module)
         for module in dashboard_modules
     )
     analysis_relocated = all(
-        (root / "api" / "ontology_dashboard" / f"{module}.py").exists()
-        and _is_thin_reexport(
-            root / "api" / "factory_signal_board" / f"{module}.py",
-            f"ontology_dashboard.{module}",
-        )
+        _canonical_with_optional_legacy_shim(root, module)
         for module in analysis_modules
     )
     export_workflow_relocated = all(
-        (root / "api" / "ontology_dashboard" / f"{module}.py").exists()
-        and _is_thin_reexport(
-            root / "api" / "factory_signal_board" / f"{module}.py",
-            f"ontology_dashboard.{module}",
-        )
+        _canonical_with_optional_legacy_shim(root, module)
         for module in export_workflow_modules
+    )
+    ontology_compatibility_relocated = all(
+        _canonical_with_optional_legacy_shim(root, module)
+        for module in ontology_compatibility_modules
     )
 
     return [
@@ -205,11 +225,25 @@ def collect_architecture_debt(root: Path) -> list[DebtItem]:
             action="Keep export checkpoints, approval workflows, field actions and transactional outbox repository identities physically canonical.",
         ),
         DebtItem(
+            id="ontology_compatibility_physical_relocation",
+            state="resolved" if ontology_compatibility_relocated else "regression",
+            stage=55,
+            evidence="canonical Ontology, provider, report, conversation and planner compatibility modules",
+            action="Keep registry constants, ontology repositories/services, deterministic fallback and planner compatibility physically canonical.",
+        ),
+        DebtItem(
             id="legacy_namespace_path_extension",
-            state="accepted" if legacy_path_extension else "resolved",
+            state="regression" if legacy_path_extension else "resolved",
             stage=55,
             evidence="api/ontology_dashboard/__init__.py",
-            action="Physically relocate remaining runtime modules, then delete the package path extension.",
+            action="Keep ontology_dashboard package resolution confined to its canonical directory.",
+        ),
+        DebtItem(
+            id="legacy_package_removed",
+            state="resolved" if not legacy_python_sources and not legacy_package_discovered else "regression",
+            stage=55,
+            evidence="legacy Python source inventory and setuptools package discovery",
+            action="Do not restore the historical runtime package or include it in package discovery.",
         ),
         DebtItem(
             id="legacy_composition_root",

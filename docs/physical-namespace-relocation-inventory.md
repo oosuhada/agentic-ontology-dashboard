@@ -3,7 +3,7 @@
 - Last updated: 2026-08-02
 - Baseline HEAD inspected for the Dashboard slice: `c8fccb6`
 - Canonical package: `api/ontology_dashboard/`
-- Temporary compatibility path: `api/factory_signal_board/`
+- Legacy compatibility path: removed
 
 ## Decision Gate
 
@@ -11,7 +11,7 @@
 
 ## Import graph findings
 
-- `ontology_dashboard.__path__` still extends into `api/factory_signal_board/`.
+- `ontology_dashboard.__path__` now contains only `api/ontology_dashboard/`.
 - The canonical FastAPI composition root and planner package are already physically canonical.
 - Foundation and identity imports are consumed by the composition root, PostgreSQL repositories, projects, adapters, tests, and scripts.
 - Dashboard models, catalog constants, repository cache, and service are consumed by routers, planner, PostgreSQL repositories, exports, workflows, tests, and runtime verification scripts.
@@ -27,9 +27,9 @@
 | Dashboard | `dashboard_models.py`, `dashboard_catalog.py`, `dashboard_repository.py`, `dashboard_service.py` | same module names under `api/ontology_dashboard/` | repository cache, catalog constant identity, PostgreSQL subclass and template resolution | complete; legacy files are thin re-export shims | dashboard, Project, isolation, export and workflow tests |
 | Analysis | `analysis_models.py`, `analysis_repository.py`, `analysis_service.py` | same module names under `api/ontology_dashboard/` | durable run repository, cache identity, cursor/cancel/progress lifecycle and materialization service contract | complete; legacy files are thin re-export shims | analysis lifecycle, cache/cancel/cursor and materialization tests |
 | Export/workflow | export and role-workflow model/repository/service files | same module names under `api/ontology_dashboard/` | outbox, workflow, export repositories, approvals and checkpoints | complete; legacy files are thin re-export shims | export, workflow, governance, isolation and outbox tests |
-| Ontology/planner | ontology files plus conversation/LLM compatibility modules | canonical ontology/planner/orchestration boundaries | ontology repositories, registry constants, provider and legacy layout planner identity | next; canonical planner package already complete | ontology, planner, Project 3 tests |
-| Shim cleanup | all legacy re-export files | none | no business logic allowed | pending until all consumers are canonical | architecture guard and package build |
-| Path extension removal | `ontology_dashboard.__path__` legacy extension | canonical package only | import provenance | pending final slice | API boot, full tests, release gate |
+| Ontology/planner | ontology files plus conversation/LLM/report compatibility modules | canonical ontology/planner/orchestration boundaries | ontology repositories, registry constants, provider and legacy layout planner identity | complete | ontology, planner, Project 3 tests |
+| Shim cleanup | all legacy re-export files | removed | no historical runtime package remains | complete | architecture guard and package build |
+| Path extension removal | `ontology_dashboard.__path__` legacy extension | canonical package only | import provenance | complete | API boot, full tests, release gate |
 
 ## Foundation/identity completion evidence
 
@@ -46,7 +46,7 @@ ontology_dashboard.repository
 ontology_dashboard.service
 ```
 
-The matching files under `api/factory_signal_board/` contain only a deprecation docstring and a canonical re-export. The architecture-debt guard fails if any of these canonical files disappears or if a legacy file grows beyond that re-export.
+During migration, matching files under `api/factory_signal_board/` were reduced to canonical re-exports. Final cleanup removed those source files entirely, and the architecture-debt guard now fails if any legacy Python source or package-discovery entry returns.
 
 ## Dashboard completion evidence
 
@@ -88,6 +88,12 @@ ontology_dashboard.role_workflow_service
 
 `ExportService` and `RoleWorkflowService` import the same canonical repository classes exposed by their repository modules. PostgreSQL export/workflow repositories remain subclasses of those canonical classes. Audit/export checkpoints, field actions, template/model approvals, transactional outbox writes, WorkOrder compatibility, and Project/Workspace predicates are unchanged.
 
+## Ontology and final cleanup evidence
+
+Ontology registry, adapter, action repository, service, conversation routing, report rendering and LLM provider implementations now load from `api/ontology_dashboard/`. The former layout planner implementation is represented by the canonical `ontology_dashboard.planner.layout` module, while the two historical ontology planner module paths are explicit canonical compatibility modules.
+
+The `api/factory_signal_board/` directory, setuptools package discovery entry, and `ontology_dashboard.__path__` extension have been removed. Runtime package resolution now has one canonical directory and the architecture guard fails if the legacy package or path extension returns.
+
 ## Next slice
 
-Move the remaining Ontology, provider, report, conversation, and legacy layout-planner compatibility modules next. Preserve registry constant identity, ontology repository/service identity, Project-scoped actions and traversal, deterministic fallback behavior, and the typed Project 3 boundary. Do not remove the package path extension until this final implementation slice and compatibility cleanup pass.
+Phase 3 physical namespace relocation is complete. The next executable local work depends on approved full Azure/MetroPT source files; otherwise the next priority is a production environment runbook on a host with managed service credentials.
