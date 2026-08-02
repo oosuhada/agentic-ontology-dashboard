@@ -28,6 +28,17 @@ def _contains(path: Path, text: str) -> bool:
     return path.exists() and text in path.read_text(encoding="utf-8")
 
 
+def _is_thin_reexport(path: Path, canonical_module: str) -> bool:
+    if not path.exists():
+        return False
+    executable_lines = [
+        line.strip()
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.strip().startswith('"""')
+    ]
+    return executable_lines == [f"from {canonical_module} import *  # noqa: F403"]
+
+
 def collect_architecture_debt(root: Path) -> list[DebtItem]:
     canonical_init = root / "api" / "ontology_dashboard" / "__init__.py"
     canonical_composition_root = root / "api" / "ontology_dashboard" / "main.py"
@@ -39,6 +50,16 @@ def collect_architecture_debt(root: Path) -> list[DebtItem]:
     roadmap = root / "docs" / "10-product-convergence-polyglot-agentic-roadmap.md"
     master_prompt = root / "docs" / "next-session-master-prompt.md"
     project3_client = root / "api" / "ontology_dashboard" / "integrations" / "project3" / "client.py"
+    foundation_modules = (
+        "context",
+        "contracts",
+        "security",
+        "identity_models",
+        "identity_repository",
+        "identity",
+        "repository",
+        "service",
+    )
 
     legacy_path_extension = _contains(canonical_init, "__path__.append")
     canonical_root_present = canonical_composition_root.exists() and _contains(canonical_composition_root, "app = create_app()")
@@ -74,6 +95,14 @@ def collect_architecture_debt(root: Path) -> list[DebtItem]:
         _contains(project3_client, token)
         for token in ("def execute_cypher", "def cypher(", "raw_cypher")
     )
+    foundation_identity_relocated = all(
+        (root / "api" / "ontology_dashboard" / f"{module}.py").exists()
+        and _is_thin_reexport(
+            root / "api" / "factory_signal_board" / f"{module}.py",
+            f"ontology_dashboard.{module}",
+        )
+        for module in foundation_modules
+    )
 
     return [
         DebtItem(
@@ -103,6 +132,13 @@ def collect_architecture_debt(root: Path) -> list[DebtItem]:
             stage=45,
             evidence="Project3Client public methods",
             action="Expose natural-language query, schema, search, subgraph and RAG methods; never raw Cypher execution.",
+        ),
+        DebtItem(
+            id="foundation_identity_physical_relocation",
+            state="resolved" if foundation_identity_relocated else "regression",
+            stage=55,
+            evidence="canonical foundation/identity modules with compatibility-only legacy re-exports",
+            action="Keep context, contracts, security, identity, audit repository and demo service implementations physically canonical.",
         ),
         DebtItem(
             id="legacy_namespace_path_extension",
