@@ -1,6 +1,6 @@
 # UI-00 to UI-08 scorecard
 
-Verified on 2026-08-02 against the actual checkout, isolated Playwright databases, the starting-SHA worktree, and the release gate.
+Verified on 2026-08-03 against the actual checkout, isolated Playwright databases, the starting-SHA worktree, and the release gate.
 
 ## Stage status
 
@@ -9,21 +9,22 @@ Verified on 2026-08-02 against the actual checkout, isolated Playwright database
 | UI-00 Baseline and reference register | Complete | 24 starting-SHA screenshots, reference review, license record and `baseline-provenance.json` |
 | UI-01 Tokens and primitives | Complete | Foundry token layer, EntityTitle, StatusPill, WorkbenchHeader/Toolbar and explicit Empty/Loading/Error states |
 | UI-02 Global application shell | Complete + convergence pass | Shared 40px platform rail, 184px resource navigation and 34px topbar across primary Workbenches |
-| UI-03 Dashboard resource chrome | Complete | Resource header, compact tabs/actions, parameter rail, saved view, share, export and inspector |
+| UI-03 Dashboard resource chrome | Complete + precision pass | Resource header, explicit Resources/Canvas/Inspector lanes, resource-browser palette, contract preview, saved view, share, export and inspector |
 | UI-04 Shared board runtime | Complete | BoardFrame, MetricStrip, DenseDataTable, ChartPanel and runtime metadata |
-| UI-05 Object Explorer | Complete | Dense Object Set table, Table/Explore/Graph modes and Properties/Links/Actions/Lineage inspector |
-| UI-06 Analysis authoring | Complete | Vertical path, grouped palette, connector insertion, board I/O, run lifecycle and five inspector tabs |
+| UI-05 Object Explorer | Complete + precision pass | Typed/pinnable Object Set table, object-type icons, clickable traversal, provenance and Properties/Links/Actions/Lineage inspector |
+| UI-06 Analysis authoring | Complete + precision pass | Vertical path, typed ports/schema contracts, branch/join connector semantics, insertion, run lifecycle and five inspector tabs |
 | UI-07 Agent evidence terminal | Complete | Persisted run history, bottom composer and Evidence/Claims/Checkpoints/Persisted Trace inspector |
-| UI-08 Dataset and Governance polish | Complete | Dataset resource/version inspector and Governance projection/approval record inspectors |
+| UI-08 Dataset and Governance polish | Complete + precision pass | Typed/sortable/pinnable Dataset table with summary aggregation, immutable Version inspector and Governance record inspectors |
+| Auth/Admin control planes | Complete | Scoped platform login surface and dense tenant administration resource hierarchy |
 | 48-image visual regression | Complete | Exact committed manifest, same-platform raw threshold, cross-platform structural threshold and CI release-gate integration |
 
 ## Final information architecture
 
 | Surface | Final structure |
 |---|---|
-| Dashboard | Global shell → resource header → compact toolbar → parameter rail → board canvas → optional inspector |
-| Analysis | Board palette → vertical governed path → selected output → Config/Result/Quality/Lineage/Runtime inspector |
-| Object Explorer | Object type rail → dense Object Set or Explore/Graph view → Properties/Links/Actions/Lineage inspector |
+| Dashboard | Global shell → resource header → compact toolbar → Resource tree/palette → 12-column canvas → contract inspector |
+| Analysis | Board palette → typed vertical governed path → explicit edge contracts → selected output → Config/Result/Quality/Lineage/Runtime inspector |
+| Object Explorer | Typed Object Set → object-specific icons → clickable Explore/Graph traversal → provenance-aware Properties/Links/Actions/Lineage inspector |
 | Agent | Persisted run history → grounded answer and claims → bottom composer → evidence/checkpoint/trace inspector |
 | Dataset | Dense Dataset resource table → immutable Version identity → Overview/Schema/Profile/Files/Versions/Lineage/Projections |
 | Governance | KPI and checkpoint tabs → projection/approval records → selected governed record inspector |
@@ -65,7 +66,7 @@ Three evidence stages exist:
 
 Each stage covers Dashboard, Analysis, Project Home, Agent, Ontology, Datasets, Governance and Admin at `1440x1000`, `1728x1117` and `720x500`.
 
-The committed visual contract uses `baseline/` + `final/`, for exactly 48 PNG artifacts and 24 matching pairs. Baseline-to-final mean pixel deltas remain between the manifest limits of 3% and 35%.
+The committed visual contract uses `baseline/` + `final/`, for exactly 48 PNG artifacts and 24 matching pairs. Baseline-to-final mean pixel deltas remain between the manifest limits of 3% and 50%. The upper bound covers the reviewed Admin/Auth control-plane replacement; candidate drift limits remain unchanged.
 
 ## Visual regression profiles
 
@@ -86,9 +87,9 @@ Latest local candidate result:
 
 ```text
 Candidate images                         24 / 24
-Mean raw pixel delta max                 0.0716% / 0.15% PASS
-Changed pixel ratio max                  0.2544% / 0.75% PASS
-Structural mean delta max                0.0425% / 0.10% PASS
+Mean raw pixel delta max                 0.0715% / 0.15% PASS
+Changed pixel ratio max                  0.2533% / 0.75% PASS
+Structural mean delta max                0.0423% / 0.10% PASS
 ```
 
 First successful Ubuntu candidate result:
@@ -110,18 +111,19 @@ The maximum is the `720x500/project-home.png` font-fallback reflow. The next hig
 ```text
 Canonical naming                         PASS
 PostgreSQL migration/RLS/runtime         PASS
-Backend pytest                           122 PASS
+Backend pytest                           127 PASS
 Gold scenarios                           8/8 PASS
 Frontend Vitest                          6 PASS
 TypeScript                               PASS
 Production build                         PASS
-Initial JavaScript                       228.07 KiB / 300 KiB PASS
-Largest deferred JavaScript              443.24 KiB / 500 KiB PASS
-Full Playwright regression               49 PASS / 3 INTENTIONAL SKIP
+Initial JavaScript                       233.24 KiB / 300 KiB PASS
+Largest deferred JavaScript              443.25 KiB / 500 KiB PASS
+Full Playwright regression               51 PASS / 3 INTENTIONAL SKIP
 Final overhaul acceptance                8 PASS
 Legacy comparison manifest               PASS
 48-image committed visual manifest       PASS
 Candidate visual thresholds              PASS
+Local release gate                       16/16 PASS
 Ubuntu release gate                      16/16 PASS
 ```
 

@@ -246,7 +246,7 @@ test("react-grid-layout width persists through dashboard preferences", async ({ 
   const item = page.locator(".dashboard-board-title strong", { hasText: /^권장 조치$/ })
     .locator("xpath=ancestor::article[contains(@class,'dashboard-board-frame')]");
   await item.click();
-  await expect(page.getByText("Board Inspector", { exact: true })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Board inspector sections" })).toBeVisible();
   await page.getByLabel("Layout 폭").selectOption("6");
   await expect(item).toHaveAttribute("data-grid-w", "6");
 

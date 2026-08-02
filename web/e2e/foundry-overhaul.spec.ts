@@ -33,6 +33,19 @@ async function capture(page: Page, viewportName: string, name: string, route: st
 
 test.use({ colorScheme: "light" });
 
+test("authentication and administration use the governed control-plane chrome", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/login");
+  await expect(page.locator(".auth-platform-bar")).toBeVisible();
+  await expect(page.locator(".auth-resource-context")).toContainText("PLATFORM RESOURCES");
+  await expect(page.locator(".auth-card")).toContainText("Credentials are validated inside the configured tenant boundary.");
+
+  await login(page, "admin@ontology.local", "OntologyAdmin!2026");
+  await expect(page).toHaveURL(/\/admin$/);
+  await expect(page.locator(".admin-platform-bar")).toContainText("Tenant control plane");
+  await expect(page.getByRole("navigation", { name: "관리자 메뉴" })).toBeVisible();
+});
+
 test("Foundry shell and dashboard primitives use the compact geometry", async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -106,8 +119,34 @@ test("dashboard filter rail and board interactions remain functional", async ({ 
   await expect(page.locator(".dashboard-board-frame.is-affected").first()).toBeVisible();
 
   await page.getByRole("button", { name: "Edit", exact: true }).click();
-  await expect(page.getByText("Board Inspector", { exact: true })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Dashboard editor regions" })).toBeVisible();
+  await expect(page.locator(".dashboard-inspector")).toBeVisible();
   await expect(page.getByRole("button", { name: "Undo dashboard edit" })).toBeVisible();
+  await page.getByRole("button", { name: "Board Catalog" }).click();
+  const catalog = page.getByRole("dialog", { name: "Board Catalog" });
+  await expect(catalog.getByRole("navigation", { name: "Board categories" })).toBeVisible();
+  await expect(catalog.getByLabel("Board palette")).toBeVisible();
+  await expect(catalog.locator(".catalog-resource-preview")).toContainText("Width contract");
+  await catalog.getByRole("button", { name: "닫기", exact: true }).click();
+});
+
+test("typed analysis and object resources expose contracts, column semantics and provenance", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await login(page);
+
+  await page.goto("/app/analysis/foundry-contract-check");
+  const analysisNode = page.locator(".analysis-flow-node").filter({ hasText: "Critical event filter" });
+  await expect(analysisNode).toContainText("INPUT CONTRACT");
+  await expect(analysisNode).toContainText("OUTPUT CONTRACT");
+  await expect(page.locator(".analysis-edge-label").first()).toContainText(/rows|matched/);
+
+  await page.goto(`/app/projects/${projectId}/workspaces/${workspaceId}/ontology`);
+  await expect(page.locator(".ontology-object-table .fd-resource-table__row").first()).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByLabel("Object column menu")).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Provenance", exact: true })).toBeVisible();
+  await page.getByRole("navigation", { name: "Object inspector sections" }).getByRole("button", { name: /Links/ }).click();
+  await expect(page.locator(".ontology-link-list")).toBeVisible();
 });
 
 test("720px viewport has one main landmark and no document overflow across workbenches", async ({ page }) => {

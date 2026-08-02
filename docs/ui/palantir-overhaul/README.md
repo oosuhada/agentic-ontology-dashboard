@@ -51,7 +51,7 @@ The visual gate enforces:
 
 - exactly 48 committed PNG artifacts and 24 matching before/final pairs;
 - exact dimensions, file sizes, and SHA-256 hashes from `visual-manifest.json`;
-- baseline-to-final mean delta between 3% and 35%;
+- baseline-to-final mean delta between 3% and 50%;
 - same-platform candidate-to-approved mean pixel delta no greater than 0.15%;
 - same-platform candidate changed-pixel ratio no greater than 0.75%;
 - same-platform blurred structural delta no greater than 0.10%;

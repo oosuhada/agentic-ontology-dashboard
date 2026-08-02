@@ -1,10 +1,11 @@
-import { Activity, GitBranch, Link2, Play, Settings2 } from "lucide-react";
+import { Activity, ArrowDownLeft, ArrowUpRight, GitBranch, Link2, Play, Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { InspectorTabs } from "../../ui/foundry/InspectorTabs";
 import { PropertyTable } from "../../ui/foundry/PropertyTable";
 import { StatusPill } from "../../ui/foundry/StatusPill";
 import { EmptyState } from "../../ui/foundry/WorkbenchState";
 import { displayObjectValue, objectIdentity, objectStatus } from "./objectPresentation";
+import { objectTypeIcon } from "./objectTypeIcon";
 import type {
   ActionTypeDefinition,
   ObjectRecord,
@@ -26,6 +27,7 @@ interface ObjectViewInspectorProps {
   actionBusyId: string | null;
   actionNotice: string;
   onInvokeAction: (action: ActionTypeDefinition) => void;
+  onSelectRelatedObject: (object: ObjectRecord) => void;
 }
 
 function valueType(value: unknown): string {
@@ -45,6 +47,7 @@ export function ObjectViewInspector({
   actionBusyId,
   actionNotice,
   onInvokeAction,
+  onSelectRelatedObject,
 }: ObjectViewInspectorProps) {
   const [activeTab, setActiveTab] = useState<ObjectInspectorTab>("properties");
   useEffect(() => setActiveTab("properties"), [object?.id]);
@@ -52,11 +55,12 @@ export function ObjectViewInspector({
   if (!object) return <aside className="ontology-inspector-pane"><EmptyState title="Select an object" detail="Properties, relationships, governed actions, and lineage will appear here." /></aside>;
   const statusLabel = objectStatus(object);
   const relatedObjects = traversal?.nodes.filter((item) => item.id !== object.id) ?? [];
+  const ObjectIcon = objectTypeIcon(object.object_type);
 
   return (
     <aside className="ontology-inspector-pane">
       <header className="ontology-object-entity-header">
-        <div><span className="section-label">{definition?.display_name ?? object.object_type}</span><strong>{objectIdentity(object)}</strong><small>{object.id}</small></div>
+        <span className="ontology-object-type-icon"><ObjectIcon size={16} /></span><div><span className="section-label">{definition?.display_name ?? object.object_type}</span><strong>{objectIdentity(object)}</strong><small>{object.id}</small></div>
         <StatusPill intent={statusLabel === "critical" ? "danger" : statusLabel === "warning" ? "warning" : "success"}>{statusLabel}</StatusPill>
       </header>
       <InspectorTabs
@@ -73,10 +77,10 @@ export function ObjectViewInspector({
       <div className="ontology-inspector-scroll">
         {activeTab === "properties" ? (
           <PropertyTable rows={[
-            { id: "object_type", label: "Object type", value: object.object_type, type: "object type" },
-            { id: "workspace", label: "Workspace", value: object.workspace_id, type: "scope", mono: true },
-            { id: "version", label: "Version", value: object.version, type: "integer", numeric: true },
-            ...Object.entries(object.properties).map(([key, value]) => ({ id: key, label: definition?.properties.find((item) => item.id === key)?.display_name ?? key, value: displayObjectValue(value), type: definition?.properties.find((item) => item.id === key)?.value_type ?? valueType(value), numeric: typeof value === "number", mono: key.endsWith("_id") })),
+            { id: "object_type", label: "Object type", value: object.object_type, type: "object type", provenance: "Ontology registry" },
+            { id: "workspace", label: "Workspace", value: object.workspace_id, type: "scope", mono: true, provenance: "Project scope" },
+            { id: "version", label: "Version", value: object.version, type: "integer", numeric: true, provenance: "Immutable record" },
+            ...Object.entries(object.properties).map(([key, value]) => ({ id: key, label: definition?.properties.find((item) => item.id === key)?.display_name ?? key, value: displayObjectValue(value), type: definition?.properties.find((item) => item.id === key)?.value_type ?? valueType(value), numeric: typeof value === "number", mono: key.endsWith("_id"), provenance: object.source_refs[0] ?? "Derived property" })),
           ]} />
         ) : null}
 
@@ -86,7 +90,9 @@ export function ObjectViewInspector({
             {traversal?.edges.map((edge) => {
               const relatedId = edge.source_object_id === object.id ? edge.target_object_id : edge.source_object_id;
               const related = relatedObjects.find((item) => item.id === relatedId);
-              return <article key={edge.id}><div><StatusPill intent="primary">{edge.link_type}</StatusPill><small>v{edge.version}</small></div><strong>{related ? objectIdentity(related) : relatedId}</strong><span>{edge.source_object_id} → {edge.target_object_id}</span></article>;
+              const RelatedIcon = objectTypeIcon(related?.object_type ?? "object");
+              const outgoing = edge.source_object_id === object.id;
+              return <article key={edge.id} className="ontology-related-object-card"><div><StatusPill intent="primary">{edge.link_type}</StatusPill><small>v{edge.version}</small></div><button type="button" disabled={!related} onClick={() => related && onSelectRelatedObject(related)}><RelatedIcon size={14} /><span><strong>{related ? objectIdentity(related) : relatedId}</strong><small>{related?.object_type ?? "unresolved object"}</small></span>{outgoing ? <ArrowUpRight size={13} aria-label="Outgoing link" /> : <ArrowDownLeft size={13} aria-label="Incoming link" />}</button><span>{edge.source_object_id} → {edge.target_object_id}</span></article>;
             })}
             {!traversalLoading && !traversal?.edges.length ? <EmptyState title="No links" detail="No governed links were returned for the selected direction and depth." /> : null}
           </div>

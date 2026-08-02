@@ -323,19 +323,6 @@ kbd { border: 1px solid var(--od-border); border-bottom-width: 2px; border-radiu
 .analysis-path-meta { position: absolute; top: 7px; left: 7px; z-index: 5; display: flex; flex-wrap: wrap; gap: 4px; pointer-events: none; }
 .analysis-path-meta span { border: 1px solid var(--od-border); border-radius: 999px; padding: 3px 5px; color: var(--od-text-muted); background: color-mix(in srgb, var(--od-surface) 90%, transparent); font-size: 6px; }
 .react-flow__node-analysisStep { border: 0 !important; padding: 0 !important; background: transparent !important; box-shadow: none !important; }
-.analysis-flow-node { width: 240px; overflow: hidden; border: 1px solid var(--od-border-strong); border-radius: 7px; color: var(--od-text); background: var(--od-surface-raised); box-shadow: var(--od-shadow-md); }
-.analysis-flow-node.selected { border-color: var(--od-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--od-accent) 18%, transparent), var(--od-shadow-md); }
-.analysis-flow-node.status-running { border-color: var(--od-purple); }
-.analysis-flow-node.status-success { border-color: var(--od-success); }
-.analysis-flow-node header { display: grid; grid-template-columns: 29px minmax(0,1fr) auto; align-items: center; gap: 6px; padding: 7px; border-bottom: 1px solid var(--od-border); background: var(--od-surface-muted); }
-.analysis-flow-node header > span { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 5px; color: #fff; background: var(--od-accent); }
-.analysis-flow-node header > div { display: flex; min-width: 0; flex-direction: column; }
-.analysis-flow-node header small { color: var(--od-text-subtle); font-size: 5px; font-weight: 900; letter-spacing: .08em; }
-.analysis-flow-node header strong { overflow: hidden; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
-.analysis-flow-node > p { overflow: hidden; margin: 0; padding: 7px; color: var(--od-text-muted); font-size: 6px; text-overflow: ellipsis; white-space: nowrap; }
-.analysis-flow-node footer { display: flex; align-items: center; justify-content: space-between; gap: 5px; padding: 5px 7px; border-top: 1px solid var(--od-border); color: var(--od-text-subtle); background: var(--od-surface-subtle); font-size: 6px; }
-.analysis-flow-node footer b { color: var(--od-text); }
-.analysis-flow-node .react-flow__handle { width: 8px; height: 8px; border: 2px solid var(--od-surface); background: var(--od-accent); }
 .spin { animation: odSpin .8s linear infinite; }
 @keyframes odSpin { to { transform: rotate(360deg); } }
 .analysis-flow-preview { min-height: 0; overflow: hidden; border: 1px solid var(--od-border); border-radius: 6px; background: var(--od-surface); box-shadow: var(--od-shadow-sm); }
@@ -398,8 +385,6 @@ kbd { border: 1px solid var(--od-border); border-bottom-width: 2px; border-radiu
 .dashboard-draft-recovery button.secondary { color: var(--od-text); background: var(--od-surface); }
 .footer-note { padding: 8px 14px; color: var(--od-text-subtle); font-size: 7px; text-align: center; }
 
-.board-catalog-overlay { background: rgba(5,12,18,.7); backdrop-filter: blur(4px); }
-.board-catalog-panel { border: 1px solid var(--od-border); border-radius: 10px; color: var(--od-text); background: var(--od-surface-muted); box-shadow: var(--od-shadow-lg); }
 .catalog-card { border-color: var(--od-border); color: var(--od-text); background: var(--od-surface); }
 .catalog-card p, .catalog-card-meta, .catalog-binding-list { color: var(--od-text-muted); }
 .catalog-toolbar input, .catalog-toolbar select, .catalog-categories button { border-color: var(--od-border); color: var(--od-text); background: var(--od-surface); }

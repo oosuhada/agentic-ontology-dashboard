@@ -390,6 +390,14 @@ export function DashboardShell({
           <section className="template-publish-bar"><div><strong>Governed Template Editor</strong><span>현재 canvas를 선택 역할의 새 template version으로 게시합니다.</span></div><select value={targetTemplateRole} onChange={(event) => onTargetTemplateRoleChange(event.target.value as AppRole)}>{TEMPLATE_ROLES.map((role) => <option key={role} value={role}>{role}</option>)}</select><button type="button" className="secondary" onClick={onPublishTemplate}>{templateActionLabel}</button></section>
         ) : null}
 
+        {workspaceView === "dashboard" && mode === "edit" ? (
+          <nav className="dashboard-editor-lanes" aria-label="Dashboard editor regions">
+            <span><b>1</b><strong>Resources</strong><small>Context and filters</small></span>
+            <span><b>2</b><strong>Canvas</strong><small>12-column governed layout</small></span>
+            <span><b>3</b><strong>Inspector</strong><small>Board contract and settings</small></span>
+          </nav>
+        ) : null}
+
         {notice ? <div className="notice dashboard-notice" role="status"><span>{notice}</span><button onClick={onDismissNotice}>닫기</button></div> : null}
         {error ? <div className="error-panel dashboard-error" role="alert"><strong>Dashboard 오류</strong><p>{error}</p><button onClick={onRetry}>다시 불러오기</button></div> : null}
 

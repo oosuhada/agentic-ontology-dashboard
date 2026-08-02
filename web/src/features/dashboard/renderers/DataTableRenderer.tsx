@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { observeElementSize } from "../../../ui/foundry/resizeObserver";
 import { ChevronLeft, ChevronRight, Columns3, LoaderCircle, Search } from "lucide-react";
 import { DenseDataTable } from "../../../ui/foundry/DenseDataTable";
 import { StatusPill } from "../../../ui/foundry/StatusPill";
@@ -100,10 +101,8 @@ export function DataTableRenderer({
 
   useEffect(() => {
     const element = scrollRef.current;
-    if (!element || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(([entry]) => setViewportHeight(entry.contentRect.height));
-    observer.observe(element);
-    return () => observer.disconnect();
+    if (!element) return;
+    return observeElementSize(element, (_, height) => setViewportHeight(height));
   }, []);
 
   const visibleColumns = useMemo(
