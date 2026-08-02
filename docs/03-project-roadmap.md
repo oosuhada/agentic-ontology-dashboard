@@ -69,7 +69,7 @@
 
 - complete public Azure and MetroPT dataset ingestion with provenance artifacts
 - managed PostgreSQL/Redis/Neo4j project-isolation and failover evidence
-- Analysis, Export/Workflow, and remaining Ontology physical relocation before deleting the namespace path extension; foundation/identity and Dashboard are complete
+- Export/Workflow and remaining Ontology physical relocation before deleting the namespace path extension; foundation/identity, Dashboard, and Analysis are complete
 
 ### Acceptance Criteria
 
@@ -201,8 +201,9 @@ legacy handler container 역할을 하는 `main.py`를 제거하고 feature modu
 - import graph inventory: `DONE`
 - foundation/identity compatibility slice: `DONE`
 - Dashboard compatibility slice: `DONE`
-- Analysis compatibility slice: `NEXT`
-- Export/Workflow, remaining Ontology, shim cleanup, path-extension removal: `PENDING`
+- Analysis compatibility slice: `DONE`
+- Export/Workflow compatibility slice: `NEXT`
+- remaining Ontology, shim cleanup, path-extension removal: `PENDING`
 - detailed matrix: `docs/physical-namespace-relocation-inventory.md`
 
 ### Acceptance Criteria

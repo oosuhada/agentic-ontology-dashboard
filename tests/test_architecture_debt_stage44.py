@@ -18,6 +18,7 @@ def test_stage44_architecture_inventory_has_no_regression() -> None:
     assert by_id["validated_project3_query_boundary"].state == "resolved"
     assert by_id["foundation_identity_physical_relocation"].state == "resolved"
     assert by_id["dashboard_physical_relocation"].state == "resolved"
+    assert by_id["analysis_physical_relocation"].state == "resolved"
 
 
 def test_remaining_legacy_debt_is_explicitly_owned_by_stage55() -> None:
@@ -69,3 +70,19 @@ def test_dashboard_modules_load_from_canonical_directory() -> None:
         postgresql_repositories.PostgreSQLDashboardRepository,
         dashboard_repository.DashboardRepository,
     )
+
+
+def test_analysis_modules_load_from_canonical_directory() -> None:
+    module_names = (
+        "analysis_models",
+        "analysis_repository",
+        "analysis_service",
+    )
+    canonical_root = ROOT / "api" / "ontology_dashboard"
+    for name in module_names:
+        module = importlib.import_module(f"ontology_dashboard.{name}")
+        assert Path(module.__file__).resolve().parent == canonical_root.resolve()
+
+    analysis_repository = importlib.import_module("ontology_dashboard.analysis_repository")
+    analysis_service = importlib.import_module("ontology_dashboard.analysis_service")
+    assert analysis_service.AnalysisRepository is analysis_repository.AnalysisRepository

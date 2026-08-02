@@ -185,13 +185,13 @@ Stage 44~55의 제품 수렴과 Stage 56의 product hardening은 완료됐다. D
 - Dashboard editor는 undo/redo, autosave와 reload recovery를 제공한다.
 - Azure와 MetroPT는 Project-scoped showcase Event와 Evidence lineage를 제공한다.
 - executable composition root는 `ontology_dashboard.main`이며 legacy main은 compatibility shim이다.
-- physical namespace relocation의 import inventory, foundation/identity, Dashboard slice는 완료됐으며 다음 slice는 Analysis다.
+- physical namespace relocation의 import inventory, foundation/identity, Dashboard, Analysis slice는 완료됐으며 다음 slice는 Export/Workflow다.
 
 다음 세션은 먼저 작업 환경을 확인한다.
 
 - 먼저 `scripts/verify_production_environment.py`를 실행한다.
 - Docker와 managed credentials가 있으면 runbook의 cold-start/rollback/load gate를 실행한다.
-- external capability가 blocked이면 remaining physical package relocation slice를 선택한다. Foundation/identity와 Dashboard를 반복하지 말고 Analysis부터 진행한다. PostgreSQL repository graph는 이미 구현돼 있으므로 중복 작성하지 않는다.
+- external capability가 blocked이면 remaining physical package relocation slice를 선택한다. Foundation/identity, Dashboard, Analysis를 반복하지 말고 Export/Workflow부터 진행한다. PostgreSQL repository graph는 이미 구현돼 있으므로 중복 작성하지 않는다.
 - Azure/MetroPT 전체 source 파일이 없으면 showcase fixture를 full-dataset 통계로 과장하지 않는다.
 - broad rewrite보다 migration, compatibility import, targeted tests, full release gate 순서로 진행한다.
 - 이미 완료된 사용자 route와 contract를 회귀시키지 않는다.
