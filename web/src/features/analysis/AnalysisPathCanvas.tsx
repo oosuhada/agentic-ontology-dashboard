@@ -1,13 +1,19 @@
 import { useMemo } from "react";
 import {
   Background,
+  BaseEdge,
   Controls,
-  MiniMap,
+  EdgeLabelRenderer,
   ReactFlow,
+  getSmoothStepPath,
   type Connection,
   type EdgeChange,
+  type EdgeProps,
   type NodeChange,
 } from "@xyflow/react";
+import { Plus } from "lucide-react";
+import { ChartPanel } from "../../ui/foundry/ChartPanel";
+import { StatusPill } from "../../ui/foundry/StatusPill";
 import type { DashboardChartOption } from "../dashboard/EChartCanvas";
 import { EChartCanvas } from "../dashboard/EChartCanvas";
 import { AnalysisBoardCard } from "./AnalysisBoardCard";
@@ -15,15 +21,49 @@ import type { AnalysisFlowEdge, AnalysisFlowNode, AnalysisResult } from "./types
 
 const NODE_TYPES = { analysisStep: AnalysisBoardCard };
 
+interface InsertEdgeData extends Record<string, unknown> {
+  onInsert?: () => void;
+}
+
+function AnalysisInsertEdge(props: EdgeProps) {
+  const [edgePath, labelX, labelY] = getSmoothStepPath(props);
+  const data = props.data as InsertEdgeData | undefined;
+  return (
+    <>
+      <BaseEdge path={edgePath} markerEnd={props.markerEnd} style={props.style} />
+      <EdgeLabelRenderer>
+        <button
+          type="button"
+          className="analysis-edge-insert nodrag nopan"
+          style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)` }}
+          title="Add board after current step"
+          aria-label="Add board after current step"
+          onClick={(event) => {
+            event.stopPropagation();
+            data?.onInsert?.();
+          }}
+        >
+          <Plus size={11} />
+        </button>
+      </EdgeLabelRenderer>
+    </>
+  );
+}
+
+const EDGE_TYPES = { analysisInsert: AnalysisInsertEdge };
+
 interface AnalysisPathCanvasProps {
   workspaceId: string;
   nodes: AnalysisFlowNode[];
   edges: AnalysisFlowEdge[];
   result: AnalysisResult;
+  running?: boolean;
+  runProgress?: number;
   onNodesChange: (changes: NodeChange<AnalysisFlowNode>[]) => void;
   onEdgesChange: (changes: EdgeChange<AnalysisFlowEdge>[]) => void;
   onConnect: (connection: Connection) => void;
   onSelectNode: (nodeId: string) => void;
+  onInsertStep: () => void;
 }
 
 export function AnalysisPathCanvas({
@@ -31,10 +71,13 @@ export function AnalysisPathCanvas({
   nodes,
   edges,
   result,
+  running = false,
+  runProgress = 0,
   onNodesChange,
   onEdgesChange,
   onConnect,
   onSelectNode,
+  onInsertStep,
 }: AnalysisPathCanvasProps) {
   const option = useMemo<DashboardChartOption>(() => ({
     backgroundColor: "transparent",
@@ -42,36 +85,66 @@ export function AnalysisPathCanvas({
     tooltip: { trigger: "axis" },
     xAxis: { type: "category", data: result.grouped.map((group) => group.key), axisLabel: { color: "#738091", fontSize: 9 } },
     yAxis: { type: "value", max: 100, axisLabel: { formatter: "{value}%", color: "#738091", fontSize: 9 }, splitLine: { lineStyle: { color: "#e5e9ef" } } },
-    series: [{ type: "bar", data: result.grouped.map((group) => Number((group.averageRisk * 100).toFixed(2))), itemStyle: { color: "#2d72d2", borderRadius: [4, 4, 0, 0] }, barMaxWidth: 38 }],
+    series: [{ type: "bar", data: result.grouped.map((group) => Number((group.averageRisk * 100).toFixed(2))), itemStyle: { color: "#2d72d2", borderRadius: [2, 2, 0, 0] }, barMaxWidth: 34 }],
   }), [result.grouped]);
+
+  const verticalNodes = useMemo(
+    () => nodes.map((node, index) => ({
+      ...node,
+      draggable: false,
+      position: { x: 90, y: 58 + index * 154 },
+    })),
+    [nodes],
+  );
+  const insertEdges = useMemo(
+    () => edges.map((edge) => ({
+      ...edge,
+      type: "analysisInsert",
+      animated: false,
+      data: { ...(edge.data ?? {}), onInsert: onInsertStep },
+    })),
+    [edges, onInsertStep],
+  );
 
   return (
     <section className="analysis-flow-canvas" aria-label="Analysis path canvas">
       <div className="analysis-flow-graph">
-        <div className="analysis-path-meta"><span>Workspace · {workspaceId}</span><span>Timezone · Asia/Seoul</span><span>Source · risk_event objects</span><span>{nodes.length} nodes · {edges.length} edges</span></div>
+        <div className="analysis-path-meta">
+          <span>Workspace · {workspaceId}</span>
+          <span>Timezone · Asia/Seoul</span>
+          <span>Source · risk_event objects</span>
+          <span>{nodes.length} boards · {edges.length} links</span>
+        </div>
+        {running ? <div className="analysis-run-overlay"><StatusPill intent="primary">RUNNING {runProgress}%</StatusPill><i style={{ width: `${Math.max(2, runProgress)}%` }} /></div> : null}
         <ReactFlow
-        id="analysis-path-flow"
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={NODE_TYPES}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onNodeClick={(_, node) => onSelectNode(node.id)}
-        fitView
-        minZoom={0.25}
-        maxZoom={1.5}
-        snapToGrid
-        snapGrid={[15, 15]}
-        deleteKeyCode={null}
+          id="analysis-path-flow"
+          nodes={verticalNodes}
+          edges={insertEdges}
+          nodeTypes={NODE_TYPES}
+          edgeTypes={EDGE_TYPES}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeClick={(_, node) => onSelectNode(node.id)}
+          fitView
+          fitViewOptions={{ padding: 0.18 }}
+          minZoom={0.35}
+          maxZoom={1.2}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          panOnDrag
+          zoomOnDoubleClick={false}
+          deleteKeyCode={null}
         >
-          <Background gap={18} size={1} /><MiniMap pannable zoomable nodeStrokeWidth={3} /><Controls />
+          <Background gap={18} size={1} />
+          <Controls showInteractive={false} />
         </ReactFlow>
+        <button type="button" className="analysis-add-output" onClick={onInsertStep}><Plus size={12} /> Add output board</button>
       </div>
-      <section className="analysis-flow-preview">
-        <header><div><span className="section-label">RESULT PREVIEW</span><strong>Risk by production line</strong></div><div><span>{result.rows.length} rows</span><span>{result.grouped.length} groups</span><span>{(result.averageRisk * 100).toFixed(1)}% avg risk</span></div></header>
+      <ChartPanel className="analysis-flow-preview" empty={!result.grouped.length} emptyTitle="No grouped result">
+        <header><div><span className="section-label">SELECTED OUTPUT</span><strong>Risk by production line</strong></div><div><span>{result.rows.length} rows</span><span>{result.grouped.length} groups</span><span>{(result.averageRisk * 100).toFixed(1)}% avg risk</span></div></header>
         <EChartCanvas option={option} ariaLabel="Analysis result chart" className="analysis-result-echart" />
-      </section>
+      </ChartPanel>
     </section>
   );
 }

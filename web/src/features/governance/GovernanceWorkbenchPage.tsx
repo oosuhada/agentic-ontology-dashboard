@@ -1,4 +1,5 @@
 import { Button, Callout, Card, HTMLSelect, InputGroup, Spinner, Tag } from "@blueprintjs/core";
+import { ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   getGovernanceAgentRun,
@@ -7,9 +8,15 @@ import {
   retryGovernanceProjection,
 } from "../../api";
 import { agentPath, datasetCatalogPath, navigate, ontologyPath } from "../../routing";
+import { EntityTitle } from "../../ui/foundry/EntityTitle";
+import { MetricStrip } from "../../ui/foundry/MetricStrip";
+import { StatusPill } from "../../ui/foundry/StatusPill";
+import { WorkbenchHeader } from "../../ui/foundry/WorkbenchChrome";
 import type { AgentRunPage } from "../agent/types";
+import { GovernanceRecordInspector } from "./GovernanceRecordInspector";
 import type {
   GovernanceAgentRunDetail,
+  GovernanceApproval,
   GovernanceOverview,
   GovernanceProjection,
 } from "./types";
@@ -37,6 +44,11 @@ function statusIntent(status: string): "success" | "warning" | "danger" | "none"
   return "none";
 }
 
+function pillIntent(status: string): "success" | "warning" | "danger" | "neutral" {
+  const resolved = statusIntent(status);
+  return resolved === "none" ? "neutral" : resolved;
+}
+
 function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
   return new Date(value).toLocaleString();
@@ -50,6 +62,8 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
   const [overview, setOverview] = useState<GovernanceOverview | null>(null);
   const [activeTab, setActiveTab] = useState<GovernanceTab>("overview");
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [selectedProjectionId, setSelectedProjectionId] = useState<string | null>(null);
+  const [selectedApprovalId, setSelectedApprovalId] = useState<string | null>(null);
   const [runDetail, setRunDetail] = useState<GovernanceAgentRunDetail | null>(null);
   const [runPage, setRunPage] = useState<AgentRunPage>({ items: [], offset: 0, limit: 20, total: 0 });
   const [runSearch, setRunSearch] = useState("");
@@ -94,6 +108,8 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
       const payload = await getGovernanceOverview(projectId, workspaceId);
       setOverview(payload);
       setSelectedRunId((current) => current ?? payload.agent_runs[0]?.run_id ?? null);
+      setSelectedProjectionId((current) => current && payload.projections.some((item) => item.id === current) ? current : payload.projections[0]?.id ?? null);
+      setSelectedApprovalId((current) => current && payload.approvals.some((item) => item.id === current) ? current : payload.approvals[0]?.id ?? null);
       setError("");
       await refreshRunList(0);
     } catch (reason: unknown) {
@@ -136,6 +152,14 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
     () => overview?.projections.filter((item) => item.status === "failed") ?? [],
     [overview],
   );
+  const selectedProjection = useMemo(
+    () => overview?.projections.find((item) => item.id === selectedProjectionId) ?? null,
+    [overview, selectedProjectionId],
+  );
+  const selectedApproval = useMemo(
+    () => overview?.approvals.find((item) => item.id === selectedApprovalId) ?? null,
+    [overview, selectedApprovalId],
+  );
 
   async function retryProjection(projection: GovernanceProjection) {
     setRetryingId(projection.id);
@@ -156,20 +180,12 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
 
   return (
     <main className="governance-workbench-page">
-      <header className="governance-workbench-header">
-        <div>
-          <span className="eyebrow">GOVERNANCE WORKBENCH</span>
-          <h1>Project controls, lineage, and agent evidence</h1>
-          <p>{projectId} · {workspaceId} · generated {formatDate(overview?.generated_at)}</p>
-        </div>
-        <div className="governance-header-actions">
-          <Tag minimal intent={failedProjections.length ? "danger" : "success"}>{failedProjections.length} failed projections</Tag>
-          <Button icon="refresh" onClick={() => void refresh()}>Refresh</Button>
-          <Button icon="diagram-tree" onClick={() => navigate(ontologyPath(projectId, workspaceId))}>Ontology</Button>
-          <Button icon="database" onClick={() => navigate(datasetCatalogPath(projectId))}>Datasets</Button>
-          <Button icon="dashboard" onClick={() => navigate(`/app/projects/${encodeURIComponent(projectId)}`)}>Dashboard</Button>
-        </div>
-      </header>
+      <WorkbenchHeader
+        className="governance-workbench-header"
+        title={<EntityTitle icon={ShieldCheck} eyebrow="GOVERNANCE WORKBENCH" title="Project Checkpoints" subtitle={`${projectId} · ${workspaceId} · generated ${formatDate(overview?.generated_at)}`} />}
+        metadata={<StatusPill intent={failedProjections.length ? "danger" : "success"}>{failedProjections.length} failed projections</StatusPill>}
+        actions={<div className="governance-header-actions"><Button icon="refresh" onClick={() => void refresh()}>Refresh</Button><Button icon="diagram-tree" onClick={() => navigate(ontologyPath(projectId, workspaceId))}>Ontology</Button><Button icon="database" onClick={() => navigate(datasetCatalogPath(projectId))}>Datasets</Button><Button icon="dashboard" onClick={() => navigate(`/app/projects/${encodeURIComponent(projectId)}`)}>Dashboard</Button></div>}
+      />
 
       {error ? <Callout intent="danger" title="Governance error"><span>{error}</span> <Button minimal small onClick={() => setError("")}>Dismiss</Button></Callout> : null}
       {notice ? <Callout intent="success" title="Governance action"><span>{notice}</span> <Button minimal small onClick={() => setNotice("")}>Dismiss</Button></Callout> : null}
@@ -187,13 +203,13 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
 
       {overview && activeTab === "overview" ? (
         <section className="governance-overview" aria-label="Governance overview">
-          <div className="governance-kpi-grid">
-            <Card elevation={0}><small>DATASETS</small><strong>{overview.counts.datasets}</strong><span>{overview.counts.dataset_versions} versions</span></Card>
-            <Card elevation={0}><small>PROJECTIONS</small><strong>{overview.counts.projections}</strong><span>{overview.counts.failed_projections} failed · {overview.counts.pending_projections} pending</span></Card>
-            <Card elevation={0}><small>AGENT RUNS</small><strong>{overview.counts.agent_runs}</strong><span>{overview.counts.failed_agent_runs} failed</span></Card>
-            <Card elevation={0}><small>APPROVALS</small><strong>{overview.counts.pending_approvals}</strong><span>pending review</span></Card>
-            <Card elevation={0}><small>MATERIALIZATIONS</small><strong>{overview.counts.materializations}</strong><span>registered artifacts</span></Card>
-          </div>
+          <MetricStrip className="governance-kpi-grid" metrics={[
+            { id: "datasets", label: "Datasets", value: overview.counts.datasets, detail: `${overview.counts.dataset_versions} versions` },
+            { id: "projections", label: "Projections", value: overview.counts.projections, detail: `${overview.counts.failed_projections} failed · ${overview.counts.pending_projections} pending`, tone: overview.counts.failed_projections ? "danger" : overview.counts.pending_projections ? "warning" : "success" },
+            { id: "agent", label: "Agent runs", value: overview.counts.agent_runs, detail: `${overview.counts.failed_agent_runs} failed`, tone: overview.counts.failed_agent_runs ? "danger" : "default" },
+            { id: "approvals", label: "Approvals", value: overview.counts.pending_approvals, detail: "pending review", tone: overview.counts.pending_approvals ? "warning" : "success" },
+            { id: "materializations", label: "Materializations", value: overview.counts.materializations, detail: "registered artifacts" },
+          ]} />
           <div className="governance-overview-grid">
             <section className="governance-panel">
               <div className="governance-panel-heading"><div><small>RECENT AGENT RUNS</small><strong>Grounded execution trace</strong></div><Button minimal small onClick={() => setActiveTab("agent-runs")}>Inspect all</Button></div>
@@ -275,9 +291,15 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
       ) : null}
 
       {overview && activeTab === "projections" ? (
-        <section className="governance-table-panel" aria-label="Projection health">
-          <div className="governance-panel-heading"><div><small>STORE PROJECTIONS</small><strong>Relational source and eventual-consistency stores</strong></div><Tag minimal>{overview.access.can_retry_projection ? "retry enabled" : "read only"}</Tag></div>
-          <div className="governance-table-scroll"><table><thead><tr><th>Dataset / version</th><th>Store</th><th>Status</th><th>Records</th><th>Attempts</th><th>Source / namespace</th><th>Updated</th><th>Action</th></tr></thead><tbody>{overview.projections.map((item) => <tr key={item.id}><td><strong>{item.dataset_name}</strong><small>{item.version_label}<br />{item.dataset_version_id}</small></td><td>{item.store_kind}</td><td><Tag intent={statusIntent(item.status)}>{item.status}</Tag>{item.last_error ? <small className="governance-error-text">{item.last_error}</small> : null}</td><td>{item.record_count}</td><td>{item.attempt_count}</td><td><small>{item.source_version}</small><code>{item.object_namespace}</code></td><td><small>{formatDate(item.updated_at)}</small></td><td><Button small icon="repeat" loading={retryingId === item.id} disabled={!item.can_retry} onClick={() => void retryProjection(item)}>Retry</Button></td></tr>)}</tbody></table></div>
+        <section className="governance-record-layout" aria-label="Projection health">
+          <section className="governance-table-panel">
+            <div className="governance-panel-heading"><div><small>STORE PROJECTIONS</small><strong>Relational source and eventual-consistency stores</strong></div><StatusPill intent={overview.access.can_retry_projection ? "success" : "neutral"}>{overview.access.can_retry_projection ? "retry enabled" : "read only"}</StatusPill></div>
+            <div className="fd-resource-table governance-record-table" role="table">
+              <div className="fd-resource-table__header" role="row" style={{ gridTemplateColumns: "minmax(210px,1.4fr) 85px 90px 80px 80px 130px" }}><span>Dataset / version</span><span>Store</span><span>Status</span><span>Records</span><span>Attempts</span><span>Updated</span></div>
+              {overview.projections.map((item) => <button type="button" role="row" key={item.id} className={`fd-resource-table__row ${selectedProjectionId === item.id ? "active" : ""}`} style={{ gridTemplateColumns: "minmax(210px,1.4fr) 85px 90px 80px 80px 130px" }} onClick={() => setSelectedProjectionId(item.id)}><div className="fd-resource-table__primary"><strong>{item.dataset_name}</strong><small>{item.version_label} · {item.dataset_version_id}</small></div><span>{item.store_kind}</span><span><StatusPill intent={pillIntent(item.status)}>{item.status}</StatusPill></span><span className="fd-resource-table__numeric">{item.record_count.toLocaleString()}</span><span className="fd-resource-table__numeric">{item.attempt_count}</span><span>{formatDate(item.updated_at)}</span></button>)}
+            </div>
+          </section>
+          <GovernanceRecordInspector projection={selectedProjection} retrying={retryingId === selectedProjection?.id} onRetryProjection={(projection) => void retryProjection(projection)} />
         </section>
       ) : null}
 
@@ -289,9 +311,16 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
       ) : null}
 
       {overview && activeTab === "approvals" ? (
-        <section className="governance-approval-grid" aria-label="Project approvals">
-          {overview.approvals.map((item) => <Card key={item.id} elevation={0}><header><div><small>{item.workflow_type.toUpperCase()}</small><h2>{item.target_role ?? "Model release"}</h2></div><Tag intent={statusIntent(item.status)}>{item.status}</Tag></header><p>{String(item.payload.change_summary ?? item.payload.notes ?? "No approval note")}</p><dl><div><dt>Requested by</dt><dd>{item.requested_by_name}</dd></div><div><dt>Created</dt><dd>{formatDate(item.created_at)}</dd></div><div><dt>Decision</dt><dd>{item.decision_by_name ?? "Pending"}</dd></div></dl><details><summary>Approval payload</summary><JsonPreview value={item.payload} /></details></Card>)}
-          {!overview.approvals.length ? <p className="governance-empty">현재 Project에 기록된 승인 요청이 없습니다.</p> : null}
+        <section className="governance-record-layout" aria-label="Project approvals">
+          <section className="governance-table-panel">
+            <div className="governance-panel-heading"><div><small>APPROVAL RECORDS</small><strong>Template publish and model release checkpoints</strong></div><StatusPill intent={overview.counts.pending_approvals ? "warning" : "success"}>{overview.counts.pending_approvals} pending</StatusPill></div>
+            <div className="fd-resource-table governance-record-table" role="table">
+              <div className="fd-resource-table__header" role="row" style={{ gridTemplateColumns: "minmax(150px,1fr) 130px 100px 130px minmax(150px,1fr)" }}><span>Workflow</span><span>Target</span><span>Status</span><span>Requested</span><span>Requester / decision</span></div>
+              {overview.approvals.map((item) => <button type="button" role="row" key={item.id} className={`fd-resource-table__row ${selectedApprovalId === item.id ? "active" : ""}`} style={{ gridTemplateColumns: "minmax(150px,1fr) 130px 100px 130px minmax(150px,1fr)" }} onClick={() => setSelectedApprovalId(item.id)}><div className="fd-resource-table__primary"><strong>{item.workflow_type}</strong><small>{item.id}</small></div><span>{item.target_role ?? "Model release"}</span><span><StatusPill intent={pillIntent(item.status)}>{item.status}</StatusPill></span><span>{formatDate(item.created_at)}</span><div className="fd-resource-table__primary"><strong>{item.requested_by_name}</strong><small>{item.decision_by_name ?? "Pending decision"}</small></div></button>)}
+              {!overview.approvals.length ? <p className="governance-empty">현재 Project에 기록된 승인 요청이 없습니다.</p> : null}
+            </div>
+          </section>
+          <GovernanceRecordInspector approval={selectedApproval} />
         </section>
       ) : null}
 

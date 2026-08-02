@@ -1,11 +1,14 @@
 import { Button, Callout, Card, HTMLSelect, InputGroup, Spinner, Tag } from "@blueprintjs/core";
+import { Bot } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getAgentRun, listAgentRuns, runAgentQuery } from "../../api";
 import { governancePath, navigate, ontologyPath } from "../../routing";
+import { EntityTitle } from "../../ui/foundry/EntityTitle";
+import { StatusPill } from "../../ui/foundry/StatusPill";
+import { WorkbenchHeader } from "../../ui/foundry/WorkbenchChrome";
 import { AgentQueryBoard } from "./AgentQueryBoard";
-import { EvidenceTraceList } from "./EvidenceTraceList";
+import { AgentRunInspector } from "./AgentRunInspector";
 import { GroundedClaimList } from "./GroundedClaimList";
-import { OrchestrationStepper } from "./OrchestrationStepper";
 import type { AgentQueryInput, AgentRunPage, AgentRunResponse } from "./types";
 
 interface AgentWorkbenchPageProps {
@@ -148,20 +151,12 @@ export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPag
 
   return (
     <main className="agent-workbench-page">
-      <header className="agent-workbench-header">
-        <div>
-          <span className="eyebrow">AGENT EVIDENCE WORKBENCH</span>
-          <h1>Ask, inspect, and trace every claim</h1>
-          <p>{projectId} · {workspaceId} · typed tools only</p>
-        </div>
-        <div className="agent-header-actions">
-          {run ? <Tag intent={statusIntent(run.state.status)}>{run.state.status}</Tag> : null}
-          {run ? <Tag minimal>{run.state.route}</Tag> : null}
-          <Button icon="diagram-tree" onClick={() => navigate(ontologyPath(projectId, workspaceId))}>Ontology</Button>
-          <Button icon="shield" onClick={() => navigate(governancePath(projectId, workspaceId))}>Governance</Button>
-          <Button icon="dashboard" onClick={() => navigate(`/app/projects/${encodeURIComponent(projectId)}`)}>Dashboard</Button>
-        </div>
-      </header>
+      <WorkbenchHeader
+        className="agent-workbench-header"
+        title={<EntityTitle icon={Bot} eyebrow="AGENT EVIDENCE WORKBENCH" title="Grounded Evidence Terminal" subtitle={`${projectId} · ${workspaceId} · typed tools only`} />}
+        metadata={run ? <div className="agent-header-status"><StatusPill intent={run.state.status === "succeeded" ? "success" : run.state.status === "failed" ? "danger" : "warning"}>{run.state.status}</StatusPill><StatusPill intent="primary">{run.state.route}</StatusPill></div> : null}
+        actions={<div className="agent-header-actions"><Button icon="diagram-tree" onClick={() => navigate(ontologyPath(projectId, workspaceId))}>Ontology</Button><Button icon="shield" onClick={() => navigate(governancePath(projectId, workspaceId))}>Governance</Button><Button icon="dashboard" onClick={() => navigate(`/app/projects/${encodeURIComponent(projectId)}`)}>Dashboard</Button></div>}
+      />
 
       {error ? <Callout intent="danger" title="Agent Workbench error"><span>{error}</span> <Button minimal small onClick={() => setError("")}>Dismiss</Button></Callout> : null}
       <Callout intent="primary" icon="lock" title="Execution boundary">
@@ -170,17 +165,6 @@ export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPag
 
       <section className="agent-workbench-grid">
         <aside className="agent-query-rail">
-          <AgentQueryBoard
-            projectId={projectId}
-            workspaceId={workspaceId}
-            initialQuestion={initial.get("question") ?? ""}
-            initialObjectType={initial.get("objectType") ?? ""}
-            initialObjectId={initial.get("objectId") ?? ""}
-            loading={loading}
-            loadingRun={loadingRun}
-            onQuery={query}
-            onLoadRun={loadRun}
-          />
           <section className="agent-recent-runs agent-server-runs">
             <header><span className="eyebrow">PERSISTED RUNS</span><strong>{runPage.total}</strong></header>
             <div className="agent-run-filters">
@@ -237,10 +221,6 @@ export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPag
                   <header><div><small>VALIDATED CLAIMS</small><strong>Claims link back to evidence IDs</strong></div><Tag minimal>{run.state.claims.length}</Tag></header>
                   <GroundedClaimList claims={run.state.claims} onSelectEvidence={setSelectedEvidenceId} />
                 </section>
-                <section className="agent-section">
-                  <header><div><small>EVIDENCE TRACE</small><strong>Source, version, object, and score</strong></div><Tag minimal>{run.state.evidence.length}</Tag></header>
-                  <EvidenceTraceList items={run.state.evidence} selectedEvidenceId={selectedEvidenceId} onSelectEvidence={setSelectedEvidenceId} />
-                </section>
               </div>
             </>
           ) : (
@@ -249,26 +229,20 @@ export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPag
               <p>답변만 보여주지 않고 어떤 store·Dataset Version·Object에서 근거가 왔는지 함께 표시합니다.</p>
             </div>
           )}
+          <AgentQueryBoard
+            projectId={projectId}
+            workspaceId={workspaceId}
+            initialQuestion={initial.get("question") ?? ""}
+            initialObjectType={initial.get("objectType") ?? ""}
+            initialObjectId={initial.get("objectId") ?? ""}
+            loading={loading}
+            loadingRun={loadingRun}
+            onQuery={query}
+            onLoadRun={loadRun}
+          />
         </section>
 
-        <aside className="agent-lineage-pane">
-          <div className="agent-pane-heading"><div><small>ORCHESTRATION LINEAGE</small><strong>Route → collect → merge → validate</strong></div></div>
-          {run ? (
-            <div className="agent-lineage-scroll">
-              <OrchestrationStepper run={run} />
-              <section className="agent-trace-records">
-                <header><span className="eyebrow">PERSISTED TRACE</span><strong>{run.traces.length}</strong></header>
-                {run.traces.map((trace) => (
-                  <article key={trace.id}>
-                    <div><strong>{trace.step_name}</strong><Tag minimal intent={statusIntent(trace.status)}>{trace.status}</Tag></div>
-                    <small>{trace.store_kind ?? "orchestrator"} · {trace.latency_ms ?? 0} ms · {new Date(trace.created_at).toLocaleString()}</small>
-                    {trace.input || trace.output ? <details><summary>Execution metadata</summary><pre>{JSON.stringify({ input: trace.input, output: trace.output }, null, 2)}</pre></details> : null}
-                  </article>
-                ))}
-              </section>
-            </div>
-          ) : <div className="agent-empty-state"><p>실행 후 checkpoint와 store trace가 표시됩니다.</p></div>}
-        </aside>
+        <AgentRunInspector run={run} selectedEvidenceId={selectedEvidenceId} onSelectEvidence={setSelectedEvidenceId} />
       </section>
     </main>
   );

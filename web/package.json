@@ -12,6 +12,8 @@
     "preview": "vite preview --host 127.0.0.1 --port 3100 --strictPort",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:overhaul": "playwright test e2e/workbench-final-overhaul.spec.ts",
+    "test:visual:overhaul": "python3 ../scripts/check_palantir_overhaul_visuals.py --candidate-root test-results/palantir-overhaul-candidate --require-candidate",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

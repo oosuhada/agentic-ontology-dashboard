@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Columns3, LoaderCircle, Search } from "lucide-react";
+import { DenseDataTable } from "../../../ui/foundry/DenseDataTable";
+import { StatusPill } from "../../../ui/foundry/StatusPill";
+import { EmptyState } from "../../../ui/foundry/WorkbenchState";
 import type { SelectionFilter } from "../types";
 
 export type TableDatum = Record<string, string | number | boolean | null | undefined>;
@@ -36,7 +39,7 @@ interface DataTableRendererProps {
 }
 
 type SortState = { columnId: string; direction: "asc" | "desc" } | null;
-const ROW_HEIGHT = 38;
+const ROW_HEIGHT = 30;
 const OVERSCAN = 10;
 
 function CellValue({ value, format }: { value: unknown; format?: DataTableColumn["format"] }) {
@@ -50,7 +53,7 @@ function CellValue({ value, format }: { value: unknown; format?: DataTableColumn
       : status === "warning" || status === "attention"
         ? "warning"
         : "success";
-    return <span className={`od-tag intent-${intent}`}>{status}</span>;
+    return <StatusPill intent={intent}>{status}</StatusPill>;
   }
   return <>{String(value ?? "-")}</>;
 }
@@ -176,47 +179,36 @@ export function DataTableRenderer({
       </header>
       {serverPagination?.error ? <div className="od-callout intent-danger">{serverPagination.error}</div> : null}
       {rows.length ? (
-        <div
-          ref={scrollRef}
-          className="generic-data-table"
-          role="table"
-          aria-busy={serverPagination?.loading ?? false}
-          onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
-        >
-          <div className="generic-data-table-head" role="row" style={{ gridTemplateColumns: template, minWidth: tableWidth }}>
-            {visibleColumns.map((column) => (
-              <button type="button" role="columnheader" key={column.id} onClick={() => toggleSort(column.id)}>
-                {column.label}{sort?.columnId === column.id ? sort.direction === "asc" ? " ↑" : " ↓" : ""}
-              </button>
-            ))}
-          </div>
-          <div className="generic-data-table-body" style={{ height: processedRows.length * ROW_HEIGHT, minWidth: tableWidth }}>
-            {virtualRows.map((row, index) => {
-              const absoluteIndex = startIndex + index;
-              const key = String(row[rowKey] ?? absoluteIndex);
-              return (
-                <button
-                  type="button"
-                  role="row"
-                  key={`${key}:${absoluteIndex}`}
-                  className={key === selectedRowKey ? "active" : ""}
-                  style={{ transform: `translateY(${absoluteIndex * ROW_HEIGHT}px)`, gridTemplateColumns: template }}
-                  onClick={() => onRowSelect?.(row, {
-                    id: crypto.randomUUID(),
-                    source_board_id: boardId,
-                    field: rowKey,
-                    operator: "eq",
-                    values: [key],
-                    created_at: new Date().toISOString(),
-                  })}
-                >
-                  {visibleColumns.map((column) => <span role="cell" key={column.id}><CellValue value={row[column.id]} format={column.format} /></span>)}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : <div className="od-non-ideal-state"><strong>No matching rows</strong><span>현재 filter scope에 포함되는 Object가 없습니다.</span></div>}
+        <DenseDataTable
+          columns={visibleColumns.map((column) => ({ id: column.id, label: column.label }))}
+          rows={virtualRows.map((row, index) => {
+            const absoluteIndex = startIndex + index;
+            const key = String(row[rowKey] ?? absoluteIndex);
+            return {
+              key: `${key}:${absoluteIndex}`,
+              selected: key === selectedRowKey,
+              cells: visibleColumns.map((column) => <CellValue key={column.id} value={row[column.id]} format={column.format} />),
+              style: { transform: `translateY(${absoluteIndex * ROW_HEIGHT}px)` },
+              onSelect: () => onRowSelect?.(row, {
+                id: crypto.randomUUID(),
+                source_board_id: boardId,
+                field: rowKey,
+                operator: "eq",
+                values: [key],
+                created_at: new Date().toISOString(),
+              }),
+            };
+          })}
+          gridTemplateColumns={template}
+          tableWidth={tableWidth}
+          bodyHeight={processedRows.length * ROW_HEIGHT}
+          ariaBusy={serverPagination?.loading ?? false}
+          sort={sort}
+          onSort={toggleSort}
+          onScroll={setScrollTop}
+          scrollRef={(node) => { scrollRef.current = node; }}
+        />
+      ) : <EmptyState className="od-non-ideal-state" title="No matching rows" detail="현재 filter scope에 포함되는 Object가 없습니다." />}
       {serverPagination ? (
         <footer className="generic-pagination-controls">
           <label>Rows <select value={serverPagination.pageSize} onChange={(event) => serverPagination.onPageSizeChange(Number(event.target.value))}>{[25, 50, 100, 200].map((size) => <option value={size} key={size}>{size}</option>)}</select></label>

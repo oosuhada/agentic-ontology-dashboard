@@ -33,6 +33,9 @@ import {
   Workflow,
 } from "lucide-react";
 import { featureFlags } from "../../featureFlags";
+import { EntityTitle } from "../../ui/foundry/EntityTitle";
+import { StatusPill } from "../../ui/foundry/StatusPill";
+import { WorkbenchHeader, WorkbenchToolbar } from "../../ui/foundry/WorkbenchChrome";
 import { agentPath, datasetCatalogPath, governancePath, navigate, ontologyPath, projectHomePath } from "../../routing";
 import type { AppRole, AuthUser, DomainPack, Project, Workspace } from "../../types";
 import type { DashboardMode, DashboardTab } from "./types";
@@ -337,13 +340,18 @@ export function DashboardShell({
           </div>
         </header>
 
-        <section className="od-context-header">
-          <div className="od-context-title">
-            <div className="od-context-eyebrow"><span className="eyebrow">{roleEyebrow}</span><span className="od-domain-pack-name">{domainPack?.display_name ?? "Manufacturing Operations"}</span></div>
-            <div><h1>{workspaceView === "dashboard" ? `${roleLabel} Operations` : "Risk Event Analysis Path"}</h1>{dirty ? <span className="unsaved-indicator">Unsaved changes</span> : <span className="saved-indicator">Saved</span>}</div>
-            <p>{workspaceView === "dashboard" ? roleDescription : "Object set에서 변형, 검증, 시각화, lineage를 순차적으로 구성합니다."}</p>
-          </div>
-          <div className="od-context-controls">
+        <WorkbenchHeader
+          className="od-context-header fd-dashboard-resource-header"
+          title={<div className="od-context-title">
+            <EntityTitle
+              icon={workspaceView === "dashboard" ? LayoutDashboard : Workflow}
+              eyebrow={roleEyebrow}
+              title={workspaceView === "dashboard" ? `${roleLabel} Operations` : "Risk Event Analysis Path"}
+              subtitle={workspaceView === "dashboard" ? roleDescription : "Object set에서 변형, 검증, 시각화, lineage를 순차적으로 구성합니다."}
+              trailing={<div className="fd-entity-title__trailing"><span className="od-domain-pack-name">{domainPack?.display_name ?? "Manufacturing Operations"}</span><StatusPill intent={dirty ? "warning" : "success"}>{dirty ? "Unsaved changes" : "Saved"}</StatusPill></div>}
+            />
+          </div>}
+          actions={<div className="od-context-controls">
             <label>Project<select value={selectedProjectId} onChange={(event) => onProjectChange(event.target.value)}>{projects.map((project) => <option key={project.id} value={project.id}>{project.display_name}</option>)}</select></label>
             <label>Workspace<select value={selectedWorkspaceId} onChange={(event) => onWorkspaceChange(event.target.value)}>{workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.display_name}</option>)}</select></label>
             <label>Role<select value={activeRole} onChange={(event) => onActiveRoleChange(event.target.value as AppRole)}>{availableRoles.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}</select></label>
@@ -351,8 +359,8 @@ export function DashboardShell({
               <button type="button" className={workspaceView === "dashboard" ? "active" : ""} onClick={() => openWorkspace("dashboard")}><LayoutDashboard size={13} /> Dashboard</button>
               <button type="button" className={workspaceView === "analysis" ? "active" : ""} onClick={() => openWorkspace("analysis")}><Workflow size={13} /> Analysis</button>
             </div>
-          </div>
-        </section>
+          </div>}
+        />
 
         {draftRecovery}
 
@@ -362,8 +370,10 @@ export function DashboardShell({
         </section>
 
         {workspaceView === "dashboard" ? (
-          <div className="dashboard-tab-toolbar od-workbench-toolbar">
-            <nav className="dashboard-tabs" aria-label="Dashboard tabs">
+          <WorkbenchToolbar
+            className="dashboard-tab-toolbar od-workbench-toolbar"
+            label="Dashboard tabs and actions"
+            start={<nav className="dashboard-tabs" aria-label="Dashboard tabs">
               {tabs.filter((tab) => mode === "edit" || !tab.hidden).map((tab) => (
                 <button
                   key={tab.id}
@@ -385,8 +395,8 @@ export function DashboardShell({
                 </button>
               ))}
               {mode === "edit" ? <button type="button" className="add-tab-button" onClick={onAddTab}><Plus size={13} /> Tab</button> : null}
-            </nav>
-            <div className="dashboard-edit-toolbar">
+            </nav>}
+            end={<div className="dashboard-edit-toolbar">
               <div className="view-edit-switch" role="group" aria-label="Dashboard mode">
                 <button type="button" className={mode === "view" ? "active" : ""} onClick={() => onModeChange("view")}><Eye size={12} /> View</button>
                 <button type="button" className={mode === "edit" ? "active" : ""} onClick={() => onModeChange("edit")}><Blocks size={12} /> Edit</button>
@@ -401,8 +411,8 @@ export function DashboardShell({
               <div className="dashboard-export-control"><select aria-label="Export 형식" value={exportFormat} onChange={(event) => setExportFormat(event.target.value as "json" | "csv" | "pdf")}><option value="pdf">PDF</option><option value="csv">CSV</option><option value="json">JSON</option></select><button type="button" className="secondary" disabled={exporting} onClick={() => onExport(exportFormat)}><Download size={12} />{exporting ? "Exporting" : "Export"}</button></div>
               <button type="button" className="icon-button" title="역할 기본값 복원" onClick={onRestore}><RotateCcw size={13} /></button>
               <button type="button" className="primary" aria-label={saving ? "저장 중" : dirty ? "개인 설정 저장" : "저장됨"} disabled={!dirty || saving} onClick={onSave}><Save size={13} />{saving ? "Saving" : dirty ? "Save" : "Saved"}</button>
-            </div>
-          </div>
+            </div>}
+          />
         ) : null}
 
         {workspaceView === "dashboard" && canManageTemplates && mode === "edit" ? (

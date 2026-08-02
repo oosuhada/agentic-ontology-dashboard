@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { ChartPanel } from "../../../ui/foundry/ChartPanel";
 import type { RenderSpec, SelectionFilter } from "../types";
 import { EChartCanvas, type DashboardChartOption } from "../EChartCanvas";
 
@@ -117,11 +118,12 @@ export function EChartsRenderer({ boardId, rows, spec, selectedValue, ariaLabel,
   }, [data, selectedValue, spec]);
 
   return (
-    <EChartCanvas
-      option={option}
-      ariaLabel={ariaLabel}
-      className="generic-echarts-renderer"
-      onBrushSelected={(params) => {
+    <ChartPanel className="generic-chart-panel" empty={!data.length} emptyTitle="No chart data">
+      <EChartCanvas
+        option={option}
+        ariaLabel={ariaLabel}
+        className="generic-echarts-renderer"
+        onBrushSelected={(params) => {
         if (!spec.brushable || !onSelection) return;
         const indexes = brushIndexes(params);
         const values = indexes.map((index) => data[index]?.label).filter((value): value is string => Boolean(value));
@@ -135,20 +137,21 @@ export function EChartsRenderer({ boardId, rows, spec, selectedValue, ariaLabel,
           created_at: new Date().toISOString(),
         });
       }}
-      onDataClick={(params) => {
-        if (!spec.selectable || !onSelection) return;
-        const index = Number(params.dataIndex ?? -1);
-        const selected = data[index];
-        if (!selected) return;
-        onSelection({
-          id: crypto.randomUUID(),
-          source_board_id: boardId,
-          field: spec.x_field ?? spec.group_field ?? "label",
-          operator: "eq",
-          values: [selected.label],
-          created_at: new Date().toISOString(),
-        });
-      }}
-    />
+        onDataClick={(params) => {
+          if (!spec.selectable || !onSelection) return;
+          const index = Number(params.dataIndex ?? -1);
+          const selected = data[index];
+          if (!selected) return;
+          onSelection({
+            id: crypto.randomUUID(),
+            source_board_id: boardId,
+            field: spec.x_field ?? spec.group_field ?? "label",
+            operator: "eq",
+            values: [selected.label],
+            created_at: new Date().toISOString(),
+          });
+        }}
+      />
+    </ChartPanel>
   );
 }

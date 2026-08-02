@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
 import shutil
 import socket
 import subprocess
@@ -63,6 +64,10 @@ def main() -> None:
     parser.add_argument("--with-live-project3", action="store_true")
     parser.add_argument("--live-project2-url", default="http://127.0.0.1:8000")
     parser.add_argument("--live-project3-url", default="http://127.0.0.1:8001")
+    parser.add_argument(
+        "--e2e-artifact-dir",
+        help="Copy Playwright visual candidates and sanitized environment metadata to this directory.",
+    )
     parser.add_argument("--output")
     args = parser.parse_args()
 
@@ -77,6 +82,7 @@ def main() -> None:
     checks: list[dict[str, Any]] = []
     checks.append(run([sys.executable, "scripts/check_canonical_naming.py"], cwd=root, env=environment))
     checks.append(run([sys.executable, "scripts/check_visual_baselines.py"], cwd=root, env=environment))
+    checks.append(run([sys.executable, "scripts/check_palantir_overhaul_visuals.py"], cwd=root, env=environment))
     checks.append(run([sys.executable, "scripts/check_postgresql_migration.py"], cwd=root, env=environment, timeout=180))
     checks.append(run([sys.executable, "scripts/check_postgresql_runtime.py"], cwd=root, env=environment, timeout=240))
     checks.append(run([sys.executable, "-m", "ontology_dashboard_manufacturing_ml.cli", "validate-fixtures", "--root", str(root)], cwd=root, env=environment))
@@ -99,6 +105,12 @@ def main() -> None:
                 ".vite",
             ),
         )
+        visual_audit_source = root / "docs" / "ui" / "screenshots" / "palantir-gap-v2"
+        if visual_audit_source.is_dir():
+            shutil.copytree(
+                visual_audit_source,
+                frontend_temp.parent / "docs" / "ui" / "screenshots" / "palantir-gap-v2",
+            )
         checks.append(run(["npm", "install", "--no-audit", "--no-fund"], cwd=frontend_temp, timeout=600))
         if checks[-1]["pass"]:
             checks.append(run(["npm", "test"], cwd=frontend_temp, timeout=300))
@@ -108,6 +120,7 @@ def main() -> None:
         checks.append({"command": ["npm"], "returncode": 127, "duration_seconds": 0, "output": "npm not found", "pass": False})
 
     e2e_result: dict[str, Any] | None = None
+    visual_candidate_result: dict[str, Any] | None = None
     if args.with_e2e and frontend_temp is not None and all(check["pass"] for check in checks):
         install_browser = run(["npx", "playwright", "install", "chromium"], cwd=frontend_temp, timeout=600)
         checks.append(install_browser)
@@ -142,7 +155,7 @@ def main() -> None:
             try:
                 wait_http(f"{api_url}/health")
                 wait_http(f"{web_url}/")
-                e2e_result = run(["npm", "run", "test:e2e"], cwd=frontend_temp, env=web_environment, timeout=300)
+                e2e_result = run(["npm", "run", "test:e2e"], cwd=frontend_temp, env=web_environment, timeout=600)
             except Exception as exc:  # noqa: BLE001
                 e2e_result = {
                     "command": ["npm", "run", "test:e2e"],
@@ -160,6 +173,72 @@ def main() -> None:
                     except subprocess.TimeoutExpired:
                         process.kill()
             checks.append(e2e_result)
+            if e2e_result["pass"]:
+                visual_candidate_result = run(
+                    [
+                        sys.executable,
+                        "scripts/check_palantir_overhaul_visuals.py",
+                        "--candidate-root",
+                        str(frontend_temp / "test-results" / "palantir-overhaul-candidate"),
+                        "--require-candidate",
+                    ],
+                    cwd=root,
+                    env=environment,
+                    timeout=180,
+                )
+                checks.append(visual_candidate_result)
+
+    if args.e2e_artifact_dir:
+        artifact_dir = Path(args.e2e_artifact_dir)
+        if not artifact_dir.is_absolute():
+            artifact_dir = root / artifact_dir
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        candidate_source = (
+            frontend_temp / "test-results" / "palantir-overhaul-candidate"
+            if frontend_temp is not None
+            else None
+        )
+        candidate_destination = artifact_dir / "candidate"
+        if candidate_source is not None and candidate_source.is_dir():
+            shutil.copytree(candidate_source, candidate_destination, dirs_exist_ok=True)
+        metadata = {
+            "runner_os": os.environ.get("RUNNER_OS"),
+            "runner_arch": os.environ.get("RUNNER_ARCH"),
+            "image_os": os.environ.get("ImageOS"),
+            "image_version": os.environ.get("ImageVersion"),
+            "platform": platform.platform(),
+            "python": sys.version,
+            "node": subprocess.run(
+                ["node", "--version"],
+                cwd=root,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            ).stdout.strip(),
+            "playwright": subprocess.run(
+                ["npx", "playwright", "--version"],
+                cwd=frontend_temp if frontend_temp is not None else root / "web",
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            ).stdout.strip(),
+            "candidate_count": (
+                len(list(candidate_destination.rglob("*.png")))
+                if candidate_destination.is_dir()
+                else 0
+            ),
+        }
+        (artifact_dir / "environment.json").write_text(
+            json.dumps(metadata, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        if visual_candidate_result is not None:
+            (artifact_dir / "visual-check.json").write_text(
+                visual_candidate_result["output"],
+                encoding="utf-8",
+            )
 
     live_project3_result: dict[str, Any] | None = None
     if args.with_live_project3 and all(check["pass"] for check in checks):
