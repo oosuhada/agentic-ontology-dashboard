@@ -9,9 +9,13 @@ import {
 } from "../../api";
 import { agentPath, datasetCatalogPath, navigate, ontologyPath } from "../../routing";
 import { EntityTitle } from "../../ui/foundry/EntityTitle";
+import { FoundryDrawer } from "../../ui/foundry/FoundryDrawer";
 import { MetricStrip } from "../../ui/foundry/MetricStrip";
 import { StatusPill } from "../../ui/foundry/StatusPill";
 import { WorkbenchHeader } from "../../ui/foundry/WorkbenchChrome";
+import { useMediaQuery } from "../../ui/foundry/useMediaQuery";
+import { WorkbenchState } from "../../ui/foundry/WorkbenchState";
+import { useI18n } from "../../ui/i18n/I18nProvider";
 import type { AgentRunPage } from "../agent/types";
 import { GovernanceRecordInspector } from "./GovernanceRecordInspector";
 import type {
@@ -59,6 +63,8 @@ function JsonPreview({ value }: { value: unknown }) {
 }
 
 export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWorkbenchPageProps) {
+  const isMobile = useMediaQuery("(max-width: 760px)");
+  const { t } = useI18n();
   const [overview, setOverview] = useState<GovernanceOverview | null>(null);
   const [activeTab, setActiveTab] = useState<GovernanceTab>("overview");
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
@@ -76,6 +82,7 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [recordInspectorOpen, setRecordInspectorOpen] = useState(false);
 
   async function refreshRunList(nextOffset = runOffset) {
     setRunListLoading(true);
@@ -175,7 +182,7 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
   }
 
   if (loading && !overview) {
-    return <main className="governance-workbench-loading"><Spinner size={32} /><p>Governance evidence를 재구성하고 있습니다.</p></main>;
+    return <main className="governance-workbench-loading"><WorkbenchState kind="loading" title="Governance evidence를 재구성하고 있습니다." /></main>;
   }
 
   return (
@@ -184,11 +191,11 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
         className="governance-workbench-header"
         title={<EntityTitle icon={ShieldCheck} eyebrow="GOVERNANCE WORKBENCH" title="Project Checkpoints" subtitle={`${projectId} · ${workspaceId} · generated ${formatDate(overview?.generated_at)}`} />}
         metadata={<StatusPill intent={failedProjections.length ? "danger" : "success"}>{failedProjections.length} failed projections</StatusPill>}
-        actions={<div className="governance-header-actions"><Button icon="refresh" onClick={() => void refresh()}>Refresh</Button><Button icon="diagram-tree" onClick={() => navigate(ontologyPath(projectId, workspaceId))}>Ontology</Button><Button icon="database" onClick={() => navigate(datasetCatalogPath(projectId))}>Datasets</Button><Button icon="dashboard" onClick={() => navigate(`/app/projects/${encodeURIComponent(projectId)}`)}>Dashboard</Button></div>}
+        actions={<div className="governance-header-actions"><Button icon="refresh" onClick={() => void refresh()}>{t("common.refresh")}</Button><Button icon="diagram-tree" onClick={() => navigate(ontologyPath(projectId, workspaceId))}>{t("common.ontology")}</Button><Button icon="database" onClick={() => navigate(datasetCatalogPath(projectId))}>{t("common.datasets")}</Button><Button icon="dashboard" onClick={() => navigate(`/app/projects/${encodeURIComponent(projectId)}`)}>{t("common.dashboard")}</Button></div>}
       />
 
-      {error ? <Callout intent="danger" title="Governance error"><span>{error}</span> <Button minimal small onClick={() => setError("")}>Dismiss</Button></Callout> : null}
-      {notice ? <Callout intent="success" title="Governance action"><span>{notice}</span> <Button minimal small onClick={() => setNotice("")}>Dismiss</Button></Callout> : null}
+      {error ? <Callout intent="danger" title="Governance error"><span>{error}</span> <Button minimal small onClick={() => setError("")}>{t("common.dismiss")}</Button></Callout> : null}
+      {notice ? <Callout intent="success" title="Governance action"><span>{notice}</span> <Button minimal small onClick={() => setNotice("")}>{t("common.dismiss")}</Button></Callout> : null}
       <Callout intent="primary" icon="shield" title="Project governance boundary">
         계정 승인·비밀번호·tenant-level 사용자 관리는 Admin 앱에 남겨두고, 이 화면은 현재 Project의 agent trace, evidence, lineage, approval, projection 상태만 다룹니다.
       </Callout>
@@ -264,9 +271,9 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
               {!runListLoading && !runPage.items.length ? <p className="governance-empty">조건에 맞는 Agent run이 없습니다.</p> : null}
             </div>
             <footer className="governance-run-pagination">
-              <Button small icon="chevron-left" disabled={runOffset === 0 || runListLoading} onClick={() => void refreshRunList(Math.max(0, runOffset - runPage.limit))}>Previous</Button>
+              <Button small icon="chevron-left" disabled={runOffset === 0 || runListLoading} onClick={() => void refreshRunList(Math.max(0, runOffset - runPage.limit))}>{t("common.previous")}</Button>
               <span>{runPage.total ? `${runOffset + 1}-${Math.min(runOffset + runPage.items.length, runPage.total)} / ${runPage.total}` : "0 runs"}</span>
-              <Button small rightIcon="chevron-right" disabled={runOffset + runPage.items.length >= runPage.total || runListLoading} onClick={() => void refreshRunList(runOffset + runPage.limit)}>Next</Button>
+              <Button small rightIcon="chevron-right" disabled={runOffset + runPage.items.length >= runPage.total || runListLoading} onClick={() => void refreshRunList(runOffset + runPage.limit)}>{t("common.next")}</Button>
             </footer>
           </aside>
           <section className="governance-agent-detail">
@@ -296,10 +303,10 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
             <div className="governance-panel-heading"><div><small>STORE PROJECTIONS</small><strong>Relational source and eventual-consistency stores</strong></div><StatusPill intent={overview.access.can_retry_projection ? "success" : "neutral"}>{overview.access.can_retry_projection ? "retry enabled" : "read only"}</StatusPill></div>
             <div className="fd-resource-table governance-record-table" role="table">
               <div className="fd-resource-table__header" role="row" style={{ gridTemplateColumns: "minmax(210px,1.4fr) 85px 90px 80px 80px 130px" }}><span>Dataset / version</span><span>Store</span><span>Status</span><span>Records</span><span>Attempts</span><span>Updated</span></div>
-              {overview.projections.map((item) => <button type="button" role="row" key={item.id} className={`fd-resource-table__row ${selectedProjectionId === item.id ? "active" : ""}`} style={{ gridTemplateColumns: "minmax(210px,1.4fr) 85px 90px 80px 80px 130px" }} onClick={() => setSelectedProjectionId(item.id)}><div className="fd-resource-table__primary"><strong>{item.dataset_name}</strong><small>{item.version_label} · {item.dataset_version_id}</small></div><span>{item.store_kind}</span><span><StatusPill intent={pillIntent(item.status)}>{item.status}</StatusPill></span><span className="fd-resource-table__numeric">{item.record_count.toLocaleString()}</span><span className="fd-resource-table__numeric">{item.attempt_count}</span><span>{formatDate(item.updated_at)}</span></button>)}
+              {overview.projections.map((item) => <button type="button" role="row" key={item.id} className={`fd-resource-table__row ${selectedProjectionId === item.id ? "active" : ""}`} style={{ gridTemplateColumns: "minmax(210px,1.4fr) 85px 90px 80px 80px 130px" }} onClick={() => { setSelectedProjectionId(item.id); if (isMobile) setRecordInspectorOpen(true); }}><div className="fd-resource-table__primary"><strong>{item.dataset_name}</strong><small>{item.version_label} · {item.dataset_version_id}</small></div><span>{item.store_kind}</span><span><StatusPill intent={pillIntent(item.status)}>{item.status}</StatusPill></span><span className="fd-resource-table__numeric">{item.record_count.toLocaleString()}</span><span className="fd-resource-table__numeric">{item.attempt_count}</span><span>{formatDate(item.updated_at)}</span></button>)}
             </div>
           </section>
-          <GovernanceRecordInspector projection={selectedProjection} retrying={retryingId === selectedProjection?.id} onRetryProjection={(projection) => void retryProjection(projection)} />
+          {!isMobile ? <GovernanceRecordInspector projection={selectedProjection} retrying={retryingId === selectedProjection?.id} onRetryProjection={(projection) => void retryProjection(projection)} /> : null}
         </section>
       ) : null}
 
@@ -316,11 +323,11 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
             <div className="governance-panel-heading"><div><small>APPROVAL RECORDS</small><strong>Template publish and model release checkpoints</strong></div><StatusPill intent={overview.counts.pending_approvals ? "warning" : "success"}>{overview.counts.pending_approvals} pending</StatusPill></div>
             <div className="fd-resource-table governance-record-table" role="table">
               <div className="fd-resource-table__header" role="row" style={{ gridTemplateColumns: "minmax(150px,1fr) 130px 100px 130px minmax(150px,1fr)" }}><span>Workflow</span><span>Target</span><span>Status</span><span>Requested</span><span>Requester / decision</span></div>
-              {overview.approvals.map((item) => <button type="button" role="row" key={item.id} className={`fd-resource-table__row ${selectedApprovalId === item.id ? "active" : ""}`} style={{ gridTemplateColumns: "minmax(150px,1fr) 130px 100px 130px minmax(150px,1fr)" }} onClick={() => setSelectedApprovalId(item.id)}><div className="fd-resource-table__primary"><strong>{item.workflow_type}</strong><small>{item.id}</small></div><span>{item.target_role ?? "Model release"}</span><span><StatusPill intent={pillIntent(item.status)}>{item.status}</StatusPill></span><span>{formatDate(item.created_at)}</span><div className="fd-resource-table__primary"><strong>{item.requested_by_name}</strong><small>{item.decision_by_name ?? "Pending decision"}</small></div></button>)}
+              {overview.approvals.map((item) => <button type="button" role="row" key={item.id} className={`fd-resource-table__row ${selectedApprovalId === item.id ? "active" : ""}`} style={{ gridTemplateColumns: "minmax(150px,1fr) 130px 100px 130px minmax(150px,1fr)" }} onClick={() => { setSelectedApprovalId(item.id); if (isMobile) setRecordInspectorOpen(true); }}><div className="fd-resource-table__primary"><strong>{item.workflow_type}</strong><small>{item.id}</small></div><span>{item.target_role ?? "Model release"}</span><span><StatusPill intent={pillIntent(item.status)}>{item.status}</StatusPill></span><span>{formatDate(item.created_at)}</span><div className="fd-resource-table__primary"><strong>{item.requested_by_name}</strong><small>{item.decision_by_name ?? "Pending decision"}</small></div></button>)}
               {!overview.approvals.length ? <p className="governance-empty">현재 Project에 기록된 승인 요청이 없습니다.</p> : null}
             </div>
           </section>
-          <GovernanceRecordInspector approval={selectedApproval} />
+          {!isMobile ? <GovernanceRecordInspector approval={selectedApproval} /> : null}
         </section>
       ) : null}
 
@@ -331,6 +338,8 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
           <Card elevation={0} className="governance-permissions-card"><small>EFFECTIVE PERMISSIONS</small><h2>{overview.access.permissions.length} permissions</h2><div>{overview.access.permissions.map((permission) => <Tag key={permission} minimal>{permission}</Tag>)}</div></Card>
         </section>
       ) : null}
+      {isMobile && recordInspectorOpen && activeTab === "projections" ? <FoundryDrawer ariaLabel="Projection inspector" title="Projection inspector" position="bottom" onClose={() => setRecordInspectorOpen(false)}><GovernanceRecordInspector projection={selectedProjection} retrying={retryingId === selectedProjection?.id} onRetryProjection={(projection) => void retryProjection(projection)} /></FoundryDrawer> : null}
+      {isMobile && recordInspectorOpen && activeTab === "approvals" ? <FoundryDrawer ariaLabel="Approval inspector" title="Approval inspector" position="bottom" onClose={() => setRecordInspectorOpen(false)}><GovernanceRecordInspector approval={selectedApproval} /></FoundryDrawer> : null}
     </main>
   );
 }

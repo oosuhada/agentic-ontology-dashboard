@@ -1,0 +1,22 @@
+@layer vendor, base, tokens, workbenches, features, convergence, polish, overrides;
+
+@import "@blueprintjs/core/lib/css/blueprint.css" layer(vendor);
+@import "@xyflow/react/dist/style.css" layer(vendor);
+@import "react-grid-layout/css/styles.css" layer(vendor);
+@import "react-resizable/css/styles.css" layer(vendor);
+
+@import "./styles.css" layer(base);
+@import "./workbench.css" layer(base);
+@import "./ui/foundry/tokens.css" layer(tokens);
+@import "./ui/foundry/workbenches.css" layer(workbenches);
+@import "./ui/foundry/resource-table.css" layer(workbenches);
+@import "./features/dashboard/dashboard-editor.css" layer(features);
+@import "./features/dashboard/dashboard-runtime.css" layer(features);
+@import "./features/dashboard/visualization/visualization.css" layer(features);
+@import "./features/analysis/analysis-detail.css" layer(features);
+@import "./features/ontology/object-explorer-detail.css" layer(features);
+@import "./features/auth/auth-control-plane.css" layer(features);
+@import "./features/admin/admin-control-plane.css" layer(features);
+@import "./ui/foundry/convergence.css" layer(convergence);
+@import "./ui/foundry/interaction-polish.css" layer(polish);
+@import "./ui/foundry/accessibility-overrides.css" layer(overrides);

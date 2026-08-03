@@ -9,7 +9,6 @@ import {
   type Edge,
   type Node,
 } from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
 import { queryDashboardBoard, traverseOntologyObject } from "../../api";
 import type { OntologyTraversal } from "../ontology/types";
 import type { Evidence, EventSummary, Report } from "../../types";

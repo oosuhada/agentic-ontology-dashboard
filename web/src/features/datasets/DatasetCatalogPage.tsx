@@ -1,11 +1,15 @@
-import { Button, Callout, HTMLSelect, InputGroup, Spinner } from "@blueprintjs/core";
+import { Button, Callout, HTMLSelect, InputGroup } from "@blueprintjs/core";
 import { Database } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getDatasetCatalogDetail, getDatasetCatalogPage } from "../../api";
 import { navigate } from "../../routing";
 import { EntityTitle } from "../../ui/foundry/EntityTitle";
+import { FoundryDrawer } from "../../ui/foundry/FoundryDrawer";
 import { StatusPill } from "../../ui/foundry/StatusPill";
 import { WorkbenchHeader } from "../../ui/foundry/WorkbenchChrome";
+import { RefreshingState } from "../../ui/foundry/WorkbenchState";
+import { useMediaQuery } from "../../ui/foundry/useMediaQuery";
+import { useI18n } from "../../ui/i18n/I18nProvider";
 import { DatasetDetailInspector } from "./DatasetDetailInspector";
 import { DatasetResourceTable } from "./DatasetResourceTable";
 import type {
@@ -20,6 +24,8 @@ interface DatasetCatalogPageProps {
 const PAGE_SIZE = 25;
 
 export function DatasetCatalogPage({ projectId }: DatasetCatalogPageProps) {
+  const { t } = useI18n();
+  const isMobile = useMediaQuery("(max-width: 760px)");
   const [page, setPage] = useState<DatasetPage>({ items: [], offset: 0, limit: PAGE_SIZE, total: 0 });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<DatasetCatalogDetail | null>(null);
@@ -30,6 +36,7 @@ export function DatasetCatalogPage({ projectId }: DatasetCatalogPageProps) {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState("");
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const sourceTypes = useMemo(
     () => Array.from(new Set(page.items.map((item) => item.source_type))).sort(),
@@ -100,18 +107,18 @@ export function DatasetCatalogPage({ projectId }: DatasetCatalogPageProps) {
         />}
         metadata={<StatusPill intent="primary">{page.total} Datasets</StatusPill>}
         actions={<div className="dataset-header-actions">
-          <Button icon="refresh" loading={loading} onClick={() => void refreshPage(offset)}>Refresh</Button>
-          <Button icon="dashboard" onClick={() => navigate(`/app/projects/${encodeURIComponent(projectId)}`)}>Dashboard</Button>
+          <Button icon="refresh" loading={loading} onClick={() => void refreshPage(offset)}>{t("common.refresh")}</Button>
+          <Button icon="dashboard" onClick={() => navigate(`/app/projects/${encodeURIComponent(projectId)}`)}>{t("common.dashboard")}</Button>
         </div>}
       />
 
-      {error ? <Callout intent="danger" title="Catalog error"><span>{error}</span> <Button minimal small onClick={() => setError("")}>Dismiss</Button></Callout> : null}
+      {error ? <Callout intent="danger" title="Catalog error"><span>{error}</span> <Button minimal small onClick={() => setError("")}>{t("common.dismiss")}</Button></Callout> : null}
 
       <section className="dataset-catalog-grid">
         <section className="dataset-catalog-list-pane">
           <div className="pane-heading">
             <div><small>PROJECT DATASETS</small><strong>{page.total} governed resources</strong></div>
-            {loading ? <Spinner size={16} /> : null}
+            {loading ? <RefreshingState compact /> : null}
           </div>
           <div className="dataset-catalog-toolbar fd-resource-toolbar">
             <div className="fd-resource-toolbar__group">
@@ -140,17 +147,22 @@ export function DatasetCatalogPage({ projectId }: DatasetCatalogPageProps) {
             items={page.items}
             selectedId={selectedId}
             loading={loading}
-            onSelect={setSelectedId}
+            onSelect={(datasetId) => { setSelectedId(datasetId); if (isMobile) setDetailOpen(true); }}
           />
           <footer className="dataset-catalog-pagination">
-            <Button small icon="chevron-left" disabled={offset === 0 || loading} onClick={() => void refreshPage(Math.max(0, offset - PAGE_SIZE))}>Previous</Button>
+            <Button small icon="chevron-left" disabled={offset === 0 || loading} onClick={() => void refreshPage(Math.max(0, offset - PAGE_SIZE))}>{t("common.previous")}</Button>
             <span>{page.total ? `${offset + 1}-${Math.min(offset + page.items.length, page.total)} / ${page.total}` : "0 datasets"}</span>
-            <Button small rightIcon="chevron-right" disabled={offset + page.items.length >= page.total || loading} onClick={() => void refreshPage(offset + PAGE_SIZE)}>Next</Button>
+            <Button small rightIcon="chevron-right" disabled={offset + page.items.length >= page.total || loading} onClick={() => void refreshPage(offset + PAGE_SIZE)}>{t("common.next")}</Button>
           </footer>
         </section>
 
-        <DatasetDetailInspector detail={detail} loading={detailLoading} />
+        {!isMobile ? <DatasetDetailInspector detail={detail} loading={detailLoading} /> : null}
       </section>
+      {isMobile && detailOpen ? (
+        <FoundryDrawer ariaLabel={t("dataset.select")} title={detail?.dataset.display_name ?? t("dataset.select")} position="bottom" onClose={() => setDetailOpen(false)} className="dataset-detail-drawer">
+          <DatasetDetailInspector detail={detail} loading={detailLoading} />
+        </FoundryDrawer>
+      ) : null}
     </main>
   );
 }

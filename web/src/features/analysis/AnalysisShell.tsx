@@ -1,8 +1,11 @@
 import { Download, LayoutDashboard, PanelRight, Play, Save, Share2, Square, Workflow } from "lucide-react";
 import type { ReactNode } from "react";
 import { EntityTitle } from "../../ui/foundry/EntityTitle";
+import { FoundryDrawer } from "../../ui/foundry/FoundryDrawer";
 import { StatusPill } from "../../ui/foundry/StatusPill";
 import { WorkbenchHeader } from "../../ui/foundry/WorkbenchChrome";
+import { useMediaQuery } from "../../ui/foundry/useMediaQuery";
+import { useI18n } from "../../ui/i18n/I18nProvider";
 
 interface AnalysisShellProps {
   analysisId: string;
@@ -49,6 +52,8 @@ export function AnalysisShell({
   onAddToDashboard,
   onToggleInspector,
 }: AnalysisShellProps) {
+  const isMobile = useMediaQuery("(max-width: 760px)");
+  const { t } = useI18n();
   return (
     <section className={`analysis-workbench flow-workbench ${showInspector ? "with-result-inspector" : ""}`}>
       <WorkbenchHeader
@@ -63,9 +68,9 @@ export function AnalysisShell({
         metadata={<div className="analysis-resource-meta"><span>Revision {revision}</span><span>UTC+09:00</span><span>pinned inputs</span></div>}
         actions={<div className="analysis-run-actions">
           <button type="button" className="fd-toolbar-button icon-only" aria-label={showInspector ? "Hide inspector" : "Show inspector"} title={showInspector ? "Hide inspector" : "Show inspector"} onClick={onToggleInspector}><PanelRight size={13} /></button>
-          <button type="button" className="fd-toolbar-button" disabled={!dirty || busy} onClick={onSave}><Save size={13} /> Save</button>
-          <button type="button" className="fd-toolbar-button" onClick={onShare}><Share2 size={13} /> Share</button>
-          <button type="button" className="fd-toolbar-button" disabled={!canSaveDataset} title={canSaveDataset ? "Save immutable Dataset Version" : "datasets.ingest permission required"} onClick={onSaveDataset}><Download size={13} /> Save dataset</button>
+          <button type="button" className="fd-toolbar-button" disabled={!dirty || busy} onClick={onSave}><Save size={13} /> {t("common.save")}</button>
+          <button type="button" className="fd-toolbar-button" onClick={onShare}><Share2 size={13} /> {t("common.share")}</button>
+          <button type="button" className="fd-toolbar-button" disabled={!canSaveDataset} title={canSaveDataset ? t("analysis.saveDataset") : "datasets.ingest permission required"} onClick={onSaveDataset}><Download size={13} /> {t("analysis.saveDataset")}</button>
           <button type="button" className="fd-toolbar-button" disabled={!canAddToDashboard} onClick={onAddToDashboard}><LayoutDashboard size={13} /> Add to Dashboard</button>
           {running ? (
             <button type="button" className="fd-toolbar-button" onClick={onCancelRun}><Square size={13} /> Cancel</button>
@@ -81,8 +86,9 @@ export function AnalysisShell({
       <div className="analysis-workbench-grid flow-grid">
         {rail}
         {canvas}
-        {showInspector ? inspector : null}
+        {showInspector && !isMobile ? inspector : null}
       </div>
+      {showInspector && isMobile ? <FoundryDrawer ariaLabel="Analysis inspector" title="Analysis inspector" position="bottom" onClose={onToggleInspector}>{inspector}</FoundryDrawer> : null}
     </section>
   );
 }

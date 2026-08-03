@@ -1,4 +1,4 @@
-import { Copy, Eye, EyeOff, GripVertical, Maximize2, Minimize2, MoreHorizontal, Star, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Eye, EyeOff, GripVertical, Maximize2, Minimize2, MoreHorizontal, Star, Trash2 } from "lucide-react";
 import { forwardRef, type CSSProperties, type ReactNode } from "react";
 import type { DashboardBoard, DashboardMode } from "../../features/dashboard/types";
 
@@ -9,6 +9,7 @@ interface BoardFrameProps {
   affected: boolean;
   fullscreen: boolean;
   favorite: boolean;
+  collapsed?: boolean;
   resizeLabel?: string | null;
   headerActions?: ReactNode;
   children: ReactNode;
@@ -17,6 +18,7 @@ interface BoardFrameProps {
   onDuplicate: () => void;
   onRemove: () => void;
   onToggleFavorite: () => void;
+  onToggleCollapsed?: () => void;
   onFullscreen: () => void;
   className?: string;
   style?: CSSProperties;
@@ -29,6 +31,7 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
   affected,
   fullscreen,
   favorite,
+  collapsed = false,
   resizeLabel,
   headerActions,
   children,
@@ -37,6 +40,7 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
   onDuplicate,
   onRemove,
   onToggleFavorite,
+  onToggleCollapsed,
   onFullscreen,
   className = "",
   style,
@@ -64,6 +68,7 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
         favorite ? "is-favorite" : "",
         mode === "edit" ? "is-arranging" : "",
         fullscreen ? "is-fullscreen" : "",
+        collapsed ? "is-collapsed" : "",
         className,
       ].filter(Boolean).join(" ")}
       onClick={onSelect}
@@ -85,6 +90,17 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
         <div className="dashboard-board-actions fd-board-frame__actions">
           {affected ? <span className="affected-chip">필터 반영</span> : null}
           {headerActions}
+          {mode === "view" && onToggleCollapsed ? (
+            <button
+              type="button"
+              aria-label={collapsed ? `${board.title} 펼치기` : `${board.title} 접기`}
+              aria-expanded={!collapsed}
+              title={collapsed ? "Board 펼치기" : "Board 접기"}
+              onClick={(event) => { event.stopPropagation(); onToggleCollapsed(); }}
+            >
+              {collapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+            </button>
+          ) : null}
           {mode === "view" ? (
             <button
               type="button"
@@ -126,7 +142,7 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
       </header>
       {board.hidden && mode === "edit" ? <div className="hidden-board-label">View 모드에서는 숨겨집니다.</div> : null}
       {resizeLabel ? <output className="dashboard-board-resize-label">{resizeLabel}</output> : null}
-      <div className="dashboard-board-content fd-board-frame__content">{children}</div>
+      {!collapsed ? <div className="dashboard-board-content fd-board-frame__content">{children}</div> : null}
     </article>
   );
 });

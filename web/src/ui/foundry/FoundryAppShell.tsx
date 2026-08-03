@@ -31,6 +31,7 @@ import type { AppRole, Project, Workspace } from "../../types";
 import { DisplayMenu } from "./DisplayMenu";
 import { FoundryDialog } from "./FoundryDialog";
 import { FoundryProductNavigation } from "./FoundryProductNavigation";
+import { useI18n } from "../i18n/I18nProvider";
 
 export type FoundryRoute = "home" | "dashboard" | "analysis" | "agent" | "ontology" | "datasets" | "governance";
 
@@ -72,6 +73,7 @@ function initialTheme(): "light" | "dark" {
 export function FoundryAppShell({ projectId, workspaceId, activeRoute, title, children }: FoundryAppShellProps) {
   const { user, logout } = useAuth();
   if (!user) throw new Error("FoundryAppShell requires an authenticated user");
+  const { t } = useI18n();
 
   const [project, setProject] = useState<Project | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -163,19 +165,20 @@ export function FoundryAppShell({ projectId, workspaceId, activeRoute, title, ch
         isAdmin={user.is_admin}
         onNavigate={(id) => openRoute(id as FoundryRoute)}
         onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
+        onCloseMobile={() => setMobileNavOpen(false)}
         onAdmin={() => navigate("/admin")}
         onLogout={() => void signOut()}
       />
 
       <div className="od-shell-main fd-route-shell__main">
         <header className="od-global-topbar">
-          <button type="button" className="od-mobile-menu" aria-label="Product navigation 열기" onClick={() => setMobileNavOpen((current) => !current)}><Menu size={17} /></button>
+          <button type="button" className="od-mobile-menu" aria-label={t("nav.open")} onClick={() => setMobileNavOpen((current) => !current)}><Menu size={17} /></button>
           <div className="od-breadcrumbs">
             <span>{project?.display_name ?? projectId}</span><ChevronRight size={12} />
             {selectedWorkspace ? <><span>{selectedWorkspace.display_name}</span><ChevronRight size={12} /></> : null}
             <strong>{title}</strong>
           </div>
-          <button type="button" className="od-global-search" onClick={() => setCommandOpen(true)}><Search size={14} /><span>Search objects, datasets, actions…</span><kbd>⌘K</kbd></button>
+          <button type="button" className="od-global-search" onClick={() => setCommandOpen(true)}><Search size={14} /><span>{t("nav.search")}</span><kbd>⌘K</kbd></button>
           <div className="od-topbar-actions">
             <DisplayMenu />
             <button type="button" title="테마 전환" onClick={() => setTheme((current) => current === "light" ? "dark" : "light")}>{theme === "light" ? <Moon size={15} /> : <Sun size={15} />}</button>
@@ -186,11 +189,11 @@ export function FoundryAppShell({ projectId, workspaceId, activeRoute, title, ch
         <div className="fd-route-shell__content">{children}</div>
       </div>
 
-      {mobileNavOpen ? <button type="button" className="od-mobile-backdrop" aria-label="내비게이션 닫기" onClick={() => setMobileNavOpen(false)} /> : null}
+      {mobileNavOpen ? <button type="button" className="od-mobile-backdrop" aria-label={t("nav.close")} onClick={() => setMobileNavOpen(false)} /> : null}
       {commandOpen ? (
-        <FoundryDialog ariaLabel="Command palette" overlayClassName="command-palette-overlay" dialogClassName="command-palette" onClose={() => setCommandOpen(false)}>
-            <header><div><span className="section-label">COMMAND PALETTE</span><strong>Navigate workbenches</strong></div><kbd>ESC</kbd></header>
-            <div className="command-search"><Search size={15} /><input data-dialog-initial-focus placeholder="Object, Dataset 또는 Workbench 검색" /></div>
+        <FoundryDialog ariaLabel={t("dialog.commandPalette")} overlayClassName="command-palette-overlay" dialogClassName="command-palette" onClose={() => setCommandOpen(false)}>
+            <header><div><span className="section-label">COMMAND PALETTE</span><strong>{t("dashboard.commandTitle")}</strong></div><kbd>ESC</kbd></header>
+            <div className="command-search"><Search size={15} /><input data-dialog-initial-focus placeholder={t("dashboard.command")} /></div>
             <div className="command-group"><span>Project resources</span>
               {NAV_ITEMS.filter((item) => item.enabled).map((item) => {
                 const Icon = item.icon;

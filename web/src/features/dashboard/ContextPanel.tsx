@@ -1,6 +1,7 @@
 import { Database, ExternalLink, PlugZap, Rows3 } from "lucide-react";
 import type { EventSummary } from "../../types";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useI18n } from "../../ui/i18n/I18nProvider";
 import type { DashboardParameterDefinition, SavedView } from "./types";
 
 export interface DashboardDataConnection {
@@ -50,6 +51,7 @@ export function ContextPanel({
   onApplySavedView,
   onDeleteSavedView,
 }: ContextPanelProps) {
+  const { t } = useI18n();
   const selected = events.find((event) => event.event_id === selectedEventId);
   const statusDefinition = parameterDefinitions.find((item) => item.id === "status_filter");
   const intentDefinition = parameterDefinitions.find((item) => item.id === "intent");
@@ -101,7 +103,7 @@ export function ContextPanel({
                   : "Gold fixture snapshot · immutable Dataset versions · 외부 설비 connector 미연결"}
             </small>
           </div>
-          <button type="button" onClick={onOpenDatasets}>Inspect <ExternalLink size={11} /></button>
+          <button type="button" onClick={onOpenDatasets}>{t("common.inspect")} <ExternalLink size={11} /></button>
         </div>
       </section>
 
@@ -165,7 +167,7 @@ export function ContextPanel({
         {activeSelectionCount ? (
           <div className="cross-filter-summary">
             <span><strong>{activeSelectionCount}</strong> active cross-filter{activeSelectionCount > 1 ? "s" : ""}</span>
-            <button type="button" onClick={onClearSelections}>Clear</button>
+            <button type="button" onClick={onClearSelections}>{t("common.clear")}</button>
           </div>
         ) : null}
         <div className="parameter-state-list">
@@ -202,12 +204,12 @@ export function ContextPanel({
           value={selectedSavedViewId}
           onChange={(event) => onSelectSavedView(event.target.value)}
         >
-          <option value="">저장된 View 선택</option>
+          <option value="">{t("dashboard.saveView")}</option>
           {savedViews.map((view) => <option key={view.id} value={view.id}>{view.name}</option>)}
         </select>
         <div className="button-row compact-row">
-          <button type="button" className="secondary" disabled={!selectedSavedViewId} onClick={onApplySavedView}>적용</button>
-          <button type="button" className="secondary" disabled={!selectedSavedViewId} onClick={onDeleteSavedView}>삭제</button>
+          <button type="button" className="secondary" disabled={!selectedSavedViewId} onClick={onApplySavedView}>{t("common.apply")}</button>
+          <button type="button" className="secondary" disabled={!selectedSavedViewId} onClick={onDeleteSavedView}>{t("common.delete")}</button>
         </div>
       </section>
     </aside>

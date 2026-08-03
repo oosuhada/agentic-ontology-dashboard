@@ -72,7 +72,7 @@ test("chart switcher follows density, keyboard and responsive contracts", async 
 
     await trigger.focus();
     await trigger.press("ArrowDown");
-    const menu = board.getByRole("menu", { name: "Visualize as" });
+    const menu = page.getByRole("menu", { name: "Visualize as" });
     await expect(menu).toBeVisible();
     const firstItem = menu.locator("[data-visualization-menu-item]").first();
     await expect(firstItem).toBeFocused();
@@ -88,6 +88,7 @@ test("chart switcher follows density, keyboard and responsive contracts", async 
     await expect(trigger).toBeFocused();
 
     await trigger.click();
+    await expect(menu).toBeVisible();
     const kinds = await menu.locator(".visualization-kind-mark.is-preview").evaluateAll((elements) => (
       Array.from(new Set(elements.map((element) => element.getAttribute("data-kind")))).filter(Boolean)
     ));

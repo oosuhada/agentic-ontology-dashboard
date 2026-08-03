@@ -19,7 +19,7 @@ test("density, responsive grid and modal focus contracts", async ({ page }) => {
 
   const displaySummary = page.locator(".od-display-menu > summary");
   await displaySummary.click();
-  const displayDialog = page.getByRole("dialog", { name: "Display settings" });
+  const displayDialog = page.getByRole("dialog", { name: /화면 설정|Display settings/ });
   await expect(displayDialog).toBeVisible();
 
   await displayDialog.getByRole("button", { name: /Compact/ }).click();
@@ -94,15 +94,15 @@ test("density, responsive grid and modal focus contracts", async ({ page }) => {
   expect(mobileGeometry.contextWidth).toBeGreaterThan(370);
   expect(mobileGeometry.firstBoardTop).toBeLessThan(260);
 
-  const contextTrigger = page.getByRole("button", { name: "Context & filters" });
+  const contextTrigger = page.getByRole("button", { name: /Context와 필터|Context and filters/ });
   await contextTrigger.click();
-  const contextSheet = page.locator(".dashboard-context-sheet");
+  const contextSheet = page.getByRole("dialog", { name: /Context와 필터|Context and filters/ });
   await expect(contextSheet).toBeVisible();
   const contextBounds = await contextSheet.boundingBox();
   expect(contextBounds).not.toBeNull();
   expect(contextBounds!.x).toBeGreaterThanOrEqual(0);
   expect(contextBounds!.x + contextBounds!.width).toBeLessThanOrEqual(390.5);
-  await contextSheet.getByRole("button", { name: "Context 닫기" }).click();
+  await contextSheet.getByRole("button", { name: /Context와 필터 닫기|Context and filters 닫기/ }).click();
   await expect(contextSheet).toBeHidden();
 
   await page.goto("/app/analysis/risk-event-portfolio");

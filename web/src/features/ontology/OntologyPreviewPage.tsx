@@ -8,8 +8,6 @@ import {
   type Node,
 } from "@xyflow/react";
 import { Boxes, GitBranch, MessageSquare, Network, Search, Table2, Waypoints, X } from "lucide-react";
-import "@blueprintjs/core/lib/css/blueprint.css";
-import "@xyflow/react/dist/style.css";
 import { useEffect, useMemo, useState } from "react";
 import {
   getOntologyRegistry,
@@ -24,6 +22,9 @@ import { navigate } from "../../routing";
 import { EntityTitle } from "../../ui/foundry/EntityTitle";
 import { StatusPill } from "../../ui/foundry/StatusPill";
 import { ErrorState, LoadingState } from "../../ui/foundry/WorkbenchState";
+import { FoundryDrawer } from "../../ui/foundry/FoundryDrawer";
+import { useMediaQuery } from "../../ui/foundry/useMediaQuery";
+import { useI18n } from "../../ui/i18n/I18nProvider";
 import { WorkbenchHeader } from "../../ui/foundry/WorkbenchChrome";
 import { useAuth } from "../auth/AuthContext";
 import type { AgentRunResponse } from "../agent/types";
@@ -111,6 +112,8 @@ function flowElements(subgraph: Project3Subgraph | null): { nodes: Node[]; edges
 }
 
 export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewPageProps) {
+  const { t } = useI18n();
+  const isMobile = useMediaQuery("(max-width: 760px)");
   const { user } = useAuth();
   const [registry, setRegistry] = useState<OntologyRegistry | null>(null);
   const [status, setStatus] = useState<Project3IntegrationSnapshot | null>(null);
@@ -132,6 +135,7 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
   const [agentRun, setAgentRun] = useState<AgentRunResponse | null>(null);
   const [agentLoading, setAgentLoading] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState("");
   const [error, setError] = useState("");
@@ -243,6 +247,11 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
     navigate(`/app/projects/${encodeURIComponent(projectId)}`);
   }
 
+  function chooseObject(object: ObjectRecord) {
+    setSelectedObject(object);
+    if (isMobile) setInspectorOpen(true);
+  }
+
   if (loading) return <main className="ontology-workbench-loading"><LoadingState title="Building Object Explorer" detail="Loading registry, Project scope, and graph readiness." /></main>;
 
   return (
@@ -251,7 +260,7 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
         className="ontology-workbench-header"
         title={<EntityTitle icon={Boxes} eyebrow="ONTOLOGY WORKBENCH" title="Object Explorer" subtitle={`${projectId} · ${workspaceId} · governed object discovery and actions`} />}
         metadata={<StatusPill intent={status?.health.available ? "success" : "warning"}>Project 3 {status?.health.available ? status.health.status : "degraded"}</StatusPill>}
-        actions={<div className="ontology-workbench-header-actions"><button type="button" className="fd-toolbar-button" disabled={!selectedObject} onClick={addGraphBoard}>Add Graph Board</button><button type="button" className="fd-toolbar-button" onClick={() => navigate(`/app/projects/${encodeURIComponent(projectId)}`)}>Dashboard</button></div>}
+        actions={<div className="ontology-workbench-header-actions"><button type="button" className="fd-toolbar-button" disabled={!selectedObject} onClick={addGraphBoard}>{t("dashboard.addBoard")}</button><button type="button" className="fd-toolbar-button" onClick={() => navigate(`/app/projects/${encodeURIComponent(projectId)}`)}>{t("common.dashboard")}</button></div>}
       />
 
       {error ? <Callout intent="danger" title="Workbench error">{error}</Callout> : null}
@@ -268,16 +277,16 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
           <div className="ontology-type-list">
             {objectTypes.map((item) => { const TypeIcon = objectTypeIcon(item.id); return <button type="button" key={item.id} className={selectedType === item.id ? "active" : ""} onClick={() => setSelectedType(item.id)}><span><TypeIcon size={12} /></span><div><strong>{item.display_name}</strong><small>{item.domain_pack} · {item.properties.length} properties</small></div></button>; })}
           </div>
-          <footer className="ontology-pagination"><Button small icon="chevron-left" disabled={objectOffset === 0} onClick={() => setObjectOffset((current) => Math.max(0, current - 50))}>Previous</Button><span>{objectTotal ? `${objectOffset + 1}-${Math.min(objectOffset + objects.length, objectTotal)} / ${objectTotal}` : "0 objects"}</span><Button small rightIcon="chevron-right" disabled={objectOffset + objects.length >= objectTotal} onClick={() => setObjectOffset((current) => current + 50)}>Next</Button></footer>
+          <footer className="ontology-pagination"><Button small icon="chevron-left" disabled={objectOffset === 0} onClick={() => setObjectOffset((current) => Math.max(0, current - 50))}>{t("common.previous")}</Button><span>{objectTotal ? `${objectOffset + 1}-${Math.min(objectOffset + objects.length, objectTotal)} / ${objectTotal}` : "0 objects"}</span><Button small rightIcon="chevron-right" disabled={objectOffset + objects.length >= objectTotal} onClick={() => setObjectOffset((current) => current + 50)}>{t("common.next")}</Button></footer>
         </aside>
 
         <section className={`ontology-graph-pane mode-${view}`}>
           <div className="pane-heading ontology-resource-heading"><div><small>{view === "table" ? "OBJECT SET" : view === "exploration" ? "RELATION EXPLORATION" : "PROJECT 3 SUBGRAPH"}</small><strong>{selectedDefinition?.display_name ?? selectedType}</strong></div><div className="pane-tags"><HTMLSelect value={direction} onChange={(event) => setDirection(event.currentTarget.value as GraphDirection)}><option value="both">Both directions</option><option value="outgoing">Outgoing</option><option value="incoming">Incoming</option></HTMLSelect><HTMLSelect value={depth} onChange={(event) => setDepth(Number(event.currentTarget.value))}><option value={1}>1 hop</option><option value={2}>2 hops</option></HTMLSelect><Tag minimal>{traversal?.edges.length ?? 0} links</Tag></div></div>
           <div className="ontology-primary-view">
-            {view === "table" ? <ObjectSetTable objects={objects} definition={selectedDefinition} selectedObjectId={selectedObject?.id ?? null} onSelect={setSelectedObject} /> : null}
+            {view === "table" ? <ObjectSetTable objects={objects} definition={selectedDefinition} selectedObjectId={selectedObject?.id ?? null} onSelect={chooseObject} /> : null}
             {view === "exploration" ? (
               <div className="ontology-exploration-view">
-                {selectedObject ? <>{(() => { const RootIcon = objectTypeIcon(selectedObject.object_type); return <article className="ontology-exploration-root"><span><RootIcon size={18} /></span><div><small>{selectedObject.object_type}</small><strong>{objectIdentity(selectedObject)}</strong><code>{selectedObject.id}</code></div></article>; })()}<div className="ontology-exploration-links">{traversalLoading ? <LoadingState title="Loading links" /> : traversal?.edges.map((edge) => { const relatedId = edge.source_object_id === selectedObject.id ? edge.target_object_id : edge.source_object_id; const related = traversal.nodes.find((item) => item.id === relatedId); const RelatedIcon = objectTypeIcon(related?.object_type ?? "object"); return <button type="button" key={edge.id} disabled={!related} onClick={() => related && setSelectedObject(related)}><StatusPill intent="primary">{edge.link_type}</StatusPill><GitBranch size={14} /><RelatedIcon size={14} /><div><strong>{related ? objectIdentity(related) : relatedId}</strong><small>{related?.object_type ?? "unresolved"} · {edge.source_object_id} → {edge.target_object_id}</small></div></button>; })}</div></> : <ErrorState title="Select an object" detail="Choose an object from Table view to explore governed links." />}
+                {selectedObject ? <>{(() => { const RootIcon = objectTypeIcon(selectedObject.object_type); return <article className="ontology-exploration-root"><span><RootIcon size={18} /></span><div><small>{selectedObject.object_type}</small><strong>{objectIdentity(selectedObject)}</strong><code>{selectedObject.id}</code></div></article>; })()}<div className="ontology-exploration-links">{traversalLoading ? <LoadingState title="Loading links" /> : traversal?.edges.map((edge) => { const relatedId = edge.source_object_id === selectedObject.id ? edge.target_object_id : edge.source_object_id; const related = traversal.nodes.find((item) => item.id === relatedId); const RelatedIcon = objectTypeIcon(related?.object_type ?? "object"); return <button type="button" key={edge.id} disabled={!related} onClick={() => related && chooseObject(related)}><StatusPill intent="primary">{edge.link_type}</StatusPill><GitBranch size={14} /><RelatedIcon size={14} /><div><strong>{related ? objectIdentity(related) : relatedId}</strong><small>{related?.object_type ?? "unresolved"} · {edge.source_object_id} → {edge.target_object_id}</small></div></button>; })}</div></> : <ErrorState title="Select an object" detail="Choose an object from Table view to explore governed links." />}
               </div>
             ) : null}
             {view === "graph" ? (
@@ -289,10 +298,13 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
           </div>
         </section>
 
-        <ObjectViewInspector object={selectedObject} definition={selectedDefinition} traversal={traversal} traversalLoading={traversalLoading} actions={objectActions} status={status} permissions={permissions} actionBusyId={actionBusyId} actionNotice={actionNotice} onInvokeAction={(action) => void invokeAction(action)} onSelectRelatedObject={(object) => { setSelectedType(object.object_type); setSelectedObject(object); }} />
+        {!isMobile ? <ObjectViewInspector object={selectedObject} definition={selectedDefinition} traversal={traversal} traversalLoading={traversalLoading} actions={objectActions} status={status} permissions={permissions} actionBusyId={actionBusyId} actionNotice={actionNotice} onInvokeAction={(action) => void invokeAction(action)} onSelectRelatedObject={(object) => { setSelectedType(object.object_type); chooseObject(object); }} /> : null}
       </section>
 
-      {askOpen ? <><button type="button" className="fd-command-drawer-backdrop" aria-label="Close ontology assistant" onClick={() => setAskOpen(false)} /><section className="fd-command-drawer ontology-ask-drawer" role="dialog" aria-modal="true" aria-label="Ask Ontology"><header><div><span className="section-label">ASK ONTOLOGY</span><strong>Relational + graph + evidence</strong></div><button type="button" className="fd-toolbar-button icon-only" aria-label="Close" onClick={() => setAskOpen(false)}><X size={14} /></button></header><div className="fd-command-drawer__body">{agentLoading ? <LoadingState title="Collecting governed evidence" detail={agentQuestion} /> : agentRun ? <div className="ontology-agent-result"><p>{agentRun.state.answer || agentRun.state.error || "근거를 찾지 못했습니다."}</p><div className="ontology-agent-evidence">{agentRun.state.evidence.map((item) => <Card key={item.evidence_id} elevation={0}><div><Tag minimal>{item.store}</Tag>{item.dataset_version_id ? <Tag minimal>{item.dataset_version_id}</Tag> : null}</div><strong>{item.title}</strong><p>{item.content}</p><small>{item.reference}</small></Card>)}</div>{agentRun.state.caveats.length ? <Callout intent="warning">{agentRun.state.caveats.join(" ")}</Callout> : null}</div> : <div className="ontology-ask-empty"><MessageSquare size={22} /><p>Ask a scoped question from the toolbar.</p></div>}</div></section></> : null}
+      {isMobile && selectedObject ? <button type="button" className="mobile-inspector-trigger" onClick={() => setInspectorOpen(true)}>{t("ontology.selectObject")} · {objectIdentity(selectedObject)}</button> : null}
+      {isMobile && inspectorOpen ? <FoundryDrawer ariaLabel={t("ontology.selectObject")} title={objectIdentity(selectedObject ?? objects[0])} position="bottom" onClose={() => setInspectorOpen(false)}><ObjectViewInspector object={selectedObject} definition={selectedDefinition} traversal={traversal} traversalLoading={traversalLoading} actions={objectActions} status={status} permissions={permissions} actionBusyId={actionBusyId} actionNotice={actionNotice} onInvokeAction={(action) => void invokeAction(action)} onSelectRelatedObject={(object) => { setSelectedType(object.object_type); chooseObject(object); }} /></FoundryDrawer> : null}
+
+      {askOpen ? <FoundryDrawer ariaLabel={t("drawer.ontologyAssistant")} title={t("drawer.ontologyAssistant")} onClose={() => setAskOpen(false)} className="ontology-ask-drawer">{agentLoading ? <LoadingState title="Collecting governed evidence" detail={agentQuestion} /> : agentRun ? <div className="ontology-agent-result"><p>{agentRun.state.answer || agentRun.state.error || "근거를 찾지 못했습니다."}</p><div className="ontology-agent-evidence">{agentRun.state.evidence.map((item) => <Card key={item.evidence_id} elevation={0}><div><Tag minimal>{item.store}</Tag>{item.dataset_version_id ? <Tag minimal>{item.dataset_version_id}</Tag> : null}</div><strong>{item.title}</strong><p>{item.content}</p><small>{item.reference}</small></Card>)}</div>{agentRun.state.caveats.length ? <Callout intent="warning">{agentRun.state.caveats.join(" ")}</Callout> : null}</div> : <div className="ontology-ask-empty"><MessageSquare size={22} /><p>Ask a scoped question from the toolbar.</p></div>}</FoundryDrawer> : null}
     </main>
   );
 }

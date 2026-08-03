@@ -25,6 +25,7 @@ import { AnalysisBoardRail } from "./AnalysisBoardRail";
 import { AnalysisPathCanvas } from "./AnalysisPathCanvas";
 import { AnalysisResultInspector } from "./AnalysisResultInspector";
 import { AnalysisShell } from "./AnalysisShell";
+import { useMediaQuery } from "../../ui/foundry/useMediaQuery";
 import { ANALYSIS_BOARD_LIBRARY, defaultAnalysisConfig, outputKind } from "./catalog";
 import type {
   AddAnalysisBoardRequest,
@@ -182,6 +183,7 @@ function AnalysisPageInner({
   onSelectEvent,
   onAddToDashboard,
 }: AnalysisPageProps) {
+  const isMobile = useMediaQuery("(max-width: 760px)");
   const [nodes, setNodes, onNodesChange] = useNodesState<AnalysisFlowNode>(initialNodes(events.length));
   const [edges, setEdges, onEdgesChange] = useEdgesState<AnalysisFlowEdge>(initialEdges());
   const [selectedNodeId, setSelectedNodeId] = useState("filter:1");
@@ -197,6 +199,10 @@ function AnalysisPageInner({
   const [showInspector, setShowInspector] = useState(true);
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? nodes[0];
   const result = useMemo(() => evaluate(events, nodes), [events, nodes]);
+
+  useEffect(() => {
+    if (isMobile) setShowInspector(false);
+  }, [isMobile]);
 
   useEffect(() => {
     let cancelled = false;

@@ -1,6 +1,7 @@
 import { Activity, Boxes, Database, LayoutTemplate, Plus, Search, ShieldCheck, SlidersHorizontal, Wrench } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { FoundryDialog } from "../../ui/foundry/FoundryDialog";
+import { useI18n } from "../../ui/i18n/I18nProvider";
 import type { BoardCatalogDefinition, BoardCategory, DashboardTab } from "./types";
 
 const CATEGORY_LABELS: Record<BoardCategory, string> = {
@@ -50,6 +51,7 @@ export function BoardCatalogPanel({
   onCreateTab,
   onClose,
 }: BoardCatalogPanelProps) {
+  const { t } = useI18n();
   const categories = Object.keys(CATEGORY_LABELS) as BoardCategory[];
   const filtered = useMemo(() => items.filter((item) => {
     const categoryMatches = category === "all" || item.category === category;
@@ -65,10 +67,10 @@ export function BoardCatalogPanel({
   const categoryCounts = useMemo(() => Object.fromEntries(categories.map((item) => [item, items.filter((definition) => definition.category === item).length])), [categories, items]);
 
   return (
-    <FoundryDialog ariaLabel="Board Catalog" overlayClassName="board-catalog-overlay" dialogClassName="board-catalog-panel" onClose={onClose}>
+    <FoundryDialog ariaLabel={t("dialog.boardCatalog")} overlayClassName="board-catalog-overlay" dialogClassName="board-catalog-panel" onClose={onClose}>
         <header>
           <div><span className="eyebrow">CONTOUR RESOURCE BROWSER</span><h2>Board resource 추가</h2><p>현재 역할에 허용된 Board를 탐색하고 contract를 확인한 뒤 canvas에 배치합니다.</p></div>
-          <button type="button" className="secondary" onClick={onClose}>닫기</button>
+          <button type="button" className="secondary" onClick={onClose}>{t("common.close")}</button>
         </header>
 
         <div className="catalog-toolbar">
@@ -82,7 +84,7 @@ export function BoardCatalogPanel({
               {tabs.map((tab) => <option key={tab.id} value={tab.id}>{tab.title}</option>)}
             </select>
           </label>
-          <button type="button" className="secondary" onClick={onCreateTab}><Plus size={12} /> New tab</button>
+          <button type="button" className="secondary" onClick={onCreateTab}><Plus size={12} /> {t("dashboard.newTab")}</button>
         </div>
 
         <div className="catalog-browser-layout">
@@ -124,7 +126,7 @@ export function BoardCatalogPanel({
                 <div><dt>Accepts</dt><dd>{selectedDefinition.accepts.join(", ") || "—"}</dd></div>
                 <div><dt>Emits</dt><dd>{selectedDefinition.emits.join(", ") || "—"}</dd></div>
               </dl>
-              <button type="button" className="primary catalog-add-selected" onClick={() => onAddBoard(selectedDefinition, targetTabId)}><Plus size={13} /> Add to {tabs.find((tab) => tab.id === targetTabId)?.title ?? "tab"}</button>
+              <button type="button" className="primary catalog-add-selected" onClick={() => onAddBoard(selectedDefinition, targetTabId)}><Plus size={13} /> {t("common.apply")} · {tabs.find((tab) => tab.id === targetTabId)?.title ?? "tab"}</button>
               <small>Double-click a resource in the palette to add it immediately.</small>
             </> : <div className="empty-state">Select a Board resource.</div>}
           </aside>

@@ -99,6 +99,7 @@ button, input, select, textarea { line-height: var(--od-leading-control); }
 .od-display-popover legend { margin-bottom: 5px; color: var(--fd-text-secondary); font-size: var(--od-type-2xs); font-weight: var(--od-weight-semibold); text-transform: uppercase; letter-spacing: .06em; }
 .od-display-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; }
 .od-display-options.three-up { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.od-display-options.two-up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .od-display-presets { display: grid; gap: 4px; }
 .od-display-presets button {
   display: flex;
