@@ -9,11 +9,17 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_PROVIDER: ${LLM_PROVIDER:-deterministic}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-global}
+      # The host path below is mounted at this fixed in-container path.
+      GOOGLE_APPLICATION_CREDENTIALS: /var/run/secrets/google/credentials.json
       PROJECT3_API_URL: ${PROJECT3_API_URL:-}
     ports:
       - "8100:8000"
     volumes:
       - factory_signal_data:/app/data/local
+      - ${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:/var/run/secrets/google/credentials.json:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
       interval: 5s
