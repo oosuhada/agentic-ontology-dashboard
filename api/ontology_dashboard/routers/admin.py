@@ -24,6 +24,11 @@ def admin_overview(
         organization_id=principal.organization_id,
         include_unassigned_pending=True,
     )
+    notifications = identity.repository.list_admin_notifications(
+        organization_id=principal.organization_id,
+        unread_only=True,
+        limit=100,
+    )
     return {
         "active_users": sum(user["status"] == "active" for user in users),
         "pending_users": sum(user["status"] == "pending_approval" for user in users),
@@ -31,11 +36,39 @@ def admin_overview(
         "workspace_count": len(
             identity.repository.list_workspaces(organization_id=principal.organization_id)
         ),
+        "unread_notifications": len(notifications),
         "recent_admin_changes": identity.repository.list_admin_audit(
             limit=5,
             organization_id=principal.organization_id,
         ),
     }
+
+
+@router.get("/notifications")
+def admin_notifications(
+    unread_only: bool = False,
+    principal: Principal = Depends(require_permission("admin.users.read")),
+    identity: IdentityService = Depends(get_identity_service),
+):
+    return {
+        "items": identity.repository.list_admin_notifications(
+            organization_id=principal.organization_id,
+            unread_only=unread_only,
+        )
+    }
+
+
+@router.post("/notifications/{notification_id}/read")
+def admin_mark_notification_read(
+    notification_id: str,
+    principal: Principal = Depends(require_permission("admin.users.read")),
+    _: None = Depends(require_csrf),
+    identity: IdentityService = Depends(get_identity_service),
+):
+    return identity.repository.mark_admin_notification_read(
+        organization_id=principal.organization_id,
+        notification_id=notification_id,
+    )
 
 
 @router.get("/users")

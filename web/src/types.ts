@@ -70,10 +70,13 @@ export interface AdminUser {
   display_name: string;
   status: UserStatus;
   requested_organization_name: string | null;
+  requested_role_code: AppRole | null;
   terms_accepted_at: string | null;
   created_at: string;
   updated_at: string;
   roles: AppRole[];
+  permission_overrides: Record<string, boolean>;
+  effective_permissions: string[];
   workspace_scopes: string[];
 }
 
@@ -81,6 +84,21 @@ export interface RoleDefinition {
   code: AppRole;
   display_name: string;
   description: string;
+  permissions: string[];
+}
+
+export interface AdminNotification {
+  id: string;
+  organization_id: string | null;
+  notification_type: string;
+  title: string;
+  body: string;
+  target_user_id: string | null;
+  target_email: string | null;
+  target_display_name: string | null;
+  requested_role_code: AppRole | null;
+  created_at: string;
+  read_at: string | null;
 }
 
 export interface AdminAuditEntry {

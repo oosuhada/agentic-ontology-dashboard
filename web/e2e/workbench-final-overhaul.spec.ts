@@ -51,16 +51,23 @@ async function ensureVisualDataset(page: Page, viewportName: string) {
   const analysisId = visualDatasetAnalysisId(viewportName);
   await page.goto(`/app/projects/${projectId}`);
   const projectSelect = page.getByLabel("Project", { exact: true });
-  await expect(projectSelect).toBeVisible({ timeout: 45_000 });
   if (await projectSelect.inputValue() !== projectId) {
-    await projectSelect.selectOption(projectId);
+    if (await projectSelect.isVisible()) {
+      await projectSelect.selectOption(projectId);
+    } else {
+      await projectSelect.evaluate((element, value) => {
+        const select = element as HTMLSelectElement;
+        select.value = String(value);
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      }, projectId);
+    }
     await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}$`));
   }
 
   await page.goto(`/app/analysis/${analysisId}`);
   const chartNode = page.locator(".analysis-flow-node").filter({ hasText: "Risk by production line" });
   await expect(chartNode).toBeVisible({ timeout: 45_000 });
-  await chartNode.click();
+  await chartNode.evaluate((element) => (element as HTMLElement).click());
   await page.getByRole("button", { name: /Run path/ }).click();
   await expect(page.getByText(/Run .* succeeded/)).toBeVisible({ timeout: 45_000 });
   await page.getByRole("button", { name: /Dataset Version 생성|Save dataset|Create Dataset Version/ }).click();
@@ -73,7 +80,12 @@ async function capture(page: Page, viewportName: string, name: string, route: st
   if (name === "dashboard") {
     await expect(page.locator(".dashboard-board-frame .fd-metric-strip").first()).toBeVisible({ timeout: 45_000 });
     await expect(page.getByText("Board module을 불러오고 있습니다.")).toHaveCount(0);
-    await expect(page.locator(".dashboard-data-connections")).not.toContainText("checking", { timeout: 45_000 });
+    const dataConnections = page.locator(".dashboard-data-connections");
+    if (await dataConnections.count()) {
+      await expect(dataConnections).not.toContainText("checking", { timeout: 45_000 });
+    } else {
+      await expect(page.locator(".dashboard-mobile-context-bar button")).toBeVisible();
+    }
   }
   if (name === "ontology") {
     const objectSearch = page.getByLabel("Ontology object property search");

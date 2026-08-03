@@ -58,6 +58,7 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
       data-grid-max-w={board.layout?.max_w ?? 12}
       data-grid-max-h={board.layout?.max_h ?? 12}
       data-board-id={board.id}
+      data-definition-id={board.definition_id}
       data-favorite={favorite ? "true" : "false"}
       className={[
         "dashboard-board-frame",

@@ -92,17 +92,29 @@ def test_signup_stays_pending_until_admin_approves_role_and_scope(client: TestCl
             "email": "new.engineer@example.com",
             "password": "NewEngineer!2026",
             "organization_name": "New Factory",
+            "requested_role": "process_engineer",
             "terms_accepted": True,
         },
     )
     assert registration.status_code == 201
     assert registration.json()["status"] == "pending_approval"
+    assert registration.json()["requested_role"] == "process_engineer"
 
     pending_login = login(client, "new.engineer@example.com", "NewEngineer!2026")
     assert pending_login.status_code == 403
     assert pending_login.json()["error"]["code"] == "pending_approval"
 
     assert login(client, "admin@ontology.local", "OntologyAdmin!2026").status_code == 200
+    overview = client.get("/api/admin/overview")
+    assert overview.status_code == 200
+    assert overview.json()["unread_notifications"] >= 1
+    notifications = client.get("/api/admin/notifications")
+    assert notifications.status_code == 200
+    signup_notification = next(
+        item for item in notifications.json()["items"]
+        if item["target_email"] == "new.engineer@example.com"
+    )
+    assert signup_notification["requested_role_code"] == "process_engineer"
     pending_user = admin_user(client, "new.engineer@example.com")
     approval = client.patch(
         f"/api/admin/users/{pending_user['id']}",
@@ -116,6 +128,10 @@ def test_signup_stays_pending_until_admin_approves_role_and_scope(client: TestCl
     assert approval.status_code == 200, approval.text
     assert approval.json()["roles"] == ["process_engineer"]
     assert approval.json()["workspace_scopes"] == ["manufacturing-demo"]
+    assert next(
+        item for item in client.get("/api/admin/notifications").json()["items"]
+        if item["id"] == signup_notification["id"]
+    )["read_at"] is not None
 
     audit = client.get("/api/admin/audit")
     assert audit.status_code == 200
@@ -124,6 +140,81 @@ def test_signup_stays_pending_until_admin_approves_role_and_scope(client: TestCl
     active_login = login(client, "new.engineer@example.com", "NewEngineer!2026")
     assert active_login.status_code == 200
     assert active_login.json()["user"]["default_path"] == "/app"
+
+
+def test_admin_can_override_individual_permissions_after_role_confirmation(client: TestClient) -> None:
+    registration = client.post(
+        "/api/auth/register",
+        json={
+            "display_name": "권한 검증 엔지니어",
+            "email": "permission.engineer@example.com",
+            "password": "PermissionEngineer!2026",
+            "organization_name": "Ontology Demo Organization",
+            "requested_role": "process_engineer",
+            "terms_accepted": True,
+        },
+    )
+    assert registration.status_code == 201
+    assert login(client, "admin@ontology.local", "OntologyAdmin!2026").status_code == 200
+    pending = admin_user(client, "permission.engineer@example.com")
+    updated = client.patch(
+        f"/api/admin/users/{pending['id']}",
+        headers=csrf_headers(client),
+        json={
+            "status": "active",
+            "roles": ["process_engineer"],
+            "workspace_scopes": ["manufacturing-demo"],
+            "permission_overrides": {
+                "events.note": False,
+                "governance.read": True,
+            },
+        },
+    )
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["permission_overrides"] == {
+        "events.note": False,
+        "governance.read": True,
+    }
+    principal = login(client, "permission.engineer@example.com", "PermissionEngineer!2026")
+    assert principal.status_code == 200, principal.text
+    permissions = principal.json()["user"]["permissions"]
+    assert "events.note" not in permissions
+    assert "governance.read" in permissions
+
+
+def test_display_preferences_persist_on_the_user_account_across_sessions(client: TestClient) -> None:
+    assert login(client, "engineer@ontology.local", "Engineer!2026").status_code == 200
+    saved = client.put(
+        "/api/auth/display-preferences",
+        headers=csrf_headers(client),
+        json={
+            "version": 3,
+            "textSize": "large",
+            "density": "comfortable",
+            "showTechnicalMetadata": True,
+        },
+    )
+    assert saved.status_code == 200, saved.text
+    client.post("/api/auth/logout", headers=csrf_headers(client))
+
+    assert login(client, "engineer@ontology.local", "Engineer!2026").status_code == 200
+    restored = client.get("/api/auth/display-preferences")
+    assert restored.status_code == 200
+    assert {
+        key: restored.json()["preferences"][key]
+        for key in ("version", "textSize", "density", "showTechnicalMetadata")
+    } == {
+        "version": 3,
+        "textSize": "large",
+        "density": "comfortable",
+        "showTechnicalMetadata": True,
+    }
+
+    client.post("/api/auth/logout", headers=csrf_headers(client))
+    assert login(client, "technician@ontology.local", "Technician!2026").status_code == 200
+    isolated = client.get("/api/auth/display-preferences")
+    assert isolated.status_code == 200
+    assert isolated.json()["preferences"] is None
 
 
 def test_pending_disabled_and_logout_block_protected_access(client: TestClient) -> None:

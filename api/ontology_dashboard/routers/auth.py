@@ -16,6 +16,7 @@ from ..identity import (
     SESSION_COOKIE,
     ActiveProjectRequest,
     AuthError,
+    DisplayPreferenceUpdateRequest,
     IdentityService,
     LoginRequest,
     Principal,
@@ -35,6 +36,7 @@ def register(request: RegisterRequest, identity: IdentityService = Depends(get_i
         "display_name": user["display_name"],
         "status": user["status"],
         "requested_organization_name": user["requested_organization_name"],
+        "requested_role": user["requested_role_code"],
     }
 
 
@@ -86,6 +88,29 @@ def me(request: Request, principal: Principal = Depends(current_principal)):
         "user": principal.model_dump(mode="json"),
         "csrf_token": request.cookies.get(CSRF_COOKIE),
     }
+
+
+@router.get("/display-preferences")
+def get_display_preferences(
+    principal: Principal = Depends(current_principal),
+    identity: IdentityService = Depends(get_identity_service),
+):
+    return {
+        "preferences": identity.repository.get_display_preferences(user_id=principal.user_id)
+    }
+
+
+@router.put("/display-preferences")
+def save_display_preferences(
+    payload: DisplayPreferenceUpdateRequest,
+    principal: Principal = Depends(current_principal),
+    _: None = Depends(require_csrf),
+    identity: IdentityService = Depends(get_identity_service),
+):
+    return identity.repository.save_display_preferences(
+        user_id=principal.user_id,
+        payload=payload.model_dump(mode="json"),
+    )
 
 
 @router.patch("/active-project")

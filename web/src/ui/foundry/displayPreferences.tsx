@@ -6,6 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { getDisplayPreferences, saveDisplayPreferences } from "../../api";
 
 export type DisplayTextSize = "small" | "default" | "large" | "extra-large";
 export type DisplayDensity = "compact" | "standard" | "comfortable";
@@ -104,11 +105,38 @@ function applyDisplayPreferences(preferences: DisplayPreferences) {
 
 export function DisplayPreferencesProvider({ scope, children }: { scope: string; children: ReactNode }) {
   const [preferences, setPreferences] = useState<DisplayPreferences>(() => loadDisplayPreferences(scope));
+  const [serverReady, setServerReady] = useState(scope === "guest");
+
+  useEffect(() => {
+    if (scope === "guest") {
+      setServerReady(true);
+      return;
+    }
+    let active = true;
+    setServerReady(false);
+    getDisplayPreferences()
+      .then((serverPreferences) => {
+        if (!active || !serverPreferences) return;
+        setPreferences(normalizeDisplayPreferences(serverPreferences));
+      })
+      .catch(() => {
+        // Keep the user-scoped local cache when the server is temporarily unavailable.
+      })
+      .finally(() => active && setServerReady(true));
+    return () => { active = false; };
+  }, [scope]);
 
   useEffect(() => {
     applyDisplayPreferences(preferences);
     window.localStorage.setItem(displayPreferenceStorageKey(scope), JSON.stringify(preferences));
-  }, [preferences, scope]);
+    if (!serverReady || scope === "guest") return;
+    const timer = window.setTimeout(() => {
+      void saveDisplayPreferences(preferences).catch(() => {
+        // The local cache remains a safe offline fallback; the next change retries server persistence.
+      });
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [preferences, scope, serverReady]);
 
   const value = useMemo<DisplayPreferencesContextValue>(() => ({
     preferences,

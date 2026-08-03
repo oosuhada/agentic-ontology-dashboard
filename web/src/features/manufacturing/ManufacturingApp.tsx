@@ -9,6 +9,7 @@ import {
   deleteSavedView,
   followUp,
   getBoardCatalog,
+  getDatasetCatalogDetail,
   getDatasetCatalogPage,
   getDashboardTemplatePreview,
   getResolvedDashboard,
@@ -33,7 +34,7 @@ import { BoardInspector } from "../dashboard/BoardInspector";
 import { BoardRuntimeSurface } from "../dashboard/BoardRuntimeSurface";
 import { ContextPanel, type DashboardDataConnection } from "../dashboard/ContextPanel";
 import { DashboardShell, type WorkspaceView } from "../dashboard/DashboardShell";
-import type { DatasetCatalogItem } from "../datasets/types";
+import type { DatasetCatalogDetail, DatasetCatalogItem } from "../datasets/types";
 import type {
   BoardCatalogDefinition,
   BoardCategory,
@@ -221,19 +222,16 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     error: null,
   });
   const [datasetItems, setDatasetItems] = useState<DatasetCatalogItem[]>([]);
+  const [datasetDetails, setDatasetDetails] = useState<DatasetCatalogDetail[]>([]);
   const selectedProject = projects.find((project) => project.id === selectedProjectId);
   const selectedPack = domainPacks.find((pack) => pack.workspace_ids.includes(selectedWorkspaceId));
   const adaptiveProfile = useMemo(
-    () => deriveAdaptiveExperience(selectedProjectId, selectedProject, selectedPack, datasetItems),
-    [datasetItems, selectedPack, selectedProject, selectedProjectId],
+    () => deriveAdaptiveExperience(selectedProjectId, selectedProject, selectedPack, datasetItems, datasetDetails),
+    [datasetDetails, datasetItems, selectedPack, selectedProject, selectedProjectId],
   );
-  const workspaceViewStorageKey = `ontology-dashboard:workspace-view:${authenticatedUser.user_id}:${selectedProjectId || authenticatedUser.active_project_id || "default"}:${appRole}`;
   const effectiveInitialWorkspaceView: WorkspaceView = initialWorkspaceView === "analysis"
     ? "analysis"
-    : (() => {
-        const saved = window.localStorage.getItem(workspaceViewStorageKey) as WorkspaceView | null;
-        return saved && ["report", "dashboard", "analysis"].includes(saved) ? saved : roleConfig.defaultWorkspaceView;
-      })();
+    : roleConfig.defaultWorkspaceView;
 
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [fullscreenBoardId, setFullscreenBoardId] = useState<string | null>(null);
@@ -282,10 +280,18 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
           externalConnection: sourceTypes.some((source) => source !== "local_fixture"),
           error: null,
         });
+        return Promise.all(
+          page.items.slice(0, 12).map((item) => getDatasetCatalogDetail(selectedProjectId, item.id)),
+        );
+      })
+      .then((details) => {
+        if (cancelled || !details) return;
+        setDatasetDetails(details);
       })
       .catch((reason: unknown) => {
         if (cancelled) return;
         setDatasetItems([]);
+        setDatasetDetails([]);
         setDataConnection({
           loading: false,
           datasetCount: 0,
@@ -305,10 +311,12 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     setLoading(true);
     setError("");
     try {
-      const resolvedPromise = getResolvedDashboard(workspaceId);
-      const catalogPromise = getBoardCatalog(workspaceId);
-      const viewsPromise = getSavedViews(workspaceId);
-      const resolved = applyAdaptiveDashboardProfile(await resolvedPromise, adaptiveProfile);
+      const [resolvedDashboard, catalog, views] = await Promise.all([
+        getResolvedDashboard(workspaceId),
+        getBoardCatalog(workspaceId),
+        getSavedViews(workspaceId),
+      ]);
+      const resolved = applyAdaptiveDashboardProfile(resolvedDashboard, adaptiveProfile, catalog);
       if (requestId !== dashboardRequestSequence.current) return;
 
       let nextDraft = cloneDashboard(resolved);
@@ -363,8 +371,6 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       setFullscreenBoardId(null);
       setSelectionFilters([]);
 
-      const [catalog, views] = await Promise.all([catalogPromise, viewsPromise]);
-      if (requestId !== dashboardRequestSequence.current) return;
       setCatalogItems(catalog);
       setSavedViews(views);
     } catch (reason) {
@@ -1299,7 +1305,6 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       )}
       initialWorkspaceView={effectiveInitialWorkspaceView}
       onWorkspaceViewChange={(view) => {
-        window.localStorage.setItem(workspaceViewStorageKey, view);
         const target = view === "analysis"
           ? analysisPath(analysisId)
           : selectedProjectId

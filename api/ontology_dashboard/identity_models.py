@@ -145,6 +145,15 @@ class RegisterRequest(BaseModel):
     email: str = Field(min_length=3, max_length=254)
     password: str = Field(min_length=12, max_length=200)
     organization_name: str = Field(min_length=2, max_length=120)
+    requested_role: Literal[
+        "executive_viewer",
+        "process_manager",
+        "process_engineer",
+        "maintenance_technician",
+        "quality_auditor",
+        "ml_validator",
+        "fde",
+    ] = "process_engineer"
     terms_accepted: bool
 
     @field_validator("display_name", "organization_name")
@@ -215,6 +224,16 @@ class AdminUserUpdateRequest(BaseModel):
     status: UserStatus | None = None
     roles: list[str] | None = None
     workspace_scopes: list[str] | None = None
+    permission_overrides: dict[str, bool] | None = None
+
+
+class DisplayPreferenceUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    version: Literal[3] = 3
+    textSize: Literal["small", "default", "large", "extra-large"] = "default"
+    density: Literal["compact", "standard", "comfortable"] = "standard"
+    showTechnicalMetadata: bool = False
 
 
 class Principal(BaseModel):

@@ -1,50 +1,58 @@
 import { useEffect, useMemo, useState } from "react";
-import { Activity, AppWindow, CheckSquare, LayoutDashboard, LogOut, RefreshCw, ShieldCheck, Users, UserRoundCog } from "lucide-react";
+import { Activity, AppWindow, Bell, CheckSquare, LayoutDashboard, LogOut, RefreshCw, ShieldCheck, Users, UserRoundCog } from "lucide-react";
 import {
   decideModelReleaseRequest,
   decideTemplatePublishRequest,
   getAdminAudit,
   getAdminOverview,
+  getAdminNotifications,
   getAdminRoles,
   getAdminUsers,
   getAdminWorkflowApprovals,
   getAdminWorkspaces,
+  markAdminNotificationRead,
   updateAdminUser,
   type AdminOverview,
 } from "../../api";
 import { navigate } from "../../routing";
-import type { AdminAuditEntry, AdminUser, AppRole, RoleDefinition, UserStatus, Workspace } from "../../types";
+import type { AdminAuditEntry, AdminNotification, AdminUser, AppRole, RoleDefinition, UserStatus, Workspace } from "../../types";
 import { DisplayMenu } from "../../ui/foundry/DisplayMenu";
 import { OntologyLifecycleLoader } from "../../ui/foundry/OntologyLifecycleLoader";
 import type { AdminWorkflowApprovals, WorkflowRequest } from "../roles/types";
 import { useAuth } from "../auth/AuthContext";
 
-type AdminTab = "overview" | "users" | "roles" | "approvals" | "audit";
+type AdminTab = "overview" | "notifications" | "users" | "roles" | "approvals" | "audit";
 
 function UserAccessRow({
   user,
   roles,
   workspaces,
   currentUserId,
+  allPermissions,
   onSaved,
 }: {
   user: AdminUser;
   roles: RoleDefinition[];
   workspaces: Workspace[];
   currentUserId: string;
+  allPermissions: string[];
   onSaved: () => Promise<void>;
 }) {
   const [status, setStatus] = useState<UserStatus>(user.status);
-  const [role, setRole] = useState<AppRole | "">(user.roles[0] ?? "");
+  const [role, setRole] = useState<AppRole | "">(user.roles[0] ?? user.requested_role_code ?? "");
   const [scope, setScope] = useState(user.workspace_scopes[0] ?? "");
+  const [permissionOverrides, setPermissionOverrides] = useState<Record<string, boolean | null>>(() => {
+    return Object.fromEntries(allPermissions.map((permission) => [permission, user.permission_overrides[permission] ?? null]));
+  });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     setStatus(user.status);
-    setRole(user.roles[0] ?? "");
+    setRole(user.roles[0] ?? user.requested_role_code ?? "");
     setScope(user.workspace_scopes[0] ?? "");
-  }, [user]);
+    setPermissionOverrides(Object.fromEntries(allPermissions.map((permission) => [permission, user.permission_overrides[permission] ?? null])));
+  }, [allPermissions, user]);
 
   async function save(nextStatus = status) {
     setSaving(true);
@@ -54,6 +62,9 @@ function UserAccessRow({
         status: nextStatus,
         roles: role ? [role] : [],
         workspace_scopes: scope ? [scope] : [],
+        permission_overrides: Object.fromEntries(
+          Object.entries(permissionOverrides).filter(([, value]) => value !== null),
+        ) as Record<string, boolean>,
       });
       setStatus(nextStatus);
       setMessage("저장됨");
@@ -71,6 +82,7 @@ function UserAccessRow({
         <strong>{user.display_name}</strong>
         <small>{user.email}</small>
         {user.requested_organization_name ? <small>요청 조직 · {user.requested_organization_name}</small> : null}
+        {user.requested_role_code ? <small>희망 역할 · {user.requested_role_code}</small> : null}
       </td>
       <td><span className={`account-status status-${user.status}`}>{user.status}</span></td>
       <td>
@@ -96,6 +108,34 @@ function UserAccessRow({
           <button className="secondary compact-button" disabled={saving || !role || !scope} onClick={() => save("active")}>재활성화</button>
         ) : null}
         <button className="secondary compact-button" disabled={saving} onClick={() => save()}>저장</button>
+        <details className="permission-override-editor">
+          <summary>개별 권한 {Object.values(permissionOverrides).filter((value) => value !== null).length}</summary>
+          <div>
+            {allPermissions.map((permission) => {
+              const roleDefinition = roles.find((item) => item.code === role);
+              const roleAllows = roleDefinition?.permissions.includes(permission) ?? false;
+              const value = permissionOverrides[permission] ?? null;
+              return (
+                <label key={permission}>
+                  <span><strong>{permission}</strong><small>역할 기본값 · {roleAllows ? "허용" : "차단"}</small></span>
+                  <select
+                    aria-label={`${user.email} ${permission} 권한`}
+                    value={value === null ? "inherit" : value ? "allow" : "deny"}
+                    disabled={user.id === currentUserId}
+                    onChange={(event) => setPermissionOverrides((current) => ({
+                      ...current,
+                      [permission]: event.target.value === "inherit" ? null : event.target.value === "allow",
+                    }))}
+                  >
+                    <option value="inherit">역할 기본값</option>
+                    <option value="allow">개별 허용</option>
+                    <option value="deny">개별 차단</option>
+                  </select>
+                </label>
+              );
+            })}
+          </div>
+        </details>
         {message ? <small className={message === "저장됨" ? "save-success" : "save-error"}>{message}</small> : null}
       </td>
     </tr>
@@ -113,6 +153,7 @@ export function AdminApp() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [audit, setAudit] = useState<AdminAuditEntry[]>([]);
   const [approvals, setApprovals] = useState<AdminWorkflowApprovals>({ template_publish_requests: [], model_release_requests: [] });
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -120,13 +161,14 @@ export function AdminApp() {
     setLoading(true);
     setError("");
     try {
-      const [nextOverview, nextUsers, nextRoles, nextWorkspaces, nextAudit, nextApprovals] = await Promise.all([
+      const [nextOverview, nextUsers, nextRoles, nextWorkspaces, nextAudit, nextApprovals, nextNotifications] = await Promise.all([
         getAdminOverview(),
         getAdminUsers(),
         getAdminRoles(),
         getAdminWorkspaces(),
         getAdminAudit(),
         getAdminWorkflowApprovals(),
+        getAdminNotifications(),
       ]);
       setOverview(nextOverview);
       setUsers(nextUsers);
@@ -134,6 +176,7 @@ export function AdminApp() {
       setWorkspaces(nextWorkspaces);
       setAudit(nextAudit);
       setApprovals(nextApprovals);
+      setNotifications(nextNotifications);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "관리자 데이터를 불러오지 못했습니다.");
     } finally {
@@ -147,6 +190,13 @@ export function AdminApp() {
     ...role,
     count: users.filter((item) => item.roles.includes(role.code)).length,
   })), [roles, users]);
+  const allPermissions = useMemo(() => [...new Set(roles.flatMap((role) => role.permissions))].sort(), [roles]);
+
+  async function readNotification(notification: AdminNotification) {
+    if (!notification.read_at) await markAdminNotificationRead(notification.id);
+    setTab("users");
+    await load();
+  }
 
   async function handleApproval(item: WorkflowRequest, decision: "approve" | "reject") {
     const note = window.prompt(decision === "approve" ? "승인 메모" : "반려 사유", decision === "approve" ? "권한·계약·검증 결과 확인" : "수정 후 재요청 필요")?.trim();
@@ -179,6 +229,7 @@ export function AdminApp() {
         <span className="admin-nav-section">CONTROL PLANE</span>
         <nav className="admin-nav" aria-label="관리자 메뉴">
           <button className={tab === "overview" ? "active" : ""} onClick={() => setTab("overview")}><LayoutDashboard size={14} /><span>Overview</span></button>
+          <button className={tab === "notifications" ? "active" : ""} onClick={() => setTab("notifications")}><Bell size={14} /><span>Notifications</span>{overview?.unread_notifications ? <b>{overview.unread_notifications}</b> : null}</button>
           <button className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}><Users size={14} /><span>Users</span></button>
           <button className={tab === "roles" ? "active" : ""} onClick={() => setTab("roles")}><UserRoundCog size={14} /><span>Roles & Permissions</span></button>
           <button className={tab === "approvals" ? "active" : ""} onClick={() => setTab("approvals")}><CheckSquare size={14} /><span>Workflow Approvals</span></button>
@@ -198,7 +249,7 @@ export function AdminApp() {
       <main className="admin-main">
         <div className="admin-platform-bar"><span><ShieldCheck size={12} /> Tenant control plane</span><div><DisplayMenu /><span>Ontology Dashboard</span><span>Production policy</span><strong>{user.display_name}</strong></div></div>
         <header className="admin-topbar">
-          <div><span className="eyebrow">TENANT ADMIN / {tab.toUpperCase()}</span><h1>{tab === "overview" ? "관리자 Overview" : tab === "users" ? "사용자 승인과 접근 범위" : tab === "roles" ? "역할과 권한 경계" : tab === "approvals" ? "Template·Model 승인 요청" : "관리자 변경 감사"}</h1><p>Tenant-level identity, policy, approval and audit resources.</p></div>
+          <div><span className="eyebrow">TENANT ADMIN / {tab.toUpperCase()}</span><h1>{tab === "overview" ? "관리자 Overview" : tab === "notifications" ? "관리자 알림함" : tab === "users" ? "사용자 승인과 접근 범위" : tab === "roles" ? "역할과 권한 경계" : tab === "approvals" ? "Template·Model 승인 요청" : "관리자 변경 감사"}</h1><p>Tenant-level identity, policy, approval and audit resources.</p></div>
           <button className="secondary" onClick={load}><RefreshCw size={12} /> 새로고침</button>
         </header>
 
@@ -212,6 +263,7 @@ export function AdminApp() {
               <article><span>승인 대기</span><strong>{overview.pending_users}</strong></article>
               <article><span>비활성 사용자</span><strong>{overview.disabled_users}</strong></article>
               <article><span>Workspace</span><strong>{overview.workspace_count}</strong></article>
+              <article><span>미확인 알림</span><strong>{overview.unread_notifications}</strong></article>
             </section>
             <section className="admin-card">
               <div className="admin-card-header"><div><span className="eyebrow">RECENT CHANGES</span><h2>최근 관리자 변경</h2></div><button className="link-button" onClick={() => setTab("audit")}>전체 보기</button></div>
@@ -222,11 +274,26 @@ export function AdminApp() {
           </>
         ) : null}
 
+        {!loading && tab === "notifications" ? (
+          <section className="admin-card admin-notification-center">
+            <div className="admin-card-header"><div><span className="eyebrow">IN-APP NOTIFICATIONS</span><h2>가입·권한 요청</h2></div><span>{notifications.filter((item) => !item.read_at).length} unread</span></div>
+            <div className="admin-notification-list">
+              {notifications.map((notification) => (
+                <button key={notification.id} className={notification.read_at ? "is-read" : "is-unread"} onClick={() => void readNotification(notification)}>
+                  <Bell size={14} />
+                  <span><strong>{notification.title}</strong><small>{notification.body}</small><time>{new Date(notification.created_at).toLocaleString()}</time></span>
+                </button>
+              ))}
+              {!notifications.length ? <p className="empty-state">관리자 알림이 없습니다.</p> : null}
+            </div>
+          </section>
+        ) : null}
+
         {!loading && tab === "users" ? (
           <section className="admin-card admin-table-card">
             <div className="admin-card-header"><div><span className="eyebrow">IDENTITY & SCOPE</span><h2>가입 승인·역할·Workspace scope</h2></div><span>{users.length} accounts</span></div>
             <div className="table-scroll"><table className="admin-user-table"><thead><tr><th>사용자</th><th>상태</th><th>역할</th><th>Workspace scope</th><th>작업</th></tr></thead><tbody>
-              {users.map((item) => <UserAccessRow key={item.id} user={item} roles={roles} workspaces={workspaces} currentUserId={user.user_id} onSaved={load} />)}
+              {users.map((item) => <UserAccessRow key={item.id} user={item} roles={roles} workspaces={workspaces} currentUserId={user.user_id} allPermissions={allPermissions} onSaved={load} />)}
             </tbody></table></div>
           </section>
         ) : null}

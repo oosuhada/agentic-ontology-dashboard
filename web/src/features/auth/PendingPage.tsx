@@ -5,6 +5,7 @@ export function PendingPage() {
   const params = new URLSearchParams(window.location.search);
   const email = params.get("email");
   const organization = params.get("organization");
+  const role = params.get("role");
 
   return (
     <AuthShell
@@ -18,6 +19,7 @@ export function PendingPage() {
           <strong>승인 대기 중</strong>
           {email ? <p>{email}</p> : null}
           {organization ? <small>요청 조직 · {organization}</small> : null}
+          {role ? <small>희망 역할 · {role}</small> : null}
         </div>
       </div>
       <ol className="approval-steps">

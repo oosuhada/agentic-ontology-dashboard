@@ -91,6 +91,7 @@ class IdentityRepository:
                     display_name TEXT NOT NULL,
                     status TEXT NOT NULL,
                     requested_organization_name TEXT,
+                    requested_role_code TEXT,
                     terms_accepted_at TEXT,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
@@ -124,6 +125,21 @@ class IdentityRepository:
                     PRIMARY KEY (user_id, role_code),
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                     FOREIGN KEY (role_code) REFERENCES roles(code) ON DELETE CASCADE
+                );
+                CREATE TABLE IF NOT EXISTS user_permission_overrides (
+                    user_id TEXT NOT NULL,
+                    permission_code TEXT NOT NULL,
+                    allowed INTEGER NOT NULL CHECK (allowed IN (0,1)),
+                    updated_at TEXT NOT NULL,
+                    PRIMARY KEY (user_id, permission_code),
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (permission_code) REFERENCES permissions(code) ON DELETE CASCADE
+                );
+                CREATE TABLE IF NOT EXISTS user_display_preferences (
+                    user_id TEXT PRIMARY KEY,
+                    payload_json TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 );
                 CREATE TABLE IF NOT EXISTS user_scopes (
                     user_id TEXT NOT NULL,
@@ -184,14 +200,37 @@ class IdentityRepository:
                     FOREIGN KEY (actor_user_id) REFERENCES users(id),
                     FOREIGN KEY (target_user_id) REFERENCES users(id)
                 );
+                CREATE TABLE IF NOT EXISTS admin_notifications (
+                    id TEXT PRIMARY KEY,
+                    organization_id TEXT,
+                    notification_type TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    body TEXT NOT NULL,
+                    target_user_id TEXT,
+                    created_at TEXT NOT NULL,
+                    read_at TEXT,
+                    FOREIGN KEY (organization_id) REFERENCES organizations(id),
+                    FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE CASCADE
+                );
                 CREATE INDEX IF NOT EXISTS idx_sessions_token_hash ON sessions(token_hash);
                 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
                 CREATE INDEX IF NOT EXISTS idx_admin_audit_created_at ON admin_audit(created_at);
+                CREATE INDEX IF NOT EXISTS idx_admin_notifications_scope
+                    ON admin_notifications(organization_id,read_at,created_at);
                 """
             )
+        self._ensure_user_columns()
         self._ensure_session_columns()
         self._ensure_project_layer()
         self._seed_reference_data()
+
+    def _ensure_user_columns(self) -> None:
+        with self._connect() as connection:
+            existing = {
+                row["name"] for row in connection.execute("PRAGMA table_info(users)").fetchall()
+            }
+            if "requested_role_code" not in existing:
+                connection.execute("ALTER TABLE users ADD COLUMN requested_role_code TEXT")
 
     def _ensure_session_columns(self) -> None:
         expected = {
@@ -494,12 +533,24 @@ class IdentityRepository:
         email = request.email.lower()
         try:
             with self._connect() as connection:
+                matched_organization = connection.execute(
+                    "SELECT id FROM organizations WHERE lower(name)=lower(?) ORDER BY created_at LIMIT 1",
+                    (request.organization_name,),
+                ).fetchone()
+                if matched_organization is None:
+                    candidates = connection.execute(
+                        "SELECT id FROM organizations ORDER BY created_at LIMIT 2"
+                    ).fetchall()
+                    matched_organization = candidates[0] if len(candidates) == 1 else None
+                notification_organization_id = (
+                    str(matched_organization["id"]) if matched_organization is not None else None
+                )
                 connection.execute(
                     """
                     INSERT INTO users (
                         id,organization_id,email,display_name,status,requested_organization_name,
-                        terms_accepted_at,created_at,updated_at
-                    ) VALUES (?,?,?,?,?,?,?,?,?)
+                        requested_role_code,terms_accepted_at,created_at,updated_at
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?)
                     """,
                     (
                         user_id,
@@ -508,6 +559,7 @@ class IdentityRepository:
                         request.display_name,
                         "pending_approval",
                         request.organization_name,
+                        request.requested_role,
                         now,
                         now,
                         now,
@@ -516,6 +568,22 @@ class IdentityRepository:
                 connection.execute(
                     "INSERT INTO password_credentials (user_id,password_hash,changed_at) VALUES (?,?,?)",
                     (user_id, self.password_hasher.hash(request.password), now),
+                )
+                connection.execute(
+                    """
+                    INSERT INTO admin_notifications (
+                        id,organization_id,notification_type,title,body,target_user_id,created_at,read_at
+                    ) VALUES (?,?,?,?,?,?,?,NULL)
+                    """,
+                    (
+                        str(uuid.uuid4()),
+                        notification_organization_id,
+                        "signup_request",
+                        "신규 가입 승인 요청",
+                        f"{request.display_name} ({email}) · 희망 역할 {request.requested_role}",
+                        user_id,
+                        now,
+                    ),
                 )
         except sqlite3.IntegrityError as exc:
             raise AuthError(409, "email_already_registered", "이미 가입된 이메일입니다.") from exc
@@ -774,6 +842,31 @@ class IdentityRepository:
                     (user_id,),
                 )
             ]
+            permission_overrides = {
+                item["permission_code"]: bool(item["allowed"])
+                for item in connection.execute(
+                    """
+                    SELECT permission_code,allowed
+                    FROM user_permission_overrides
+                    WHERE user_id=?
+                    ORDER BY permission_code
+                    """,
+                    (user_id,),
+                )
+            }
+            effective_permissions = {
+                item["permission_code"]
+                for role_code in roles
+                for item in connection.execute(
+                    "SELECT permission_code FROM role_permissions WHERE role_code=?",
+                    (role_code,),
+                )
+            }
+            for permission_code, allowed in permission_overrides.items():
+                if allowed:
+                    effective_permissions.add(permission_code)
+                else:
+                    effective_permissions.discard(permission_code)
             scopes = [
                 item["workspace_id"]
                 for item in connection.execute(
@@ -821,6 +914,8 @@ class IdentityRepository:
         return {
             **dict(row),
             "roles": roles,
+            "permission_overrides": permission_overrides,
+            "effective_permissions": sorted(effective_permissions),
             "workspace_scopes": scopes,
             "project_scopes": project_scopes,
             "project_roles": project_roles,
@@ -891,6 +986,24 @@ class IdentityRepository:
                     )
                 }
             )
+            permission_overrides = {
+                row["permission_code"]: bool(row["allowed"])
+                for row in connection.execute(
+                    """
+                    SELECT permission_code,allowed
+                    FROM user_permission_overrides
+                    WHERE user_id=?
+                    """,
+                    (user_id,),
+                )
+            }
+        resolved_permissions = set(permissions)
+        for permission_code, allowed in permission_overrides.items():
+            if allowed:
+                resolved_permissions.add(permission_code)
+            else:
+                resolved_permissions.discard(permission_code)
+        permissions = sorted(resolved_permissions)
         primary_role = active_project_roles[0] if active_project_roles else "pending_approval"
         return Principal(
             user_id=user_id,
@@ -939,7 +1052,22 @@ class IdentityRepository:
     def list_roles(self) -> list[dict[str, Any]]:
         with self._connect() as connection:
             rows = connection.execute("SELECT code,display_name,description FROM roles ORDER BY code").fetchall()
-        return [dict(row) for row in rows]
+            return [
+                {
+                    **dict(row),
+                    "permissions": [
+                        item["permission_code"]
+                        for item in connection.execute(
+                            """
+                            SELECT permission_code FROM role_permissions
+                            WHERE role_code=? ORDER BY permission_code
+                            """,
+                            (row["code"],),
+                        )
+                    ],
+                }
+                for row in rows
+            ]
 
     def list_workspaces(
         self,
@@ -1159,6 +1287,17 @@ class IdentityRepository:
                 raise AuthError(409, "self_lockout_blocked", "현재 관리자 계정은 스스로 비활성화할 수 없습니다.")
             if request.roles is not None and "tenant_admin" not in request.roles:
                 raise AuthError(409, "self_lockout_blocked", "현재 관리자 계정에서 tenant_admin 역할을 제거할 수 없습니다.")
+            if request.permission_overrides is not None:
+                protected = {"admin.access", "admin.users.read", "admin.users.manage"}
+                if any(
+                    permission in protected and not allowed
+                    for permission, allowed in request.permission_overrides.items()
+                ):
+                    raise AuthError(
+                        409,
+                        "self_lockout_blocked",
+                        "현재 관리자 계정의 핵심 관리자 권한을 차단할 수 없습니다.",
+                    )
 
         if request.roles is not None:
             invalid_roles = sorted(set(request.roles) - set(ROLE_DEFINITIONS))
@@ -1175,6 +1314,16 @@ class IdentityRepository:
                     422,
                     "invalid_workspace_scope",
                     f"알 수 없는 workspace입니다: {', '.join(invalid_scopes)}",
+                )
+        if request.permission_overrides is not None:
+            invalid_permissions = sorted(
+                set(request.permission_overrides) - set(PERMISSION_DEFINITIONS)
+            )
+            if invalid_permissions:
+                raise AuthError(
+                    422,
+                    "invalid_permission",
+                    f"알 수 없는 권한입니다: {', '.join(invalid_permissions)}",
                 )
 
         now = self._iso()
@@ -1199,6 +1348,20 @@ class IdentityRepository:
                     connection.execute(
                         "INSERT INTO user_roles (user_id,role_code) VALUES (?,?)",
                         (target_user_id, role_code),
+                    )
+            if request.permission_overrides is not None:
+                connection.execute(
+                    "DELETE FROM user_permission_overrides WHERE user_id=?",
+                    (target_user_id,),
+                )
+                for permission_code, allowed in sorted(request.permission_overrides.items()):
+                    connection.execute(
+                        """
+                        INSERT INTO user_permission_overrides(
+                            user_id,permission_code,allowed,updated_at
+                        ) VALUES (?,?,?,?)
+                        """,
+                        (target_user_id, permission_code, int(allowed), now),
                     )
             if request.workspace_scopes is not None:
                 connection.execute("DELETE FROM user_scopes WHERE user_id=?", (target_user_id,))
@@ -1287,6 +1450,15 @@ class IdentityRepository:
                             """,
                             (target_user_id, project_id, role_code),
                         )
+            if request.status == "active":
+                connection.execute(
+                    """
+                    UPDATE admin_notifications
+                    SET read_at=COALESCE(read_at,?)
+                    WHERE target_user_id=? AND notification_type='signup_request'
+                    """,
+                    (now, target_user_id),
+                )
 
         after = self.get_user(target_user_id)
         self.record_admin_audit(
@@ -1297,6 +1469,96 @@ class IdentityRepository:
             after=after,
         )
         return after
+
+    def list_admin_notifications(
+        self,
+        *,
+        organization_id: str,
+        unread_only: bool = False,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        clauses = ["(n.organization_id=? OR n.organization_id IS NULL)"]
+        parameters: list[Any] = [organization_id]
+        if unread_only:
+            clauses.append("n.read_at IS NULL")
+        parameters.append(max(1, min(limit, 500)))
+        with self._connect() as connection:
+            rows = connection.execute(
+                f"""
+                SELECT n.*,u.email AS target_email,u.display_name AS target_display_name,
+                       u.requested_role_code
+                FROM admin_notifications n
+                LEFT JOIN users u ON u.id=n.target_user_id
+                WHERE {' AND '.join(clauses)}
+                ORDER BY n.created_at DESC
+                LIMIT ?
+                """,
+                parameters,
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def mark_admin_notification_read(
+        self,
+        *,
+        organization_id: str,
+        notification_id: str,
+    ) -> dict[str, Any]:
+        now = self._iso()
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT id FROM admin_notifications
+                WHERE id=? AND (organization_id=? OR organization_id IS NULL)
+                """,
+                (notification_id, organization_id),
+            ).fetchone()
+            if row is None:
+                raise AuthError(404, "notification_not_found", "관리자 알림을 찾을 수 없습니다.")
+            connection.execute(
+                "UPDATE admin_notifications SET read_at=COALESCE(read_at,?) WHERE id=?",
+                (now, notification_id),
+            )
+        return next(
+            item
+            for item in self.list_admin_notifications(
+                organization_id=organization_id,
+                limit=500,
+            )
+            if item["id"] == notification_id
+        )
+
+    def get_display_preferences(self, *, user_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT payload_json,updated_at FROM user_display_preferences WHERE user_id=?",
+                (user_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        payload = json.loads(row["payload_json"])
+        if not isinstance(payload, dict):
+            return None
+        return {**payload, "updated_at": row["updated_at"]}
+
+    def save_display_preferences(
+        self,
+        *,
+        user_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        now = self._iso()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO user_display_preferences(user_id,payload_json,updated_at)
+                VALUES (?,?,?)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    payload_json=excluded.payload_json,
+                    updated_at=excluded.updated_at
+                """,
+                (user_id, json.dumps(payload, ensure_ascii=False), now),
+            )
+        return {**payload, "updated_at": now}
 
     def record_admin_audit(
         self,

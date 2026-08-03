@@ -61,6 +61,7 @@ import type {
 } from "./features/ontology/types";
 import type {
   AdminAuditEntry,
+  AdminNotification,
   AdminUser,
   AppRole,
   AuthUser,
@@ -175,6 +176,7 @@ export function register(input: {
   email: string;
   password: string;
   organization_name: string;
+  requested_role: Exclude<AppRole, "tenant_admin">;
   terms_accepted: boolean;
 }) {
   return request<{
@@ -183,6 +185,7 @@ export function register(input: {
     display_name: string;
     status: "pending_approval";
     requested_organization_name: string;
+    requested_role: Exclude<AppRole, "tenant_admin">;
   }>("/api/auth/register", {
     method: "POST",
     body: JSON.stringify(input),
@@ -193,6 +196,25 @@ export async function getCurrentUser(signal?: AbortSignal): Promise<AuthUser> {
   const payload = await request<{ user: AuthUser; csrf_token: string | null }>("/api/auth/me", { signal });
   csrfTokenCache = payload.csrf_token;
   return payload.user;
+}
+
+export interface ServerDisplayPreferences {
+  version: 3;
+  textSize: "small" | "default" | "large" | "extra-large";
+  density: "compact" | "standard" | "comfortable";
+  showTechnicalMetadata: boolean;
+  updated_at?: string;
+}
+
+export async function getDisplayPreferences(): Promise<ServerDisplayPreferences | null> {
+  return (await request<{ preferences: ServerDisplayPreferences | null }>("/api/auth/display-preferences")).preferences;
+}
+
+export function saveDisplayPreferences(input: Omit<ServerDisplayPreferences, "updated_at">): Promise<ServerDisplayPreferences> {
+  return request<ServerDisplayPreferences>("/api/auth/display-preferences", {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
 }
 
 export async function logout(): Promise<void> {
@@ -671,6 +693,7 @@ export interface AdminOverview {
   pending_users: number;
   disabled_users: number;
   workspace_count: number;
+  unread_notifications: number;
   recent_admin_changes: AdminAuditEntry[];
 }
 
@@ -694,9 +717,24 @@ export async function getAdminAudit(): Promise<AdminAuditEntry[]> {
   return (await request<{ items: AdminAuditEntry[] }>("/api/admin/audit")).items;
 }
 
+export async function getAdminNotifications(unreadOnly = false): Promise<AdminNotification[]> {
+  return (await request<{ items: AdminNotification[] }>(`/api/admin/notifications?unread_only=${unreadOnly ? "true" : "false"}`)).items;
+}
+
+export function markAdminNotificationRead(notificationId: string): Promise<AdminNotification> {
+  return request<AdminNotification>(`/api/admin/notifications/${encodeURIComponent(notificationId)}/read`, {
+    method: "POST",
+  });
+}
+
 export function updateAdminUser(
   userId: string,
-  input: { status?: UserStatus; roles?: AppRole[]; workspace_scopes?: string[] },
+  input: {
+    status?: UserStatus;
+    roles?: AppRole[];
+    workspace_scopes?: string[];
+    permission_overrides?: Record<string, boolean>;
+  },
 ): Promise<AdminUser> {
   return request<AdminUser>(`/api/admin/users/${userId}`, {
     method: "PATCH",
