@@ -24,7 +24,7 @@
 - AI4I audit: 10,000행, 결측 0, 중복 0, failure 339
 - Random Forest held-out test: AP 0.8739, Precision 0.6591, Recall 0.8529, F1 0.7436
 - Gold product evaluation: 8/8 PASS
-- Python test: 14 PASS
+- Python test: 15 PASS
 - Frontend unit test: 1 PASS
 - TypeScript strict check: PASS
 - Production build: PASS
