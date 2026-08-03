@@ -1,5 +1,9 @@
 # 구현 기능 화면 투어
 
+> 브라우저 인터랙티브 버전: `http://127.0.0.1:3100/team-share`
+>
+> 전체 HTML Story 캡처: [`assets/screenshots/00-team-share-story.png`](./assets/screenshots/00-team-share-story.png)
+
 모든 이미지는 Playwright 격리 DB와 demo seed에서 1440×1000 화면으로 생성했다. 재생성 명령은 문서 마지막에 있다.
 
 ## 1. 가입자가 희망 역할을 요청한다

@@ -2,6 +2,18 @@
 
 이 폴더는 프로젝트를 처음 전달받은 팀원이 제품의 목적, 구현 범위, 사용자 흐름과 코드 위치를 빠르게 파악하기 위한 공식 시작점이다.
 
+## 브라우저에서 시각적으로 보기
+
+로컬 서버가 실행 중이면 다음 공개 route를 먼저 연다.
+
+```text
+http://127.0.0.1:3100/team-share
+```
+
+이 화면은 로그인 없이 User Flow, 역할별 화면, Dataset 적응형 구성, Analysis·Ontology와 구현 상태를 클릭하며 볼 수 있는 HTML Story다.
+
+![Team share story](./assets/screenshots/00-team-share-story.png)
+
 ## 프로젝트 한 문장
 
 Ontology Dashboard는 **Dataset → Ontology Object → Analysis → Report/Dashboard → Evidence → Governance → Action**을 조직·Project·Workspace·역할·사용자 권한에 따라 연결하는 운영 의사결정 플랫폼 프로토타입이다.

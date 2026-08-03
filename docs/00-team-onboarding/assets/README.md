@@ -2,6 +2,9 @@
 
 이 폴더는 팀 공유 문서에서 사용하는 검증된 화면 캡처만 보관한다.
 
+- `screenshots/00-team-share-story.png`: `/team-share` 전체 HTML Story 캡처
+- `screenshots/01-15`: 실제 사용자 흐름과 Workbench별 1440×1000 검증 캡처
+
 - 캡처 생성: `cd web && CAPTURE_TEAM_SHARE=1 npx playwright test e2e/team-share-captures.spec.ts`
 - 화면 크기: 1440 × 1000, light theme
 - 데이터: Playwright 격리 SQLite 데이터베이스와 demo seed

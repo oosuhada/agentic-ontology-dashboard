@@ -20,6 +20,7 @@
 
 먼저 아래 문서만 확인해 주세요.
 
+0. 브라우저 Story: http://127.0.0.1:3100/team-share
 1. docs/00-team-onboarding/README.md
 2. docs/00-team-onboarding/02-feature-tour.md
 3. docs/00-team-onboarding/04-demo-guide.md
@@ -54,11 +55,12 @@
 
 권장 순서:
 
-1. 화면 투어 문서
-2. 로컬 15분 데모
-3. 구현 상태 Matrix
-4. Repository map
-5. Draft PR diff
+1. `/team-share` HTML Story
+2. 화면 투어 문서
+3. 로컬 15분 데모
+4. 구현 상태 Matrix
+5. Repository map
+6. Draft PR diff
 
 코드 diff부터 공유하면 제품 흐름보다 파일 수와 구현량에 논의가 집중될 수 있으므로 마지막에 연다.
 

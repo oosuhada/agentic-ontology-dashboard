@@ -6,6 +6,8 @@
 >
 > 화면 15장과 기능 설명: [`docs/00-team-onboarding/02-feature-tour.md`](./docs/00-team-onboarding/02-feature-tour.md)
 >
+> 브라우저 인터랙티브 Story: `http://127.0.0.1:3100/team-share`
+>
 > 전체 문서 지도: [`docs/README.md`](./docs/README.md)
 
 ## 구현 상태

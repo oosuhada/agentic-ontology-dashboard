@@ -47,6 +47,9 @@ const GovernanceWorkbenchPage = lazy(() =>
 const ReferenceGallery = lazy(() =>
   import("./features/reference/ReferenceGallery").then((module) => ({ default: module.ReferenceGallery })),
 );
+const TeamShareStory = lazy(() =>
+  import("./features/teamshare/TeamShareStory").then((module) => ({ default: module.TeamShareStory })),
+);
 
 const LAST_VALID_PROJECT_KEY = "ontology-dashboard:last-valid-project";
 
@@ -155,6 +158,7 @@ function AppRouter() {
   const { user, loading } = useAuth();
 
   if (pathname === "/reference") return <ReferenceGallery />;
+  if (pathname === "/team-share") return <TeamShareStory />;
 
   if (loading) {
     return <RouteLoading operation="Checking session" detail="Resolving identity and governed scope." />;
