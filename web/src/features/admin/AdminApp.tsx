@@ -1,18 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  decideModelReleaseRequest,
+  decideTemplatePublishRequest,
   getAdminAudit,
   getAdminOverview,
   getAdminRoles,
   getAdminUsers,
+  getAdminWorkflowApprovals,
   getAdminWorkspaces,
   updateAdminUser,
   type AdminOverview,
 } from "../../api";
 import { navigate } from "../../routing";
 import type { AdminAuditEntry, AdminUser, AppRole, RoleDefinition, UserStatus, Workspace } from "../../types";
+import type { AdminWorkflowApprovals, WorkflowRequest } from "../roles/types";
 import { useAuth } from "../auth/AuthContext";
 
-type AdminTab = "overview" | "users" | "roles" | "audit";
+type AdminTab = "overview" | "users" | "roles" | "approvals" | "audit";
 
 function UserAccessRow({
   user,
@@ -105,6 +109,7 @@ export function AdminApp() {
   const [roles, setRoles] = useState<RoleDefinition[]>([]);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [audit, setAudit] = useState<AdminAuditEntry[]>([]);
+  const [approvals, setApprovals] = useState<AdminWorkflowApprovals>({ template_publish_requests: [], model_release_requests: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -112,18 +117,20 @@ export function AdminApp() {
     setLoading(true);
     setError("");
     try {
-      const [nextOverview, nextUsers, nextRoles, nextWorkspaces, nextAudit] = await Promise.all([
+      const [nextOverview, nextUsers, nextRoles, nextWorkspaces, nextAudit, nextApprovals] = await Promise.all([
         getAdminOverview(),
         getAdminUsers(),
         getAdminRoles(),
         getAdminWorkspaces(),
         getAdminAudit(),
+        getAdminWorkflowApprovals(),
       ]);
       setOverview(nextOverview);
       setUsers(nextUsers);
       setRoles(nextRoles);
       setWorkspaces(nextWorkspaces);
       setAudit(nextAudit);
+      setApprovals(nextApprovals);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "관리자 데이터를 불러오지 못했습니다.");
     } finally {
@@ -137,6 +144,22 @@ export function AdminApp() {
     ...role,
     count: users.filter((item) => item.roles.includes(role.code)).length,
   })), [roles, users]);
+
+  async function handleApproval(item: WorkflowRequest, decision: "approve" | "reject") {
+    const note = window.prompt(decision === "approve" ? "승인 메모" : "반려 사유", decision === "approve" ? "권한·계약·검증 결과 확인" : "수정 후 재요청 필요")?.trim();
+    if (note === undefined) return;
+    setError("");
+    try {
+      if (item.workflow_type === "template_publish") {
+        await decideTemplatePublishRequest(item.id, decision, note ?? "");
+      } else {
+        await decideModelReleaseRequest(item.id, decision, note ?? "");
+      }
+      await load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "승인 요청을 처리하지 못했습니다.");
+    }
+  }
 
   async function handleLogout() {
     await logout();
@@ -154,6 +177,7 @@ export function AdminApp() {
           <button className={tab === "overview" ? "active" : ""} onClick={() => setTab("overview")}>Overview</button>
           <button className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}>Users</button>
           <button className={tab === "roles" ? "active" : ""} onClick={() => setTab("roles")}>Roles & Permissions</button>
+          <button className={tab === "approvals" ? "active" : ""} onClick={() => setTab("approvals")}>Workflow Approvals</button>
           <button className={tab === "audit" ? "active" : ""} onClick={() => setTab("audit")}>Audit Logs</button>
         </nav>
         <div className="admin-boundary-note">
@@ -169,7 +193,7 @@ export function AdminApp() {
 
       <main className="admin-main">
         <header className="admin-topbar">
-          <div><span className="eyebrow">TENANT ADMIN</span><h1>{tab === "overview" ? "관리자 Overview" : tab === "users" ? "사용자 승인과 접근 범위" : tab === "roles" ? "역할과 권한 경계" : "관리자 변경 감사"}</h1></div>
+          <div><span className="eyebrow">TENANT ADMIN</span><h1>{tab === "overview" ? "관리자 Overview" : tab === "users" ? "사용자 승인과 접근 범위" : tab === "roles" ? "역할과 권한 경계" : tab === "approvals" ? "Template·Model 승인 요청" : "관리자 변경 감사"}</h1></div>
           <button className="secondary" onClick={load}>새로고침</button>
         </header>
 
@@ -211,6 +235,25 @@ export function AdminApp() {
                 {role.code === "tenant_admin" ? <small>가입 승인·역할·scope와 관리자 감사 권한</small> : null}
               </article>
             ))}
+          </section>
+        ) : null}
+
+        {!loading && tab === "approvals" ? (
+          <section className="admin-card admin-table-card">
+            <div className="admin-card-header"><div><span className="eyebrow">FOUR-EYES APPROVAL</span><h2>Template publish · Model release</h2></div><span>{[...approvals.template_publish_requests, ...approvals.model_release_requests].filter((item) => item.status === "pending_approval").length} pending</span></div>
+            <div className="workflow-approval-list">
+              {[...approvals.template_publish_requests, ...approvals.model_release_requests].map((item) => (
+                <article key={item.id} className={`workflow-approval-card status-${item.status}`}>
+                  <div className="workflow-approval-heading">
+                    <div><span>{item.workflow_type === "template_publish" ? "DASHBOARD TEMPLATE" : "MODEL RELEASE"}</span><h3>{item.workflow_type === "template_publish" ? `${item.target_role} · ${String(item.payload.display_name ?? "Template")}` : String(item.payload.model_version ?? "Model release")}</h3><small>{item.requested_by_name} · {new Date(item.created_at).toLocaleString()}</small></div>
+                    <span className={`approval-status status-${item.status}`}>{item.status}</span>
+                  </div>
+                  <pre>{JSON.stringify(item.payload, null, 2)}</pre>
+                  {item.status === "pending_approval" ? <div className="button-row"><button className="primary" onClick={() => void handleApproval(item, "approve")}>승인</button><button className="secondary" onClick={() => void handleApproval(item, "reject")}>반려</button></div> : <small>{item.decision_by_name ?? "관리자"} · {item.decision_note || "메모 없음"}</small>}
+                </article>
+              ))}
+              {![...approvals.template_publish_requests, ...approvals.model_release_requests].length ? <p className="empty-state">승인 요청이 없습니다.</p> : null}
+            </div>
           </section>
         ) : null}
 

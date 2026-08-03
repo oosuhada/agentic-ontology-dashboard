@@ -72,6 +72,49 @@ export interface ActionInvocation {
   idempotency_key: string;
 }
 
+export interface ActionExecutionResult {
+  invocation_id: string;
+  action_type: string;
+  object_id: string;
+  workspace_id: string;
+  state: "succeeded";
+  replayed: boolean;
+  result: Record<string, unknown>;
+  audit_id: string;
+  created_at: string;
+  completed_at: string;
+}
+
+export interface OntologyObjectQueryResult {
+  workspace_id: string;
+  domain_pack: string;
+  object_type: string | null;
+  search: string | null;
+  offset: number;
+  limit: number;
+  total: number;
+  items: ObjectRecord[];
+}
+
+export interface OntologyTraversal {
+  root: ObjectRecord;
+  nodes: ObjectRecord[];
+  edges: LinkRecord[];
+  direction: "outgoing" | "incoming" | "both";
+  depth: number;
+}
+
+export interface OntologyAggregateResult {
+  workspace_id: string;
+  object_type: string;
+  group_by: string[];
+  metrics: string[];
+  source_rows: number;
+  row_count: number;
+  rows: Array<Record<string, unknown>>;
+  generated_at: string;
+}
+
 export interface EvidenceReference {
   id: string;
   evidence_type: string;

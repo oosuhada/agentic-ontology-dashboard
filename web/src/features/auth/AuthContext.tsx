@@ -1,5 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { ApiError, getCurrentUser, login as loginRequest, logout as logoutRequest } from "../../api";
+import {
+  ApiError,
+  getCurrentUser,
+  login as loginRequest,
+  logout as logoutRequest,
+  setActiveProject as setActiveProjectRequest,
+} from "../../api";
 import type { AuthUser } from "../../types";
 
 interface AuthContextValue {
@@ -8,6 +14,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refresh: () => Promise<AuthUser | null>;
+  setActiveProject: (projectId: string) => Promise<AuthUser>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -54,6 +61,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
     },
     refresh,
+    setActiveProject: async (projectId) => {
+      const updated = await setActiveProjectRequest(projectId);
+      setUser(updated);
+      return updated;
+    },
   }), [user, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
