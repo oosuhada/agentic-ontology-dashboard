@@ -8,32 +8,67 @@ async function login(page: Page, email: string, password: string) {
 }
 
 test("manager and engineer accounts see different governed views for the same event", async ({ page }) => {
+  test.setTimeout(90_000);
   await login(page, "manager@ontology.local", "Manager!2026");
-  await expect(page).toHaveURL(/\/app$/);
+  await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project$/);
   await expect(page.getByText("Ontology Dashboard", { exact: true })).toBeVisible();
   await expect(page.getByText("Manufacturing Predictive Maintenance Pack", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: /GS-002/ }).click();
   await expect(page.getByText("MANAGER DECISION VIEW")).toBeVisible();
   await expect(page.getByText("현장 점검 요청", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("예상 운영 영향")).toBeVisible();
+  await expect(page.getByText("예상 운영 영향", { exact: true }).first()).toBeVisible();
 
   await page.getByRole("button", { name: "로그아웃", exact: true }).click();
   await login(page, "engineer@ontology.local", "Engineer!2026");
-  await expect(page).toHaveURL(/\/app$/);
+  await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project$/);
   await page.getByRole("button", { name: /GS-002/ }).click();
   await expect(page.getByText("ENGINEER EVIDENCE VIEW")).toBeVisible();
-  await expect(page.getByText("센서 변화", { exact: true })).toBeVisible();
-  await expect(page.getByText("주요 위험 근거", { exact: true })).toBeVisible();
+  await expect(page.getByText("센서 변화", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("주요 위험 근거", { exact: true }).first()).toBeVisible();
 
   await page.getByRole("button", { name: "왜 위험한가?" }).click();
   await expect(page.getByText(/가장 큰 근거는 공구 마모/)).toBeVisible();
 });
 
+test("project context restores the migrated demo route and scopes its workspace", async ({ page }) => {
+  await login(page, "manager@ontology.local", "Manager!2026");
+  await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project$/);
+  await expect(page.getByLabel("Project")).toHaveValue("manufacturing-demo-project");
+  await expect(page.getByLabel("Workspace")).toHaveValue("manufacturing-demo");
+
+  await page.goto("/app/projects/not-accessible");
+  await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project$/);
+  await expect(page.getByLabel("Project")).toHaveValue("manufacturing-demo-project");
+  await expect(page.getByLabel("Workspace")).toHaveValue("manufacturing-demo");
+});
+
+test("project switch persists active context and isolates project resources", async ({ page }) => {
+  test.setTimeout(60_000);
+  await login(page, "manager@ontology.local", "Manager!2026");
+  await page.getByLabel("Project").selectOption("azure-fleet-maintenance-project");
+  await expect(page).toHaveURL(/\/app\/projects\/azure-fleet-maintenance-project$/);
+  await expect(page.getByLabel("Workspace")).toHaveValue("azure-fleet-maintenance");
+  await expect(page.getByRole("button", { name: /GS-002/ })).toHaveCount(0);
+
+  await page.reload();
+  await expect(page).toHaveURL(/\/app\/projects\/azure-fleet-maintenance-project$/);
+  await expect(page.getByLabel("Project")).toHaveValue("azure-fleet-maintenance-project");
+  await expect(page.getByLabel("Workspace")).toHaveValue("azure-fleet-maintenance");
+
+  await page.goto("/app/projects/deleted-project");
+  await expect(page).toHaveURL(/\/app\/projects\/azure-fleet-maintenance-project$/);
+
+  await page.getByLabel("Project").selectOption("manufacturing-demo-project");
+  await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project$/);
+  await expect(page.getByLabel("Workspace")).toHaveValue("manufacturing-demo");
+  await expect(page.getByRole("button", { name: /GS-002/ })).toBeVisible();
+});
+
 test("data-quality and provider fallback states remain usable after authentication", async ({ page }) => {
   await login(page, "manager@ontology.local", "Manager!2026");
   await page.getByRole("button", { name: /GS-007/ }).click();
-  await expect(page.getByText("데이터 품질 경고", { exact: true })).toBeVisible();
+  await expect(page.getByText("데이터 품질 경고", { exact: true }).first()).toBeVisible();
   await expect(page.getByText(/정상 또는 고장으로 단정하지 않습니다/)).toBeVisible();
 
   await page.getByRole("button", { name: /GS-008/ }).click();
@@ -68,4 +103,185 @@ test("registration creates a pending approval account", async ({ page }) => {
   await expect(page).toHaveURL(/\/pending/);
   await expect(page.getByText("가입 요청이 접수되었습니다")).toBeVisible();
   await expect(page.getByText("playwright.user@example.com")).toBeVisible();
+});
+
+test("dashboard edit mode persists a catalog text board and protects mandatory boards", async ({ page }) => {
+  await login(page, "manager@ontology.local", "Manager!2026");
+  await expect(page.getByRole("button", { name: "운영 판단", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "근거와 후속", exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  const mandatoryFrame = page.locator(".dashboard-board-frame").filter({ hasText: "현재 사건 요약" });
+  await mandatoryFrame.click();
+  await expect(mandatoryFrame.getByRole("button", { name: "삭제", exact: true })).toBeDisabled();
+
+  await page.getByRole("button", { name: "Board Catalog", exact: true }).click();
+  const textCard = page.locator(".catalog-card").filter({ hasText: "Text Board" });
+  await textCard.getByRole("button", { name: "이 탭에 추가" }).click();
+  await page.locator(".board-catalog-panel").getByRole("button", { name: "닫기" }).click();
+  await page.getByLabel("Plain text").fill("Playwright 개인 운영 메모");
+
+  await page.getByRole("button", { name: "개인 설정 저장" }).click();
+  await expect(page.getByText(/다음 로그인에서도 복원됩니다/)).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("Playwright 개인 운영 메모", { exact: true })).toBeVisible();
+
+  const textFrame = page.locator(".dashboard-board-frame").filter({ hasText: "Playwright 개인 운영 메모" });
+  await textFrame.getByRole("button", { name: /전체 화면/ }).click();
+  await expect(textFrame).toHaveClass(/is-fullscreen/);
+  await textFrame.getByRole("button", { name: "전체 화면 닫기" }).click();
+});
+
+test("cross-filter selection saved view and share preserve governed parameter state", async ({ page }) => {
+  await login(page, "engineer@ontology.local", "Engineer!2026");
+  await page.getByRole("button", { name: /GS-002/ }).click();
+  await expect(page.locator(".dashboard-board-frame.is-affected").first()).toBeVisible();
+  await expect(page.getByText(/boards affected/)).toBeVisible();
+
+  page.once("dialog", async (dialog) => dialog.accept("Playwright 공구 마모 View"));
+  await page.getByRole("button", { name: "View 저장", exact: true }).click();
+  await expect(page.getByText(/Saved View 'Playwright 공구 마모 View'/)).toBeVisible();
+  await expect(page.getByRole("option", { name: "Playwright 공구 마모 View" })).toBeAttached();
+
+  await page.getByRole("button", { name: "공유", exact: true }).click();
+  await expect(page.getByText(/공유 링크를 생성했습니다:.*share=/)).toBeVisible();
+});
+
+test("executive viewer understands aggregate risk and drills into an unresolved event", async ({ page }) => {
+  await login(page, "executive@ontology.local", "Executive!2026");
+  await expect(page.getByText("EXECUTIVE RISK OVERVIEW")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Executive Overview", exact: true })).toBeVisible();
+  await expect(page.getByText("조직 위험 Portfolio", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("추정 정지 영향", { exact: true })).toBeVisible();
+  const unresolved = page.locator(".executive-unresolved-list button").first();
+  await expect(unresolved).toBeVisible();
+  await unresolved.click();
+  await expect(page.locator(".context-object-card")).toBeVisible();
+  await expect(page.getByText("추정 가정", { exact: true })).toBeVisible();
+});
+
+test("quality auditor reconstructs evidence and records an export checkpoint", async ({ page }) => {
+  await login(page, "quality@ontology.local", "Quality!2026");
+  await expect(page.getByText("QUALITY & AUDIT VIEW")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Event Reconstruction", exact: true })).toBeVisible();
+  await expect(page.getByText("사건 재구성", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/fixture-heuristic-v1/).first()).toBeVisible();
+  await page.getByRole("button", { name: "Action & Export", exact: true }).click();
+  await page.getByLabel("감사 목적").fill("Playwright 감사 checkpoint");
+  await page.getByRole("button", { name: "Export checkpoint 기록" }).click();
+  await expect(page.getByText(/감사 hash를 기록했습니다/)).toBeVisible();
+  await expect(page.getByText("Playwright 감사 checkpoint", { exact: false })).toBeVisible();
+});
+
+test("field technician completes a task from a mobile viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page, "technician@ontology.local", "Technician!2026");
+  await expect(page.getByText("FIELD TASK VIEW")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Mobile Task", exact: true })).toBeVisible();
+  await expect(page.getByText("배정 현장 작업", { exact: true }).first()).toBeVisible();
+  await expect(page.locator(".dashboard-context-panel")).toBeHidden();
+  await page.locator(".mobile-checklist input").first().check();
+  await page.getByPlaceholder("완료 handoff 또는 문제·작업 불가 사유").fill("Playwright 모바일 작업 완료 handoff");
+  await page.getByRole("button", { name: "작업 완료", exact: true }).click();
+  await expect(page.getByText(/현장 작업 완료와 엔지니어 handoff/)).toBeVisible();
+  await expect(page.getByText("completed", { exact: true }).first()).toBeVisible();
+});
+
+test("FDE sees customer diagnostics and submits template changes for approval", async ({ page }) => {
+  await login(page, "fde@ontology.local", "FDE!2026");
+  await expect(page.getByText("FDE WORKBENCH PREVIEW")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Customer Workspace", exact: true })).toBeVisible();
+  await expect(page.getByText("Customer Workspace Overview", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Deployment Checklist", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Diagnostic Events", { exact: true }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Template 승인 요청", exact: true })).toBeVisible();
+  await expect(page.getByText(/Credential·secret 비노출/)).toBeVisible();
+});
+
+test("FDE planner validates natural language and applies a non-persisted dashboard draft", async ({ page }) => {
+  await login(page, "fde@ontology.local", "FDE!2026");
+  await page.getByRole("button", { name: "Template Builder", exact: true }).click();
+  const planner = page.locator(".planner-assistant-card");
+  await expect(planner.getByText("Governed planning", { exact: true })).toBeVisible();
+  await planner.getByRole("button", { name: "Draft 생성", exact: true }).click();
+  await expect(planner.locator("strong").filter({ hasText: /^risk_event$/ }).first()).toBeVisible();
+  await expect(planner.getByText(/deterministic_fallback/)).toBeVisible();
+
+  await planner.getByRole("button", { name: "Dashboard Draft", exact: true }).click();
+  await planner.getByLabel("자연어 요청").fill("운영 판단과 감사 근거를 함께 보는 고객 dashboard");
+  await planner.getByRole("button", { name: "Draft 생성", exact: true }).click();
+  await expect(planner.getByText("process_manager Dashboard Draft", { exact: true })).toBeVisible();
+  await planner.getByRole("button", { name: "검토를 위해 Canvas에 적용", exact: true }).click();
+  await expect(page.getByText(/아직 저장·게시되지 않았습니다/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Template 승인 요청", exact: true })).toBeVisible();
+});
+
+test("dashboard export creates a downloadable JSON artifact and checkpoint", async ({ page }) => {
+  await login(page, "manager@ontology.local", "Manager!2026");
+  await page.getByLabel("Export 형식").selectOption("json");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Export", exact: true }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/manufacturing-demo-dashboard-.*\.json$/);
+  await expect(page.getByText(/JSON export와 checkpoint/)).toBeVisible();
+});
+
+test("authenticated project shell passes the baseline accessibility gate", async ({ page }) => {
+  await login(page, "manager@ontology.local", "Manager!2026");
+  await expect(page.getByRole("main")).toBeVisible();
+
+  const violations = await page.evaluate(() => {
+    const issues: string[] = [];
+    const accessibleName = (element: Element) => (
+      element.getAttribute("aria-label")
+      || element.getAttribute("aria-labelledby")
+      || element.getAttribute("title")
+      || element.textContent?.trim()
+      || ""
+    );
+    document.querySelectorAll("button,a,input,select,textarea").forEach((element) => {
+      const input = element as HTMLInputElement;
+      if (input.type === "hidden") return;
+      const id = element.getAttribute("id");
+      const labelled = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
+      const wrappingLabel = element.closest("label");
+      if (!accessibleName(element) && !labelled && !wrappingLabel) {
+        issues.push(`missing accessible name: ${element.tagName.toLowerCase()}`);
+      }
+    });
+    document.querySelectorAll("img").forEach((image) => {
+      if (!image.hasAttribute("alt")) issues.push("image missing alt");
+    });
+    const ids = Array.from(document.querySelectorAll("[id]"))
+      .map((element) => element.id)
+      .filter(Boolean);
+    const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+    duplicates.forEach((id) => issues.push(`duplicate id: ${id}`));
+    if (document.querySelectorAll("main").length !== 1) {
+      issues.push("page must contain exactly one main landmark");
+    }
+    return [...new Set(issues)];
+  });
+
+  expect(violations).toEqual([]);
+});
+
+test("data scientist requests a model release and admin sees the approval queue", async ({ page }) => {
+  await login(page, "datascientist@ontology.local", "DataScience!2026");
+  await expect(page.getByText("MODEL VALIDATION VIEW")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Model Console", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Drift & Regression", exact: true }).click();
+  await expect(page.getByText("8/8 PASS", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Release Candidate", exact: true }).click();
+  await page.getByLabel("승인 요청 근거").fill("Playwright Gold 8건 통과 승인 요청");
+  await page.getByRole("button", { name: "Release 승인 요청", exact: true }).click();
+  await expect(page.getByText(/관리자 승인 요청으로 제출했습니다/)).toBeVisible();
+
+  await page.getByRole("button", { name: "로그아웃", exact: true }).click();
+  await login(page, "admin@ontology.local", "OntologyAdmin!2026");
+  await page.getByRole("button", { name: "Workflow Approvals", exact: true }).click();
+  await expect(page.getByText("Playwright Gold 8건 통과 승인 요청", { exact: false })).toBeVisible();
+  await expect(page.getByText("MODEL RELEASE", { exact: true })).toBeVisible();
 });

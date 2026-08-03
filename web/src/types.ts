@@ -18,14 +18,45 @@ export interface AuthUser {
   roles: AppRole[];
   permissions: string[];
   workspace_scopes: string[];
+  project_scopes: string[];
+  project_roles: Record<string, string[]>;
+  active_project_id: string | null;
+  active_project_roles: string[];
   is_admin: boolean;
   default_path: "/app" | "/admin";
   landing_key: AppRole | "pending_approval";
 }
 
+export interface ProjectMembership {
+  user_id: string;
+  organization_id: string;
+  project_id: string;
+  status: "active" | "suspended";
+  email: string;
+  display_name: string;
+  user_status: string;
+  roles: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Project {
+  id: string;
+  organization_id: string;
+  slug: string;
+  display_name: string;
+  description: string;
+  domain_pack_code: string;
+  status: "draft" | "active" | "archived";
+  default_workspace_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Workspace {
   id: string;
   organization_id: string;
+  project_id: string;
   slug: string;
   display_name: string;
   domain_pack: string;
