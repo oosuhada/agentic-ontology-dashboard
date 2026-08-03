@@ -4,7 +4,7 @@
 
 > **팀 공유·온보딩 시작점:** [`docs/00-team-onboarding/README.md`](./docs/00-team-onboarding/README.md)
 >
-> 화면 15장과 기능 설명: [`docs/00-team-onboarding/02-feature-tour.md`](./docs/00-team-onboarding/02-feature-tour.md)
+> Story 데스크톱·모바일 + 기능 캡처 15장: [`docs/00-team-onboarding/02-feature-tour.md`](./docs/00-team-onboarding/02-feature-tour.md)
 >
 > 브라우저 인터랙티브 Story: `http://127.0.0.1:3100/team-share`
 >

@@ -4,10 +4,14 @@ import {
   BarChart3,
   Boxes,
   CheckCircle2,
+  ChevronUp,
+  ClipboardCopy,
   Database,
+  ExternalLink,
   FileText,
   GitBranch,
   LayoutDashboard,
+  Maximize2,
   Network,
   Printer,
   Settings2,
@@ -15,8 +19,9 @@ import {
   Sparkles,
   UserCheck,
   Users,
+  X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { navigate } from "../../routing";
 
 import signupRoleRequest from "../../../../docs/00-team-onboarding/assets/screenshots/01-signup-role-request.png";
@@ -38,6 +43,25 @@ import ontologySelection from "../../../../docs/00-team-onboarding/assets/screen
 type FlowId = "signup" | "approval" | "role-home" | "report" | "adaptive" | "personal";
 type RoleId = "admin" | "manager" | "engineer";
 type DatasetId = "factory" | "fleet" | "compressor";
+type SectionId = "overview" | "user-flow" | "roles" | "adaptive" | "workbenches" | "capabilities" | "review";
+
+const VERIFIED_TAG = "team-share-audit-ready-20260804";
+const REVIEW_TEMPLATE = `채택해야 하는 기능:
+수정이 필요한 기능:
+후속으로 미룰 기능:
+초기 MVP 역할:
+첫 Dataset:
+담당하고 싶은 영역:
+가장 큰 기술 리스크:`;
+
+const sections: Array<{ id: SectionId; label: string }> = [
+  { id: "overview", label: "Overview" },
+  { id: "user-flow", label: "User flow" },
+  { id: "roles", label: "Roles" },
+  { id: "adaptive", label: "Datasets" },
+  { id: "workbenches", label: "Workbenches" },
+  { id: "capabilities", label: "Status" },
+];
 
 const flowSteps: Array<{
   id: FlowId;
@@ -188,47 +212,60 @@ const capabilityGroups = [
     icon: ShieldCheck,
     title: "Identity & Governance",
     detail: "가입 승인, 세션, RBAC, Project·Workspace scope, 사용자별 권한 override",
-    status: "API + DB",
+    status: "End-to-end prototype",
+    checks: ["UI", "API", "SQLite", "RBAC", "E2E"],
   },
   {
     icon: FileText,
     title: "Role Reports",
     detail: "실무자 편집, 공용 revision, Evidence citation, 매니저 검토와 Dashboard drill-down",
-    status: "API + DB",
+    status: "End-to-end prototype",
+    checks: ["UI", "API", "Revision DB", "Permission", "E2E"],
   },
   {
     icon: LayoutDashboard,
     title: "Adaptive Dashboards",
     detail: "Dataset schema signal에 따른 Board 종류·Tab·배치·기본 시각화 자동 구성",
-    status: "Runtime",
+    status: "Runtime composition",
+    checks: ["Schema", "Catalog", "Role rules", "Layout", "E2E"],
   },
   {
     icon: Settings2,
     title: "Personal Preferences",
     detail: "사용자별 Layout·Filter·Visualization·Display 설정 자동 저장과 복원",
-    status: "API + DB",
+    status: "End-to-end prototype",
+    checks: ["UI", "API", "SQLite", "User scope", "E2E"],
   },
   {
     icon: GitBranch,
     title: "Analysis Workbench",
     detail: "Typed Path, 자유 Canvas, Dependency Graph, Forecast editor, Dataset materialization",
-    status: "Mixed",
+    status: "Server run + UI projection",
+    checks: ["Run API", "Version", "Materialize", "Canvas", "Forecast UI"],
   },
   {
     icon: Network,
     title: "Ontology Workbench",
     detail: "ObjectSet 선택, 집합 연산, linked traversal, Graph와 Agent context 연결",
-    status: "API + UI",
+    status: "API-backed workbench",
+    checks: ["Object API", "Traversal", "Actions", "ObjectSet", "E2E"],
   },
 ];
 
-function Screenshot({ src, alt, label }: { src: string; alt: string; label: string }) {
+interface ScreenshotSelection {
+  src: string;
+  alt: string;
+  label: string;
+}
+
+function Screenshot({ src, alt, label, onOpen }: ScreenshotSelection & { onOpen: (selection: ScreenshotSelection) => void }) {
   return (
     <figure className="team-share-screenshot">
       <figcaption>{label}</figcaption>
-      <a href={src} target="_blank" rel="noreferrer">
+      <button type="button" aria-label={`${label} 확대 보기`} onClick={() => onOpen({ src, alt, label })}>
         <img src={src} alt={alt} />
-      </a>
+        <span><Maximize2 size={13} /> 확대</span>
+      </button>
     </figure>
   );
 }
@@ -237,20 +274,83 @@ export function TeamShareStory() {
   const [activeFlow, setActiveFlow] = useState<FlowId>("signup");
   const [activeRole, setActiveRole] = useState<RoleId>("manager");
   const [activeDataset, setActiveDataset] = useState<DatasetId>("factory");
+  const [activeSection, setActiveSection] = useState<SectionId>("overview");
+  const [selectedScreenshot, setSelectedScreenshot] = useState<ScreenshotSelection | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
   const flow = useMemo(() => flowSteps.find((item) => item.id === activeFlow) ?? flowSteps[0], [activeFlow]);
   const role = roles[activeRole];
   const dataset = datasets[activeDataset];
+
+  useEffect(() => {
+    const updateHashTarget = () => {
+      const target = window.location.hash.slice(1) as SectionId;
+      if (sections.some((section) => section.id === target) || target === "review") setActiveSection(target);
+    };
+    updateHashTarget();
+    window.addEventListener("hashchange", updateHashTarget);
+    return () => window.removeEventListener("hashchange", updateHashTarget);
+  }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (visible?.target.id) setActiveSection(visible.target.id as SectionId);
+    }, { rootMargin: "-25% 0px -58%", threshold: [0.05, 0.25, 0.6] });
+    ["overview", "user-flow", "roles", "adaptive", "workbenches", "capabilities", "review"].forEach((id) => {
+      const element = document.getElementById(id);
+      if (element) observer.observe(element);
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const onScroll = () => setShowBackToTop(window.scrollY > 900);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedScreenshot) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelectedScreenshot(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [selectedScreenshot]);
+
+  async function copyReviewTemplate() {
+    try {
+      await navigator.clipboard.writeText(REVIEW_TEMPLATE);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = REVIEW_TEMPLATE;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  }
 
   return (
     <main className="team-share-story-page">
       <header className="team-share-story-header">
         <div className="team-share-brand"><span>OD</span><div><strong>Ontology Dashboard</strong><small>Team handoff story · verified prototype</small></div></div>
         <nav aria-label="Team handoff sections">
-          <a href="#user-flow">User flow</a>
-          <a href="#roles">Role experience</a>
-          <a href="#adaptive">Adaptive UI</a>
-          <a href="#capabilities">Implementation</a>
+          {sections.map((section) => <a key={section.id} className={activeSection === section.id ? "active" : ""} aria-current={activeSection === section.id ? "location" : undefined} href={`#${section.id}`}>{section.label}</a>)}
         </nav>
         <div className="team-share-header-actions">
           <button type="button" onClick={() => window.print()}><Printer size={13} /> Print</button>
@@ -258,7 +358,7 @@ export function TeamShareStory() {
         </div>
       </header>
 
-      <section className="team-share-hero">
+      <section className="team-share-hero" id="overview">
         <div className="team-share-hero-copy">
           <span className="team-share-kicker"><Sparkles size={13} /> PROJECT PREBUILD · TEAM REVIEW</span>
           <h1>데이터를 보여주는 Dashboard가 아니라,<br />업무 설명과 근거, 분석과 행동을 연결합니다.</h1>
@@ -270,8 +370,12 @@ export function TeamShareStory() {
           <div className="team-share-metrics">
             <span><strong>8</strong><small>업무 역할</small></span>
             <span><strong>3</strong><small>적응형 Dataset 사례</small></span>
-            <span><strong>15</strong><small>검증 캡처</small></span>
-            <span><strong>34</strong><small>핵심 자동 테스트</small></span>
+            <span><strong>16</strong><small>Story + 기능 캡처</small></span>
+            <span><strong>39</strong><small>핵심 자동 테스트</small></span>
+          </div>
+          <div className="team-share-verification" aria-label="Verified package status">
+            <span><ShieldCheck size={13} /><strong>{VERIFIED_TAG}</strong></span>
+            <span>Backend 18</span><span>Frontend 16</span><span>Story E2E 5</span><span>2026-08-04</span>
           </div>
         </div>
         <div className="team-share-product-loop" aria-label="Ontology Dashboard product loop">
@@ -306,7 +410,7 @@ export function TeamShareStory() {
               {flow.implementation.map((item) => <span key={item}><CheckCircle2 size={12} />{item}</span>)}
             </div>
           </div>
-          <Screenshot src={flow.image} alt={flow.imageAlt} label={`VERIFIED SCREEN · FLOW ${flow.number}`} />
+          <Screenshot src={flow.image} alt={flow.imageAlt} label={`VERIFIED SCREEN · FLOW ${flow.number}`} onOpen={setSelectedScreenshot} />
         </article>
       </section>
 
@@ -319,7 +423,7 @@ export function TeamShareStory() {
           {(Object.keys(roles) as RoleId[]).map((id) => <button type="button" role="tab" aria-selected={activeRole === id} className={activeRole === id ? "active" : ""} key={id} onClick={() => setActiveRole(id)}>{roles[id].label}</button>)}
         </div>
         <article className="team-share-role-detail">
-          <Screenshot src={role.image} alt={`${role.label} 화면`} label={`${role.eyebrow} · ${role.firstView}`} />
+          <Screenshot src={role.image} alt={`${role.label} 화면`} label={`${role.eyebrow} · ${role.firstView}`} onOpen={setSelectedScreenshot} />
           <div>
             <span className="team-share-kicker">{role.eyebrow}</span>
             <h3>{role.headline}</h3>
@@ -355,19 +459,19 @@ export function TeamShareStory() {
               <span>Dataset schema</span><ArrowRight /><span>Semantic signals</span><ArrowRight /><span>Board selection</span><ArrowRight /><span>Role layout</span>
             </div>
           </div>
-          <Screenshot src={dataset.image} alt={`${dataset.label} 적응형 Dashboard`} label="DATASET-DRIVEN COMPOSITION" />
+          <Screenshot src={dataset.image} alt={`${dataset.label} 적응형 Dashboard`} label="DATASET-DRIVEN COMPOSITION" onOpen={setSelectedScreenshot} />
         </article>
       </section>
 
-      <section className="team-share-section alt team-share-workbenches">
+      <section className="team-share-section alt team-share-workbenches" id="workbenches">
         <header className="team-share-section-heading">
           <div><span>04 · ANALYSIS & ONTOLOGY</span><h2>결과 화면을 넘어 분석과 관계 탐색까지</h2></div>
           <p>Dashboard에 표시할 결과가 어디서 왔는지 구성하고 추적하는 Workbench입니다.</p>
         </header>
         <div className="team-share-workbench-grid">
-          <article><Screenshot src={analysisCanvas} alt="Analysis 자유 Canvas" label="ANALYSIS · FREE-FORM CANVAS" /><h3>계산 정의와 표현 배치를 분리</h3><p>Path·Canvas·Graph로 같은 nodes/edges를 다르게 보고, 여러 Canvas와 숨겨진 계산 노드를 관리합니다.</p></article>
-          <article><Screenshot src={analysisGraph} alt="Analysis Dependency Graph" label="ANALYSIS · DEPENDENCY GRAPH" /><h3>결과의 upstream과 downstream 추적</h3><p>Typed metadata, compatible next actions, 계산 노드 접기와 Dependency panel을 제공합니다.</p></article>
-          <article><Screenshot src={ontologySelection} alt="Ontology ObjectSet 선택" label="ONTOLOGY · OBJECTSET" /><h3>객체를 집합으로 만들고 관계를 탐색</h3><p>Replace·Union·Intersection·Difference로 대상을 구성하고 여러 root의 linked traversal을 병합합니다.</p></article>
+          <article><Screenshot src={analysisCanvas} alt="Analysis 자유 Canvas" label="ANALYSIS · FREE-FORM CANVAS" onOpen={setSelectedScreenshot} /><h3>계산 정의와 표현 배치를 분리</h3><p>Path·Canvas·Graph로 같은 nodes/edges를 다르게 보고, 여러 Canvas와 숨겨진 계산 노드를 관리합니다.</p></article>
+          <article><Screenshot src={analysisGraph} alt="Analysis Dependency Graph" label="ANALYSIS · DEPENDENCY GRAPH" onOpen={setSelectedScreenshot} /><h3>결과의 upstream과 downstream 추적</h3><p>Typed metadata, compatible next actions, 계산 노드 접기와 Dependency panel을 제공합니다.</p></article>
+          <article><Screenshot src={ontologySelection} alt="Ontology ObjectSet 선택" label="ONTOLOGY · OBJECTSET" onOpen={setSelectedScreenshot} /><h3>객체를 집합으로 만들고 관계를 탐색</h3><p>Replace·Union·Intersection·Difference로 대상을 구성하고 여러 root의 linked traversal을 병합합니다.</p></article>
         </div>
       </section>
 
@@ -377,8 +481,8 @@ export function TeamShareStory() {
           <p>모든 항목이 같은 완성 상태인 것처럼 보이지 않도록 연결 수준을 표시합니다.</p>
         </header>
         <div className="team-share-capability-grid">
-          {capabilityGroups.map(({ icon: Icon, title, detail, status }) => (
-            <article key={title}><div><Icon size={17} /><span>{status}</span></div><h3>{title}</h3><p>{detail}</p></article>
+          {capabilityGroups.map(({ icon: Icon, title, detail, status, checks }) => (
+            <article key={title}><div><Icon size={17} /><span>{status}</span></div><h3>{title}</h3><p>{detail}</p><footer>{checks.map((check) => <b key={check}><CheckCircle2 size={10} />{check}</b>)}</footer></article>
           ))}
         </div>
         <div className="team-share-architecture">
@@ -391,7 +495,7 @@ export function TeamShareStory() {
         </div>
       </section>
 
-      <section className="team-share-review">
+      <section className="team-share-review" id="review">
         <div><span>TEAM REVIEW</span><h2>이 프로토타입에서 팀이 먼저 결정할 것</h2></div>
         <ol>
           <li><b>01</b><span><strong>핵심 사용자 흐름</strong><small>Report-first Manager와 Dashboard-first Practitioner를 제품 기준으로 채택할지</small></span></li>
@@ -399,13 +503,25 @@ export function TeamShareStory() {
           <li><b>03</b><span><strong>초기 MVP Workbench</strong><small>Dashboard, Reports, Analysis, Ontology 중 초기 릴리스 범위</small></span></li>
           <li><b>04</b><span><strong>Ownership</strong><small>Frontend, Backend, Data, Ontology mapping과 검증 책임</small></span></li>
         </ol>
-        <div className="team-share-review-actions"><button type="button" className="primary" onClick={() => navigate("/login")}>실제 앱 열기 <ArrowRight size={13} /></button><button type="button" onClick={() => navigate("/reference")}>Analysis reference</button></div>
+        <div className="team-share-review-actions"><button type="button" className="primary" onClick={() => navigate("/login")}>실제 앱 열기 <ArrowRight size={13} /></button><button type="button" onClick={() => navigate("/reference")}>Analysis reference</button><button type="button" onClick={() => void copyReviewTemplate()}><ClipboardCopy size={13} />{copied ? "복사 완료" : "리뷰 양식 복사"}</button></div>
       </section>
 
       <footer className="team-share-footer">
         <div><strong>Ontology Dashboard</strong><span>Organization → Project → Workspace → Role experience → Personal preference</span></div>
-        <small>Team share package · verified 2026-08-03 · interactive HTML story</small>
+        <small>{VERIFIED_TAG} · verified 2026-08-04 · interactive HTML story</small>
       </footer>
+
+      {showBackToTop ? <button type="button" className="team-share-back-to-top" aria-label="맨 위로 이동" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}><ChevronUp size={16} /></button> : null}
+
+      {selectedScreenshot ? (
+        <div className="team-share-lightbox" role="dialog" aria-modal="true" aria-label={`${selectedScreenshot.label} 확대 보기`}>
+          <button type="button" className="team-share-lightbox-backdrop" aria-label="확대 화면 닫기" onClick={() => setSelectedScreenshot(null)} />
+          <section>
+            <header><div><span>VERIFIED CAPTURE</span><strong>{selectedScreenshot.label}</strong></div><div><a href={selectedScreenshot.src} target="_blank" rel="noreferrer">원본 열기 <ExternalLink size={12} /></a><button type="button" aria-label="확대 화면 닫기" onClick={() => setSelectedScreenshot(null)}><X size={16} /></button></div></header>
+            <img src={selectedScreenshot.src} alt={selectedScreenshot.alt} />
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }

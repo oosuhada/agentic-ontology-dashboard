@@ -42,9 +42,18 @@ docs/
 4. 자동 생성 화면은 `00-team-onboarding/assets/screenshots/` 또는 `ui/`에 둔다.
 5. 과거 분석 문서를 수정해 현재 상태처럼 보이게 하지 않고, 최신 상태 문서에서 명시적으로 연결한다.
 
+문서 구조 검증:
+
+```bash
+python3 scripts/check_docs_structure.py
+```
+
+허용된 호환 경로와 필수 진입점은 [`document-registry.json`](./document-registry.json)에 등록한다. Registry에 없는 새 루트 Markdown 파일이나 깨진 로컬 링크는 검증 실패로 처리한다.
+
 ## 현재 기준 버전
 
-- Commit: `064fb49 feat(core): complete governed onboarding and adaptive user flow`
-- Tag: `complete-user-flow-20260803`
-- 팀 공유 패키지 생성 기준: 2026-08-03
+- Tag: `team-share-audit-ready-20260804`
+- 제품 기능 기준: `complete-user-flow-20260803`
+- 팀 공유 패키지 재검증: 2026-08-04
+- 상세 결과: [`00-team-onboarding/09-verification-report.md`](./00-team-onboarding/09-verification-report.md)
 

@@ -11,6 +11,7 @@ test("team share story presents the verified user flow and interactive product t
   await expect(page.locator(".team-share-flow-switcher button")).toHaveCount(6);
   await expect(page.locator(".team-share-workbench-grid article")).toHaveCount(3);
   await expect(page.locator(".team-share-capability-grid article")).toHaveCount(6);
+  await expect(page.getByText("team-share-audit-ready-20260804", { exact: true })).toBeVisible();
 
   await page.getByRole("tab", { name: /02 관리자가 알림을 받고/ }).click();
   await expect(page.getByRole("heading", { name: "관리자가 알림을 받고 역할·범위·권한을 확정합니다" })).toBeVisible();
@@ -23,6 +24,15 @@ test("team share story presents the verified user flow and interactive product t
   await page.getByRole("tab", { name: /Compressor Monitoring/ }).click();
   await expect(page.getByText("Sensor Line Chart", { exact: true })).toBeVisible();
   await expect(page.getByText("8:4 대형 시계열 + 이상 탐지 구성", { exact: true })).toBeVisible();
+
+  await page.locator(".team-share-screenshot button").first().click();
+  await expect(page.getByRole("dialog", { name: /확대 보기/ })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: /확대 보기/ })).toHaveCount(0);
+
+  await page.goto("/team-share#adaptive");
+  await expect(page).toHaveURL(/#adaptive$/);
+  await expect(page.locator('.team-share-story-header nav a[href="#adaptive"]')).toHaveAttribute("aria-current", "location");
 
   const images = page.locator(".team-share-story-page img");
   await expect(images).toHaveCount(6);

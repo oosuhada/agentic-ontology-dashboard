@@ -6,6 +6,23 @@
 
 모든 이미지는 Playwright 격리 DB와 demo seed에서 1440×1000 화면으로 생성했다. 재생성 명령은 문서 마지막에 있다.
 
+## 인터랙티브 Story
+
+![팀 공유 Story 전체 화면](./assets/screenshots/00-team-share-story.png)
+
+`/team-share`는 아래 기능을 제공한다.
+
+- 현재 섹션을 표시하는 Sticky Navigation
+- `#user-flow`, `#roles`, `#adaptive`, `#workbenches`, `#capabilities` Deep Link
+- 캡처 클릭 확대와 원본 열기
+- 검증 Tag·날짜·테스트 결과
+- 역할·Dataset·User Flow 탭
+- 팀 리뷰 양식 복사
+
+모바일 검증 화면:
+
+![팀 공유 Story 모바일](./assets/screenshots/00-team-share-story-mobile.png)
+
 ## 1. 가입자가 희망 역할을 요청한다
 
 ![가입 역할 요청](./assets/screenshots/01-signup-role-request.png)
