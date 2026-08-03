@@ -21,7 +21,7 @@ from .contracts import (
     UILayout,
 )
 from .conversation import IntentRouter, deterministic_answer
-from .llm import OpenAICompatibleProvider, ReportAgent
+from .llm import ReportAgent, configured_provider
 from .planner import LayoutPlanner
 from .repository import AuditRepository
 
@@ -43,7 +43,7 @@ class FactorySignalService:
         }
         database = database_path or os.getenv("FACTORY_SIGNAL_DB", str(self.root / "data" / "local" / "factory_signal_board.db"))
         self.repository = AuditRepository(database)
-        self.provider = OpenAICompatibleProvider()
+        self.provider = configured_provider()
         self.report_agent = ReportAgent(self.root, self.provider)
         self.layout_planner = LayoutPlanner(self.root, self.provider)
         self.intent_router = IntentRouter()
