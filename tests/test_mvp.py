@@ -8,15 +8,15 @@ from fastapi.testclient import TestClient
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
-from factory_signal_board.context import Project3HttpContextProvider, ResilientContextProvider
-from factory_signal_board.contracts import LayoutRequest, ReportRequest, UIBlock, UILayout
-from factory_signal_board.identity import CSRF_COOKIE, IdentityService
-from factory_signal_board.llm import VertexAIProvider, configured_provider
-from factory_signal_board.main import app, get_identity_service, get_service
-from factory_signal_board.planner import LayoutPlanner
-from factory_signal_board.service import FactorySignalService
-from factory_signal_ml import HeuristicPredictor, build_evidence_package, load_fixture
-from factory_signal_ml.contracts import FAILURE_MODE_COLUMNS, TARGET_COLUMN, assert_no_leakage, audit_fixture
+from ontology_dashboard.context import Project3HttpContextProvider, ResilientContextProvider
+from ontology_dashboard.contracts import LayoutRequest, ReportRequest, UIBlock, UILayout
+from ontology_dashboard.identity import CSRF_COOKIE, IdentityService
+from ontology_dashboard.llm import VertexAIProvider, configured_provider
+from ontology_dashboard.main import app, get_identity_service, get_service
+from ontology_dashboard.planner import LayoutPlanner
+from ontology_dashboard.service import ManufacturingPredictiveMaintenanceService as FactorySignalService
+from ontology_dashboard_manufacturing_ml import HeuristicPredictor, build_evidence_package, load_fixture
+from ontology_dashboard_manufacturing_ml.contracts import FAILURE_MODE_COLUMNS, TARGET_COLUMN, assert_no_leakage, audit_fixture
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = sorted((ROOT / "data" / "fixtures").glob("GS-*.json"))
