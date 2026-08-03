@@ -72,7 +72,7 @@ Gold 제품 데모는 `fixture-heuristic-v1`로 동작하므로 정상이다. AI
 
 ```bash
 python scripts/fetch_ai4i.py
-PYTHONPATH=ml/src python -m factory_signal_ml.cli train data/raw/ai4i2020.csv --output ml/artifacts
+PYTHONPATH=ml/src python -m ontology_dashboard_manufacturing_ml.cli train data/raw/ai4i2020.csv --output ml/artifacts
 ```
 
 원본 CSV와 모델 binary는 기본 Git 추적 대상이 아니다.

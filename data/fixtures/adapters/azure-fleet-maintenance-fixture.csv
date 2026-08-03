@@ -1,0 +1,5 @@
+datetime,machineID,errorID,failure,comp,model,age,volt,rotate,pressure,vibration
+2026-01-01T00:00:00Z,1,error1,,,,,220.1,1450,101.2,2.1
+2026-01-01T08:00:00Z,1,,comp1,,,,221.0,1442,102.4,2.5
+2026-01-02T00:00:00Z,2,error2,,,,,218.4,1470,100.5,1.8
+2026-01-03T00:00:00Z,2,,,comp2,,,219.2,1465,100.9,1.9

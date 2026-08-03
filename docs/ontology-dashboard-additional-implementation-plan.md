@@ -1389,6 +1389,8 @@ Frontend shell:
 
 ## 19단계. Ontology registry와 제조 domain adapter
 
+- 구현 상태: **완료 (2026-08-01)**
+
 ### 구현
 
 - ObjectType·LinkType·ActionType registry
@@ -1407,6 +1409,8 @@ Frontend shell:
 ---
 
 ## 20단계. Dashboard template·tab·board persistence
+
+- 구현 상태: **완료 (2026-08-01)**
 
 ### 구현
 
@@ -1428,6 +1432,8 @@ Frontend shell:
 
 ## 21단계. 새 Dashboard shell UI
 
+- 구현 상태: **완료 (2026-08-01)**
+
 ### 구현
 
 - 상단 workspace selector
@@ -1448,6 +1454,8 @@ Frontend shell:
 ---
 
 ## 22단계. 개인화 저장과 복원
+
+- 구현 상태: **완료 (2026-08-01)**
 
 ### 구현
 
@@ -1471,6 +1479,8 @@ Frontend shell:
 
 ## 23단계. Board catalog와 편집 UX
 
+- 구현 상태: **완료 (2026-08-01)**
+
 ### 구현
 
 - Suggested·Observe·Explore·Explain·Act·Audit·Build
@@ -1493,6 +1503,8 @@ Frontend shell:
 
 ## 24단계. Parameter·cross-filter·공유
 
+- 구현 상태: **완료 (2026-08-01)**
+
 ### 구현
 
 - dashboard·tab·board parameter
@@ -1514,6 +1526,8 @@ Frontend shell:
 
 ## 25단계. 역할 확장 1 — 임원 Viewer
 
+- 구현 상태: **완료 (2026-08-01)**
+
 ### 구현
 
 - executive template
@@ -1531,6 +1545,8 @@ Frontend shell:
 ---
 
 ## 26단계. 역할 확장 2 — 품질·감사 Viewer
+
+- 구현 상태: **완료 (2026-08-01)**
 
 ### 구현
 
@@ -1550,6 +1566,8 @@ Frontend shell:
 
 ## 27단계. 역할 확장 3 — 현장 작업자
 
+- 구현 상태: **완료 (2026-08-01)**
+
 ### 구현
 
 - mobile task view
@@ -1567,6 +1585,8 @@ Frontend shell:
 ---
 
 ## 28단계. 역할 확장 4 — FDE Workbench
+
+- 구현 상태: **완료 (2026-08-01)**
 
 ### 구현
 
@@ -1588,6 +1608,8 @@ Frontend shell:
 
 ## 29단계. 데이터 사이언티스트 Console
 
+- 구현 상태: **완료 (2026-08-01)**
+
 ### 구현
 
 - model·dataset version
@@ -1606,6 +1628,8 @@ Frontend shell:
 ---
 
 ## 30단계. LLM·Ontology Planner 고도화
+
+- 구현 상태: **완료 (2026-08-01)**
 
 ### 구현
 
@@ -1626,6 +1650,8 @@ Frontend shell:
 ---
 
 ## 31단계. Export·보안·성능·릴리스
+
+- 구현 상태: **완료 (2026-08-01)**
 
 ### 구현
 

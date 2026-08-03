@@ -6,10 +6,10 @@ AI4I 데이터 검증, 누수 차단, 파생변수, 모델 비교, 임계값 선
 
 ```bash
 export PYTHONPATH="$PWD/ml/src"
-python -m factory_signal_ml.cli validate-fixtures --root .
-python -m factory_signal_ml.cli audit-dataset data/raw/ai4i2020.csv
-python -m factory_signal_ml.cli train data/raw/ai4i2020.csv --output ml/artifacts
-python -m factory_signal_ml.cli evidence data/fixtures/GS-002-tool-wear-warning.json
+python -m ontology_dashboard_manufacturing_ml.cli validate-fixtures --root .
+python -m ontology_dashboard_manufacturing_ml.cli audit-dataset data/raw/ai4i2020.csv
+python -m ontology_dashboard_manufacturing_ml.cli train data/raw/ai4i2020.csv --output ml/artifacts
+python -m ontology_dashboard_manufacturing_ml.cli evidence data/fixtures/GS-002-tool-wear-warning.json
 ```
 
 ## 정책 분리
