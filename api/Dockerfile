@@ -17,4 +17,4 @@ RUN python -m pip install --no-cache-dir --upgrade pip \
 
 EXPOSE 8000
 
-CMD ["python", "-m", "uvicorn", "factory_signal_board.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "ontology_dashboard.app:app", "--host", "0.0.0.0", "--port", "8000"]

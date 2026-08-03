@@ -30,6 +30,7 @@ out/
 web/dist/
 web/test-results/
 web/playwright-report/
+.vite/
 coverage/
 *.tsbuildinfo
 npm-debug.log*

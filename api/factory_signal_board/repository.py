@@ -156,3 +156,8 @@ class AuditRepository:
     def reset(self) -> None:
         with self._connect() as connection:
             connection.executescript("DELETE FROM decisions; DELETE FROM notes; DELETE FROM conversations; DELETE FROM audit_log;")
+            ontology_table = connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ontology_action_invocations'"
+            ).fetchone()
+            if ontology_table is not None:
+                connection.execute("DELETE FROM ontology_action_invocations")

@@ -5,8 +5,10 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from factory_signal_ml import build_evidence_package, load_fixture
-from factory_signal_ml.evidence import FixtureContextProvider
+from ontology_dashboard_manufacturing_ml import build_evidence_package, load_fixture
+from ontology_dashboard_manufacturing_ml.evidence import FixtureContextProvider
+from ontology_dashboard.migrations import migrate
+from ontology_dashboard.settings import database_location
 
 from .context import ResilientContextProvider
 from .contracts import (
@@ -32,8 +34,14 @@ class EventNotFound(KeyError):
     pass
 
 
-class FactorySignalService:
-    def __init__(self, root: str | Path, *, database_path: str | Path | None = None) -> None:
+class ManufacturingPredictiveMaintenanceService:
+    def __init__(
+        self,
+        root: str | Path,
+        *,
+        database_path: str | Path | None = None,
+        repository: AuditRepository | None = None,
+    ) -> None:
         self.root = Path(root)
         self.fixtures = {
             payload["event_id"]: payload
@@ -41,8 +49,11 @@ class FactorySignalService:
                 load_fixture(path) for path in sorted((self.root / "data" / "fixtures").glob("GS-*.json"))
             )
         }
-        database = database_path or os.getenv("FACTORY_SIGNAL_DB", str(self.root / "data" / "local" / "factory_signal_board.db"))
-        self.repository = AuditRepository(database)
+        database = database_path or database_location(self.root)
+        if repository is None:
+            migrate(str(database))
+            repository = AuditRepository(database)
+        self.repository = repository
         self.provider = configured_provider()
         self.report_agent = ReportAgent(self.root, self.provider)
         self.layout_planner = LayoutPlanner(self.root, self.provider)
@@ -59,9 +70,12 @@ class FactorySignalService:
             return ResilientContextProvider()
         return FixtureContextProvider()
 
-    def evidence(self, event_id: str) -> dict[str, Any]:
+    def evidence_snapshot(self, event_id: str) -> dict[str, Any]:
         fixture = self._fixture(event_id)
-        package = build_evidence_package(fixture, context_provider=self._context_provider(fixture))
+        return build_evidence_package(fixture, context_provider=self._context_provider(fixture))
+
+    def evidence(self, event_id: str) -> dict[str, Any]:
+        package = self.evidence_snapshot(event_id)
         self._audit(event_id, "evidence.generated", package["model"]["model_version"], {"evidence_id": package["evidence_id"]})
         return package
 
@@ -207,7 +221,7 @@ class FactorySignalService:
 
     def reset(self) -> dict[str, str]:
         self.repository.reset()
-        return {"status": "reset", "scope": "decisions, notes, conversations, audit"}
+        return {"status": "reset", "scope": "decisions, notes, conversations, ontology actions, audit"}
 
     def _audit(self, event_id: str | None, action: str, model_version: str | None, payload: dict[str, Any]) -> None:
         self.repository.record_audit(
@@ -217,3 +231,8 @@ class FactorySignalService:
             model_version=model_version,
             payload=payload,
         )
+
+
+# Temporary compatibility alias for integrations that still import the historical
+# service name. New code should use ManufacturingPredictiveMaintenanceService.
+FactorySignalService = ManufacturingPredictiveMaintenanceService

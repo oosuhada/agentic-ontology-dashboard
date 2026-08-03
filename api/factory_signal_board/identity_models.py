@@ -10,6 +10,7 @@ UserStatus = Literal["pending_approval", "active", "disabled"]
 SESSION_COOKIE = "ontology_session"
 CSRF_COOKIE = "ontology_csrf"
 SESSION_TTL_HOURS = 12
+SESSION_IDLE_MINUTES = 60
 
 ROLE_DEFINITIONS: dict[str, tuple[str, str]] = {
     "tenant_admin": ("조직 관리자", "사용자, 역할, workspace scope와 관리자 감사를 관리합니다."),
@@ -28,6 +29,31 @@ PERMISSION_DEFINITIONS: dict[str, str] = {
     "events.decision": "운영 판단 기록",
     "events.note": "점검 및 전달 메모 기록",
     "ontology.registry.read": "온톨로지 registry 조회",
+    "ontology.objects.read": "workspace 범위 내 온톨로지 객체와 관계 조회",
+    "dashboards.read": "역할별 resolved dashboard와 template 조회",
+    "dashboards.personalize": "개인 탭·보드·parameter·saved view 저장",
+    "dashboards.share": "권한이 유지되는 dashboard parameter 공유 링크 생성",
+    "dashboards.templates.manage": "역할 template 초안 편집",
+    "dashboards.templates.request": "역할 template 게시 승인 요청",
+    "dashboards.templates.approve": "역할 template 게시 승인",
+    "executive.overview.read": "조직·workspace 위험과 영향 집계 조회",
+    "audit.reconstruction.read": "사건 입력·Evidence·Report·Action 재구성 조회",
+    "audit.export.checkpoint": "감사 export checkpoint 기록",
+    "field.tasks.read": "배정 현장 작업·안전·체크리스트 조회",
+    "field.tasks.update": "현장 작업 완료·문제 발견·작업 불가 Action 기록",
+    "fde.workbench.read": "FDE customer workspace·diagnostic·deployment view 조회",
+    "ml.console.read": "모델·dataset·threshold·drift·Gold regression 조회",
+    "ml.release.request": "모델 release candidate 승인 요청",
+    "ml.release.approve": "모델 release candidate 승인",
+    "datasets.read": "Project 범위 내 Dataset Manifest와 ingestion 상태 조회",
+    "datasets.ingest": "승인된 local source를 Project Dataset으로 수집",
+    "predictions.ingest": "Prediction Result Contract 검증 및 수집",
+    "planner.object_query": "자연어를 검증된 Ontology object query intent로 변환",
+    "planner.board_recommend": "역할·사용자 preference 기반 Board 제안 조회",
+    "planner.dashboard_draft": "Catalog 기반 Dashboard template draft 생성",
+    "planner.narrative": "Evidence 근거 기반 narrative 생성",
+    "exports.create": "권한 범위 내 Dashboard·사건·역할 workspace export 생성",
+    "exports.read_own": "본인이 생성한 export checkpoint 조회",
     "admin.access": "관리자 앱 접근",
     "admin.users.read": "사용자와 역할 조회",
     "admin.users.manage": "가입 승인, 비활성화, 역할 및 scope 변경",
@@ -36,13 +62,13 @@ PERMISSION_DEFINITIONS: dict[str, str] = {
 
 ROLE_PERMISSIONS: dict[str, set[str]] = {
     "tenant_admin": set(PERMISSION_DEFINITIONS),
-    "executive_viewer": {"app.access", "events.read", "ontology.registry.read"},
-    "process_manager": {"app.access", "events.read", "events.decision", "ontology.registry.read"},
-    "process_engineer": {"app.access", "events.read", "events.note", "ontology.registry.read"},
-    "maintenance_technician": {"app.access", "events.read", "events.note", "ontology.registry.read"},
-    "quality_auditor": {"app.access", "events.read", "ontology.registry.read"},
-    "ml_validator": {"app.access", "events.read", "ontology.registry.read"},
-    "fde": {"app.access", "events.read", "events.note", "ontology.registry.read"},
+    "executive_viewer": {"app.access", "events.read", "ontology.registry.read", "ontology.objects.read", "dashboards.read", "dashboards.personalize", "dashboards.share", "executive.overview.read", "planner.object_query", "planner.board_recommend", "planner.narrative", "exports.create", "exports.read_own"},
+    "process_manager": {"app.access", "events.read", "events.decision", "ontology.registry.read", "ontology.objects.read", "dashboards.read", "dashboards.personalize", "dashboards.share", "planner.object_query", "planner.board_recommend", "planner.narrative", "exports.create", "exports.read_own"},
+    "process_engineer": {"app.access", "events.read", "events.note", "ontology.registry.read", "ontology.objects.read", "dashboards.read", "dashboards.personalize", "dashboards.share", "field.tasks.read", "field.tasks.update", "planner.object_query", "planner.board_recommend", "planner.narrative", "exports.create", "exports.read_own"},
+    "maintenance_technician": {"app.access", "events.read", "events.note", "ontology.registry.read", "ontology.objects.read", "dashboards.read", "dashboards.personalize", "dashboards.share", "field.tasks.read", "field.tasks.update", "planner.object_query", "planner.board_recommend", "planner.narrative", "exports.create", "exports.read_own"},
+    "quality_auditor": {"app.access", "events.read", "ontology.registry.read", "ontology.objects.read", "dashboards.read", "dashboards.personalize", "dashboards.share", "audit.reconstruction.read", "audit.export.checkpoint", "planner.object_query", "planner.board_recommend", "planner.narrative", "exports.create", "exports.read_own"},
+    "ml_validator": {"app.access", "events.read", "ontology.registry.read", "ontology.objects.read", "dashboards.read", "dashboards.personalize", "dashboards.share", "ml.console.read", "ml.release.request", "datasets.read", "datasets.ingest", "predictions.ingest", "planner.object_query", "planner.board_recommend", "planner.narrative", "exports.create", "exports.read_own"},
+    "fde": {"app.access", "events.read", "events.note", "ontology.registry.read", "ontology.objects.read", "dashboards.read", "dashboards.personalize", "dashboards.share", "dashboards.templates.manage", "dashboards.templates.request", "fde.workbench.read", "field.tasks.read", "datasets.read", "datasets.ingest", "predictions.ingest", "planner.object_query", "planner.board_recommend", "planner.dashboard_draft", "planner.narrative", "exports.create", "exports.read_own"},
 }
 
 DEMO_ACCOUNTS: tuple[dict[str, Any], ...] = (
@@ -166,6 +192,19 @@ class LoginRequest(BaseModel):
         return normalized
 
 
+class ActiveProjectRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    project_id: str = Field(min_length=1, max_length=128)
+
+
+class ProjectMembershipUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["active", "suspended"] = "active"
+    roles: list[str] = Field(min_length=1)
+
+
 class AdminUserUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -176,12 +215,17 @@ class AdminUserUpdateRequest(BaseModel):
 
 class Principal(BaseModel):
     user_id: str
+    organization_id: str
     email: str
     display_name: str
     status: UserStatus
     roles: list[str]
     permissions: list[str]
     workspace_scopes: list[str]
+    project_scopes: list[str] = Field(default_factory=list)
+    project_roles: dict[str, list[str]] = Field(default_factory=dict)
+    active_project_id: str | None = None
+    active_project_roles: list[str] = Field(default_factory=list)
     is_admin: bool
     default_path: str
     landing_key: str
