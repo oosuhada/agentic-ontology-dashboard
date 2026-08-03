@@ -1,4 +1,4 @@
-import { AlertTriangle, Clock3, GitBranch, ListChecks, Settings2, Table2, Trash2 } from "lucide-react";
+import { Activity, AlertTriangle, Clock3, GitBranch, ListChecks, Settings2, Table2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { Evidence } from "../../types";
 import { InspectorTabs } from "../../ui/foundry/InspectorTabs";
@@ -7,6 +7,7 @@ import { StatusPill } from "../../ui/foundry/StatusPill";
 import { EmptyState } from "../../ui/foundry/WorkbenchState";
 import { AnalysisInspector } from "./AnalysisInspector";
 import { AnalysisLineageMiniGraph } from "./AnalysisLineageMiniGraph";
+import { AnalysisTimeSeriesForecast } from "./AnalysisTimeSeriesForecast";
 import { InputObjectSetPreview } from "./boards/InputObjectSetPreview";
 import type {
   AnalysisFlowEdge,
@@ -15,7 +16,7 @@ import type {
   AnalysisResult,
 } from "./types";
 
-type InspectorTab = "configuration" | "result" | "quality" | "lineage" | "runtime";
+type InspectorTab = "configuration" | "result" | "forecast" | "quality" | "lineage" | "runtime";
 
 interface AnalysisResultInspectorProps {
   node: AnalysisFlowNode | undefined;
@@ -95,6 +96,7 @@ export function AnalysisResultInspector({
         tabs={[
           { id: "configuration", label: "Config", icon: <Settings2 size={11} /> },
           { id: "result", label: "Result", count: rows.length, icon: <Table2 size={11} /> },
+          { id: "forecast", label: "Forecast", icon: <Activity size={11} /> },
           { id: "quality", label: "Quality", count: warnings.length, icon: <ListChecks size={11} /> },
           { id: "lineage", label: "Lineage", icon: <GitBranch size={11} /> },
           { id: "runtime", label: "Runtime", icon: <Clock3 size={11} /> },
@@ -126,6 +128,8 @@ export function AnalysisResultInspector({
             </div>
           </section>
         ) : null}
+
+        {activeTab === "forecast" ? <AnalysisTimeSeriesForecast result={result} serverResult={serverResult} /> : null}
 
         {activeTab === "quality" ? (
           <section>

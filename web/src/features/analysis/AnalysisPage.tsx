@@ -22,16 +22,22 @@ import {
 } from "../../api";
 import type { Evidence, EventSummary } from "../../types";
 import { AnalysisBoardRail } from "./AnalysisBoardRail";
+import { AnalysisCanvasProjection } from "./AnalysisCanvasProjection";
+import { AnalysisContentsPanel } from "./AnalysisContentsPanel";
+import { AnalysisDependencyPanel } from "./AnalysisDependencyPanel";
+import { AnalysisGraphProjection } from "./AnalysisGraphProjection";
 import { AnalysisPathCanvas } from "./AnalysisPathCanvas";
 import { AnalysisResultInspector } from "./AnalysisResultInspector";
 import { AnalysisShell } from "./AnalysisShell";
 import { useMediaQuery } from "../../ui/foundry/useMediaQuery";
-import { ANALYSIS_BOARD_LIBRARY, defaultAnalysisConfig, outputKind } from "./catalog";
+import { ANALYSIS_BOARD_LIBRARY, analysisOutputKind, defaultAnalysisConfig, outputKind } from "./catalog";
+import { loadAnalysisPresentation, reconcileAnalysisPresentation, saveAnalysisPresentation } from "./analysisPresentation";
 import type {
   AddAnalysisBoardRequest,
   AnalysisFlowEdge,
   AnalysisFlowNode,
   AnalysisNodeExecutionResult,
+  AnalysisPresentationState,
   AnalysisResult,
   AnalysisRow,
   AnalysisServerSnapshot,
@@ -197,12 +203,30 @@ function AnalysisPageInner({
   const [runProgress, setRunProgress] = useState(0);
   const [notice, setNotice] = useState("Analysis definition을 서버에서 불러오는 중입니다.");
   const [showInspector, setShowInspector] = useState(true);
+  const [leftPanelMode, setLeftPanelMode] = useState<"catalog" | "contents">("catalog");
+  const [rightPanelMode, setRightPanelMode] = useState<"inspector" | "dependencies">("inspector");
+  const [presentation, setPresentation] = useState<AnalysisPresentationState>(() => loadAnalysisPresentation(analysisId, initialNodes(events.length)));
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? nodes[0];
   const result = useMemo(() => evaluate(events, nodes), [events, nodes]);
+  const hiddenNodeIds = useMemo(() => new Set(presentation.hiddenNodeIds), [presentation.hiddenNodeIds]);
+  const activeCanvas = presentation.canvases.find((canvas) => canvas.id === presentation.activeCanvasId) ?? presentation.canvases[0] ?? { id: "overview", name: "Overview", nodeIds: nodes.map((node) => node.id), frames: {} };
+  const selectedOutput = selectedNode ? analysisOutputKind(selectedNode.data.kind) : "object-set";
+  const nodeSignature = nodes.map((node) => node.id).join("|");
 
   useEffect(() => {
     if (isMobile) setShowInspector(false);
   }, [isMobile]);
+
+  useEffect(() => {
+    setPresentation((current) => {
+      const next = reconcileAnalysisPresentation(current, nodes);
+      return JSON.stringify(next) === JSON.stringify(current) ? current : next;
+    });
+  }, [nodeSignature, nodes]);
+
+  useEffect(() => {
+    saveAnalysisPresentation(analysisId, presentation);
+  }, [analysisId, presentation]);
 
   useEffect(() => {
     let cancelled = false;
@@ -314,6 +338,17 @@ function AnalysisPageInner({
       },
     };
     setNodes((current) => [...current, next]);
+    setPresentation((current) => ({
+      ...current,
+      canvases: current.canvases.map((canvas) => canvas.id === current.activeCanvasId ? {
+        ...canvas,
+        nodeIds: [...canvas.nodeIds, id],
+        frames: {
+          ...canvas.frames,
+          [id]: { x: 28 + (canvas.nodeIds.length % 2) * 390, y: 34 + Math.floor(canvas.nodeIds.length / 2) * 232, width: 356, height: 204 },
+        },
+      } : canvas),
+    }));
     if (last) {
       setEdges((current) => [...current, {
         id: `edge:${last.id}:${id}`,
@@ -347,9 +382,68 @@ function AnalysisPageInner({
     if (!selectedNode || selectedNode.data.kind === "input") return;
     setNodes((current) => current.filter((node) => node.id !== selectedNode.id));
     setEdges((current) => current.filter((edge) => edge.source !== selectedNode.id && edge.target !== selectedNode.id));
+    setPresentation((current) => ({
+      ...current,
+      hiddenNodeIds: current.hiddenNodeIds.filter((id) => id !== selectedNode.id),
+      canvases: current.canvases.map((canvas) => {
+        const frames = { ...canvas.frames };
+        delete frames[selectedNode.id];
+        return { ...canvas, nodeIds: canvas.nodeIds.filter((id) => id !== selectedNode.id), frames };
+      }),
+    }));
     setSelectedNodeId("input:0");
     setDirty(true);
     setNotice("선택 node와 연결 edge를 제거했습니다.");
+  }
+
+  function addCanvas() {
+    const id = `canvas:${crypto.randomUUID()}`;
+    const name = `Canvas ${presentation.canvases.length + 1}`;
+    const frames = Object.fromEntries(nodes.map((node, index) => [node.id, { x: 28 + (index % 2) * 390, y: 34 + Math.floor(index / 2) * 232, width: 356, height: 204 }]));
+    setPresentation((current) => ({ ...current, activeCanvasId: id, activeView: "canvas", canvases: [...current.canvases, { id, name, nodeIds: nodes.map((node) => node.id), frames }] }));
+    setLeftPanelMode("contents");
+  }
+
+  function renameCanvas(canvasId: string) {
+    const canvas = presentation.canvases.find((item) => item.id === canvasId);
+    if (!canvas) return;
+    const name = window.prompt("Canvas name", canvas.name)?.trim();
+    if (!name) return;
+    setPresentation((current) => ({ ...current, canvases: current.canvases.map((item) => item.id === canvasId ? { ...item, name } : item) }));
+  }
+
+  function duplicateCanvas(canvasId: string) {
+    const source = presentation.canvases.find((item) => item.id === canvasId);
+    if (!source) return;
+    const id = `canvas:${crypto.randomUUID()}`;
+    setPresentation((current) => ({
+      ...current,
+      activeCanvasId: id,
+      activeView: "canvas",
+      canvases: [...current.canvases, { ...source, id, name: `${source.name} copy`, frames: Object.fromEntries(Object.entries(source.frames).map(([nodeId, frame]) => [nodeId, { ...frame, x: frame.x + 18, y: frame.y + 18 }])) }],
+    }));
+  }
+
+  function deleteCanvas(canvasId: string) {
+    if (presentation.canvases.length <= 1) return;
+    setPresentation((current) => {
+      const canvases = current.canvases.filter((canvas) => canvas.id !== canvasId);
+      return { ...current, canvases, activeCanvasId: current.activeCanvasId === canvasId ? canvases[0].id : current.activeCanvasId };
+    });
+  }
+
+  function toggleHiddenNode(nodeId: string) {
+    setPresentation((current) => ({
+      ...current,
+      hiddenNodeIds: current.hiddenNodeIds.includes(nodeId) ? current.hiddenNodeIds.filter((id) => id !== nodeId) : [...current.hiddenNodeIds, nodeId],
+    }));
+  }
+
+  function updateCanvasFrame(nodeId: string, frame: { x: number; y: number; width: number; height: number }) {
+    setPresentation((current) => ({
+      ...current,
+      canvases: current.canvases.map((canvas) => canvas.id === current.activeCanvasId ? { ...canvas, frames: { ...canvas.frames, [nodeId]: frame } } : canvas),
+    }));
   }
 
   async function ensureSaved(publish: boolean): Promise<AnalysisServerSnapshot> {
@@ -539,6 +633,9 @@ function AnalysisPageInner({
       notice={busy ? `Working · ${notice}` : notice}
       dirty={dirty}
       showInspector={showInspector}
+      viewMode={presentation.activeView}
+      leftPanelMode={leftPanelMode}
+      rightPanelMode={rightPanelMode}
       canAddToDashboard={Boolean(selectedNode && onAddToDashboard)}
       canSaveDataset={canMaterialize && Boolean(selectedNode)}
       running={Boolean(activeRunId)}
@@ -551,8 +648,19 @@ function AnalysisPageInner({
       onSaveDataset={saveDataset}
       onAddToDashboard={addToDashboard}
       onToggleInspector={() => setShowInspector((current) => !current)}
-      rail={<AnalysisBoardRail onAddStep={addStep} />}
-      canvas={(
+      onViewModeChange={(activeView) => {
+        setPresentation((current) => ({ ...current, activeView }));
+        if (activeView !== "path") setLeftPanelMode("contents");
+      }}
+      onLeftPanelModeChange={setLeftPanelMode}
+      onRightPanelModeChange={setRightPanelMode}
+      catalog={<AnalysisBoardRail onAddStep={addStep} selectedOutput={selectedOutput} />}
+      contents={<AnalysisContentsPanel nodes={nodes} canvases={presentation.canvases} activeCanvasId={presentation.activeCanvasId} selectedNodeId={selectedNodeId} hiddenNodeIds={hiddenNodeIds} onSelectNode={setSelectedNodeId} onSelectCanvas={(activeCanvasId) => setPresentation((current) => ({ ...current, activeCanvasId, activeView: "canvas" }))} onAddCanvas={addCanvas} onRenameCanvas={renameCanvas} onDuplicateCanvas={duplicateCanvas} onDeleteCanvas={deleteCanvas} onToggleHidden={toggleHiddenNode} />}
+      projection={presentation.activeView === "canvas" ? (
+        <AnalysisCanvasProjection nodes={nodes} canvas={activeCanvas} selectedNodeId={selectedNodeId} hiddenNodeIds={hiddenNodeIds} onSelectNode={setSelectedNodeId} onFrameChange={updateCanvasFrame} />
+      ) : presentation.activeView === "graph" ? (
+        <AnalysisGraphProjection nodes={nodes} edges={edges} selectedNodeId={selectedNodeId} hiddenNodeIds={hiddenNodeIds} showComputationalNodes={presentation.showComputationalNodes} onShowComputationalNodesChange={(showComputationalNodes) => setPresentation((current) => ({ ...current, showComputationalNodes }))} onSelectNode={setSelectedNodeId} />
+      ) : (
         <AnalysisPathCanvas
           workspaceId={workspaceId}
           nodes={nodes}
@@ -584,6 +692,7 @@ function AnalysisPageInner({
           onSelectEvent={onSelectEvent}
         />
       )}
+      dependencies={<AnalysisDependencyPanel nodes={nodes} edges={edges} selectedNodeId={selectedNodeId} hiddenNodeIds={hiddenNodeIds} onSelectNode={setSelectedNodeId} />}
     />
   );
 }

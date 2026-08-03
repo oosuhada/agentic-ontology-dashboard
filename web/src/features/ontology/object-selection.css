@@ -1,0 +1,15 @@
+.ontology-selection-toolbar,
+.ontology-selection-banner { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--od-border); padding: 7px 10px; background: var(--od-surface-raised); }
+.ontology-selection-toolbar > div,
+.ontology-selection-banner > div { display: flex; align-items: center; gap: 6px; }
+.ontology-selection-toolbar button,
+.ontology-selection-toolbar select,
+.ontology-selection-banner button { min-height: 26px; border: 1px solid var(--od-border); border-radius: 3px; padding: 0 7px; background: var(--od-surface); font-size: 9px; }
+.ontology-selection-banner { border-bottom-color: color-mix(in srgb, var(--od-accent) 36%, var(--od-border)); background: color-mix(in srgb, var(--od-accent) 7%, var(--od-surface)); }
+.ontology-selection-banner strong { font-size: 10px; }
+.ontology-selection-banner span { color: var(--od-text-muted); font-size: 9px; }
+.ontology-object-table .object-selection-cell { display: grid; place-items: center; }
+.ontology-object-table .object-selection-cell input { width: 13px; height: 13px; }
+.ontology-object-table .fd-resource-table__row.is-selected-set { background: color-mix(in srgb, var(--od-accent) 7%, var(--od-surface)); }
+.ontology-linked-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-left: auto; }
+

@@ -2,6 +2,41 @@ import type { Edge, Node } from "@xyflow/react";
 
 export type AnalysisStepKind = "input" | "filter" | "group" | "aggregate" | "formula" | "join" | "chart" | "table" | "evidence";
 export type ExecutionStatus = "idle" | "running" | "success" | "error";
+export type AnalysisViewMode = "path" | "canvas" | "graph";
+export type AnalysisDataKind =
+  | "object-set"
+  | "rows"
+  | "grouped-rows"
+  | "transform-table"
+  | "scalar"
+  | "chart"
+  | "table"
+  | "evidence-set"
+  | "time-series"
+  | "materialization"
+  | "none";
+
+export interface AnalysisCanvasFrame {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface AnalysisCanvasDefinition {
+  id: string;
+  name: string;
+  nodeIds: string[];
+  frames: Record<string, AnalysisCanvasFrame>;
+}
+
+export interface AnalysisPresentationState {
+  activeView: AnalysisViewMode;
+  activeCanvasId: string;
+  canvases: AnalysisCanvasDefinition[];
+  hiddenNodeIds: string[];
+  showComputationalNodes: boolean;
+}
 
 export interface AnalysisNodeData extends Record<string, unknown> {
   kind: AnalysisStepKind;

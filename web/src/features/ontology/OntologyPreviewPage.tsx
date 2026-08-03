@@ -7,7 +7,7 @@ import {
   type Edge,
   type Node,
 } from "@xyflow/react";
-import { Boxes, GitBranch, MessageSquare, Network, Search, Table2, Waypoints, X } from "lucide-react";
+import { Boxes, Check, GitBranch, Link2, MessageSquare, Network, Search, Table2, Waypoints, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   getOntologyRegistry,
@@ -50,6 +50,7 @@ interface OntologyPreviewPageProps {
 type OntologyView = "table" | "exploration" | "graph";
 
 type GraphDirection = "outgoing" | "incoming" | "both";
+type SelectionMergeMode = "replace" | "union" | "intersection" | "difference";
 
 function isDegraded(value: Project3Subgraph | Project3DegradedResponse | null): value is Project3DegradedResponse {
   return Boolean(value && "available" in value && value.available === false);
@@ -139,6 +140,10 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState("");
   const [error, setError] = useState("");
+  const [selectionMode, setSelectionMode] = useState<SelectionMergeMode>("replace");
+  const [draftSelectionIds, setDraftSelectionIds] = useState<Set<string>>(new Set());
+  const [selectedObjectIds, setSelectedObjectIds] = useState<Set<string>>(new Set());
+  const [selectionBusy, setSelectionBusy] = useState(false);
 
   const objectTypes = registry?.object_types ?? [];
   const selectedDefinition = objectTypes.find((item) => item.id === selectedType) ?? null;
@@ -183,6 +188,11 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
   }, [objectOffset, search, selectedType, workspaceId]);
 
   useEffect(() => setObjectOffset(0), [search, selectedType]);
+
+  useEffect(() => {
+    setDraftSelectionIds(new Set());
+    setSelectedObjectIds(new Set());
+  }, [selectedType]);
 
   useEffect(() => {
     if (!selectedObject) {
@@ -252,6 +262,57 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
     if (isMobile) setInspectorOpen(true);
   }
 
+  function toggleDraftSelection(objectId: string, selected: boolean) {
+    setDraftSelectionIds((current) => {
+      const next = new Set(current);
+      if (selected) next.add(objectId); else next.delete(objectId);
+      return next;
+    });
+  }
+
+  function toggleAllDraftSelection(objectIds: string[], selected: boolean) {
+    setDraftSelectionIds((current) => {
+      const next = new Set(current);
+      objectIds.forEach((id) => selected ? next.add(id) : next.delete(id));
+      return next;
+    });
+  }
+
+  function applyObjectSelection() {
+    setSelectedObjectIds((current) => {
+      if (selectionMode === "replace") return new Set(draftSelectionIds);
+      if (selectionMode === "union") return new Set([...current, ...draftSelectionIds]);
+      if (selectionMode === "intersection") return new Set(current.size ? [...current].filter((id) => draftSelectionIds.has(id)) : draftSelectionIds);
+      return new Set([...current].filter((id) => !draftSelectionIds.has(id)));
+    });
+    setDraftSelectionIds(new Set());
+  }
+
+  async function traverseSelectedObjects() {
+    const roots = objects.filter((object) => selectedObjectIds.has(object.id)).slice(0, 8);
+    if (!roots.length) return;
+    setSelectionBusy(true);
+    setTraversalLoading(true);
+    try {
+      const traversals = await Promise.all(roots.map((object) => traverseOntologyObject(object.id, { workspace_id: workspaceId, direction, depth })));
+      const nodeMap = new Map<string, ObjectRecord>();
+      const edgeMap = new Map<string, OntologyTraversal["edges"][number]>();
+      traversals.forEach((payload) => {
+        payload.nodes.forEach((node) => nodeMap.set(node.id, node));
+        payload.edges.forEach((edge) => edgeMap.set(edge.id, edge));
+      });
+      setSelectedObject(roots[0]);
+      setTraversal({ root: roots[0], nodes: [...nodeMap.values()], edges: [...edgeMap.values()], direction, depth });
+      setView("exploration");
+      setActionNotice(`Traversed ${roots.length} selected roots · ${nodeMap.size} objects · ${edgeMap.size} links`);
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : "Selected object traversal failed.");
+    } finally {
+      setSelectionBusy(false);
+      setTraversalLoading(false);
+    }
+  }
+
   if (loading) return <main className="ontology-workbench-loading"><LoadingState title="Building Object Explorer" detail="Loading registry, Project scope, and graph readiness." /></main>;
 
   return (
@@ -283,7 +344,14 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
         <section className={`ontology-graph-pane mode-${view}`}>
           <div className="pane-heading ontology-resource-heading"><div><small>{view === "table" ? "OBJECT SET" : view === "exploration" ? "RELATION EXPLORATION" : "PROJECT 3 SUBGRAPH"}</small><strong>{selectedDefinition?.display_name ?? selectedType}</strong></div><div className="pane-tags"><HTMLSelect value={direction} onChange={(event) => setDirection(event.currentTarget.value as GraphDirection)}><option value="both">Both directions</option><option value="outgoing">Outgoing</option><option value="incoming">Incoming</option></HTMLSelect><HTMLSelect value={depth} onChange={(event) => setDepth(Number(event.currentTarget.value))}><option value={1}>1 hop</option><option value={2}>2 hops</option></HTMLSelect><Tag minimal>{traversal?.edges.length ?? 0} links</Tag></div></div>
           <div className="ontology-primary-view">
-            {view === "table" ? <ObjectSetTable objects={objects} definition={selectedDefinition} selectedObjectId={selectedObject?.id ?? null} onSelect={chooseObject} /> : null}
+            {view === "table" ? <>
+              <div className="ontology-selection-toolbar">
+                <div><Link2 size={12} /><strong>ObjectSet selection</strong><select aria-label="Selection merge mode" value={selectionMode} onChange={(event) => setSelectionMode(event.currentTarget.value as SelectionMergeMode)}><option value="replace">Replace</option><option value="union">Union</option><option value="intersection">Intersection</option><option value="difference">Difference</option></select><span>{draftSelectionIds.size} staged</span></div>
+                <div><button type="button" disabled={!draftSelectionIds.size} onClick={applyObjectSelection}><Check size={11} /> Apply selection</button><button type="button" disabled={!draftSelectionIds.size} onClick={() => setDraftSelectionIds(new Set())}>Clear staged</button></div>
+              </div>
+              {selectedObjectIds.size ? <div className="ontology-selection-banner"><div><Link2 size={12} /><strong>{selectedObjectIds.size} objects selected</strong><span>{selectionMode} semantics · selection remains independent from row focus</span></div><div className="ontology-linked-actions"><button type="button" disabled={selectionBusy} onClick={() => void traverseSelectedObjects()}><GitBranch size={11} />{selectionBusy ? "Traversing…" : "Traverse selected"}</button><button type="button" onClick={() => { const first = objects.find((object) => selectedObjectIds.has(object.id)); if (first) chooseObject(first); setInspectorOpen(true); }}>Inspect first</button><button type="button" onClick={() => setSelectedObjectIds(new Set())}><X size={11} /> Clear selection</button></div></div> : null}
+              <ObjectSetTable objects={objects} definition={selectedDefinition} selectedObjectId={selectedObject?.id ?? null} selectedObjectIds={selectedObjectIds} draftSelectionIds={draftSelectionIds} onSelect={chooseObject} onToggleDraftSelection={toggleDraftSelection} onToggleAllDraftSelection={toggleAllDraftSelection} />
+            </> : null}
             {view === "exploration" ? (
               <div className="ontology-exploration-view">
                 {selectedObject ? <>{(() => { const RootIcon = objectTypeIcon(selectedObject.object_type); return <article className="ontology-exploration-root"><span><RootIcon size={18} /></span><div><small>{selectedObject.object_type}</small><strong>{objectIdentity(selectedObject)}</strong><code>{selectedObject.id}</code></div></article>; })()}<div className="ontology-exploration-links">{traversalLoading ? <LoadingState title="Loading links" /> : traversal?.edges.map((edge) => { const relatedId = edge.source_object_id === selectedObject.id ? edge.target_object_id : edge.source_object_id; const related = traversal.nodes.find((item) => item.id === relatedId); const RelatedIcon = objectTypeIcon(related?.object_type ?? "object"); return <button type="button" key={edge.id} disabled={!related} onClick={() => related && chooseObject(related)}><StatusPill intent="primary">{edge.link_type}</StatusPill><GitBranch size={14} /><RelatedIcon size={14} /><div><strong>{related ? objectIdentity(related) : relatedId}</strong><small>{related?.object_type ?? "unresolved"} · {edge.source_object_id} → {edge.target_object_id}</small></div></button>; })}</div></> : <ErrorState title="Select an object" detail="Choose an object from Table view to explore governed links." />}

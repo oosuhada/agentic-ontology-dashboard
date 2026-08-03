@@ -1,11 +1,13 @@
-import { Download, LayoutDashboard, PanelRight, Play, Save, Share2, Square, Workflow } from "lucide-react";
+import { Download, GitBranch, LayoutGrid, LayoutDashboard, ListTree, PanelLeft, PanelRight, Play, Save, Share2, Square, Workflow } from "lucide-react";
 import type { ReactNode } from "react";
 import { EntityTitle } from "../../ui/foundry/EntityTitle";
 import { FoundryDrawer } from "../../ui/foundry/FoundryDrawer";
 import { StatusPill } from "../../ui/foundry/StatusPill";
 import { WorkbenchHeader } from "../../ui/foundry/WorkbenchChrome";
+import { ResizableWorkbenchLayout } from "../../ui/foundry/ResizableWorkbenchLayout";
 import { useMediaQuery } from "../../ui/foundry/useMediaQuery";
 import { useI18n } from "../../ui/i18n/I18nProvider";
+import type { AnalysisViewMode } from "./types";
 
 interface AnalysisShellProps {
   analysisId: string;
@@ -13,9 +15,14 @@ interface AnalysisShellProps {
   notice: string;
   dirty: boolean;
   showInspector: boolean;
-  rail: ReactNode;
-  canvas: ReactNode;
+  viewMode: AnalysisViewMode;
+  leftPanelMode: "catalog" | "contents";
+  rightPanelMode: "inspector" | "dependencies";
+  catalog: ReactNode;
+  contents: ReactNode;
+  projection: ReactNode;
   inspector: ReactNode;
+  dependencies: ReactNode;
   canAddToDashboard: boolean;
   canSaveDataset: boolean;
   running: boolean;
@@ -28,6 +35,9 @@ interface AnalysisShellProps {
   onSaveDataset: () => void;
   onAddToDashboard: () => void;
   onToggleInspector: () => void;
+  onViewModeChange: (mode: AnalysisViewMode) => void;
+  onLeftPanelModeChange: (mode: "catalog" | "contents") => void;
+  onRightPanelModeChange: (mode: "inspector" | "dependencies") => void;
 }
 
 export function AnalysisShell({
@@ -36,9 +46,14 @@ export function AnalysisShell({
   notice,
   dirty,
   showInspector,
-  rail,
-  canvas,
+  viewMode,
+  leftPanelMode,
+  rightPanelMode,
+  catalog,
+  contents,
+  projection,
   inspector,
+  dependencies,
   canAddToDashboard,
   canSaveDataset,
   running,
@@ -51,6 +66,9 @@ export function AnalysisShell({
   onSaveDataset,
   onAddToDashboard,
   onToggleInspector,
+  onViewModeChange,
+  onLeftPanelModeChange,
+  onRightPanelModeChange,
 }: AnalysisShellProps) {
   const isMobile = useMediaQuery("(max-width: 760px)");
   const { t } = useI18n();
@@ -83,12 +101,28 @@ export function AnalysisShell({
         <span>{notice}</span>
         {running ? <i style={{ width: `${Math.max(2, runProgress)}%` }} /> : null}
       </div>
-      <div className="analysis-workbench-grid flow-grid">
-        {rail}
-        {canvas}
-        {showInspector && !isMobile ? inspector : null}
+      <div className="analysis-projection-toolbar" role="toolbar" aria-label="Analysis projection and panel controls">
+        <div className="analysis-projection-switch" role="group" aria-label="Analysis view">
+          <button type="button" className={viewMode === "path" ? "active" : ""} onClick={() => onViewModeChange("path")}><ListTree size={12} /> Path</button>
+          <button type="button" className={viewMode === "canvas" ? "active" : ""} onClick={() => onViewModeChange("canvas")}><LayoutGrid size={12} /> Canvas</button>
+          <button type="button" className={viewMode === "graph" ? "active" : ""} onClick={() => onViewModeChange("graph")}><GitBranch size={12} /> Graph</button>
+        </div>
+        <div className="analysis-panel-switches">
+          <button type="button" className={leftPanelMode === "contents" ? "active" : ""} onClick={() => onLeftPanelModeChange(leftPanelMode === "catalog" ? "contents" : "catalog")}><PanelLeft size={12} /> {leftPanelMode === "catalog" ? "Catalog" : "Contents"}</button>
+          <button type="button" className={rightPanelMode === "dependencies" ? "active" : ""} disabled={!showInspector} onClick={() => onRightPanelModeChange(rightPanelMode === "inspector" ? "dependencies" : "inspector")}><PanelRight size={12} /> {rightPanelMode === "inspector" ? "Inspector" : "Dependencies"}</button>
+        </div>
       </div>
-      {showInspector && isMobile ? <FoundryDrawer ariaLabel="Analysis inspector" title="Analysis inspector" position="bottom" onClose={onToggleInspector}>{inspector}</FoundryDrawer> : null}
+      {!isMobile ? (
+        <ResizableWorkbenchLayout
+          storageKey="ontology-dashboard:analysis-pane-widths"
+          className={`analysis-projection-layout mode-${viewMode}`}
+          left={leftPanelMode === "catalog" ? catalog : contents}
+          main={projection}
+          right={rightPanelMode === "inspector" ? inspector : dependencies}
+          rightOpen={showInspector}
+        />
+      ) : <div className="analysis-mobile-projection">{projection}</div>}
+      {showInspector && isMobile ? <FoundryDrawer ariaLabel="Analysis inspector" title={rightPanelMode === "inspector" ? "Analysis inspector" : "Dependencies"} position="bottom" onClose={onToggleInspector}>{rightPanelMode === "inspector" ? inspector : dependencies}</FoundryDrawer> : null}
     </section>
   );
 }

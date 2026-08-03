@@ -44,6 +44,9 @@ const DatasetCatalogPage = lazy(() =>
 const GovernanceWorkbenchPage = lazy(() =>
   import("./features/governance/GovernanceWorkbenchPage").then((module) => ({ default: module.GovernanceWorkbenchPage })),
 );
+const ReferenceGallery = lazy(() =>
+  import("./features/reference/ReferenceGallery").then((module) => ({ default: module.ReferenceGallery })),
+);
 
 const LAST_VALID_PROJECT_KEY = "ontology-dashboard:last-valid-project";
 
@@ -150,6 +153,8 @@ function ForbiddenPage() {
 function AppRouter() {
   const pathname = usePathname();
   const { user, loading } = useAuth();
+
+  if (pathname === "/reference") return <ReferenceGallery />;
 
   if (loading) {
     return <RouteLoading operation="Checking session" detail="Resolving identity and governed scope." />;

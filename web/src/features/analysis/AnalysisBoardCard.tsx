@@ -1,11 +1,13 @@
 import { AlertTriangle, Braces, CheckCircle2, Combine, GitFork, LoaderCircle } from "lucide-react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { StatusPill } from "../../ui/foundry/StatusPill";
-import { analysisNodeIcon } from "./catalog";
+import { DataPill } from "../../ui/foundry/DataPill";
+import { analysisCardMetadata, analysisNodeIcon } from "./catalog";
 import type { AnalysisFlowNode } from "./types";
 
 export function AnalysisBoardCard({ data, selected }: NodeProps<AnalysisFlowNode>) {
   const Icon = analysisNodeIcon(data.kind);
+  const metadata = analysisCardMetadata(data.kind);
   const statusIntent = data.status === "success" ? "success" : data.status === "error" ? "danger" : data.status === "running" ? "primary" : "neutral";
   const schemas: Record<string, { input: string[]; output: string[] }> = {
     input: { input: ["Ontology object set"], output: ["event_id:string", "risk:number", "status:string"] },
@@ -28,8 +30,8 @@ export function AnalysisBoardCard({ data, selected }: NodeProps<AnalysisFlowNode
         <div className="analysis-node-header-state">{data.kind === "filter" ? <GitFork size={12} aria-label="Branching transform" /> : data.kind === "join" ? <Combine size={12} aria-label="Join transform" /> : <Braces size={12} aria-label="Typed transform" />}{data.status === "running" ? <LoaderCircle className="spin" size={14} /> : data.status === "success" ? <CheckCircle2 size={14} /> : data.status === "error" ? <AlertTriangle size={14} /> : null}</div>
       </header>
       <div className="analysis-node-io">
-        <div><small>INPUT CONTRACT</small><strong>{data.kind === "input" ? "Ontology / Dataset" : `${data.rows.toLocaleString()} rows`}</strong>{schema.input.map((field) => <code key={field}>{field}</code>)}</div>
-        <div><small>OUTPUT CONTRACT</small><strong>{data.outputKind}</strong>{schema.output.map((field) => <code key={field}>{field}</code>)}</div>
+        <div><small>INPUT CONTRACT</small><DataPill kind={metadata.input[0] ?? "none"} /><strong>{data.kind === "input" ? "Ontology / Dataset" : `${data.rows.toLocaleString()} rows`}</strong>{schema.input.map((field) => <code key={field}>{field}</code>)}</div>
+        <div><small>OUTPUT CONTRACT</small><DataPill kind={metadata.output} /><strong>{data.outputKind}</strong>{schema.output.map((field) => <code key={field}>{field}</code>)}</div>
       </div>
       <div className="analysis-node-config">{Object.entries(data.config).slice(0, 3).map(([key, value]) => <span key={key}><small>{key}</small><code>{value}</code></span>)}</div>
       <footer>

@@ -11,7 +11,11 @@ interface ObjectSetTableProps {
   objects: ObjectRecord[];
   definition: ObjectTypeDefinition | null;
   selectedObjectId: string | null;
+  selectedObjectIds?: Set<string>;
+  draftSelectionIds?: Set<string>;
   onSelect: (object: ObjectRecord) => void;
+  onToggleDraftSelection?: (objectId: string, selected: boolean) => void;
+  onToggleAllDraftSelection?: (objectIds: string[], selected: boolean) => void;
 }
 
 function statusIntent(status: string) {
@@ -22,9 +26,9 @@ function statusIntent(status: string) {
   return "neutral" as const;
 }
 
-export function ObjectSetTable({ objects, definition, selectedObjectId, onSelect }: ObjectSetTableProps) {
+export function ObjectSetTable({ objects, definition, selectedObjectId, selectedObjectIds = new Set(), draftSelectionIds = new Set(), onSelect, onToggleDraftSelection, onToggleAllDraftSelection }: ObjectSetTableProps) {
   const properties = definition?.properties.slice(0, 3) ?? [];
-  const columns = `minmax(180px,1.4fr) minmax(100px,.7fr) ${properties.map(() => "minmax(110px,.8fr)").join(" ")} 80px 90px`;
+  const columns = `34px minmax(180px,1.4fr) minmax(100px,.7fr) ${properties.map(() => "minmax(110px,.8fr)").join(" ")} 80px 90px`;
   const [sort, setSort] = useState<{ id: string; direction: "asc" | "desc" }>({ id: "object", direction: "asc" });
   const [pinPrimary, setPinPrimary] = useState(true);
   const sortedObjects = useMemo(() => [...objects].sort((left, right) => {
@@ -48,6 +52,7 @@ export function ObjectSetTable({ objects, definition, selectedObjectId, onSelect
   return (
     <div className={`fd-resource-table ontology-object-table ${pinPrimary ? "has-pinned-primary" : ""}`} role="table">
       <div className="fd-resource-table__header" role="row" style={{ gridTemplateColumns: columns }}>
+        <span className="object-selection-cell" role="columnheader"><input aria-label="Select all visible objects" type="checkbox" checked={objects.length > 0 && objects.every((object) => draftSelectionIds.has(object.id))} onChange={(event) => onToggleAllDraftSelection?.(objects.map((object) => object.id), event.currentTarget.checked)} /></span>
         <ResourceTableHeaderCell label="Object" type="object" pinned={pinPrimary} sortDirection={sort.id === "object" ? sort.direction : null} onSort={(direction) => setSortColumn("object", direction)} onTogglePin={() => setPinPrimary((value) => !value)} description={`${definition?.display_name ?? "Ontology object"} identity`} />
         <ResourceTableHeaderCell label="Status" type="status" filterActive={objects.some((object) => objectStatus(object) !== "active")} sortDirection={sort.id === "status" ? sort.direction : null} onSort={(direction) => setSortColumn("status", direction)} />
         {properties.map((property) => <ResourceTableHeaderCell key={property.id} label={property.display_name} type={propertyType(property.value_type)} description={`${property.value_type}${property.unit ? ` · ${property.unit}` : ""}${property.required ? " · required" : ""}${property.description ? ` · ${property.description}` : ""}`} sortDirection={sort.id === property.id ? sort.direction : null} onSort={(direction) => setSortColumn(property.id, direction)} />)}
@@ -58,24 +63,26 @@ export function ObjectSetTable({ objects, definition, selectedObjectId, onSelect
         const status = objectStatus(object);
         const ObjectIcon = objectTypeIcon(object.object_type);
         return (
-          <button
-            type="button"
+          <div
             role="row"
+            tabIndex={0}
             key={object.id}
-            className={`fd-resource-table__row ${selectedObjectId === object.id ? "active" : ""}`.trim()}
+            className={`fd-resource-table__row ${selectedObjectId === object.id ? "active" : ""} ${selectedObjectIds.has(object.id) ? "is-selected-set" : ""}`.trim()}
             style={{ gridTemplateColumns: columns }}
             onClick={() => onSelect(object)}
+            onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(object); } }}
           >
+            <span className="object-selection-cell" role="cell"><input aria-label={`Select ${objectIdentity(object)}`} type="checkbox" checked={draftSelectionIds.has(object.id)} onClick={(event) => event.stopPropagation()} onChange={(event) => onToggleDraftSelection?.(object.id, event.currentTarget.checked)} /></span>
             <div className={`fd-resource-table__primary ${pinPrimary ? "is-pinned" : ""}`} role="cell"><strong><ObjectIcon size={11} /> {objectIdentity(object)}</strong><small>{object.object_type} · {object.id}</small></div>
             <span role="cell"><StatusPill intent={statusIntent(status)}>{status}</StatusPill></span>
             {properties.map((property) => <span role="cell" key={property.id} title={displayObjectValue(object.properties[property.id])}>{displayObjectValue(object.properties[property.id])}</span>)}
             <span role="cell" className="fd-resource-table__numeric">v{object.version}</span>
             <span role="cell"><Link2 size={10} /> {object.source_refs.length}</span>
-          </button>
+          </div>
         );
       })}
       <div className="fd-resource-table__summary" role="row" style={{ gridTemplateColumns: columns }}>
-        <strong role="cell">{objects.length} objects</strong><span role="cell">{new Set(objects.map(objectStatus)).size} states</span>{properties.map((property) => <span role="cell" key={property.id}>{property.value_type}{property.unit ? ` · ${property.unit}` : ""}</span>)}<span role="cell">v{Math.max(...objects.map((object) => object.version))}</span><span role="cell">Σ {sourceTotal}</span>
+        <span role="cell">{selectedObjectIds.size}</span><strong role="cell">{objects.length} objects</strong><span role="cell">{new Set(objects.map(objectStatus)).size} states</span>{properties.map((property) => <span role="cell" key={property.id}>{property.value_type}{property.unit ? ` · ${property.unit}` : ""}</span>)}<span role="cell">v{Math.max(...objects.map((object) => object.version))}</span><span role="cell">Σ {sourceTotal}</span>
       </div>
     </div>
   );
