@@ -187,8 +187,8 @@ export function register(input: {
   });
 }
 
-export async function getCurrentUser(): Promise<AuthUser> {
-  const payload = await request<{ user: AuthUser; csrf_token: string | null }>("/api/auth/me");
+export async function getCurrentUser(signal?: AbortSignal): Promise<AuthUser> {
+  const payload = await request<{ user: AuthUser; csrf_token: string | null }>("/api/auth/me", { signal });
   csrfTokenCache = payload.csrf_token;
   return payload.user;
 }

@@ -18,6 +18,7 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 6_000;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -37,15 +38,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    getCurrentUser()
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), AUTH_BOOTSTRAP_TIMEOUT_MS);
+    getCurrentUser(controller.signal)
       .then((current) => active && setUser(current))
       .catch((error) => {
-        if (active && (!(error instanceof ApiError) || error.status !== 401)) {
+        if (active && error instanceof DOMException && error.name === "AbortError") {
+          console.warn("Session check timed out; returning to sign in.");
+          setUser(null);
+        } else if (active && (!(error instanceof ApiError) || error.status !== 401)) {
           console.error(error);
         }
       })
-      .finally(() => active && setLoading(false));
-    return () => { active = false; };
+      .finally(() => {
+        window.clearTimeout(timeout);
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
   }, []);
 
   const value = useMemo<AuthContextValue>(() => ({
