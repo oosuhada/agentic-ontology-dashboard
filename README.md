@@ -158,7 +158,7 @@ python scripts/release_gate.py --with-e2e
 - 금지 운영 단정: **0건**
 - Evidence 추적 불가 Report section: **0건**
 
-상세 결과: [`docs/release-gate-report.md`](./docs/release-gate-report.md)
+상세 결과: [`docs/50-operations/release-gate-report.md`](./docs/50-operations/release-gate-report.md)
 
 ## AI4I 모델 결과
 

@@ -830,7 +830,7 @@ Right inspector
 
 ### 11.2 visual specification이 없었다
 
-앞으로 `docs/palantir-contour-ui-reference.md`를 기능 명세로만 사용하지 않고 별도 visual acceptance를 추가한다.
+앞으로 `docs/40-ui-ux/reference/palantir-contour-ui-reference.md`를 기능 명세로만 사용하지 않고 별도 visual acceptance를 추가한다.
 
 추가할 문서:
 
@@ -1540,7 +1540,7 @@ web/src/features/dashboard/DashboardShell.tsx
 
 /Users/gabrieljang/Documents/Macbook air personal/비스텔리전스 파이널 프로젝트/mvp-프로젝트2
 
-가장 먼저 docs/next-session-master-prompt.md와 docs/10-product-convergence-polyglot-agentic-roadmap.md를 읽어줘. 그 다음 필수 architecture 문서, 현재 코드, tests, migrations, frontend routes를 비교해줘.
+가장 먼저 docs/60-development-prompts/next-session-master-prompt.md와 docs/30-implementation/product-convergence-roadmap.md를 읽어줘. 그 다음 필수 architecture 문서, 현재 코드, tests, migrations, frontend routes를 비교해줘.
 
 Project 2와 Project 3은 하나의 실제 업무 제품을 두 구현 과제로 나눈 것이다. Project 2를 단순한 평탄 JSON 소비자로 제한하지 말고, PostgreSQL operational data, Neo4j relationship graph, pgvector/LlamaIndex semantic retrieval을 역할별 Analysis/Dashboard/Ontology/Dataset/Governance 화면으로 전달하는 orchestration 계층으로 구현해줘.
 
@@ -1549,7 +1549,7 @@ Project 3 저장소 경로:
 
 Project 3에 이미 존재하는 Neo4j ETL, read-only Text-to-Cypher, LangGraph validation/correction workflow, RAG 기능을 먼저 조사하고 중복 구현하지 말아줘. Project 2에는 typed Project3 client, multi-store query ports, governance/audit, delivery UI를 구현해줘.
 
-첫 작업은 docs/10-product-convergence-polyglot-agentic-roadmap.md의 Stage 45 vertical slice다.
+첫 작업은 docs/30-implementation/product-convergence-roadmap.md의 Stage 45 vertical slice다.
 
 - ontology_planner_service를 factory_signal_board 물리 경로에서 ontology_dashboard/planner로 이동
 - ontology_dashboard.__init__의 legacy path hack 제거를 향한 단계적 migration 시작

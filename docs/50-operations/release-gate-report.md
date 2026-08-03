@@ -128,7 +128,7 @@ PYTHONPATH=api:ml/src .venv/bin/python scripts/verify_production_environment.py
 - object storage: blocked — endpoint/bucket 미설정
 - observability: blocked — OTLP endpoint 미설정
 
-이 항목은 코드 실패가 아니라 외부 환경·자격증명 의존이다. 실행 절차는 `docs/production-environment-completion-runbook.md`에 고정했다.
+이 항목은 코드 실패가 아니라 외부 환경·자격증명 의존이다. 실행 절차는 `docs/50-operations/production-environment-completion-runbook.md`에 고정했다.
 
 ## Preflight note
 

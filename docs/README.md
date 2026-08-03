@@ -18,21 +18,19 @@
 ```text
 docs/
 ├── 00-team-onboarding/       팀 공유용 시작점, 화면 투어, 데모, 상태표
-├── 10-product/               문제, 사용자, 역할, 데이터 전략 인덱스
-├── 20-architecture/          시스템 구조, 계약, ADR 인덱스
-├── 30-implementation/        현재 상태, 로드맵, 구현 이력 인덱스
-├── 40-ui-ux/                 Foundry UI, 시각 언어, 화면 자산 인덱스
-├── 50-operations/            실행, 검증, 릴리스, 문제 해결 인덱스
-├── 60-development-prompts/   다음 세션 실행 프롬프트 인덱스
-├── 90-archive/               과거 비교 분석과 참고 문서 인덱스
-├── adr/                      Architecture Decision Records
-├── architecture/             기존 아키텍처 상세 문서
-└── ui/                       대용량 화면 캡처·레퍼런스 자산 저장소
+├── 10-product/               문제, 사용자, 역할, Dataset과 정책
+├── 20-architecture/          시스템 구조, 계약, ADR와 current state
+├── 30-implementation/        현재 상태, 로드맵, stage-history
+├── 40-ui-ux/                 구현 설명, 계획, Reference
+├── 50-operations/            실행, 검증, 릴리스, 문제 해결
+├── 60-development-prompts/   다음 세션 실행 프롬프트
+├── 90-archive/               과거 비교 분석과 superseded 계획
+└── ui/                       대용량 화면 캡처·레퍼런스 자산
 ```
 
-## 경로 유지 정책
+## 물리 경로 정책
 
-기존 문서 다수는 다른 문서와 자동화에서 `docs/<filename>.md` 형태로 참조한다. 팀 공유 직전의 대규모 이동으로 링크가 깨지는 것을 방지하기 위해 기존 문서 경로는 유지하고, 목적별 폴더의 `README.md`가 이를 분류한다.
+기존 루트 Markdown과 루트 수준의 ADR·current-state 디렉터리는 목적별 폴더로 물리 이동했다. 저장소 전체 Markdown 링크와 스크립트의 명시적 문서 경로도 새 위치로 변경했다.
 
 새 문서는 다음 규칙을 따른다.
 
@@ -48,11 +46,11 @@ docs/
 python3 scripts/check_docs_structure.py
 ```
 
-허용된 호환 경로와 필수 진입점은 [`document-registry.json`](./document-registry.json)에 등록한다. Registry에 없는 새 루트 Markdown 파일이나 깨진 로컬 링크는 검증 실패로 처리한다.
+필수 실제 경로와 폐기된 과거 경로는 [`document-registry.json`](./document-registry.json)에 등록한다. `README.md` 외 루트 Markdown, 과거 경로의 재생성 또는 깨진 로컬 링크는 검증 실패로 처리한다.
 
 ## 현재 기준 버전
 
-- Tag: `team-share-audit-ready-20260804`
+- Tag: `docs-physical-reorg-ready-20260804`
 - 제품 기능 기준: `complete-user-flow-20260803`
 - 팀 공유 패키지 재검증: 2026-08-04
 - 상세 결과: [`00-team-onboarding/09-verification-report.md`](./00-team-onboarding/09-verification-report.md)

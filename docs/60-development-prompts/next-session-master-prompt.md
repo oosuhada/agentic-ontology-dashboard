@@ -4,7 +4,7 @@
 
 > **UI completion handoff — 2026-08-02**
 >
-> Palantir/Foundry 스타일 UI-00~UI-08과 Ubuntu visual calibration은 완료됐다. 현재 실행 기준은 `docs/next-session-remaining-work-execution-plan.md`이며, 완료된 UI를 반복 구현하지 않는다.
+> Palantir/Foundry 스타일 UI-00~UI-08과 Ubuntu visual calibration은 완료됐다. 현재 실행 기준은 `docs/60-development-prompts/next-session-remaining-work-execution-plan.md`이며, 완료된 UI를 반복 구현하지 않는다.
 
 ## 1. Role
 
@@ -30,26 +30,26 @@ Git commit, push, remote 변경은 수행하지 않는다. 사용자가 별도�
 
 작업 전에 다음 문서를 순서대로 읽는다.
 
-1. `docs/00-project-charter.md`
-2. `docs/01-system-architecture.md`
-3. `docs/02-domain-model.md`
-4. `docs/03-project-roadmap.md`
-5. `docs/04-release-checklist.md`
-6. `docs/05-dataset-strategy.md`
-7. `docs/06-project-catalog.md`
-8. `docs/07-implementation-status.md`
-9. `docs/08-devspace-workflow.md`
-10. `docs/09-architecture-decisions.md`
-11. `docs/10-product-convergence-polyglot-agentic-roadmap.md`
+1. `docs/10-product/project-charter.md`
+2. `docs/20-architecture/system-architecture.md`
+3. `docs/10-product/domain-model.md`
+4. `docs/30-implementation/project-roadmap.md`
+5. `docs/50-operations/release-checklist.md`
+6. `docs/10-product/dataset-strategy.md`
+7. `docs/10-product/project-catalog.md`
+8. `docs/30-implementation/implementation-status.md`
+9. `docs/50-operations/devspace-workflow.md`
+10. `docs/20-architecture/architecture-decisions.md`
+11. `docs/30-implementation/product-convergence-roadmap.md`
 
-`docs/10-product-convergence-polyglot-agentic-roadmap.md`는 2026-08-02 이후의 제품 수렴, Project 2/3 통합, polyglot data, LangGraph, SOON Workbench 우선순위를 정의하는 최신 실행 기준이다. 기존 roadmap과 충돌하면 이 문서를 우선한다.
+`docs/30-implementation/product-convergence-roadmap.md`는 2026-08-02 이후의 제품 수렴, Project 2/3 통합, polyglot data, LangGraph, SOON Workbench 우선순위를 정의하는 최신 실행 기준이다. 기존 roadmap과 충돌하면 이 문서를 우선한다.
 
 필요하면 다음 구현 요약도 읽는다.
 
-- `docs/stage32-naming-and-runtime-safety-summary.md`
-- `docs/stage34-39-implementation-summary.md`
-- `docs/stage40-residual-hardening-summary.md`
-- `docs/pre-release-gap-analysis-and-upgrade-plan.md`
+- `docs/30-implementation/stage-history/stage32-naming-and-runtime-safety-summary.md`
+- `docs/30-implementation/stage-history/stage34-39-implementation-summary.md`
+- `docs/30-implementation/stage-history/stage40-residual-hardening-summary.md`
+- `docs/30-implementation/pre-release-gap-analysis-and-upgrade-plan.md`
 
 문서 내용만 신뢰하지 말고 현재 source, tests, migrations, frontend routes와 비교한다.
 
@@ -233,8 +233,8 @@ PYTHONPATH=api:ml/src .venv/bin/python scripts/release_gate.py --with-e2e
 
 최소 다음 문서를 업데이트한다.
 
-- `docs/03-project-roadmap.md`
-- `docs/07-implementation-status.md`
+- `docs/30-implementation/project-roadmap.md`
+- `docs/30-implementation/implementation-status.md`
 - 변경과 직접 관련된 architecture/domain/dataset/catalog 문서
 - 이 master prompt의 priority 또는 baseline이 바뀌면 본 문서
 - 사용자 화면이 바뀌면 route, 역할/permission, Playwright flow, screenshot artifact, degraded/error 상태를 문서에 먼저 기록
@@ -288,7 +288,7 @@ Azure PdM의 발표 지표는 문서의 고정 숫자를 그대로 믿지 말고
 
 /Users/gabrieljang/Documents/Macbook air personal/비스텔리전스 파이널 프로젝트/mvp-프로젝트2
 
-가장 먼저 docs/next-session-master-prompt.md, docs/autonomous-implementation-progress.md, docs/03-project-roadmap.md와 docs/07-implementation-status.md를 읽고, 필수 문서들을 순서대로 검토해줘. 문서 내용과 현재 코드·테스트·migration·frontend route, Project 3의 Neo4j/LangGraph/RAG 구조, 그리고 현재 host의 Docker/managed service 가용성을 비교해줘. 완료된 Stage 44~54를 반복하지 말고 master prompt의 Current Priority에서 실행 가능한 첫 운영·부채 항목부터 진행해줘.
+가장 먼저 docs/60-development-prompts/next-session-master-prompt.md, docs/30-implementation/autonomous-implementation-progress.md, docs/30-implementation/project-roadmap.md와 docs/30-implementation/implementation-status.md를 읽고, 필수 문서들을 순서대로 검토해줘. 문서 내용과 현재 코드·테스트·migration·frontend route, Project 3의 Neo4j/LangGraph/RAG 구조, 그리고 현재 host의 Docker/managed service 가용성을 비교해줘. 완료된 Stage 44~54를 반복하지 말고 master prompt의 Current Priority에서 실행 가능한 첫 운영·부채 항목부터 진행해줘.
 
 반드시 다음 원칙을 지켜줘.
 

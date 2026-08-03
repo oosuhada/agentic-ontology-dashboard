@@ -74,7 +74,7 @@ Visual baseline manifest also passes for the six committed review artifacts.
 - object storage
 - OTLP collector
 
-The exact completion procedure is in `docs/production-environment-completion-runbook.md`.
+The exact completion procedure is in `docs/50-operations/production-environment-completion-runbook.md`.
 
 ## Next exact action
 

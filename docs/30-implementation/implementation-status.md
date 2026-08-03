@@ -2,8 +2,8 @@
 
 - Last updated: 2026-08-02
 - Current branch baseline: `main`
-- Authoritative execution entrypoint: `docs/next-session-master-prompt.md`
-- External operations runbook: `docs/production-environment-completion-runbook.md`
+- Authoritative execution entrypoint: `docs/60-development-prompts/next-session-master-prompt.md`
+- External operations runbook: `docs/50-operations/production-environment-completion-runbook.md`
 
 ## Current maturity
 
@@ -227,4 +227,4 @@ Production environment verifier          BLOCKED EXTERNAL CAPABILITIES REPORTED
 
 Do not repeat already completed Workbench, pagination, Analysis lifecycle, WorkOrder, Dataset materialization, Project 3 typed boundary, Dashboard recovery or server-first cross-filter work.
 
-The next physical relocation slice is Dashboard. The detailed import matrix and compatibility status are recorded in `docs/physical-namespace-relocation-inventory.md`.
+The next physical relocation slice is Dashboard. The detailed import matrix and compatibility status are recorded in `docs/20-architecture/physical-namespace-relocation-inventory.md`.

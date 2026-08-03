@@ -5,7 +5,7 @@
 > **대상 프로젝트:** `mvp-프로젝트2`  
 > **목적:** 기존 Ontology Dashboard에 Palantir Contour/Foundry 스타일의 분석·대시보드 경험을 접목하기 위한 코드 기반 상세 분석 및 설계 제안  
 > **작업 범위:** 읽기·분석·설계만 수행하며 기존 코드와 설정은 수정하지 않음  
-> **근거:** 현재 MVP 소스 코드, `docs/palantir-contour-ui-reference.md`, 로컬 레퍼런스 프로젝트 7개
+> **근거:** 현재 MVP 소스 코드, `docs/40-ui-ux/reference/palantir-contour-ui-reference.md`, 로컬 레퍼런스 프로젝트 7개
 
 ---
 
@@ -2102,9 +2102,9 @@ api/migrations/postgresql/*
 ## Reference Documents
 
 ```text
-docs/palantir-contour-ui-reference.md
-docs/palantir-contour-dashboard-benchmark.md
-docs/07-implementation-status.md
+docs/40-ui-ux/reference/palantir-contour-ui-reference.md
+docs/40-ui-ux/reference/palantir-contour-dashboard-benchmark.md
+docs/30-implementation/implementation-status.md
 ```
 
 ## Reference Projects

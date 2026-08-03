@@ -2,10 +2,10 @@
 
 - Last updated: 2026-08-02
 - Roadmap owner: project team
-- Canonical entrypoint: `docs/next-session-master-prompt.md`
-- Product convergence override: `docs/10-product-convergence-polyglot-agentic-roadmap.md`
+- Canonical entrypoint: `docs/60-development-prompts/next-session-master-prompt.md`
+- Product convergence override: `docs/30-implementation/product-convergence-roadmap.md`
 
-> 2026-08-02 이후의 실행 순서는 `docs/10-product-convergence-polyglot-agentic-roadmap.md`를 우선한다. 아래 NEXT 1~7은 폐기된 작업이 아니라 새 Stage 44~55 안에 Project scope, polyglot persistence, Workbench delivery와 함께 재배치된다.
+> 2026-08-02 이후의 실행 순서는 `docs/30-implementation/product-convergence-roadmap.md`를 우선한다. 아래 NEXT 1~7은 폐기된 작업이 아니라 새 Stage 44~55 안에 Project scope, polyglot persistence, Workbench delivery와 함께 재배치된다.
 
 ## Status Legend
 
@@ -205,7 +205,7 @@ legacy handler container 역할을 하는 `main.py`를 제거하고 feature modu
 - Export/Workflow compatibility slice: `DONE`
 - remaining Ontology compatibility slice: `DONE`
 - shim cleanup and path-extension removal: `DONE`
-- detailed matrix: `docs/physical-namespace-relocation-inventory.md`
+- detailed matrix: `docs/20-architecture/physical-namespace-relocation-inventory.md`
 
 ### Acceptance Criteria
 

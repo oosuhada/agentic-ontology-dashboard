@@ -25,4 +25,4 @@ Data and Model
 - 외부 서비스 장애는 검증된 deterministic fallback으로 격리한다.
 - 실제 설비 제어는 아키텍처에 포함하지 않는다.
 
-중요한 변경은 `docs/adr/`에 기록한다.
+중요한 변경은 `docs/20-architecture/adr/`에 기록한다.

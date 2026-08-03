@@ -3,10 +3,10 @@
 - 작성일: 2026-08-02
 - 대상 프로젝트: `mvp-프로젝트2` — Ontology Dashboard
 - 임시 최우선 목표: **backend 기능 확장보다 사용자에게 보이는 Foundry형 제품 경험을 먼저 완성한다.**
-- 실행 진입점: `docs/next-session-palantir-ui-overhaul-prompt.md`
+- 실행 진입점: `docs/60-development-prompts/next-session-palantir-ui-overhaul-prompt.md`
 - 기존 검증 문서:
-  - `docs/palantir-contour-ui-reference.md`
-  - `docs/palantir-ui-gap-verification-and-plan-v2.md`
+  - `docs/40-ui-ux/reference/palantir-contour-ui-reference.md`
+  - `docs/40-ui-ux/plans/palantir-ui-gap-verification-and-plan-v2.md`
   - `docs/ui/screenshots/palantir-gap-v2/README.md`
 
 ---

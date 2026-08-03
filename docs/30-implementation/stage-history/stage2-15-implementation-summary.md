@@ -4,9 +4,9 @@
 
 | 단계 | 구현 결과 | 주요 파일 |
 |---:|---|---|
-| 2 | AI4I 출처·라이선스·checksum·컬럼·누수·data gap, 8개 Gold fixture | `docs/data-dictionary.md`, `schemas/input-event.schema.json`, `data/fixtures/` |
-| 3 | Dummy·Logistic·Random Forest 재현 학습·평가 | `ml/src/factory_signal_ml/training.py`, `docs/model-baseline-results.md` |
-| 4 | Recall 제약·비용 임계값과 모델별 정책 분리 | `ml/config/*.json`, `docs/risk-threshold-policy.md` |
+| 2 | AI4I 출처·라이선스·checksum·컬럼·누수·data gap, 8개 Gold fixture | `docs/10-product/data-dictionary.md`, `schemas/input-event.schema.json`, `data/fixtures/` |
+| 3 | Dummy·Logistic·Random Forest 재현 학습·평가 | `ml/src/factory_signal_ml/training.py`, `docs/10-product/model-baseline-results.md` |
+| 4 | Recall 제약·비용 임계값과 모델별 정책 분리 | `ml/config/*.json`, `docs/10-product/risk-threshold-policy.md` |
 | 5 | Evidence Package와 개별 근거·lineage | `schemas/evidence-package.schema.json`, `ml/.../evidence.py` |
 | 6 | 결정론적 매니저·엔지니어 리포트 | `api/.../reports.py`, `schemas/report.schema.json` |
 | 7 | OpenAI-compatible LLM Adapter·grounding·fallback | `api/.../llm.py`, `prompts/` |
@@ -15,7 +15,7 @@
 | 10 | 매니저 결정 중심 React 화면 | `web/src/App.tsx`, `components.tsx` |
 | 11 | 엔지니어 Evidence·차트·체크리스트 화면 | `web/src/components.tsx` |
 | 12 | 제한 intent 후속 질문·화면 재구성 | `api/.../conversation.py`, React conversation block |
-| 13 | 프로젝트 3 Context HTTP Adapter·fallback | `api/.../context.py`, `docs/project3-adapter-contract.md` |
+| 13 | 프로젝트 3 Context HTTP Adapter·fallback | `api/.../context.py`, `docs/20-architecture/project3-adapter-contract.md` |
 | 14 | Gold·회귀·안전·frontend·browser release gate | `tests/test_mvp.py`, `scripts/evaluate_gold.py`, `release_gate.py` |
 | 15 | preflight·원커맨드·reset·Docker·CI·runbook | `scripts/run_local.sh`, `infra/`, `.github/workflows/ci.yml` |
 

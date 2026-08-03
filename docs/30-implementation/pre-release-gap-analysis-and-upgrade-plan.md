@@ -2,7 +2,7 @@
 
 - 작성일: 2026-08-01
 - 분석 대상 브랜치: `feat/ontology-dashboard-foundation`
-- 기준 문서: `docs/next-session-ontology-dashboard-prompt.md`, `docs/ontology-dashboard-additional-implementation-plan.md`
+- 기준 문서: `docs/60-development-prompts/next-session-ontology-dashboard-prompt.md`, `docs/90-archive/plans/ontology-dashboard-additional-implementation-plan.md`
 - 분석 관점: 기능 존재 여부가 아니라 로직 완결성, 아키텍처 경계, 실제 데이터 전환성, 사용자 사용성, 보안, 운영, 배포 가능성
 
 ---

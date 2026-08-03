@@ -66,14 +66,30 @@ UI · API · Revision DB · Permission · E2E
 
 ### 문서 구조
 
-기존 문서의 호환 경로는 유지한다. 대신 `docs/document-registry.json`과 `scripts/check_docs_structure.py`가 다음을 검증한다.
+기존 루트 문서와 루트 수준의 ADR·current-state 디렉터리는 목적별 폴더로 물리 이동했다. `docs/document-registry.json`과 `scripts/check_docs_structure.py`가 다음을 검증한다.
 
-- 목적별 번호 폴더 존재
-- 팀 온보딩 필수 문서 존재
-- `docs/` 루트의 미등록 새 문서 차단
+- 목적별 번호 폴더와 실제 하위 폴더 존재
+- 팀 온보딩·제품·아키텍처·운영 필수 문서 존재
+- `docs/README.md` 외 루트 Markdown 생성 차단
+- 폐기된 과거 경로 재생성 차단
 - Markdown 로컬 링크와 이미지 존재
 
 새 문서는 더 이상 `docs/` 루트에 만들지 않는다.
+
+물리 정리 결과:
+
+```text
+이동한 문서                    64개
+docs 루트 Markdown             README.md 1개
+목적별 필수 디렉터리           17개
+필수 진입 문서                 33개
+검사한 Markdown 로컬 링크      128개
+깨진 링크                      0개
+폐기된 과거 경로               0개
+과거 경로 문자열 참조          0건
+```
+
+일회성 이동과 링크 재계산은 `scripts/migrate_docs_to_purpose_folders.py`로 수행했다. 이동 완료 후 재실행하면 변경 없이 종료한다.
 
 ## 자동 검증
 

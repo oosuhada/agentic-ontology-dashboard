@@ -1,7 +1,7 @@
 # Palantir Contour/Foundry UI 접목 상세 분석 — mvp-프로젝트2
 
 > 작성일: 2026-08-01
-> 성격: **읽기·분석·설계 제안 문서**. 이 문서는 기존 코드/설정을 전혀 수정하지 않으며, `docs/palantir-contour-ui-reference.md`(공식 문서 25개 기반 구현 노트)와 `docs/palantir-contour-dashboard-benchmark.md`(첨부 화면 4개 + 공식 문서 벤치마크)를 전제로, **① 현재 코드와 정확히 대조한 gap 분석, ② 로컬 레퍼런스 7개의 파일 단위 실사, ③ 화면 구조·API 계약·로드맵의 실행 가능한 설계안**을 추가한다. 세 문서는 서로 대체하지 않고 아래처럼 역할이 나뉜다.
+> 성격: **읽기·분석·설계 제안 문서**. 이 문서는 기존 코드/설정을 전혀 수정하지 않으며, `docs/40-ui-ux/reference/palantir-contour-ui-reference.md`(공식 문서 25개 기반 구현 노트)와 `docs/40-ui-ux/reference/palantir-contour-dashboard-benchmark.md`(첨부 화면 4개 + 공식 문서 벤치마크)를 전제로, **① 현재 코드와 정확히 대조한 gap 분석, ② 로컬 레퍼런스 7개의 파일 단위 실사, ③ 화면 구조·API 계약·로드맵의 실행 가능한 설계안**을 추가한다. 세 문서는 서로 대체하지 않고 아래처럼 역할이 나뉜다.
 
 ```text
 palantir-contour-ui-reference.md        → "무엇을 왜 만드는가" (공식 문서 25개 → MVP 적용 원칙)
@@ -15,7 +15,7 @@ palantir-ui-integration-analysis.md(본 문서) → "지금 코드에서 무엇�
 
 | 구분 | 경로 | 비고 |
 |---|---|---|
-| MVP 루트 | `mvp-프로젝트2/` | Backend 93% / Frontend 89% / Architecture 95% (`docs/07-implementation-status.md` 기준, 2026-08-01) |
+| MVP 루트 | `mvp-프로젝트2/` | Backend 93% / Frontend 89% / Architecture 95% (`docs/30-implementation/implementation-status.md` 기준, 2026-08-01) |
 | Dashboard 프론트 | `web/src/features/dashboard/*`, `web/src/features/manufacturing/*` | React + Vite, CSS는 `web/src/styles.css` 커스텀 디자인 시스템 |
 | Dashboard 백엔드 | `api/factory_signal_board/dashboard_*.py`, `api/ontology_dashboard/routers/dashboards.py` | FastAPI + SQLite(로컬) / PostgreSQL(전환 70%) |
 | Ontology 백엔드 | `api/factory_signal_board/ontology_service.py`, `ontology.py`, `ontology_adapter.py` | Object/Link/Action 모델이 이미 구현되어 있음 |
@@ -698,9 +698,9 @@ web/src/features/ontology/types.ts
 web/src/routing.ts
 web/src/types.ts
 web/src/styles.css
-docs/palantir-contour-ui-reference.md
-docs/palantir-contour-dashboard-benchmark.md
-docs/07-implementation-status.md
+docs/40-ui-ux/reference/palantir-contour-ui-reference.md
+docs/40-ui-ux/reference/palantir-contour-dashboard-benchmark.md
+docs/30-implementation/implementation-status.md
 ```
 
 ## 부록 B. 레퍼런스 파일 경로 색인

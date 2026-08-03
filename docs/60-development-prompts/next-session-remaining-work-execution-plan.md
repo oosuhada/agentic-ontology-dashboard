@@ -126,9 +126,9 @@ git diff --check
 특히 다음 문서는 UI 작업 시작 전부터 수정 또는 생성돼 있던 파일이므로, 내용을 읽지 않고 덮어쓰거나 삭제하지 않는다.
 
 ```text
-docs/next-session-master-prompt.md
-docs/next-session-palantir-ui-overhaul-prompt.md
-docs/palantir-ui-overhaul-master-plan.md
+docs/60-development-prompts/next-session-master-prompt.md
+docs/60-development-prompts/next-session-palantir-ui-overhaul-prompt.md
+docs/40-ui-ux/plans/palantir-ui-overhaul-master-plan.md
 ```
 
 새 세션은 기존 변경을 되돌리지 않고 additive 또는 targeted edit 방식으로 작업한다.
@@ -360,7 +360,7 @@ Recommended threshold 0.50~0.65%
 ## 관련 파일
 
 ```text
-docs/production-environment-completion-runbook.md
+docs/50-operations/production-environment-completion-runbook.md
 scripts/verify_production_environment.py
 scripts/release_gate.py
 scripts/check_postgresql_migration.py
@@ -480,7 +480,7 @@ migration status
 
 ## Step 3.2 — Slice A: Foundation and Identity
 
-Status: `DONE` on 2026-08-02. The eight implementations now live under `api/ontology_dashboard/`, their legacy files are thin re-export shims, canonical import provenance and repository object identity are tested, and `scripts/preflight.py` points to canonical source files. See `docs/physical-namespace-relocation-inventory.md`.
+Status: `DONE` on 2026-08-02. The eight implementations now live under `api/ontology_dashboard/`, their legacy files are thin re-export shims, canonical import provenance and repository object identity are tested, and `scripts/preflight.py` points to canonical source files. See `docs/20-architecture/physical-namespace-relocation-inventory.md`.
 
 후보 파일:
 
@@ -1321,13 +1321,13 @@ follow-up
 작업 범위에 따라 다음을 갱신한다.
 
 ```text
-docs/03-project-roadmap.md
-docs/04-release-checklist.md
-docs/05-dataset-strategy.md
-docs/06-project-catalog.md
-docs/07-implementation-status.md
-docs/09-architecture-decisions.md
-docs/production-environment-completion-runbook.md
+docs/30-implementation/project-roadmap.md
+docs/50-operations/release-checklist.md
+docs/10-product/dataset-strategy.md
+docs/10-product/project-catalog.md
+docs/30-implementation/implementation-status.md
+docs/20-architecture/architecture-decisions.md
+docs/50-operations/production-environment-completion-runbook.md
 이 문서
 ```
 
@@ -1431,20 +1431,20 @@ R0 → R1(CI) → R2 → R9 → R5/R6/R7/R8
 
 /Users/gabrieljang/Documents/Macbook air personal/비스텔리전스 파이널 프로젝트/mvp-프로젝트2
 
-가장 먼저 docs/next-session-remaining-work-execution-plan.md를 읽고, 이어서 아래 문서를 순서대로 검토해줘.
+가장 먼저 docs/60-development-prompts/next-session-remaining-work-execution-plan.md를 읽고, 이어서 아래 문서를 순서대로 검토해줘.
 
-1. docs/next-session-master-prompt.md
-2. docs/00-project-charter.md
-3. docs/01-system-architecture.md
-4. docs/02-domain-model.md
-5. docs/03-project-roadmap.md
-6. docs/04-release-checklist.md
-7. docs/05-dataset-strategy.md
-8. docs/06-project-catalog.md
-9. docs/07-implementation-status.md
-10. docs/08-devspace-workflow.md
-11. docs/09-architecture-decisions.md
-12. docs/production-environment-completion-runbook.md
+1. docs/60-development-prompts/next-session-master-prompt.md
+2. docs/10-product/project-charter.md
+3. docs/20-architecture/system-architecture.md
+4. docs/10-product/domain-model.md
+5. docs/30-implementation/project-roadmap.md
+6. docs/50-operations/release-checklist.md
+7. docs/10-product/dataset-strategy.md
+8. docs/10-product/project-catalog.md
+9. docs/30-implementation/implementation-status.md
+10. docs/50-operations/devspace-workflow.md
+11. docs/20-architecture/architecture-decisions.md
+12. docs/50-operations/production-environment-completion-runbook.md
 
 문서만 믿지 말고 현재 source, tests, migrations, frontend routes, visual artifacts, git working tree와 비교해서 실제 상태를 확인해줘.
 
@@ -1501,7 +1501,7 @@ R0 → R1(CI) → R2 → R9 → R5/R6/R7/R8
 ```text
 @devspace.mcp
 
-/Users/gabrieljang/Documents/Macbook air personal/비스텔리전스 파이널 프로젝트/mvp-프로젝트2 를 실제 checkout 모드로 열고 docs/next-session-remaining-work-execution-plan.md를 먼저 읽어줘.
+/Users/gabrieljang/Documents/Macbook air personal/비스텔리전스 파이널 프로젝트/mvp-프로젝트2 를 실제 checkout 모드로 열고 docs/60-development-prompts/next-session-remaining-work-execution-plan.md를 먼저 읽어줘.
 
 기존 working tree를 보존한 상태에서 이번 세션에는 Phase [번호/이름]만 완료 조건까지 실행해. 관련 source, tests, migrations, docs를 함께 수정하고 targeted tests 후 가능한 전체 release gate를 실행해. 이미 완료된 UI-00~UI-08 및 기존 lifecycle 기능은 반복 구현하지 마. 외부 capability가 없으면 추측하지 말고 blocked evidence를 남겨. Git commit/push는 하지 마.
 

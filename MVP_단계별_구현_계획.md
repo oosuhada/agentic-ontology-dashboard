@@ -295,10 +295,10 @@ p2-stage0-bootstrap-v1
 
 ### 산출물
 
-- [x] `docs/mvp-scope.md`
-- [x] `docs/personas.md`
+- [x] `docs/10-product/mvp-scope.md`
+- [x] `docs/10-product/personas.md`
 - [x] `evaluation/gold_scenarios.yml`
-- [x] `docs/stage1-scope-validation.md`
+- [x] `docs/30-implementation/stage-history/stage1-scope-validation.md`
 - [x] 필수 기능·제외 기능 목록
 
 ### 완료 조건
@@ -350,8 +350,8 @@ tag: p2-stage1-scope-v1
 
 ### 산출물
 
-- `docs/data-dictionary.md`
-- `docs/data-gap.md`
+- `docs/10-product/data-dictionary.md`
+- `docs/10-product/data-gap.md`
 - `data/raw/README.md`
 - 데이터 검증 스크립트
 - 합성 설비 메타데이터 fixture
@@ -1217,7 +1217,7 @@ p2-mvp-v1.0.0
 16. [x] 15단계 실행·reset·Docker·발표 패키징
 17. [ ] 독립 Git 저장소·원격·태그 — 사용자 요청에 따라 이번 구현 범위에서 제외
 
-최종 검증 결과는 `docs/release-gate-report.md`에 기록했다.
+최종 검증 결과는 `docs/50-operations/release-gate-report.md`에 기록했다.
 
 ---
 

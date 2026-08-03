@@ -2,7 +2,7 @@
 
 ## 1. 목적
 
-> 2026-08-02 architecture update: 이 문서의 flat maintenance-context 계약은 local demo와 backward compatibility를 위한 최소 계약이다. Integrated production target은 `docs/10-product-convergence-polyglot-agentic-roadmap.md`와 ADR-013을 따른다.
+> 2026-08-02 architecture update: 이 문서의 flat maintenance-context 계약은 local demo와 backward compatibility를 위한 최소 계약이다. Integrated production target은 `docs/30-implementation/product-convergence-roadmap.md`와 ADR-013을 따른다.
 
 프로젝트 2는 프로젝트 3 장애 시 relational 운영 화면과 이미 materialized된 결과를 degraded mode로 제공해야 한다. 그러나 Project 2와 Project 3은 하나의 실제 업무 제품을 두 구현 과제로 나눈 것이며, integrated mode에서 프로젝트 3은 설비·부품 관계, 정비 이력, graph query, LangGraph Text-to-Cypher, 매뉴얼과 유사 사례 RAG를 제공하는 정식 capability provider다.
 

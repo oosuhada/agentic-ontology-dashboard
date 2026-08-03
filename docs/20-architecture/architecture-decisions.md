@@ -177,7 +177,7 @@ LLM 또는 planner는 typed intent와 catalog 기반 결과만 생성한다.
 
 ### Decision
 
-`docs/next-session-master-prompt.md`를 모든 새로운 AI 작업 세션의 공식 진입점으로 사용한다.
+`docs/60-development-prompts/next-session-master-prompt.md`를 모든 새로운 AI 작업 세션의 공식 진입점으로 사용한다.
 
 ### Consequences
 
@@ -376,7 +376,7 @@ Docker, managed stores, IdP, production connector, object storage와 observabili
 
 - configuration이나 compose 파일 존재만으로 production 완료를 주장하지 않는다.
 - current host의 missing Docker/credentials는 `blocked`로 보고한다.
-- staging CI는 strict mode와 `docs/production-environment-completion-runbook.md`를 사용한다.
+- staging CI는 strict mode와 `docs/50-operations/production-environment-completion-runbook.md`를 사용한다.
 
 ## ADR-023 — Foundry-Inspired UI Is a Shared Primitive Layer, Not a Product Clone
 

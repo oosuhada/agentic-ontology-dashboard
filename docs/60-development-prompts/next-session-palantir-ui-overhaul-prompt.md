@@ -25,13 +25,13 @@
 가장 먼저 다음 파일을 순서대로 읽어라.
 
 ```text
-docs/palantir-ui-overhaul-master-plan.md
-docs/palantir-contour-ui-reference.md
-docs/palantir-ui-gap-verification-and-plan-v2.md
+docs/40-ui-ux/plans/palantir-ui-overhaul-master-plan.md
+docs/40-ui-ux/reference/palantir-contour-ui-reference.md
+docs/40-ui-ux/plans/palantir-ui-gap-verification-and-plan-v2.md
 docs/ui/screenshots/palantir-gap-v2/README.md
-docs/07-implementation-status.md
-docs/09-architecture-decisions.md
-docs/next-session-master-prompt.md
+docs/30-implementation/implementation-status.md
+docs/20-architecture/architecture-decisions.md
+docs/60-development-prompts/next-session-master-prompt.md
 ```
 
 그 다음 현재 코드와 스크린샷을 확인하라.

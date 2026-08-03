@@ -30,7 +30,7 @@ Palantir/Foundry UI 레퍼런스 저장소 루트도 읽기 전용 분석 대상
 
 이번 세션의 목적은 계획만 제안하거나 한 단계만 구현하고 멈추는 것이 아니다.
 
-`docs/10-product-convergence-polyglot-agentic-roadmap.md`에 정의된 Stage 44~55를 순서대로 실행하고, 각 Stage를 자체 검증한 뒤 사용자 확인을 기다리지 않고 다음 Stage로 자동 진행한다.
+`docs/30-implementation/product-convergence-roadmap.md`에 정의된 Stage 44~55를 순서대로 실행하고, 각 Stage를 자체 검증한 뒤 사용자 확인을 기다리지 않고 다음 Stage로 자동 진행한다.
 
 다음 표현을 절대 사용하지 않는다.
 
@@ -67,28 +67,28 @@ inspect
 
 작업 전에 다음 파일을 순서대로 읽는다.
 
-1. `docs/next-session-master-prompt.md`
-2. `docs/10-product-convergence-polyglot-agentic-roadmap.md`
-3. `docs/00-project-charter.md`
-4. `docs/01-system-architecture.md`
-5. `docs/02-domain-model.md`
-6. `docs/03-project-roadmap.md`
-7. `docs/04-release-checklist.md`
-8. `docs/05-dataset-strategy.md`
-9. `docs/06-project-catalog.md`
-10. `docs/07-implementation-status.md`
-11. `docs/08-devspace-workflow.md`
-12. `docs/09-architecture-decisions.md`
-13. `docs/project3-adapter-contract.md`
-14. `docs/palantir-contour-ui-reference.md`
-15. `docs/palantir-contour-dashboard-benchmark.md`
+1. `docs/60-development-prompts/next-session-master-prompt.md`
+2. `docs/30-implementation/product-convergence-roadmap.md`
+3. `docs/10-product/project-charter.md`
+4. `docs/20-architecture/system-architecture.md`
+5. `docs/10-product/domain-model.md`
+6. `docs/30-implementation/project-roadmap.md`
+7. `docs/50-operations/release-checklist.md`
+8. `docs/10-product/dataset-strategy.md`
+9. `docs/10-product/project-catalog.md`
+10. `docs/30-implementation/implementation-status.md`
+11. `docs/50-operations/devspace-workflow.md`
+12. `docs/20-architecture/architecture-decisions.md`
+13. `docs/20-architecture/project3-adapter-contract.md`
+14. `docs/40-ui-ux/reference/palantir-contour-ui-reference.md`
+15. `docs/40-ui-ux/reference/palantir-contour-dashboard-benchmark.md`
 16. `docs/palantir-ui-integration-analysis.md`가 존재하면 해당 파일
 
 다음 구현 요약도 현재 코드와 대조한다.
 
-- `docs/stage41-palantir-analytics-workbench-summary.md`
-- `docs/stage42-palantir-ui-modernization-summary.md`
-- `docs/stage43-sprint0-5-frontend-acceleration-summary.md`
+- `docs/30-implementation/stage-history/stage41-palantir-analytics-workbench-summary.md`
+- `docs/30-implementation/stage-history/stage42-palantir-ui-modernization-summary.md`
+- `docs/30-implementation/stage-history/stage43-sprint0-5-frontend-acceleration-summary.md`
 
 문서 내용만 신뢰하지 않는다. 실제 source, tests, migrations, frontend routes, running configuration과 비교한다.
 
@@ -127,7 +127,7 @@ Git commit과 push는 사용자가 이 세션에서 별도로 요청하지 않�
 다음 파일이 없으면 생성하고, 있으면 읽어서 첫 미완료 항목부터 재개한다.
 
 ```text
-docs/autonomous-implementation-progress.md
+docs/30-implementation/autonomous-implementation-progress.md
 ```
 
 이 파일은 세션 간 재개 가능한 실행 장부다.
@@ -493,7 +493,7 @@ failure reproduction
 
 파일 수나 주관적 느낌으로 100%를 선언하지 않는다.
 
-`docs/10-product-convergence-polyglot-agentic-roadmap.md`의 모든 요구사항과 Stage acceptance criteria를 requirement matrix로 분해한다.
+`docs/30-implementation/product-convergence-roadmap.md`의 모든 요구사항과 Stage acceptance criteria를 requirement matrix로 분해한다.
 
 각 항목은 다음 상태 중 하나만 사용한다.
 
@@ -526,7 +526,7 @@ Stage 55가 끝났다고 바로 최종 보고하지 않는다.
 다음 루프를 수행한다.
 
 ```text
-1. docs/10-product-convergence-polyglot-agentic-roadmap.md 처음부터 다시 읽기
+1. docs/30-implementation/product-convergence-roadmap.md 처음부터 다시 읽기
 2. 모든 표, 완료 기준, route, API, DB table, test 항목 추출
 3. 실제 코드와 requirement matrix 대조
 4. NOT_STARTED 또는 IMPLEMENTED_UNVERIFIED 항목 찾기
@@ -548,7 +548,7 @@ Stage 55가 끝났다고 바로 최종 보고하지 않는다.
 
 1. 현재 진행 중 변경을 안전한 상태로 정리한다.
 2. targeted tests를 실행한다.
-3. `docs/autonomous-implementation-progress.md`에 다음 정확한 action을 기록한다.
+3. `docs/30-implementation/autonomous-implementation-progress.md`에 다음 정확한 action을 기록한다.
 4. 새 세션에서 동일 프롬프트를 사용하면 첫 미완료 항목부터 자동 재개되도록 한다.
 5. 사용자에게는 부분 완료를 최종 완료처럼 표현하지 않는다.
 
@@ -665,7 +665,7 @@ Project/Workspace 선택
 9. screenshot/visual regression 결과
 10. 성능과 bundle 결과
 11. 남아 있는 미구현 또는 외부 blocker
-12. `docs/autonomous-implementation-progress.md`의 최종 matrix 요약
+12. `docs/30-implementation/autonomous-implementation-progress.md`의 최종 matrix 요약
 
 모든 항목이 VERIFIED가 아니면 정확한 비율을 보고하고, 100%라고 표현하지 않는다.
 

@@ -13,7 +13,7 @@
 
 가장 먼저 다음 문서를 처음부터 끝까지 읽어줘.
 
-docs/chart-intelligence-color-system-uiux-plan.md
+docs/40-ui-ux/plans/chart-intelligence-color-system-uiux-plan.md
 
 이어서 현재 source를 직접 확인해 문서의 Current-state 판정과 실제 구현이 달라진 부분이 있는지 비교해줘.
 

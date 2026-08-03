@@ -27,7 +27,7 @@ Git commit·push는 현재 작업 범위에서 제외한다. 사용자가 명시
 
 ```text
 1. DevSpace로 프로젝트 열기
-2. docs/next-session-master-prompt.md 읽기
+2. docs/60-development-prompts/next-session-master-prompt.md 읽기
 3. 00-project-charter.md 읽기
 4. 01-system-architecture.md 읽기
 5. 02-domain-model.md 읽기

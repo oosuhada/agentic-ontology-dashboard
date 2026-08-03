@@ -101,7 +101,7 @@ Operational Action (현재 MVP 강점)
 #### 09. 결과 공유
 
 - 원문: [결과 공유](https://www.palantir.com/docs/kr/foundry/contour/analysis-share-results/)
-- Git 레퍼런스: [`contour-translation`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/contour-translation/)
+- Git 레퍼런스: [`contour-translation`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/contour-translation/)
 - 요지: 편집 가능한 분석 공유와 특정 결과·시점 공유를 구분해야 재현성과 권한 경계가 유지된다.
 - MVP 적용: `LiveAnalysisLink`와 `AnalysisResultSnapshot`을 분리한다. 후자는 실행 input·파라미터·데이터 버전·결과 해시를 담는다.
 
@@ -111,7 +111,7 @@ Operational Action (현재 MVP 강점)
 
 - 원문: [Boards 개요](https://www.palantir.com/docs/kr/foundry/contour/boards-overview/)
 - 공식 이미지: ![Board toolbar](https://www.palantir.com/docs/resources/foundry/contour/boards-toolbar-overview.png)
-- Git 레퍼런스: [`Contour.tsx`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/openfoundry-emulator/apps/app-console/src/pages/Contour.tsx)
+- Git 레퍼런스: [`Contour.tsx`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/openfoundry-emulator/apps/app-console/src/pages/Contour.tsx)
 - 요지: 보드는 데이터 조작 보드와 시각화 보드로 나뉘며, 보드 타입에 따라 입력·출력과 UI 구성 패널이 달라진다.
 - MVP 적용: 초기 Board Catalog는 `Table`, `Filter`, `Join`, `Expression`, `Group`, `Aggregate`, `Chart`, `Metric`, `Text`, `Evidence`, `Action` 10종으로 제한한다.
 
@@ -119,7 +119,7 @@ Operational Action (현재 MVP 강점)
 
 - 원문: [보드 추가](https://www.palantir.com/docs/kr/foundry/contour/boards-add/)
 - 공식 이미지: ![Board toolbar](https://www.palantir.com/docs/resources/foundry/contour/boards-toolbar-overview.png)
-- Git 레퍼런스: [`ComponentPalette.tsx`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/mini_foundry_public/frontend/components/dashboards/ComponentPalette.tsx)
+- Git 레퍼런스: [`ComponentPalette.tsx`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/mini_foundry_public/frontend/components/dashboards/ComponentPalette.tsx)
 - 요지: 컨텍스트에 맞는 보드만 추가 가능해야 한다. 모든 보드를 항상 보여 주면 분석 실수가 늘어난다.
 - MVP 적용: `input_kind`가 `rows`면 Filter/Join/Expression/Group, `aggregate`면 Chart/Metric을 활성화한다. Catalog에 "추천"과 "호환 안 됨"을 같이 표시한다.
 
@@ -135,7 +135,7 @@ Operational Action (현재 MVP 강점)
 
 - 원문: [데이터셋 결합](https://www.palantir.com/docs/kr/foundry/contour/boards-join/)
 - 공식 GIF: ![Join board](https://www.palantir.com/docs/resources/foundry/contour/boards-join.gif)
-- Git 레퍼런스: [`OntologyGraph.tsx`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/mini_foundry_public/frontend/components/ontology/OntologyGraph.tsx)
+- Git 레퍼런스: [`OntologyGraph.tsx`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/mini_foundry_public/frontend/components/ontology/OntologyGraph.tsx)
 - 요지: Join은 키·join type·중복·결측을 명시적으로 선택·확인하게 하는 고위험 변형이다.
 - MVP 적용: 첫 버전에서는 허용된 관계만 사용한다: `RiskEvent → Equipment`, `RiskEvent → Evidence`, `Equipment → WorkOrder`. 임의 SQL join은 허용하지 않는다. UI에 cardinality와 매칭되지 않은 행 수를 표시한다.
 
@@ -143,7 +143,7 @@ Operational Action (현재 MVP 강점)
 
 - 원문: [결과 확인](https://www.palantir.com/docs/kr/foundry/contour/boards-verify-results/)
 - 공식 GIF: ![Verify table result](https://www.palantir.com/docs/resources/foundry/contour/boards-verify-table.gif)
-- Git 레퍼런스: [`DataTable.tsx`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/openfoundry-emulator/apps/app-console/src/components/DataTable.tsx)
+- Git 레퍼런스: [`DataTable.tsx`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/openfoundry-emulator/apps/app-console/src/components/DataTable.tsx)
 - 요지: 시각화 전에 표·스키마·행 수·null/중복을 보며 단계별 결과를 확인한다.
 - MVP 적용: 모든 변형 보드에 접을 수 있는 `Result inspector`를 둔다: 행 수, 컬럼, null rate, 중복 key, sample 50행, upstream version. 차트만 보고 판단하지 않게 한다.
 
@@ -151,7 +151,7 @@ Operational Action (현재 MVP 강점)
 
 - 원문: [보드 설명](https://www.palantir.com/docs/kr/foundry/contour/boards-descriptions/)
 - 공식 이미지: ![Filter configuration](https://www.palantir.com/docs/resources/foundry/contour/board-descriptions-filter-config.png)
-- Git 레퍼런스: [`widget-registry.ts`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/openfoundry-emulator/apps/app-workshop/src/widgets/widget-registry.ts)
+- Git 레퍼런스: [`widget-registry.ts`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/openfoundry-emulator/apps/app-workshop/src/widgets/widget-registry.ts)
 - 요지: 각 보드는 용도·설정·제약을 갖는다. Table, Filter, Histogram, Chart, Expression, Join 등은 같은 카드가 아니다.
 - MVP 적용: `BoardDefinition`에 `input_kind`, `output_kind`, `config_schema`, `allowed_roles`, `renderer`, `query_compiler`를 명시한다. LLM은 이 카탈로그에 있는 board만 제안하도록 한다.
 
@@ -161,7 +161,7 @@ Operational Action (현재 MVP 강점)
 
 - 원문: [대시보드 전체보기](https://www.palantir.com/docs/kr/foundry/contour/dashboards-overview/)
 - 공식 이미지: ![Dashboard overview](https://www.palantir.com/docs/resources/foundry/contour/dashboard-overview.png)
-- Git 레퍼런스: [`DashboardCanvas.tsx`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/mini_foundry_public/frontend/components/dashboards/DashboardCanvas.tsx)
+- Git 레퍼런스: [`DashboardCanvas.tsx`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/mini_foundry_public/frontend/components/dashboards/DashboardCanvas.tsx)
 - 요지: Dashboard는 analysis board의 소비용 배치다. 분석 경로 전체를 편집하는 장소가 아니다.
 - MVP 적용: 현재 `/app` Dashboard를 소비 모드로 두고 `/app/analysis`에서 보드를 만든 뒤 `Add to dashboard`로 복사 참조한다. 동일 보드의 query spec을 중복 저장하지 않는다.
 
@@ -179,56 +179,56 @@ Operational Action (현재 MVP 강점)
 #### 18. 데이터셋으로 저장하기
 
 - 원문: [데이터셋으로 저장하기](https://www.palantir.com/docs/kr/foundry/contour/datasets-save/)
-- Git 레퍼런스: [`openfoundry-emulator`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/openfoundry-emulator/)
+- Git 레퍼런스: [`openfoundry-emulator`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/openfoundry-emulator/)
 - 요지: 탐색 결과를 이름 있는 데이터셋으로 저장하면 이후 분석과 파이프라인에서 재사용할 수 있다.
 - MVP 적용: `Save result as dataset`은 우선 SQLite/Parquet materialized view로 시작한다. 저장물에는 source versions, transform spec, owner, created_at을 포함한다.
 
 #### 19. 입력 데이터셋 버전 변경
 
 - 원문: [입력 데이터셋 버전 변경](https://www.palantir.com/docs/kr/foundry/contour/change-dataset-version/)
-- Git 레퍼런스: [`contour-translation`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/contour-translation/)
+- Git 레퍼런스: [`contour-translation`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/contour-translation/)
 - 요지: 데이터 업데이트와 과거 결과의 재현은 다른 요구다. 입력 버전을 바꿀 때 영향을 검토해야 한다.
 - MVP 적용: `DatasetRef {id, version}`을 모든 AnalysisRun과 ReportSnapshot에 저장한다. 최신 데이터로 refresh할 때 변경된 행 수와 영향을 받는 보드를 안내한다.
 
 #### 20. 프로젝트 출처
 
 - 원문: [프로젝트 출처](https://www.palantir.com/docs/kr/foundry/contour/project-references/)
-- Git 레퍼런스: [`OpenFoundry`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/OpenFoundry/)
+- Git 레퍼런스: [`OpenFoundry`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/OpenFoundry/)
 - 요지: 분석은 프로젝트·폴더·참조 구조 안에서 발견되고 재사용된다.
 - MVP 적용: Project/Workspace 외에 `AnalysisFolder`와 `Reference`를 둔다. 다른 프로젝트 분석을 바로 복제하지 않고 reference로 연결해 원본·권한·버전을 추적한다.
 
 #### 21. Pipeline Builder로 변환
 
 - 원문: [Contour 로직을 Pipeline Builder로 내보내기](https://www.palantir.com/docs/kr/foundry/contour/convert-to-pipeline-builder/)
-- Git 레퍼런스: [`mini_foundry_public PipelineCanvas`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/mini_foundry_public/frontend/components/pipelines/PipelineCanvas.tsx)
+- Git 레퍼런스: [`mini_foundry_public PipelineCanvas`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/mini_foundry_public/frontend/components/pipelines/PipelineCanvas.tsx)
 - 요지: 탐색에서 검증된 변형을 반복 실행 가능한 파이프라인으로 승격한다.
 - MVP 적용: 초기에는 `Export Analysis Spec` JSON만 제공한다. 다음 단계에 해당 JSON을 FastAPI batch job 정의로 컴파일하고, 수동 탐색과 운영 배치를 구분한다.
 
 #### 22. 분석 최적화
 
 - 원문: [분석 최적화](https://www.palantir.com/docs/kr/foundry/contour/performance-optimize/)
-- Git 레퍼런스: [`mini_foundry_public`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/mini_foundry_public/)
+- Git 레퍼런스: [`mini_foundry_public`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/mini_foundry_public/)
 - 요지: 큰 데이터를 다룰 때는 초기에 행·열을 줄이고, 값비싼 join/집계는 필요한 시점까지 미루며, 보드별 비용을 의식해야 한다.
 - MVP 적용: server-side pagination, 열 projection, `LIMIT` preview, query timeout, 5분 캐시를 기본으로 둔다. Board Inspector에 `rows scanned`, `elapsed_ms`, `cache hit`을 노출한다.
 
 #### 23. 비결정성
 
 - 원문: [Contour에서의 비결정성](https://www.palantir.com/docs/kr/foundry/contour/correctness-non-determinism/)
-- Git 레퍼런스: [`mvp-프로젝트2 Evidence/Export 계약`](../schemas/)
+- Git 레퍼런스: [`mvp-프로젝트2 Evidence/Export 계약`](../../../schemas)
 - 요지: 순서가 보장되지 않은 데이터, 임의 샘플, 현재 시각 의존 계산은 같은 분석이라도 다른 결과를 만들 수 있다.
 - MVP 적용: 정렬 없는 first/last, random sampling, `now()` 기반 결과에는 warning badge를 붙인다. Report/Export에는 run timestamp와 deterministic seed, data version을 고정한다.
 
 #### 24. 시간대
 
 - 원문: [Contour에서의 시간대](https://www.palantir.com/docs/kr/foundry/contour/correctness-timezones/)
-- Git 레퍼런스: [`mvp-프로젝트2 API`](../api/)
+- Git 레퍼런스: [`mvp-프로젝트2 API`](../../../api)
 - 요지: 날짜 필터·일별 집계·상대 시간은 시간대 설정에 따라 결과가 달라질 수 있다.
 - MVP 적용: 모든 event timestamp는 UTC 저장, 화면은 Workspace timezone 렌더링, 보드마다 timezone 표시를 기본으로 한다. 교대조 기준 날짜는 별도 `operational_date`로 계산한다.
 
 #### 25. 컴퓨트 사용량
 
 - 원문: [Contour를 사용한 컴퓨트 사용량 계산](https://www.palantir.com/docs/kr/foundry/contour/compute-usage/)
-- Git 레퍼런스: [`OpenFoundry`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/OpenFoundry/)
+- Git 레퍼런스: [`OpenFoundry`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/OpenFoundry/)
 - 요지: 탐색용 분석도 조직 비용·자원 사용량을 만들므로 실행 주체·데이터 크기·계산 비용을 관리해야 한다.
 - MVP 적용: 현재는 비용 청구 대신 `AnalysisRunAudit`로 시작한다. `user_id`, `workspace_id`, `input_rows`, `output_rows`, `elapsed_ms`, `cache_hit`, `exported`를 남기고, 관리자 화면에서 집계한다.
 
@@ -309,13 +309,13 @@ Operational Action (현재 MVP 강점)
 
 ## 7. 로컬 Git 레퍼런스 색인
 
-- [`mini_foundry_public`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/mini_foundry_public/): DashboardCanvas, data binding, filter, ontology graph.
-- [`openfoundry-emulator`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/openfoundry-emulator/): Contour, Workshop Builder, widget registry, object/action console.
-- [`contour-translation`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/contour-translation/): Contour board를 structured render spec으로 옮기는 방식.
-- [`palantir-blueprint`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/palantir-blueprint/): 공식 UI component system.
-- [`OpenFoundry`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/OpenFoundry/): 제품 정보구조와 service boundaries.
-- [`palantir-demo`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/palantir-demo/): dark real-time situation dashboard inspiration only.
-- [`Gods_Eye`](../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/Gods_Eye/): map/layer/timeline interaction inspiration only.
+- [`mini_foundry_public`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/mini_foundry_public/): DashboardCanvas, data binding, filter, ontology graph.
+- [`openfoundry-emulator`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/openfoundry-emulator/): Contour, Workshop Builder, widget registry, object/action console.
+- [`contour-translation`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/contour-translation/): Contour board를 structured render spec으로 옮기는 방식.
+- [`palantir-blueprint`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/palantir-blueprint/): 공식 UI component system.
+- [`OpenFoundry`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/OpenFoundry/): 제품 정보구조와 service boundaries.
+- [`palantir-demo`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/palantir-demo/): dark real-time situation dashboard inspiration only.
+- [`Gods_Eye`](../../../../레퍼런스-프로젝트2/P5-팔란티어-Foundry-UI/Gods_Eye/): map/layer/timeline interaction inspiration only.
 
 ## 8. 구현 완료 기준
 

@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import fnmatch
 import json
 import re
 import sys
@@ -42,22 +41,17 @@ def main() -> int:
         if not path.is_file():
             errors.append(f"missing documentation entrypoint: docs/{relative}")
 
-    allowed = set(registry["canonical_root_files"]) | set(registry["compatibility_root_files"])
-    globs = registry["compatibility_root_globs"]
+    allowed = set(registry["allowed_root_markdown"])
     root_markdown = sorted(path.name for path in DOCS.glob("*.md"))
     for name in root_markdown:
-        if name in allowed or any(fnmatch.fnmatch(name, pattern) for pattern in globs):
+        if name in allowed:
             continue
-        errors.append(f"unregistered root documentation file: docs/{name}")
+        errors.append(f"root Markdown must be moved into a purpose folder: docs/{name}")
 
-    compatibility_count = sum(
-        1 for name in root_markdown
-        if name in registry["compatibility_root_files"] or any(fnmatch.fnmatch(name, pattern) for pattern in globs)
-    )
-    if compatibility_count:
-        warnings.append(
-            f"{compatibility_count} root Markdown files remain as compatibility paths; add new documents only to numbered folders"
-        )
+    for relative in registry["deprecated_paths"]:
+        path = DOCS / relative
+        if path.exists():
+            errors.append(f"deprecated documentation path was recreated: docs/{relative}")
 
     checked_links = 0
     for document in sorted(DOCS.rglob("*.md")):
@@ -74,7 +68,7 @@ def main() -> int:
 
     print(f"documentation directories: {len(registry['required_directories'])}")
     print(f"required entrypoints: {len(registry['required_entrypoints'])}")
-    print(f"root Markdown files: {len(root_markdown)}")
+    print(f"root Markdown files: {len(root_markdown)} ({', '.join(root_markdown)})")
     print(f"checked local links: {checked_links}")
     for warning in warnings:
         print(f"warning: {warning}")

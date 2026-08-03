@@ -20,11 +20,11 @@
 2. 파일을 수정하기 전에 다음 문서를 순서대로 읽는다.
 
 ```text
-docs/ontology-dashboard-additional-implementation-plan.md
-docs/palantir-contour-dashboard-benchmark.md
-docs/role-needs-research.md
-docs/architecture/current-state.md
-docs/service-contract.md
+docs/90-archive/plans/ontology-dashboard-additional-implementation-plan.md
+docs/40-ui-ux/reference/palantir-contour-dashboard-benchmark.md
+docs/10-product/role-needs-research.md
+docs/20-architecture/current-state/current-state.md
+docs/20-architecture/service-contract.md
 README.md
 ```
 
@@ -129,7 +129,7 @@ fde@ontology.local / FDE!2026
 
 ### 이번 세션에서 구현할 범위
 
-`docs/ontology-dashboard-additional-implementation-plan.md`의 **16~18단계**를 순서대로 구현한다.
+`docs/90-archive/plans/ontology-dashboard-additional-implementation-plan.md`의 **16~18단계**를 순서대로 구현한다.
 
 #### 16단계 — 제품 reframe와 domain-neutral foundation
 

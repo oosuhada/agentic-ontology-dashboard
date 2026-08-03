@@ -5,10 +5,10 @@
 - 문서 목적: 현재 제조 중심 MVP를 도메인 중립적인 온톨로지 기반 대시보드·업무 애플리케이션으로 확장하기 위한 단계별 구현 계획
 - 기준일: 2026-08-01
 - 참고 문서:
-  - `docs/role-needs-research.md`
-  - `docs/palantir-contour-dashboard-benchmark.md`
-  - `docs/architecture/current-state.md`
-  - `docs/service-contract.md`
+  - `docs/10-product/role-needs-research.md`
+  - `docs/40-ui-ux/reference/palantir-contour-dashboard-benchmark.md`
+  - `docs/20-architecture/current-state/current-state.md`
+  - `docs/20-architecture/service-contract.md`
 
 ---
 

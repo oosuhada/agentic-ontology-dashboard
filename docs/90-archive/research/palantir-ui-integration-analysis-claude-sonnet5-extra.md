@@ -1,7 +1,7 @@
 # Palantir Contour/Foundry UI 접목 상세 분석 — mvp-프로젝트2
 
 > 작성일: 2026-08-01
-> 성격: **읽기·분석·설계 제안 문서**. 이 문서는 기존 코드/설정을 전혀 수정하지 않으며, `docs/palantir-contour-ui-reference.md`(공식 문서 25개 기반 구현 노트)와 `docs/palantir-contour-dashboard-benchmark.md`(첨부 화면 4개 + 공식 문서 벤치마크)를 전제로, **① 현재 코드와 정확히 대조한 gap 분석, ② 로컬 레퍼런스 7개의 파일 단위 실사, ③ 화면 구조·API 계약·로드맵의 실행 가능한 설계안**을 추가한다. 세 문서는 서로 대체하지 않고 아래처럼 역할이 나뉜다.
+> 성격: **읽기·분석·설계 제안 문서**. 이 문서는 기존 코드/설정을 전혀 수정하지 않으며, `docs/40-ui-ux/reference/palantir-contour-ui-reference.md`(공식 문서 25개 기반 구현 노트)와 `docs/40-ui-ux/reference/palantir-contour-dashboard-benchmark.md`(첨부 화면 4개 + 공식 문서 벤치마크)를 전제로, **① 현재 코드와 정확히 대조한 gap 분석, ② 로컬 레퍼런스 7개의 파일 단위 실사, ③ 화면 구조·API 계약·로드맵의 실행 가능한 설계안**을 추가한다. 세 문서는 서로 대체하지 않고 아래처럼 역할이 나뉜다.
 
 ```text
 palantir-contour-ui-reference.md        → "무엇을 왜 만드는가" (공식 문서 25개 → MVP 적용 원칙)
@@ -15,7 +15,7 @@ palantir-ui-integration-analysis.md(본 문서) → "지금 코드에서 무엇�
 
 | 구분 | 경로 | 비고 |
 |---|---|---|
-| MVP 루트 | `mvp-프로젝트2/` | Backend 93% / Frontend 89% / Architecture 95% (`docs/07-implementation-status.md` 기준, 2026-08-01) |
+| MVP 루트 | `mvp-프로젝트2/` | Backend 93% / Frontend 89% / Architecture 95% (`docs/30-implementation/implementation-status.md` 기준, 2026-08-01) |
 | Dashboard 프론트 | `web/src/features/dashboard/*`, `web/src/features/manufacturing/*` | React + Vite, CSS는 `web/src/styles.css` 커스텀 디자인 시스템 |
 | Dashboard 백엔드 | `api/factory_signal_board/dashboard_*.py`, `api/ontology_dashboard/routers/dashboards.py` | FastAPI + SQLite(로컬) / PostgreSQL(전환 70%) |
 | Ontology 백엔드 | `api/factory_signal_board/ontology_service.py`, `ontology.py`, `ontology_adapter.py` | Object/Link/Action 모델이 이미 구현되어 있음 |
@@ -433,7 +433,7 @@ DashboardPage  (route: /app/dashboard/:dashboardId, 기존 ManufacturingApp.tsx�
 | **MapLibre GL JS** | **나중에 검토(로드맵 미확정)** | 현재 MVP 요구사항에 "설비/공장 지도"가 없음. `Gods_Eye`는 GPL이라 코드 재사용 불가, 패턴만 참고 가능. 지도 요구가 확정되면 그때 재검토 |
 | **AG Grid Enterprise** | **도입하지 않음** | 상용 라이선스 비용 발생. TanStack Table(무료)로 정렬/필터/페이지네이션/가상화 요구를 충분히 충족 가능. Enterprise 전용 기능(클라이언트 pivot, row grouping UI)은 우리 설계상 **서버사이드 Group/Aggregate board**가 담당해야 하므로(4-4절) 클라이언트 그리드 라이선스에 의존할 이유가 약함 |
 | **Apache Superset(임베드)** | **도입하지 않음** | 별도 서비스 배포·인증 연동 비용 발생. Superset 자체 권한 모델과 MVP의 세밀한 object/property/action 권한(`ontology_service.py`)을 이중 관리해야 함. 임베드된 대시보드가 Evidence/Action drilldown과 통합되지 않아 "운영 행동은 승인 경계를 통과한다"는 UI 원칙(레퍼런스 문서 2절 원칙 4)을 satisfy할 수 없음 |
-| **Cube(semantic layer)** | **도입하지 않음(PostgreSQL 전환 후 재검토)** | 현재 SQLite 기반 + Ontology adapter 계층(`ontology_adapter.py`)이 이미 semantic layer 역할을 부분적으로 수행 중이라 중복 계층이 됨. PostgreSQL 전환(현재 70%, `docs/07-implementation-status.md`)이 완료된 뒤, 대량 집계 쿼리 성능이 실제로 병목이 될 때 재검토 |
+| **Cube(semantic layer)** | **도입하지 않음(PostgreSQL 전환 후 재검토)** | 현재 SQLite 기반 + Ontology adapter 계층(`ontology_adapter.py`)이 이미 semantic layer 역할을 부분적으로 수행 중이라 중복 계층이 됨. PostgreSQL 전환(현재 70%, `docs/30-implementation/implementation-status.md`)이 완료된 뒤, 대량 집계 쿼리 성능이 실제로 병목이 될 때 재검토 |
 
 ### AG Grid Enterprise / Superset / Cube 도입 시 구조상 단점 상세
 
@@ -543,9 +543,9 @@ web/src/features/ontology/types.ts
 web/src/routing.ts
 web/src/types.ts
 web/src/styles.css
-docs/palantir-contour-ui-reference.md
-docs/palantir-contour-dashboard-benchmark.md
-docs/07-implementation-status.md
+docs/40-ui-ux/reference/palantir-contour-ui-reference.md
+docs/40-ui-ux/reference/palantir-contour-dashboard-benchmark.md
+docs/30-implementation/implementation-status.md
 ```
 
 ## 부록 B. 레퍼런스 파일 경로 색인

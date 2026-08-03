@@ -23,12 +23,12 @@
 가장 먼저 아래 문서를 처음부터 끝까지 읽어라.
 
 ```text
-docs/palantir-typography-loader-dashboard-interaction-plan.md
+docs/40-ui-ux/plans/palantir-typography-loader-dashboard-interaction-plan.md
 docs/ui/interaction-polish-reference/README.md
 docs/ui/interaction-polish-reference/data-logic-action-orbit-reconstruction.svg
 docs/ui/palantir-overhaul/convergence-review.md
 docs/ui/palantir-overhaul/scorecard.md
-docs/next-session-remaining-work-execution-plan.md
+docs/60-development-prompts/next-session-remaining-work-execution-plan.md
 ```
 
 ## 시작 전 필수 안전 절차
