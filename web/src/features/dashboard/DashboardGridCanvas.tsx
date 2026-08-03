@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { BoardFrame } from "../../ui/foundry/BoardFrame";
 import {
   ResponsiveGridLayout,
@@ -10,6 +10,7 @@ import {
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import type { DashboardBoard, DashboardMode, DashboardTab } from "./types";
+import { useDashboardArrangeMode } from "./dashboardArrange";
 import { legacyBoardToGridLayout } from "./gridLayout";
 
 export interface DashboardGridCanvasProps {
@@ -26,6 +27,9 @@ export interface DashboardGridCanvasProps {
   onRemoveBoard: (boardId: string) => void;
   onToggleHidden: (boardId: string, hidden: boolean) => void;
   onFullscreen: (boardId: string | null) => void;
+  onEnterArrange: () => void;
+  onToggleFavorite: (boardId: string) => void;
+  saving?: boolean;
 }
 
 const BREAKPOINTS = { lg: 500, md: 480, sm: 0 } as const;
@@ -101,6 +105,9 @@ export function DashboardGridCanvas({
   onRemoveBoard,
   onToggleHidden,
   onFullscreen,
+  onEnterArrange,
+  onToggleFavorite,
+  saving = false,
 }: DashboardGridCanvasProps) {
   const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1180 });
   const visibleBoards = useMemo(
@@ -108,11 +115,24 @@ export function DashboardGridCanvas({
     [mode, tab],
   );
   const layouts = useMemo(() => responsiveLayouts(visibleBoards), [visibleBoards]);
+  const [resizePreview, setResizePreview] = useState<{ boardId: string; width: number; height: number } | null>(null);
+  const { phase, dispatch, longPressHandlers } = useDashboardArrangeMode({ mode, onEnter: onEnterArrange });
+
+  useEffect(() => {
+    dispatch({ type: saving ? "SAVE_START" : "SAVE_END" });
+  }, [dispatch, saving]);
 
   if (!tab) return <div className="dashboard-empty-canvas">표시할 Dashboard 탭이 없습니다.</div>;
 
   return (
-    <section ref={containerRef} className={`dashboard-board-canvas rgl-canvas mode-${mode}`} aria-label={`${tab.title} board canvas`}>
+    <section
+      ref={containerRef}
+      className={`dashboard-board-canvas rgl-canvas mode-${mode} arrange-${phase}`}
+      data-arrange-state={phase}
+      aria-label={`${tab.title} board canvas`}
+      {...longPressHandlers}
+    >
+      {mode === "edit" ? <div className="dashboard-arrange-hint" role="status">Arrange mode · drag board headers or resize from any edge · Esc/Done to finish</div> : null}
       {visibleBoards.length === 0 ? (
         <div className="dashboard-empty-canvas">
           <strong>이 탭에 표시할 board가 없습니다.</strong>
@@ -137,9 +157,26 @@ export function DashboardGridCanvas({
             cancel: "button,input,select,textarea,a,[role='button']",
             threshold: 3,
           }}
-          resizeConfig={{ enabled: mode === "edit", handles: ["se", "e", "s"] }}
-          onDragStop={(layout, _oldItem, newItem) => mode === "edit" && onLayoutChange(tab.id, mergeChangedItem(layout, newItem))}
-          onResizeStop={(layout, _oldItem, newItem) => mode === "edit" && onLayoutChange(tab.id, mergeChangedItem(layout, newItem))}
+          resizeConfig={{ enabled: mode === "edit", handles: ["n", "s", "e", "w", "ne", "nw", "se", "sw"] }}
+          onDragStart={() => dispatch({ type: "DRAG_START" })}
+          onDragStop={(layout, _oldItem, newItem) => {
+            dispatch({ type: "DRAG_STOP" });
+            if (mode === "edit") onLayoutChange(tab.id, mergeChangedItem(layout, newItem));
+          }}
+          onResizeStart={(_layout, _oldItem, newItem) => {
+            dispatch({ type: "RESIZE_START" });
+            if (!newItem) return;
+            setResizePreview({ boardId: newItem.i, width: newItem.w, height: newItem.h });
+          }}
+          onResize={(_layout, _oldItem, newItem) => {
+            if (!newItem) return;
+            setResizePreview({ boardId: newItem.i, width: newItem.w, height: newItem.h });
+          }}
+          onResizeStop={(layout, _oldItem, newItem) => {
+            dispatch({ type: "RESIZE_STOP" });
+            setResizePreview(null);
+            if (mode === "edit") onLayoutChange(tab.id, mergeChangedItem(layout, newItem));
+          }}
         >
           {visibleBoards.map((board) => {
             const fullscreen = fullscreenBoardId === board.id;
@@ -153,10 +190,13 @@ export function DashboardGridCanvas({
                 selected={selected}
                 affected={affected}
                 fullscreen={fullscreen}
+                favorite={board.settings.favorite === true}
+                resizeLabel={resizePreview?.boardId === board.id ? `${resizePreview.width} columns × ${resizePreview.height} rows` : null}
                 onSelect={() => onSelectBoard(board.id)}
                 onToggleHidden={() => onToggleHidden(board.id, !board.hidden)}
                 onDuplicate={() => onDuplicateBoard(board.id)}
                 onRemove={() => onRemoveBoard(board.id)}
+                onToggleFavorite={() => onToggleFavorite(board.id)}
                 onFullscreen={() => onFullscreen(fullscreen ? null : board.id)}
               >
                 {renderBoard(board)}

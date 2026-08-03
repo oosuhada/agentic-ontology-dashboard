@@ -10,7 +10,6 @@ import {
   Eye,
   Home,
   LayoutDashboard,
-  Maximize2,
   Menu,
   Moon,
   Network,
@@ -31,6 +30,8 @@ import { featureFlags } from "../../featureFlags";
 import { EntityTitle } from "../../ui/foundry/EntityTitle";
 import { StatusPill } from "../../ui/foundry/StatusPill";
 import { WorkbenchHeader, WorkbenchToolbar } from "../../ui/foundry/WorkbenchChrome";
+import { DisplayMenu } from "../../ui/foundry/DisplayMenu";
+import { useDisplayPreferences } from "../../ui/foundry/displayPreferences";
 import { FoundryProductNavigation } from "../../ui/foundry/FoundryProductNavigation";
 import { agentPath, datasetCatalogPath, governancePath, navigate, ontologyPath, projectHomePath } from "../../routing";
 import type { AppRole, AuthUser, DomainPack, Project, Workspace } from "../../types";
@@ -197,11 +198,11 @@ export function DashboardShell({
   const [draggingTabId, setDraggingTabId] = useState<string | null>(null);
   const [exportFormat, setExportFormat] = useState<"json" | "csv" | "pdf">("pdf");
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>(initialWorkspaceView);
-  const [density, setDensity] = useState<"compact" | "comfortable">("compact");
   const [commandOpen, setCommandOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
+  const { preferences, setDensity } = useDisplayPreferences();
 
   const selectedProject = useMemo(() => projects.find((project) => project.id === selectedProjectId), [projects, selectedProjectId]);
   const selectedWorkspace = useMemo(() => workspaces.find((workspace) => workspace.id === selectedWorkspaceId), [selectedWorkspaceId, workspaces]);
@@ -231,11 +232,12 @@ export function DashboardShell({
       if (event.key === "Escape") {
         setCommandOpen(false);
         setMobileNavOpen(false);
+        if (mode === "edit") onModeChange("view");
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [canRedo, canUndo, dirty, onRedo, onSave, onUndo, saving]);
+  }, [canRedo, canUndo, dirty, mode, onModeChange, onRedo, onSave, onUndo, saving]);
 
   function runCommand(action: () => void) {
     action();
@@ -276,7 +278,7 @@ export function DashboardShell({
   }
 
   return (
-    <div className={`ontology-dashboard-shell od-product-shell mode-${mode} role-${user.landing_key} density-${density} workspace-${workspaceView} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+    <div className={`ontology-dashboard-shell od-product-shell mode-${mode} role-${user.landing_key} density-${preferences.density} workspace-${workspaceView} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <FoundryProductNavigation
         items={NAV_ITEMS}
         activeId={workspaceView}
@@ -303,6 +305,7 @@ export function DashboardShell({
           </div>
           <button type="button" className="od-global-search" onClick={() => setCommandOpen(true)}><Search size={14} /><span>Search objects, boards, actions…</span><kbd>⌘K</kbd></button>
           <div className="od-topbar-actions">
+            <DisplayMenu />
             <button type="button" title="테마 전환" onClick={() => setTheme((current) => current === "light" ? "dark" : "light")}>{theme === "light" ? <Moon size={15} /> : <Sun size={15} />}</button>
             <button type="button" title="알림"><Bell size={15} /><i /></button>
             <div className="od-user-identity"><span>{user.display_name.slice(0, 1).toUpperCase()}</span><div><strong>{user.display_name}</strong><small>{roleLabel}</small></div></div>
@@ -369,8 +372,8 @@ export function DashboardShell({
             </nav>}
             end={<div className="dashboard-edit-toolbar">
               <div className="view-edit-switch" role="group" aria-label="Dashboard mode">
-                <button type="button" className={mode === "view" ? "active" : ""} onClick={() => onModeChange("view")}><Eye size={12} /> View</button>
-                <button type="button" className={mode === "edit" ? "active" : ""} onClick={() => onModeChange("edit")}><Blocks size={12} /> Edit</button>
+                <button type="button" className={mode === "view" ? "active" : ""} onClick={() => onModeChange("view")}><Eye size={12} /> {mode === "edit" ? "Done" : "View"}</button>
+                <button type="button" className={mode === "edit" ? "active" : ""} title="Arrange dashboard" onClick={() => onModeChange("edit")}><Blocks size={12} /> Edit</button>
               </div>
               {mode === "edit" ? <>
                 <button type="button" className="icon-button" aria-label="Undo dashboard edit" title="실행 취소 (⌘Z)" disabled={!canUndo} onClick={onUndo}><Undo2 size={13} /></button>
@@ -433,7 +436,7 @@ export function DashboardShell({
               <button type="button" disabled={!canRedo} onClick={() => runCommand(onRedo)}><b><Redo2 size={14} /></b><div><strong>Redo edit</strong><small>취소한 Dashboard draft 재적용</small></div><kbd>⌘⇧Z</kbd></button>
               <button type="button" disabled={!dirty || saving} onClick={() => runCommand(onSave)}><b><Save size={14} /></b><div><strong>Save preferences</strong><small>현재 개인 revision 저장</small></div><kbd>⌘S</kbd></button>
               <button type="button" onClick={() => runCommand(onShare)}><b><Share2 size={14} /></b><div><strong>Create shared view</strong><small>Scope를 유지한 링크 생성</small></div></button>
-              <button type="button" onClick={() => runCommand(() => setDensity((current) => current === "compact" ? "comfortable" : "compact"))}><b><Maximize2 size={14} /></b><div><strong>Toggle density</strong><small>{density === "compact" ? "Comfortable spacing" : "Compact spacing"}</small></div></button>
+              <button type="button" onClick={() => runCommand(() => setDensity(preferences.density === "compact" ? "standard" : preferences.density === "standard" ? "comfortable" : "compact"))}><b><Settings size={14} /></b><div><strong>Cycle density</strong><small>{preferences.density} → {preferences.density === "compact" ? "standard" : preferences.density === "standard" ? "comfortable" : "compact"}</small></div></button>
               <button type="button" onClick={() => runCommand(() => setTheme((current) => current === "light" ? "dark" : "light"))}><b>{theme === "light" ? <Moon size={14} /> : <Sun size={14} />}</b><div><strong>Toggle theme</strong><small>{theme === "light" ? "Switch to dark" : "Switch to light"}</small></div></button>
             </div>
           </section>

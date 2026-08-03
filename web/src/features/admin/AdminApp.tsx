@@ -14,6 +14,8 @@ import {
 } from "../../api";
 import { navigate } from "../../routing";
 import type { AdminAuditEntry, AdminUser, AppRole, RoleDefinition, UserStatus, Workspace } from "../../types";
+import { DisplayMenu } from "../../ui/foundry/DisplayMenu";
+import { OntologyLifecycleLoader } from "../../ui/foundry/OntologyLifecycleLoader";
 import type { AdminWorkflowApprovals, WorkflowRequest } from "../roles/types";
 import { useAuth } from "../auth/AuthContext";
 
@@ -194,14 +196,14 @@ export function AdminApp() {
       </aside>
 
       <main className="admin-main">
-        <div className="admin-platform-bar"><span><ShieldCheck size={12} /> Tenant control plane</span><div><span>Ontology Dashboard</span><span>Production policy</span><strong>{user.display_name}</strong></div></div>
+        <div className="admin-platform-bar"><span><ShieldCheck size={12} /> Tenant control plane</span><div><DisplayMenu /><span>Ontology Dashboard</span><span>Production policy</span><strong>{user.display_name}</strong></div></div>
         <header className="admin-topbar">
           <div><span className="eyebrow">TENANT ADMIN / {tab.toUpperCase()}</span><h1>{tab === "overview" ? "관리자 Overview" : tab === "users" ? "사용자 승인과 접근 범위" : tab === "roles" ? "역할과 권한 경계" : tab === "approvals" ? "Template·Model 승인 요청" : "관리자 변경 감사"}</h1><p>Tenant-level identity, policy, approval and audit resources.</p></div>
           <button className="secondary" onClick={load}><RefreshCw size={12} /> 새로고침</button>
         </header>
 
         {error ? <div className="error-panel" role="alert"><strong>관리자 API 오류</strong><p>{error}</p></div> : null}
-        {loading ? <div className="loading-panel"><div className="spinner" /><p>관리자 데이터를 불러오고 있습니다.</p></div> : null}
+        {loading ? <div className="loading-panel"><OntologyLifecycleLoader variant="panel" operation="Loading administrator resources" detail="Resolving users, roles, approvals, and audit records." /></div> : null}
 
         {!loading && tab === "overview" && overview ? (
           <>

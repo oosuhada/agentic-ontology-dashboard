@@ -28,6 +28,7 @@ import {
 } from "../../routing";
 import { useAuth } from "../../features/auth/AuthContext";
 import type { AppRole, Project, Workspace } from "../../types";
+import { DisplayMenu } from "./DisplayMenu";
 import { FoundryProductNavigation } from "./FoundryProductNavigation";
 
 export type FoundryRoute = "home" | "dashboard" | "analysis" | "agent" | "ontology" | "datasets" | "governance";
@@ -175,6 +176,7 @@ export function FoundryAppShell({ projectId, workspaceId, activeRoute, title, ch
           </div>
           <button type="button" className="od-global-search" onClick={() => setCommandOpen(true)}><Search size={14} /><span>Search objects, datasets, actions…</span><kbd>⌘K</kbd></button>
           <div className="od-topbar-actions">
+            <DisplayMenu />
             <button type="button" title="테마 전환" onClick={() => setTheme((current) => current === "light" ? "dark" : "light")}>{theme === "light" ? <Moon size={15} /> : <Sun size={15} />}</button>
             <button type="button" title="알림"><Bell size={15} /></button>
             <div className="od-user-identity"><span>{user.display_name.slice(0, 1).toUpperCase()}</span><div><strong>{user.display_name}</strong><small>{roleLabel}</small></div></div>

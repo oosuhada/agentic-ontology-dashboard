@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { StatusBadge } from "../../components/StatusBadge";
 import { agentPath, navigate } from "../../routing";
+import { OntologyLifecycleLoader } from "../../ui/foundry/OntologyLifecycleLoader";
 import type {
   AppRole,
   BlockType,
@@ -37,7 +38,7 @@ const ROLE_RENDERERS = new Set([
 ]);
 
 function LazyBoard({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<div className="loading-panel"><div className="spinner" /><p>Board module을 불러오고 있습니다.</p></div>}>{children}</Suspense>;
+  return <Suspense fallback={<OntologyLifecycleLoader variant="board" operation="Loading board module" />}>{children}</Suspense>;
 }
 
 const LEGACY_RENDERERS = new Set<BlockType>([

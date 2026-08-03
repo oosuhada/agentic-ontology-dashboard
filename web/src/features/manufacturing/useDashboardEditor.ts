@@ -117,6 +117,17 @@ export function useDashboardEditor({
     }));
   }
 
+  function handleToggleFavorite(boardId: string) {
+    const board = draftDashboard?.tabs.flatMap((tab) => tab.boards).find((item) => item.id === boardId);
+    if (!board) return;
+    updateDraft((current) => ({
+      ...current,
+      tabs: updateBoard(current.tabs, boardId, {
+        settings: { ...board.settings, favorite: board.settings.favorite !== true },
+      }),
+    }));
+  }
+
   function handleDuplicateBoard(boardId: string) {
     updateDraft((current) => {
       const result = duplicateBoard(current.tabs, boardId);
@@ -154,6 +165,7 @@ export function useDashboardEditor({
     handleUpdateBoard,
     handleRemoveBoard,
     handleToggleHidden,
+    handleToggleFavorite,
     handleDuplicateBoard,
     handleAddTab,
     handleAddBoard,

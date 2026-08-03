@@ -1,4 +1,4 @@
-import { Copy, Eye, EyeOff, GripVertical, Maximize2, Minimize2, Trash2 } from "lucide-react";
+import { Copy, Eye, EyeOff, GripVertical, Maximize2, Minimize2, Star, Trash2 } from "lucide-react";
 import { forwardRef, type CSSProperties, type ReactNode } from "react";
 import type { DashboardBoard, DashboardMode } from "../../features/dashboard/types";
 
@@ -8,11 +8,14 @@ interface BoardFrameProps {
   selected: boolean;
   affected: boolean;
   fullscreen: boolean;
+  favorite: boolean;
+  resizeLabel?: string | null;
   children: ReactNode;
   onSelect: () => void;
   onToggleHidden: () => void;
   onDuplicate: () => void;
   onRemove: () => void;
+  onToggleFavorite: () => void;
   onFullscreen: () => void;
   className?: string;
   style?: CSSProperties;
@@ -24,11 +27,14 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
   selected,
   affected,
   fullscreen,
+  favorite,
+  resizeLabel,
   children,
   onSelect,
   onToggleHidden,
   onDuplicate,
   onRemove,
+  onToggleFavorite,
   onFullscreen,
   className = "",
   style,
@@ -41,12 +47,20 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
       data-grid-y={board.layout?.y ?? ""}
       data-grid-w={board.layout?.w ?? board.width}
       data-grid-h={board.layout?.h ?? ""}
+      data-grid-min-w={board.layout?.min_w ?? 1}
+      data-grid-min-h={board.layout?.min_h ?? 1}
+      data-grid-max-w={board.layout?.max_w ?? 12}
+      data-grid-max-h={board.layout?.max_h ?? 12}
+      data-board-id={board.id}
+      data-favorite={favorite ? "true" : "false"}
       className={[
         "dashboard-board-frame",
         "fd-board-frame",
         board.hidden ? "is-hidden" : "",
         selected ? "is-selected" : "",
         affected ? "is-affected" : "",
+        favorite ? "is-favorite" : "",
+        mode === "edit" ? "is-arranging" : "",
         fullscreen ? "is-fullscreen" : "",
         className,
       ].filter(Boolean).join(" ")}
@@ -68,6 +82,19 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
         </div>
         <div className="dashboard-board-actions fd-board-frame__actions">
           {affected ? <span className="affected-chip">필터 반영</span> : null}
+          <button
+            type="button"
+            className={`dashboard-board-favorite ${favorite ? "active" : ""}`}
+            aria-label={favorite ? `${board.title} 즐겨찾기 해제` : `${board.title} 즐겨찾기`}
+            aria-pressed={favorite}
+            title={favorite ? "즐겨찾기 해제" : "즐겨찾기"}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleFavorite();
+            }}
+          >
+            <Star size={13} fill={favorite ? "currentColor" : "none"} />
+          </button>
           <button
             type="button"
             aria-label={fullscreen ? "전체 화면 닫기" : `${board.title} 전체 화면`}
@@ -120,6 +147,7 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
         </div>
       </header>
       {board.hidden && mode === "edit" ? <div className="hidden-board-label">View 모드에서는 숨겨집니다.</div> : null}
+      {resizeLabel ? <output className="dashboard-board-resize-label">{resizeLabel}</output> : null}
       <div className="dashboard-board-content fd-board-frame__content">{children}</div>
     </article>
   );
