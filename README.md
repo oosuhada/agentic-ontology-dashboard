@@ -2,6 +2,12 @@
 
 조직의 Object, Link, Evidence와 Action을 역할·권한·workspace 범위에 맞는 업무 화면으로 구성하는 온톨로지 기반 운영 애플리케이션 MVP다. 초기 제조 예지보전 vertical slice는 첫 번째 **Manufacturing Predictive Maintenance Pack**으로 유지한다.
 
+> **팀 공유·온보딩 시작점:** [`docs/00-team-onboarding/README.md`](./docs/00-team-onboarding/README.md)
+>
+> 화면 15장과 기능 설명: [`docs/00-team-onboarding/02-feature-tour.md`](./docs/00-team-onboarding/02-feature-tour.md)
+>
+> 전체 문서 지도: [`docs/README.md`](./docs/README.md)
+
 ## 구현 상태
 
 2단계 데이터 계약부터 31단계 Ontology Planner·Export·보안·성능 릴리스 hardening까지 구현했다.
@@ -217,25 +223,11 @@ tests/        backend contract/integration/safety tests
 
 ## 주요 문서
 
-- [`docs/stage2-15-implementation-summary.md`](./docs/stage2-15-implementation-summary.md)
-- [`docs/stage16-18-implementation-summary.md`](./docs/stage16-18-implementation-summary.md)
-- [`docs/stage19-implementation-summary.md`](./docs/stage19-implementation-summary.md)
-- [`docs/stage20-24-implementation-summary.md`](./docs/stage20-24-implementation-summary.md)
-- [`docs/stage25-29-implementation-summary.md`](./docs/stage25-29-implementation-summary.md)
-- [`docs/stage30-31-implementation-summary.md`](./docs/stage30-31-implementation-summary.md)
-- [`docs/mvp-scope.md`](./docs/mvp-scope.md)
-- [`docs/personas.md`](./docs/personas.md)
-- [`docs/role-needs-research.md`](./docs/role-needs-research.md)
-- [`docs/ontology-dashboard-additional-implementation-plan.md`](./docs/ontology-dashboard-additional-implementation-plan.md)
-- [`docs/palantir-contour-dashboard-benchmark.md`](./docs/palantir-contour-dashboard-benchmark.md)
-- [`docs/next-session-ontology-dashboard-prompt.md`](./docs/next-session-ontology-dashboard-prompt.md)
-- [`docs/data-dictionary.md`](./docs/data-dictionary.md)
-- [`docs/model-baseline-results.md`](./docs/model-baseline-results.md)
-- [`docs/risk-threshold-policy.md`](./docs/risk-threshold-policy.md)
-- [`docs/service-contract.md`](./docs/service-contract.md)
-- [`docs/project3-adapter-contract.md`](./docs/project3-adapter-contract.md)
-- [`docs/demo-runbook.md`](./docs/demo-runbook.md)
-- [`docs/troubleshooting.md`](./docs/troubleshooting.md)
+- [`docs/00-team-onboarding/README.md`](./docs/00-team-onboarding/README.md) — 팀원이 가장 먼저 읽는 문서
+- [`docs/00-team-onboarding/02-feature-tour.md`](./docs/00-team-onboarding/02-feature-tour.md) — 실제 화면과 구현 기능
+- [`docs/00-team-onboarding/04-demo-guide.md`](./docs/00-team-onboarding/04-demo-guide.md) — 15분 데모 시나리오
+- [`docs/00-team-onboarding/06-implementation-status.md`](./docs/00-team-onboarding/06-implementation-status.md) — 구현 완료와 경계
+- [`docs/README.md`](./docs/README.md) — 제품·아키텍처·구현·UI·운영 문서 전체 지도
 
 ## 안전 경계
 

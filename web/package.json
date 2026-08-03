@@ -13,6 +13,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:overhaul": "playwright test e2e/workbench-final-overhaul.spec.ts",
+    "capture:team-share": "CAPTURE_TEAM_SHARE=1 playwright test e2e/team-share-captures.spec.ts --project=chromium",
+    "clean:local": "python3 ../scripts/clean_local_artifacts.py",
     "test:visual:overhaul": "python3 ../scripts/check_palantir_overhaul_visuals.py --candidate-root test-results/palantir-overhaul-candidate --require-candidate",
     "lint": "tsc --noEmit"
   },
