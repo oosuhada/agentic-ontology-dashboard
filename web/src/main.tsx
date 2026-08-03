@@ -9,6 +9,7 @@ import "./ui/foundry/workbenches.css";
 import "./ui/foundry/resource-table.css";
 import "./features/dashboard/dashboard-editor.css";
 import "./features/dashboard/dashboard-runtime.css";
+import "./features/dashboard/visualization/visualization.css";
 import "./features/analysis/analysis-detail.css";
 import "./features/ontology/object-explorer-detail.css";
 import "./features/auth/auth-control-plane.css";

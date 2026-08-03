@@ -5,6 +5,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from ..dashboard_models import DashboardParameterDefinition, DashboardTab
+from ..visualizations.models import FieldProfile, VisualizationCandidate
 
 PlannerMode = Literal["deterministic", "llm", "deterministic_fallback"]
 FilterOperator = Literal["eq", "contains", "gte", "lte"]
@@ -97,6 +98,30 @@ class DashboardDraftResponse(StrictModel):
     validation: dict[str, Any]
     requires_approval: bool = True
     persisted: bool = False
+
+
+class VisualizationRecommendationRequest(StrictModel):
+    workspace_id: str
+    dashboard_id: str
+    board_id: str
+    goal: str = Field(min_length=2, max_length=700)
+    field_profile: list[FieldProfile]
+    deterministic_candidates: list[VisualizationCandidate] = Field(min_length=1, max_length=10)
+    use_llm: bool = True
+
+
+class VisualizationPlannerResponse(StrictModel):
+    mode: PlannerMode
+    provider: str
+    fallback_reason: str | None = None
+    workspace_id: str
+    dashboard_id: str
+    board_id: str
+    goal: str
+    recommended: VisualizationCandidate
+    alternatives: list[VisualizationCandidate]
+    validation: dict[str, Any]
+    requires_approval: bool = False
 
 
 class GroundedNarrativeRequest(StrictModel):

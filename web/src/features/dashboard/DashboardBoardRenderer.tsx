@@ -16,7 +16,7 @@ import type {
 import type { DashboardDraftResponse } from "../planner/types";
 import type { RoleWorkspaceData } from "../roles/types";
 import { ServerFilteredEventScope } from "./ServerFilteredEventScope";
-import type { BoardCatalogDefinition, DashboardBoard, SelectionFilter } from "./types";
+import type { BoardCatalogDefinition, BoardVisualizationRuntime, DashboardBoard, SelectionFilter } from "./types";
 
 const BlockRenderer = lazy(() => import("../../components").then((module) => ({ default: module.BlockRenderer })));
 const PlannerAssistantBoard = lazy(() => import("../planner/PlannerAssistantBoard").then((module) => ({ default: module.PlannerAssistantBoard })));
@@ -79,6 +79,7 @@ interface DashboardBoardRendererProps {
   roleWorkspaceData: RoleWorkspaceData | null;
   onSelectEvent: (sourceBoardId: string, eventId: string) => void;
   onSelectionFilter: (filter: SelectionFilter) => void;
+  onVisualizationRuntime: (boardId: string, runtime: BoardVisualizationRuntime) => void;
   onAuditCheckpoint: (format: "json" | "csv" | "pdf", reason: string) => Promise<void>;
   onFieldAction: (
     action: "complete" | "issue_found" | "blocked",
@@ -127,6 +128,7 @@ export function DashboardBoardRenderer({
   roleWorkspaceData,
   onSelectEvent,
   onSelectionFilter,
+  onVisualizationRuntime,
   onAuditCheckpoint,
   onFieldAction,
   onApplyPlannerDraft,
@@ -213,13 +215,14 @@ export function DashboardBoardRenderer({
   if (definition.renderer === "GenericDataBoard" && definition.default_data_binding && definition.default_render_spec) {
     return (
       <LazyBoard><CatalogDataBoard
-        boardId={board.id}
+        board={board}
         dashboardId={dashboardId}
         workspaceId={workspaceId}
         definition={definition}
         parameterState={parameterState}
         selectionFilters={selectionFilters}
         onSelectionFilter={onSelectionFilter}
+        onVisualizationRuntime={onVisualizationRuntime}
       /></LazyBoard>
     );
   }
@@ -275,11 +278,10 @@ export function DashboardBoardRenderer({
     case "AnalysisReference":
       return (
         <LazyBoard><AnalysisReferenceBoard
-          boardId={board.id}
-          title={board.title}
-          source={board.source}
+          board={board}
           workspaceId={workspaceId}
           onSelectionFilter={onSelectionFilter}
+          onVisualizationRuntime={onVisualizationRuntime}
         /></LazyBoard>
       );
     case "OntologyRelationship":

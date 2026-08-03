@@ -32,6 +32,7 @@ from .dashboard_repository import DashboardPreferenceConflict, DashboardReposito
 from .identity import AuthError, Principal
 from .ontology_service import OntologyService
 from .service import EventNotFound
+from .visualizations import recommend_visualization
 
 UNSAFE_TEXT = re.compile(r"<[^>]+>|javascript\s*:|on[a-z]+\s*=", re.IGNORECASE)
 
@@ -144,6 +145,7 @@ class DashboardService:
             for key in ("observed_at", "generated_at", "created_at")
             if isinstance(row.get(key), str)
         ]
+        visualization = recommend_visualization(page, render_spec)
         return {
             "board_id": board_id,
             "rows": page,
@@ -152,6 +154,8 @@ class DashboardService:
             "offset": request.offset,
             "limit": request.limit,
             "render_spec": render_spec,
+            "field_profile": [item.model_dump(mode="json") for item in visualization.profile],
+            "visualization_recommendation": visualization.model_dump(mode="json"),
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "source_freshness_at": max(freshness_values) if freshness_values else None,
             "timezone": "UTC",

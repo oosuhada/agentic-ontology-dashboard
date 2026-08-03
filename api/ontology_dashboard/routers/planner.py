@@ -19,6 +19,7 @@ from ..planner import (
     GroundedNarrativeRequest,
     NaturalLanguageObjectQueryRequest,
     OntologyDashboardPlannerService,
+    VisualizationRecommendationRequest,
 )
 from ..security import PLANNER_RATE, RateLimiter
 
@@ -77,6 +78,20 @@ def generate_dashboard_draft(
     enforce_planner_rate(limiter, principal, "planner.dashboard_draft")
     identity.require_workspace(principal, request.workspace_id)
     return planner.dashboard_draft(principal=principal, request=request).model_dump(mode="json")
+
+
+@router.post("/visualizations/recommend")
+def recommend_visualization(
+    request: VisualizationRecommendationRequest,
+    principal: Principal = Depends(require_permission("planner.board_recommend")),
+    _: None = Depends(require_csrf),
+    identity: IdentityService = Depends(get_identity_service),
+    planner: OntologyDashboardPlannerService = Depends(get_ontology_planner_service),
+    limiter: RateLimiter = Depends(get_rate_limiter),
+):
+    enforce_planner_rate(limiter, principal, "planner.visualization_recommend")
+    identity.require_workspace(principal, request.workspace_id)
+    return planner.visualization_recommendation(principal=principal, request=request).model_dump(mode="json")
 
 
 @router.post("/grounded-narrative")

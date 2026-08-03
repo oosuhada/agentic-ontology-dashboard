@@ -1,5 +1,5 @@
 import type { AppRole } from "../../types";
-import type { DashboardTab, ResolvedDashboard } from "../dashboard/types";
+import type { DashboardTab, ResolvedDashboard, VisualizationCandidate } from "../dashboard/types";
 
 export interface ObjectQueryIntent {
   object_type: string;
@@ -65,6 +65,20 @@ export interface DashboardDraftResponse {
   validation: Record<string, boolean>;
   requires_approval: true;
   persisted: false;
+}
+
+export interface VisualizationPlannerResponse {
+  mode: "deterministic" | "llm" | "deterministic_fallback";
+  provider: string;
+  fallback_reason: string | null;
+  workspace_id: string;
+  dashboard_id: string;
+  board_id: string;
+  goal: string;
+  recommended: VisualizationCandidate;
+  alternatives: VisualizationCandidate[];
+  validation: Record<string, boolean>;
+  requires_approval: false;
 }
 
 export interface GroundedNarrativeResponse {

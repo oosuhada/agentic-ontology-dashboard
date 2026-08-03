@@ -96,6 +96,19 @@ export function useDashboardEditor({
     }));
   }
 
+  function handleUpdateBoardById(boardId: string, update: Partial<DashboardBoard>) {
+    const board = draftDashboard?.tabs.flatMap((tab) => tab.boards).find((item) => item.id === boardId);
+    if (!board) return;
+    if (board.mandatory && update.hidden) {
+      setError("필수 board는 숨길 수 없습니다.");
+      return;
+    }
+    updateDraft((current) => ({
+      ...current,
+      tabs: updateBoard(current.tabs, boardId, update),
+    }));
+  }
+
   function handleRemoveBoard(boardId: string) {
     try {
       updateDraft((current) => ({ ...current, tabs: removeBoard(current.tabs, boardId) }));
@@ -163,6 +176,7 @@ export function useDashboardEditor({
     handleMoveBoard,
     handleLayoutChange,
     handleUpdateBoard,
+    handleUpdateBoardById,
     handleRemoveBoard,
     handleToggleHidden,
     handleToggleFavorite,

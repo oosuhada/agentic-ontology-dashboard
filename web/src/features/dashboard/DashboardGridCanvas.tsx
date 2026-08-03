@@ -20,6 +20,7 @@ export interface DashboardGridCanvasProps {
   fullscreenBoardId: string | null;
   affectedBoardIds: string[];
   renderBoard: (board: DashboardBoard) => ReactNode;
+  renderBoardHeader?: (board: DashboardBoard) => ReactNode;
   onSelectBoard: (boardId: string) => void;
   onLayoutChange: (tabId: string, layout: Layout) => void;
   onMoveBoard: (boardId: string, targetTabId: string, targetBoardId?: string) => void;
@@ -99,6 +100,7 @@ export function DashboardGridCanvas({
   fullscreenBoardId,
   affectedBoardIds,
   renderBoard,
+  renderBoardHeader,
   onSelectBoard,
   onLayoutChange,
   onDuplicateBoard,
@@ -191,6 +193,7 @@ export function DashboardGridCanvas({
                 affected={affected}
                 fullscreen={fullscreen}
                 favorite={board.settings.favorite === true}
+                headerActions={renderBoardHeader?.(board)}
                 resizeLabel={resizePreview?.boardId === board.id ? `${resizePreview.width} columns × ${resizePreview.height} rows` : null}
                 onSelect={() => onSelectBoard(board.id)}
                 onToggleHidden={() => onToggleHidden(board.id, !board.hidden)}

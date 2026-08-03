@@ -4,6 +4,27 @@
  * and mini_foundry_public dashboard composition (MIT). No Palantir proprietary CSS/assets.
  */
 :root {
+  --od-brand-primary: #0c1c74;
+  --od-brand-ink: #3a4950;
+  --od-brand-accent: #e64d2b;
+  --od-brand-reserved: #db0714;
+  --od-state-info: #0c1c74;
+  --od-state-success: #29a634;
+  --od-state-warning: #d1970c;
+  --od-state-danger: #db0714;
+  --od-series-1: #0c1c74;
+  --od-series-2: #e64d2b;
+  --od-series-3: #00a396;
+  --od-series-4: #d1970c;
+  --od-series-5: #7861db;
+  --od-series-6: #29a634;
+  --od-series-7: #da2d6f;
+  --od-series-8: #5f6b7b;
+  --od-neutral-0: #ffffff;
+  --od-neutral-50: #f7f8f9;
+  --od-neutral-300: #dcdcdd;
+  --od-neutral-600: #5f6b7b;
+  --od-neutral-800: #3a4950;
   --od-font-scale: 1;
   --od-type-2xs: calc(0.625rem * var(--od-font-scale));
   --od-type-xs: calc(0.6875rem * var(--od-font-scale));
@@ -22,27 +43,27 @@
   --od-toolbar-height: 32px;
   --od-board-header-height: 29px;
   --od-table-row-height: 28px;
-  --fd-canvas: #eef1f4;
-  --fd-surface: #ffffff;
-  --fd-surface-raised: #ffffff;
-  --fd-surface-subtle: #f6f8fa;
-  --fd-surface-muted: #edf1f4;
-  --fd-surface-selected: #e8f1fb;
-  --fd-sidebar: #111820;
-  --fd-sidebar-hover: #202b33;
-  --fd-sidebar-active: #293742;
-  --fd-text: #182026;
-  --fd-text-secondary: #5f6b7c;
-  --fd-text-muted: #738091;
-  --fd-border: #d3d8de;
-  --fd-border-strong: #a7b0ba;
-  --fd-accent: #2d72d2;
-  --fd-accent-hover: #215db0;
-  --fd-accent-soft: #e8f1fb;
-  --fd-success: #238551;
-  --fd-warning: #c87619;
-  --fd-danger: #c23030;
-  --fd-purple: #7961db;
+  --fd-canvas: var(--od-neutral-50);
+  --fd-surface: var(--od-neutral-0);
+  --fd-surface-raised: var(--od-neutral-0);
+  --fd-surface-subtle: #f1f3f4;
+  --fd-surface-muted: #e9ecee;
+  --fd-surface-selected: rgba(12, 28, 116, .08);
+  --fd-sidebar: var(--od-brand-ink);
+  --fd-sidebar-hover: #465860;
+  --fd-sidebar-active: #52656e;
+  --fd-text: var(--od-neutral-800);
+  --fd-text-secondary: var(--od-neutral-600);
+  --fd-text-muted: #718087;
+  --fd-border: var(--od-neutral-300);
+  --fd-border-strong: #aeb7ba;
+  --fd-accent: var(--od-brand-primary);
+  --fd-accent-hover: #142b9b;
+  --fd-accent-soft: rgba(12, 28, 116, .08);
+  --fd-success: var(--od-state-success);
+  --fd-warning: var(--od-state-warning);
+  --fd-danger: var(--od-state-danger);
+  --fd-purple: var(--od-series-5);
   --fd-radius-xs: 2px;
   --fd-radius-sm: 3px;
   --fd-radius-md: 4px;
@@ -68,7 +89,7 @@
   --fd-font-lg: var(--od-type-lg);
   --fd-font-title: var(--od-type-xl);
   --fd-shadow-popover: 0 6px 20px rgba(17, 20, 24, .18);
-  --fd-shadow-focus: 0 0 0 2px rgba(45, 114, 210, .24);
+  --fd-shadow-focus: 0 0 0 2px rgba(12, 28, 116, .22);
 
   /* Compatibility mapping while legacy feature CSS is migrated in slices. */
   --od-bg: var(--fd-canvas);
@@ -148,13 +169,13 @@
   --fd-text-muted: #8a9ba8;
   --fd-border: #394b59;
   --fd-border-strong: #5c7080;
-  --fd-accent: #48aff0;
-  --fd-accent-hover: #2d72d2;
-  --fd-accent-soft: #1f3b52;
-  --fd-success: #3dcc91;
-  --fd-warning: #f29d49;
-  --fd-danger: #ff7373;
-  --fd-purple: #a998e8;
+  --fd-accent: #7861db;
+  --fd-accent-hover: #927fe4;
+  --fd-accent-soft: rgba(120, 97, 219, .18);
+  --fd-success: var(--od-state-success);
+  --fd-warning: var(--od-state-warning);
+  --fd-danger: var(--od-state-danger);
+  --fd-purple: var(--od-series-5);
   --fd-shadow-popover: 0 8px 26px rgba(0, 0, 0, .5);
 }
 

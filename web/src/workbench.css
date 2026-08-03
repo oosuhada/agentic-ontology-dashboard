@@ -13,13 +13,13 @@
   --od-text-subtle: #8a9ba8;
   --od-border: #d8e1e8;
   --od-border-strong: #a7b6c2;
-  --od-accent: #2d72d2;
-  --od-accent-hover: #215db0;
-  --od-accent-soft: #e7f0fb;
-  --od-success: #0f9960;
-  --od-warning: #d9822b;
-  --od-danger: #c23030;
-  --od-purple: #7961db;
+  --od-accent: #0c1c74;
+  --od-accent-hover: #142b9b;
+  --od-accent-soft: rgba(12, 28, 116, .08);
+  --od-success: #29a634;
+  --od-warning: #d1970c;
+  --od-danger: #db0714;
+  --od-purple: #7861db;
   --od-shadow-sm: 0 1px 2px rgba(16, 22, 26, .08);
   --od-shadow-md: 0 4px 14px rgba(16, 22, 26, .11);
   --od-shadow-lg: 0 18px 48px rgba(16, 22, 26, .24);
@@ -45,13 +45,13 @@
   --od-text-subtle: #8a9ba8;
   --od-border: #394b59;
   --od-border-strong: #5c7080;
-  --od-accent: #48aff0;
-  --od-accent-hover: #2d72d2;
-  --od-accent-soft: #1f3b52;
-  --od-success: #3dcc91;
-  --od-warning: #f29d49;
-  --od-danger: #ff7373;
-  --od-purple: #a998e8;
+  --od-accent: #7861db;
+  --od-accent-hover: #927fe4;
+  --od-accent-soft: rgba(120, 97, 219, .18);
+  --od-success: #29a634;
+  --od-warning: #d1970c;
+  --od-danger: #db0714;
+  --od-purple: #7861db;
   --od-shadow-sm: 0 1px 2px rgba(0, 0, 0, .35);
   --od-shadow-md: 0 5px 16px rgba(0, 0, 0, .35);
   --od-shadow-lg: 0 22px 54px rgba(0, 0, 0, .52);
@@ -70,7 +70,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .od-product-shell.sidebar-collapsed { grid-template-columns: var(--od-sidebar-collapsed-width) minmax(0, 1fr); }
 .od-primary-sidebar { position: sticky; top: 0; z-index: 80; display: flex; flex-direction: column; height: 100vh; overflow: hidden; color: #f5f8fa; background: var(--od-sidebar); border-right: 1px solid rgba(255,255,255,.08); }
 .od-sidebar-brand { display: flex; align-items: center; gap: 9px; min-height: 56px; padding: 0 10px; border-bottom: 1px solid rgba(255,255,255,.1); }
-.od-sidebar-brand .brand-mark { display: grid; flex: 0 0 34px; width: 34px; height: 34px; place-items: center; border-radius: 7px; color: #fff; background: linear-gradient(145deg, #48aff0, #2d72d2); font-size: 11px; font-weight: 900; letter-spacing: .04em; box-shadow: 0 4px 12px rgba(45,114,210,.35); }
+.od-sidebar-brand .brand-mark { display: grid; flex: 0 0 34px; width: 34px; height: 34px; place-items: center; border-radius: 7px; color: #fff; background: linear-gradient(145deg, #0c1c74, #e64d2b); font-size: 11px; font-weight: 900; letter-spacing: .04em; box-shadow: 0 4px 12px rgba(12,28,116,.28); }
 .od-sidebar-brand > div { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .od-sidebar-brand strong { font-size: 12px; line-height: 1.2; }
 .od-sidebar-brand small { color: #a7b6c2; font-size: 9px; }

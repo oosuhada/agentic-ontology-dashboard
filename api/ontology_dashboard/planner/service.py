@@ -14,6 +14,7 @@ from ..llm import LLMProvider
 from ..ontology import OBJECT_TYPE_BY_ID
 from ..ontology_service import OntologyService
 from ..service import ManufacturingPredictiveMaintenanceService
+from ..visualizations import VISUALIZATION_REGISTRY
 from .models import (
     BoardRecommendationItem,
     BoardRecommendationRequest,
@@ -27,6 +28,8 @@ from .models import (
     ObjectQueryFilter,
     ObjectQueryIntent,
     ObjectQueryPlanResponse,
+    VisualizationPlannerResponse,
+    VisualizationRecommendationRequest,
 )
 
 STATUS_TERMS = {
@@ -415,6 +418,96 @@ class OntologyDashboardPlannerService:
             goal=request.goal,
             recommendations=recommendations,
             current_board_ids=current_ids,
+        )
+
+    @staticmethod
+    def _validate_visualization_candidates(request: VisualizationRecommendationRequest) -> None:
+        registry = {item.kind for item in VISUALIZATION_REGISTRY}
+        fields = {item.id for item in request.field_profile}
+        seen: set[str] = set()
+        for candidate in request.deterministic_candidates:
+            if candidate.kind not in registry:
+                raise ValueError(f"planner requested unregistered visualization: {candidate.kind}")
+            if candidate.kind in seen:
+                raise ValueError(f"duplicate visualization candidate: {candidate.kind}")
+            seen.add(candidate.kind)
+            mapped_fields = {
+                value
+                for value in candidate.field_mapping.model_dump().values()
+                if isinstance(value, str) and value
+            }
+            unknown = mapped_fields - fields
+            if unknown:
+                raise ValueError(f"visualization candidate references unknown fields: {sorted(unknown)}")
+
+    def visualization_recommendation(
+        self,
+        *,
+        principal: Principal,
+        request: VisualizationRecommendationRequest,
+    ) -> VisualizationPlannerResponse:
+        self._validate_visualization_candidates(request)
+        candidates = sorted(request.deterministic_candidates, key=lambda item: item.score, reverse=True)
+        selected_kind = candidates[0].kind
+        selected_rationale = candidates[0].rationale
+        mode = "deterministic"
+        provider = "none"
+        fallback_reason: str | None = None
+        if request.use_llm:
+            if self.provider is None:
+                mode = "deterministic_fallback"
+                fallback_reason = "planner_provider_unavailable"
+            else:
+                try:
+                    payload = self.provider.generate_json(
+                        (
+                            "Return JSON only with kind and rationale. Choose exactly one kind from candidates. "
+                            "Do not invent chart kinds, fields, aggregations, or query changes. The goal may only "
+                            "reorder deterministic candidates and clarify the rationale."
+                        ),
+                        {
+                            "goal": request.goal,
+                            "workspace_id": request.workspace_id,
+                            "dashboard_id": request.dashboard_id,
+                            "board_id": request.board_id,
+                            "field_profile": [item.model_dump(mode="json") for item in request.field_profile],
+                            "candidates": [item.model_dump(mode="json") for item in candidates],
+                        },
+                    )
+                    requested_kind = str(payload.get("kind") or "")
+                    selected = next((item for item in candidates if item.kind == requested_kind), None)
+                    if selected is None:
+                        raise ValueError("provider selected a visualization outside deterministic candidates")
+                    selected_kind = selected.kind
+                    selected_rationale = str(payload.get("rationale") or selected.rationale)[:500]
+                    mode = "llm"
+                    provider = self._provider_name(self.provider)
+                except Exception as exc:
+                    mode = "deterministic_fallback"
+                    provider = self._provider_name(self.provider)
+                    fallback_reason = type(exc).__name__
+        recommended = next(item for item in candidates if item.kind == selected_kind).model_copy(
+            update={"rationale": selected_rationale}
+        )
+        alternatives = [item for item in candidates if item.kind != selected_kind]
+        return VisualizationPlannerResponse(
+            mode=mode,
+            provider=provider,
+            fallback_reason=fallback_reason,
+            workspace_id=request.workspace_id,
+            dashboard_id=request.dashboard_id,
+            board_id=request.board_id,
+            goal=request.goal,
+            recommended=recommended,
+            alternatives=alternatives[:5],
+            validation={
+                "registry_whitelist": True,
+                "fields_exist": True,
+                "deterministic_candidates_only": True,
+                "workspace_scope_enforced_by_api": True,
+                "permission_enforced_by_api": True,
+                "query_rows_unchanged": True,
+            },
         )
 
     def dashboard_draft(

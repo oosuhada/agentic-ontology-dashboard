@@ -23,6 +23,8 @@ from .models import (
     ObjectQueryFilter,
     ObjectQueryIntent,
     ObjectQueryPlanResponse,
+    VisualizationPlannerResponse,
+    VisualizationRecommendationRequest,
 )
 
 
@@ -48,5 +50,7 @@ __all__ = [
     "ObjectQueryFilter",
     "ObjectQueryIntent",
     "ObjectQueryPlanResponse",
+    "VisualizationPlannerResponse",
+    "VisualizationRecommendationRequest",
     "OntologyDashboardPlannerService",
 ]

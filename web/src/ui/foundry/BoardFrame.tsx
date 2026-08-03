@@ -10,6 +10,7 @@ interface BoardFrameProps {
   fullscreen: boolean;
   favorite: boolean;
   resizeLabel?: string | null;
+  headerActions?: ReactNode;
   children: ReactNode;
   onSelect: () => void;
   onToggleHidden: () => void;
@@ -29,6 +30,7 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
   fullscreen,
   favorite,
   resizeLabel,
+  headerActions,
   children,
   onSelect,
   onToggleHidden,
@@ -82,6 +84,7 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
         </div>
         <div className="dashboard-board-actions fd-board-frame__actions">
           {affected ? <span className="affected-chip">필터 반영</span> : null}
+          {headerActions}
           <button
             type="button"
             className={`dashboard-board-favorite ${favorite ? "active" : ""}`}

@@ -5,7 +5,10 @@ export type BoardWidth = number;
 export type DashboardMode = "view" | "edit";
 export type VersionPolicy = "pinned" | "latest_published";
 export type SelectionOperator = "eq" | "in" | "gte" | "lte" | "between";
-export type RenderKind = "metric" | "bar" | "line" | "pie" | "histogram" | "table" | "ontology" | "activity";
+export type VisualizationKind = "metric" | "table" | "bar" | "stacked_bar" | "line" | "area" | "pie" | "histogram" | "scatter" | "heatmap";
+export type RenderKind = VisualizationKind | "ontology" | "activity";
+export type FieldSemanticType = "identifier" | "categorical" | "ordinal" | "quantitative" | "temporal" | "boolean" | "text" | "geo";
+export type VisualizationMode = "auto" | "manual";
 
 export interface SelectionFilter {
   id: string;
@@ -38,6 +41,77 @@ export interface RenderSpec {
   selectable?: boolean;
   brushable?: boolean;
   page_size?: number;
+  orientation?: "vertical" | "horizontal";
+  stack?: "off" | "normal" | "percent";
+  legend?: "auto" | "show" | "hide";
+  labels?: "auto" | "show" | "hide";
+  curve?: "straight" | "smooth" | "step";
+  color_strategy?: "categorical" | "semantic" | "single_accent";
+  pie_style?: "donut" | "pie";
+}
+
+export interface VisualizationFieldMapping {
+  x?: string;
+  y?: string;
+  value?: string;
+  series?: string;
+  row?: string;
+  column?: string;
+}
+
+export interface VisualizationSettings {
+  version: 1;
+  mode: VisualizationMode;
+  kind?: VisualizationKind;
+  field_mapping?: VisualizationFieldMapping;
+  aggregation?: RenderSpec["aggregation"];
+  orientation?: NonNullable<RenderSpec["orientation"]>;
+  stack?: NonNullable<RenderSpec["stack"]>;
+  legend?: NonNullable<RenderSpec["legend"]>;
+  labels?: NonNullable<RenderSpec["labels"]>;
+  curve?: NonNullable<RenderSpec["curve"]>;
+  color_strategy?: NonNullable<RenderSpec["color_strategy"]>;
+  pie_style?: NonNullable<RenderSpec["pie_style"]>;
+  recommendation_revision?: string;
+}
+
+export interface VisualizationFieldProfile {
+  id: string;
+  semantic_type: FieldSemanticType;
+  physical_type: "number" | "string" | "boolean" | "date" | "mixed" | "unknown";
+  null_ratio: number;
+  distinct_count: number;
+  cardinality_ratio: number;
+  min?: number | string;
+  max?: number | string;
+  sample_values: Array<string | number | boolean>;
+}
+
+export interface VisualizationCandidate {
+  kind: VisualizationKind;
+  score: number;
+  field_mapping: VisualizationFieldMapping;
+  reason_codes: string[];
+  rationale: string;
+}
+
+export interface VisualizationUnavailable {
+  kind: VisualizationKind;
+  reason: string;
+}
+
+export interface VisualizationRecommendation {
+  profile: VisualizationFieldProfile[];
+  profile_hash: string;
+  recommended: VisualizationCandidate;
+  alternatives: VisualizationCandidate[];
+  unavailable: VisualizationUnavailable[];
+}
+
+export interface BoardVisualizationRuntime {
+  recommendation: VisualizationRecommendation;
+  active_kind: VisualizationKind;
+  mode: VisualizationMode;
 }
 
 export interface BoardSourceReference {
