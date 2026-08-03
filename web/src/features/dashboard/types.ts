@@ -212,6 +212,27 @@ export interface ResolvedDashboard {
   merge_notices: string[];
 }
 
+export interface ReportDraftSection {
+  section_id: string;
+  title: string;
+  body: string;
+  evidence_field_ids: string[];
+}
+
+export interface ReportDraftRecord {
+  id: string;
+  organization_id: string;
+  project_id: string;
+  workspace_id: string;
+  event_id: string;
+  revision: number;
+  headline: string;
+  summary: string;
+  sections: ReportDraftSection[];
+  updated_by: string;
+  updated_at: string;
+}
+
 export interface SavedView {
   id: string;
   user_id: string;

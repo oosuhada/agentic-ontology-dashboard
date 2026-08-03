@@ -32,7 +32,8 @@ import { BoardCatalogPanel } from "../dashboard/BoardCatalogPanel";
 import { BoardInspector } from "../dashboard/BoardInspector";
 import { BoardRuntimeSurface } from "../dashboard/BoardRuntimeSurface";
 import { ContextPanel, type DashboardDataConnection } from "../dashboard/ContextPanel";
-import { DashboardShell } from "../dashboard/DashboardShell";
+import { DashboardShell, type WorkspaceView } from "../dashboard/DashboardShell";
+import type { DatasetCatalogItem } from "../datasets/types";
 import type {
   BoardCatalogDefinition,
   BoardCategory,
@@ -59,6 +60,8 @@ import { useEventDetail, useRoleWorkspace, useWorkspaceCatalog } from "./useManu
 import { useDashboardEditor } from "./useDashboardEditor";
 import { VisualizationSwitcher } from "../dashboard/visualization/VisualizationSwitcher";
 import { visualizationSettings } from "../dashboard/visualization/visualizationProfile";
+import { RoleReportWorkbench } from "../reports/RoleReportWorkbench";
+import { applyAdaptiveDashboardProfile, deriveAdaptiveExperience } from "./adaptiveExperience";
 
 const AnalysisWorkbench = lazy(() =>
   import("../dashboard/AnalysisWorkbench").then((module) => ({ default: module.AnalysisWorkbench })),
@@ -68,7 +71,7 @@ const DashboardBoardRenderer = lazy(() =>
 );
 
 interface ManufacturingAppProps {
-  initialWorkspaceView?: "dashboard" | "analysis";
+  initialWorkspaceView?: WorkspaceView;
   analysisId?: string;
 }
 
@@ -116,7 +119,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     ? authenticatedUser.active_project_roles
     : authenticatedUser.roles
   ).filter((role): role is AppRole => role in ROLE_LANDING);
-  const roleStorageKey = `ontology-dashboard:active-role:${authenticatedUser.active_project_id ?? "default"}`;
+  const roleStorageKey = `ontology-dashboard:active-role:${authenticatedUser.user_id}:${authenticatedUser.active_project_id ?? "default"}`;
   const [appRole, setAppRole] = useState<AppRole>(() => {
     const saved = window.localStorage.getItem(roleStorageKey) as AppRole | null;
     return saved && availableRoles.includes(saved) ? saved : primaryRole(availableRoles);
@@ -217,6 +220,20 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     externalConnection: false,
     error: null,
   });
+  const [datasetItems, setDatasetItems] = useState<DatasetCatalogItem[]>([]);
+  const selectedProject = projects.find((project) => project.id === selectedProjectId);
+  const selectedPack = domainPacks.find((pack) => pack.workspace_ids.includes(selectedWorkspaceId));
+  const adaptiveProfile = useMemo(
+    () => deriveAdaptiveExperience(selectedProjectId, selectedProject, selectedPack, datasetItems),
+    [datasetItems, selectedPack, selectedProject, selectedProjectId],
+  );
+  const workspaceViewStorageKey = `ontology-dashboard:workspace-view:${authenticatedUser.user_id}:${selectedProjectId || authenticatedUser.active_project_id || "default"}:${appRole}`;
+  const effectiveInitialWorkspaceView: WorkspaceView = initialWorkspaceView === "analysis"
+    ? "analysis"
+    : (() => {
+        const saved = window.localStorage.getItem(workspaceViewStorageKey) as WorkspaceView | null;
+        return saved && ["report", "dashboard", "analysis"].includes(saved) ? saved : roleConfig.defaultWorkspaceView;
+      })();
 
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [fullscreenBoardId, setFullscreenBoardId] = useState<string | null>(null);
@@ -231,6 +248,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
 
   const affectedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dashboardRequestSequence = useRef(0);
+  const autoSaveFingerprint = useRef("");
   const shareApplied = useRef(false);
   const shareToken = useMemo(() => new URLSearchParams(window.location.search).get("share"), []);
 
@@ -253,6 +271,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     })
       .then((page) => {
         if (cancelled) return;
+        setDatasetItems(page.items);
         const sourceTypes = [...new Set(page.items.map((item) => item.source_type))].sort();
         setDataConnection({
           loading: false,
@@ -266,6 +285,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       })
       .catch((reason: unknown) => {
         if (cancelled) return;
+        setDatasetItems([]);
         setDataConnection({
           loading: false,
           datasetCount: 0,
@@ -288,7 +308,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       const resolvedPromise = getResolvedDashboard(workspaceId);
       const catalogPromise = getBoardCatalog(workspaceId);
       const viewsPromise = getSavedViews(workspaceId);
-      const resolved = await resolvedPromise;
+      const resolved = applyAdaptiveDashboardProfile(await resolvedPromise, adaptiveProfile);
       if (requestId !== dashboardRequestSequence.current) return;
 
       let nextDraft = cloneDashboard(resolved);
@@ -354,7 +374,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     } finally {
       if (requestId === dashboardRequestSequence.current) setLoading(false);
     }
-  }, [appRole, authenticatedUser.user_id, shareToken]);
+  }, [adaptiveProfile, appRole, authenticatedUser.user_id, shareToken]);
 
   useEffect(() => {
     if (!selectedProjectId) return;
@@ -430,7 +450,6 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     [catalogItems],
   );
   const selectedDefinition = selectedBoard ? definitionById.get(selectedBoard.definition_id) ?? null : null;
-  const selectedPack = domainPacks.find((pack) => pack.workspace_ids.includes(selectedWorkspaceId));
   const pushDashboardHistory = useCallback((current: ResolvedDashboard) => {
     setUndoStack((stack) => [...stack, cloneDashboard(current)].slice(-DASHBOARD_HISTORY_LIMIT));
     setRedoStack([]);
@@ -785,7 +804,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     }
   }
 
-  async function handleSave() {
+  async function handleSave(silent = false) {
     if (!draftDashboard || !persistedDashboard) return;
     if (draftDashboard.role_code !== appRole) {
       setError("다른 역할의 template preview는 개인 설정으로 저장할 수 없습니다. Template 게시를 사용하세요.");
@@ -807,13 +826,29 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       setUndoStack([]);
       setRedoStack([]);
       setDirty(false);
-      setNotice("개인 Dashboard 설정을 저장했습니다. 다음 로그인에서도 복원됩니다.");
+      if (!silent) setNotice("개인 Dashboard 설정을 저장했습니다. 다음 로그인에서도 복원됩니다.");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Dashboard 설정을 저장하지 못했습니다.");
     } finally {
       setSaving(false);
     }
   }
+
+  useEffect(() => {
+    if (!dirty || !draftDashboard || !persistedDashboard || saving) return;
+    if (draftDashboard.role_code !== appRole) return;
+    const fingerprint = JSON.stringify({
+      active_tab_id: draftDashboard.active_tab_id,
+      tabs: draftDashboard.tabs,
+      parameter_state: draftDashboard.parameter_state,
+    });
+    if (autoSaveFingerprint.current === fingerprint) return;
+    const timer = window.setTimeout(() => {
+      autoSaveFingerprint.current = fingerprint;
+      void handleSave(true);
+    }, 1400);
+    return () => window.clearTimeout(timer);
+  }, [appRole, dirty, draftDashboard, persistedDashboard, saving, selectedWorkspaceId]);
 
   async function handleRestore() {
     if (!draftDashboard) return;
@@ -1208,6 +1243,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       workspaces={workspaces}
       selectedWorkspaceId={selectedWorkspaceId}
       domainPack={selectedPack}
+      adaptiveProfile={adaptiveProfile}
       tabs={draftDashboard?.tabs ?? []}
       activeTabId={draftDashboard?.active_tab_id ?? ""}
       templateVersion={draftDashboard?.template_version ?? 0}
@@ -1226,6 +1262,21 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       activeRole={appRole}
       contextPanel={contextPanel}
       boardCanvas={boardCanvas}
+      reportWorkbench={(openDashboard) => (
+        <RoleReportWorkbench
+          workspaceId={selectedWorkspaceId}
+          roleLabel={roleConfig.label}
+          projectName={selectedProject?.display_name ?? selectedProjectId}
+          profile={adaptiveProfile}
+          report={report}
+          evidence={evidence}
+          events={events}
+          selectedEventId={selectedEventId}
+          canEdit={roleConfig.reportMode === "editor" && hasNotePermission}
+          onSelectEvent={(eventId) => handleSelectEvent("role-report", eventId)}
+          onOpenDashboard={openDashboard}
+        />
+      )}
       inspector={inspector}
       catalog={catalog}
       draftRecovery={draftRecovery}
@@ -1246,8 +1297,9 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
           />
         </Suspense>
       )}
-      initialWorkspaceView={initialWorkspaceView}
+      initialWorkspaceView={effectiveInitialWorkspaceView}
       onWorkspaceViewChange={(view) => {
+        window.localStorage.setItem(workspaceViewStorageKey, view);
         const target = view === "analysis"
           ? analysisPath(analysisId)
           : selectedProjectId
@@ -1279,7 +1331,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
         setCatalogOpen(true);
       }}
       onAddTab={handleAddTab}
-      onSave={() => void handleSave()}
+      onSave={() => void handleSave(false)}
       onRestore={() => void handleRestore()}
       onSaveView={() => void handleSaveView()}
       onShare={() => void handleShare()}

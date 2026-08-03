@@ -35,6 +35,8 @@ import type {
   DashboardSharePayload,
   DashboardTab,
   DashboardTemplateVersion,
+  ReportDraftRecord,
+  ReportDraftSection,
   ResolvedDashboard,
   SavedView,
   SelectionFilter,
@@ -734,6 +736,25 @@ export function restoreDashboardDefaults(workspaceId: string): Promise<ResolvedD
   return request<ResolvedDashboard>("/api/dashboards/preferences/restore", {
     method: "POST",
     body: JSON.stringify({ workspace_id: workspaceId }),
+  });
+}
+
+export async function getReportDraft(workspaceId: string, eventId: string): Promise<ReportDraftRecord | null> {
+  const payload = await request<{ draft: ReportDraftRecord | null }>(`/api/reports/draft?workspace_id=${encodeURIComponent(workspaceId)}&event_id=${encodeURIComponent(eventId)}`);
+  return payload.draft;
+}
+
+export function saveReportDraft(input: {
+  workspace_id: string;
+  event_id: string;
+  base_revision: number;
+  headline: string;
+  summary: string;
+  sections: ReportDraftSection[];
+}): Promise<ReportDraftRecord> {
+  return request<ReportDraftRecord>("/api/reports/draft", {
+    method: "PUT",
+    body: JSON.stringify(input),
   });
 }
 

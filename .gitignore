@@ -73,7 +73,7 @@ evaluation/results/*
 !evaluation/results/README.md
 
 # Generated reports
-reports/
+/reports/
 artifacts/
 
 # Docker/local overrides

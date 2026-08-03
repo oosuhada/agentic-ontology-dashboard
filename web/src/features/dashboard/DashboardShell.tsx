@@ -8,6 +8,7 @@ import {
   Database,
   Download,
   Eye,
+  FileText,
   Home,
   LayoutDashboard,
   Menu,
@@ -42,8 +43,9 @@ import { FoundryDialog } from "../../ui/foundry/FoundryDialog";
 import { agentPath, datasetCatalogPath, governancePath, navigate, ontologyPath, projectHomePath } from "../../routing";
 import type { AppRole, AuthUser, DomainPack, Project, Workspace } from "../../types";
 import type { DashboardMode, DashboardTab } from "./types";
+import type { AdaptiveExperienceProfile } from "../manufacturing/adaptiveExperience";
 
-export type WorkspaceView = "dashboard" | "analysis";
+export type WorkspaceView = "report" | "dashboard" | "analysis";
 
 interface DashboardShellProps {
   user: AuthUser;
@@ -56,6 +58,7 @@ interface DashboardShellProps {
   workspaces: Workspace[];
   selectedWorkspaceId: string;
   domainPack: DomainPack | undefined;
+  adaptiveProfile: AdaptiveExperienceProfile;
   tabs: DashboardTab[];
   activeTabId: string;
   templateVersion: number;
@@ -74,6 +77,7 @@ interface DashboardShellProps {
   activeRole: AppRole;
   contextPanel: ReactNode;
   boardCanvas: ReactNode;
+  reportWorkbench: (onOpenDashboard: () => void) => ReactNode;
   inspector: ReactNode;
   catalog: ReactNode;
   analysisWorkbench: ReactNode;
@@ -129,6 +133,7 @@ const TEMPLATE_ROLES: AppRole[] = [
 
 const NAV_ITEMS = [
   { id: "home", label: "Project Home", icon: Home, enabled: true },
+  { id: "report", label: "Reports", icon: FileText, enabled: true },
   { id: "dashboard", label: "Dashboards", icon: LayoutDashboard, enabled: true },
   { id: "analysis", label: "Analysis", icon: Workflow, enabled: true },
   { id: "agent", label: "Agent", icon: Bot, enabled: true },
@@ -153,6 +158,7 @@ export function DashboardShell({
   workspaces,
   selectedWorkspaceId,
   domainPack,
+  adaptiveProfile,
   tabs,
   activeTabId,
   templateVersion,
@@ -171,6 +177,7 @@ export function DashboardShell({
   activeRole,
   contextPanel,
   boardCanvas,
+  reportWorkbench,
   inspector,
   catalog,
   analysisWorkbench,
@@ -220,6 +227,10 @@ export function DashboardShell({
   const activeTab = useMemo(() => tabs.find((tab) => tab.id === activeTabId), [activeTabId, tabs]);
 
   useEffect(() => {
+    setWorkspaceView(initialWorkspaceView);
+  }, [initialWorkspaceView]);
+
+  useEffect(() => {
     document.documentElement.dataset.theme = theme;
     window.localStorage.setItem("ontology-dashboard-theme", theme);
   }, [theme]);
@@ -266,7 +277,7 @@ export function DashboardShell({
       navigate(projectHomePath(selectedProjectId));
       return;
     }
-    if (itemId === "dashboard" || itemId === "analysis") {
+    if (itemId === "report" || itemId === "dashboard" || itemId === "analysis") {
       openWorkspace(itemId);
       return;
     }
@@ -289,7 +300,7 @@ export function DashboardShell({
   }
 
   return (
-    <div className={`ontology-dashboard-shell od-product-shell mode-${mode} role-${user.landing_key} density-${preferences.density} workspace-${workspaceView} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+    <div data-adaptive-profile={adaptiveProfile.id} className={`ontology-dashboard-shell od-product-shell mode-${mode} role-${user.landing_key} density-${preferences.density} workspace-${workspaceView} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <FoundryProductNavigation
         items={NAV_ITEMS}
         activeId={workspaceView}
@@ -313,7 +324,7 @@ export function DashboardShell({
           <div className="od-breadcrumbs">
             <span>{selectedProject?.display_name ?? "Project"}</span><ChevronRight size={12} />
             <span>{selectedWorkspace?.display_name ?? "Workspace"}</span><ChevronRight size={12} />
-            <strong>{workspaceView === "dashboard" ? activeTab?.title ?? "Dashboard" : "Analysis Path"}</strong>
+            <strong>{workspaceView === "report" ? "Operational Report" : workspaceView === "dashboard" ? activeTab?.title ?? "Dashboard" : "Analysis Path"}</strong>
           </div>
           <button type="button" className="od-global-search" onClick={() => setCommandOpen(true)}><Search size={14} /><span>{t("nav.search")}</span><kbd>⌘K</kbd></button>
           <div className="od-topbar-actions">
@@ -328,12 +339,14 @@ export function DashboardShell({
           className="od-context-header fd-dashboard-resource-header"
           title={<div className="od-context-title">
             <EntityTitle
-              icon={workspaceView === "dashboard" ? LayoutDashboard : Workflow}
-              eyebrow={workspaceView === "dashboard" ? `DASHBOARD · ${roleEyebrow}` : "ANALYSIS · GOVERNED PATH"}
-              title={workspaceView === "dashboard" ? activeTab?.title ?? `${roleLabel} Operations` : "Risk Event Analysis Path"}
-              subtitle={workspaceView === "dashboard"
-                ? `${selectedProject?.display_name ?? "Project"} / ${selectedWorkspace?.display_name ?? "Workspace"} · ${roleLabel}`
-                : `${selectedWorkspace?.display_name ?? "Workspace"} · Object set → transform → validate → publish`}
+              icon={workspaceView === "report" ? FileText : workspaceView === "dashboard" ? LayoutDashboard : Workflow}
+              eyebrow={workspaceView === "report" ? `REPORT · ${roleEyebrow}` : workspaceView === "dashboard" ? `DASHBOARD · ${roleEyebrow}` : "ANALYSIS · GOVERNED PATH"}
+              title={workspaceView === "report" ? `${roleLabel} Operational Briefing` : workspaceView === "dashboard" ? activeTab?.title ?? `${roleLabel} Operations` : "Risk Event Analysis Path"}
+              subtitle={workspaceView === "report"
+                ? `${adaptiveProfile.label} · narrative and governed evidence`
+                : workspaceView === "dashboard"
+                  ? `${selectedProject?.display_name ?? "Project"} / ${selectedWorkspace?.display_name ?? "Workspace"} · ${roleLabel}`
+                  : `${selectedWorkspace?.display_name ?? "Workspace"} · Object set → transform → validate → publish`}
               trailing={<div className="fd-entity-title__trailing"><span className="od-domain-pack-name">{domainPack?.display_name ?? "Manufacturing Operations"}</span><StatusPill intent={dirty ? "warning" : "success"}>{dirty ? t("common.unsaved") : t("common.saved")}</StatusPill></div>}
             />
           </div>}
@@ -349,9 +362,14 @@ export function DashboardShell({
 
         {draftRecovery}
 
+        <section className={`adaptive-profile-strip profile-${adaptiveProfile.id}`}>
+          <div><span>{adaptiveProfile.eyebrow}</span><strong>{adaptiveProfile.label}</strong><small>{adaptiveProfile.description}</small></div>
+          <div><span>Primary entity<strong>{adaptiveProfile.primaryEntity}</strong></span><span>Primary metric<strong>{adaptiveProfile.primaryMetric}</strong></span><span>Composition<strong>{adaptiveProfile.visualLanguage}</strong></span></div>
+        </section>
+
         <section className="od-status-strip">
           <div className="role-focus-list">{roleFocus.map((item) => <span key={item}>{item}</span>)}</div>
-          <div className="od-runtime-meta"><span>Template v{templateVersion}</span><span>Revision {preferenceRevision}</span>{layoutMode ? <span className={`mode-badge ${layoutMode.includes("fallback") ? "fallback" : ""}`}>{layoutMode}</span> : null}</div>
+          <div className="od-runtime-meta"><span>Template v{templateVersion}</span><span>Revision {preferenceRevision}</span><span className={preferenceRevision > 0 ? "personalized" : "role-default"}>{saving ? "Saving personal layout" : preferenceRevision > 0 ? "Personalized for this user" : "Role default"}</span>{layoutMode ? <span className={`mode-badge ${layoutMode.includes("fallback") ? "fallback" : ""}`}>{layoutMode}</span> : null}</div>
         </section>
 
         {workspaceView === "dashboard" ? (
@@ -416,7 +434,7 @@ export function DashboardShell({
         {error ? <div className="error-panel dashboard-error" role="alert"><strong>{t("dashboard.error")}</strong><p>{error}</p><button onClick={onRetry}>{t("common.retry")}</button></div> : null}
 
         <main className="od-workbench-main">
-          {workspaceView === "dashboard" ? (
+          {workspaceView === "report" ? <div className="report-workspace-region">{reportWorkbench(() => openWorkspace("dashboard"))}</div> : workspaceView === "dashboard" ? (
             <div className={`dashboard-workspace-layout ${mode === "edit" ? "with-inspector" : ""}`}>
               <aside className="dashboard-context-rail">
                 {isCompactWorkbench
@@ -455,8 +473,9 @@ export function DashboardShell({
             <header><div><span className="section-label">COMMAND PALETTE</span><strong>{t("dashboard.commandTitle")}</strong></div><kbd>ESC</kbd></header>
             <div className="command-search"><Search size={15} /><input data-dialog-initial-focus placeholder={t("dashboard.command")} /></div>
             <div className="command-group"><span>Workspace</span>
-              <button type="button" onClick={() => runCommand(() => openWorkspace("dashboard"))}><b><LayoutDashboard size={14} /></b><div><strong>{t("dashboard.openDashboard")}</strong><small>역할별 운영 canvas</small></div><kbd>1</kbd></button>
-              <button type="button" onClick={() => runCommand(() => openWorkspace("analysis"))}><b><Workflow size={14} /></b><div><strong>{t("dashboard.openAnalysis")}</strong><small>변형·검증·dataset snapshot</small></div><kbd>2</kbd></button>
+              <button type="button" onClick={() => runCommand(() => openWorkspace("report"))}><b><FileText size={14} /></b><div><strong>Open role report</strong><small>설명과 근거 시각화가 연결된 업무 보고서</small></div><kbd>1</kbd></button>
+              <button type="button" onClick={() => runCommand(() => openWorkspace("dashboard"))}><b><LayoutDashboard size={14} /></b><div><strong>{t("dashboard.openDashboard")}</strong><small>역할별 운영 canvas</small></div><kbd>2</kbd></button>
+              <button type="button" onClick={() => runCommand(() => openWorkspace("analysis"))}><b><Workflow size={14} /></b><div><strong>{t("dashboard.openAnalysis")}</strong><small>변형·검증·dataset snapshot</small></div><kbd>3</kbd></button>
             </div>
             <div className="command-group"><span>Dashboard actions</span>
               <button type="button" onClick={() => runCommand(() => { openWorkspace("dashboard"); onModeChange("edit"); })}><b><Blocks size={14} /></b><div><strong>{t("dashboard.editCanvas")}</strong><small>Board 이동, 복제, 크기 조정</small></div></button>

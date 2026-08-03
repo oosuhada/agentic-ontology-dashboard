@@ -17,6 +17,8 @@ from .dashboard_models import (
     DashboardBoardQueryRequest,
     DashboardCatalogResponse,
     DashboardPreferenceSaveRequest,
+    ReportDraftRecord,
+    ReportDraftSaveRequest,
     DashboardShareCreateRequest,
     DashboardShareCreated,
     DashboardSharePayload,
@@ -74,6 +76,34 @@ class DashboardService:
             template=template,
             preference=preference,
         )
+
+    def get_report_draft(self, *, workspace_id: str, event_id: str) -> ReportDraftRecord | None:
+        payload = self.repository.get_report_draft(workspace_id=workspace_id, event_id=event_id)
+        return ReportDraftRecord.model_validate(payload) if payload is not None else None
+
+    def save_report_draft(
+        self,
+        *,
+        principal: Principal,
+        request: ReportDraftSaveRequest,
+    ) -> ReportDraftRecord:
+        try:
+            payload = self.repository.save_report_draft(
+                workspace_id=request.workspace_id,
+                event_id=request.event_id,
+                base_revision=request.base_revision,
+                headline=request.headline,
+                summary=request.summary,
+                sections=[section.model_dump(mode="json") for section in request.sections],
+                updated_by=principal.user_id,
+            )
+        except DashboardPreferenceConflict as exc:
+            raise AuthError(
+                409,
+                "report_revision_conflict",
+                "다른 사용자가 보고서를 수정했습니다. 최신 revision을 다시 불러오세요.",
+            ) from exc
+        return ReportDraftRecord.model_validate(payload)
 
     def query_board(
         self,

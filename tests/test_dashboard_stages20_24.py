@@ -113,6 +113,60 @@ def test_role_templates_versions_preview_and_dependency_graph(client: TestClient
     assert "manager-decision" not in engineer_board_ids
 
 
+def test_shared_report_draft_is_editable_by_practitioner_and_readable_by_manager(client: TestClient) -> None:
+    login(client, "engineer@ontology.local", "Engineer!2026")
+    empty = client.get(
+        "/api/reports/draft",
+        params={"workspace_id": WORKSPACE, "event_id": "EVT-001"},
+    )
+    assert empty.status_code == 200
+    assert empty.json()["draft"] is None
+
+    saved = client.put(
+        "/api/reports/draft",
+        headers=csrf_headers(client),
+        json={
+            "workspace_id": WORKSPACE,
+            "event_id": "EVT-001",
+            "base_revision": 0,
+            "headline": "Line A inspection report",
+            "summary": "Engineer-reviewed operational summary.",
+            "sections": [
+                {
+                    "section_id": "finding",
+                    "title": "Primary finding",
+                    "body": "Tool wear and torque jointly explain the current risk.",
+                    "evidence_field_ids": ["tool_wear_min", "torque_nm"],
+                }
+            ],
+        },
+    )
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["revision"] == 1
+    assert saved.json()["updated_by"]
+
+    login(client, "manager@ontology.local", "Manager!2026")
+    shared = client.get(
+        "/api/reports/draft",
+        params={"workspace_id": WORKSPACE, "event_id": "EVT-001"},
+    )
+    assert shared.status_code == 200
+    assert shared.json()["draft"]["headline"] == "Line A inspection report"
+    denied = client.put(
+        "/api/reports/draft",
+        headers=csrf_headers(client),
+        json={
+            "workspace_id": WORKSPACE,
+            "event_id": "EVT-001",
+            "base_revision": 1,
+            "headline": "Manager overwrite",
+            "summary": "Not permitted.",
+            "sections": [{"section_id": "x", "title": "x", "body": "x", "evidence_field_ids": []}],
+        },
+    )
+    assert denied.status_code == 403
+
+
 def test_personalization_persists_is_isolated_and_restores_defaults(client: TestClient) -> None:
     login(client, "manager@ontology.local", "Manager!2026")
     original = resolved(client)
@@ -172,6 +226,53 @@ def test_personalization_persists_is_isolated_and_restores_defaults(client: Test
     assert reset.status_code == 200
     assert reset.json()["preference_revision"] == 0
     assert [tab["title"] for tab in reset.json()["tabs"]] == ["운영 판단", "근거와 후속"]
+
+
+def test_personalization_is_isolated_between_two_users_with_the_same_role(client: TestClient) -> None:
+    login(client, "engineer@ontology.local", "Engineer!2026")
+    first = resolved(client)
+    first["parameter_state"]["status_filter"] = "critical"
+    first["tabs"][0]["boards"][0]["title"] = "박지민 개인 위험 화면"
+    saved = save_dashboard(client, first)
+    assert saved["preference_revision"] == 1
+
+    client.post("/api/auth/logout", headers=csrf_headers(client))
+    registration = client.post(
+        "/api/auth/register",
+        json={
+            "display_name": "두 번째 엔지니어",
+            "email": "second.engineer@example.com",
+            "password": "SecondEngineer!2026",
+            "organization_name": "Ontology Demo Organization",
+            "terms_accepted": True,
+        },
+    )
+    assert registration.status_code == 201
+    login(client, "admin@ontology.local", "OntologyAdmin!2026")
+    users = client.get("/api/admin/users")
+    assert users.status_code == 200
+    second = next(item for item in users.json()["items"] if item["email"] == "second.engineer@example.com")
+    approval = client.patch(
+        f"/api/admin/users/{second['id']}",
+        headers=csrf_headers(client),
+        json={
+            "status": "active",
+            "roles": ["process_engineer"],
+            "workspace_scopes": [WORKSPACE],
+        },
+    )
+    assert approval.status_code == 200, approval.text
+
+    login(client, "second.engineer@example.com", "SecondEngineer!2026")
+    second_dashboard = resolved(client)
+    assert second_dashboard["role_code"] == "process_engineer"
+    assert second_dashboard["preference_revision"] == 0
+    assert second_dashboard["parameter_state"]["status_filter"] != "critical"
+    assert not any(
+        board["title"] == "박지민 개인 위험 화면"
+        for tab in second_dashboard["tabs"]
+        for board in tab["boards"]
+    )
 
 
 def test_mandatory_board_cannot_be_removed_or_hidden(client: TestClient) -> None:

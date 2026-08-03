@@ -137,6 +137,36 @@ class DashboardPreferenceRestoreRequest(StrictModel):
     workspace_id: str
 
 
+class ReportDraftSection(StrictModel):
+    section_id: str = Field(min_length=1, max_length=160)
+    title: str = Field(min_length=1, max_length=160)
+    body: str = Field(min_length=1, max_length=12000)
+    evidence_field_ids: list[str] = Field(default_factory=list)
+
+
+class ReportDraftSaveRequest(StrictModel):
+    workspace_id: str
+    event_id: str = Field(min_length=1, max_length=160)
+    base_revision: int = Field(default=0, ge=0)
+    headline: str = Field(min_length=1, max_length=240)
+    summary: str = Field(min_length=1, max_length=12000)
+    sections: list[ReportDraftSection]
+
+
+class ReportDraftRecord(StrictModel):
+    id: str
+    organization_id: str
+    project_id: str
+    workspace_id: str
+    event_id: str
+    revision: int
+    headline: str
+    summary: str
+    sections: list[ReportDraftSection]
+    updated_by: str
+    updated_at: str
+
+
 class DashboardSelectionFilter(StrictModel):
     id: str
     source_board_id: str

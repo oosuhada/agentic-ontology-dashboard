@@ -91,6 +91,7 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  padding-top: 33px;
 }
 
 .fd-platform-rail button,
@@ -206,7 +207,8 @@
 
 .fd-resource-navigation .od-primary-nav button {
   display: grid;
-  min-height: 28px;
+  min-height: 30px;
+  height: 30px;
   grid-template-columns: 20px minmax(0,1fr) auto;
   align-items: center;
   gap: 5px;

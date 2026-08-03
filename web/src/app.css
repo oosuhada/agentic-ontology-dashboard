@@ -17,6 +17,7 @@
 @import "./features/analysis/analysis-quiver.css" layer(features);
 @import "./features/ontology/object-explorer-detail.css" layer(features);
 @import "./features/ontology/object-selection.css" layer(features);
+@import "./features/reports/role-report.css" layer(features);
 @import "./features/reference/reference-gallery.css" layer(features);
 @import "./features/auth/auth-control-plane.css" layer(features);
 @import "./features/admin/admin-control-plane.css" layer(features);

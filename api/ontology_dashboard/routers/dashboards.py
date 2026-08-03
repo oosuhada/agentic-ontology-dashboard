@@ -10,6 +10,7 @@ from ..dashboard_models import (
     DashboardPreferenceSaveRequest,
     DashboardShareCreateRequest,
     DashboardTemplatePublishRequest,
+    ReportDraftSaveRequest,
     SavedViewCreateRequest,
 )
 from ..dashboard_service import DashboardService
@@ -30,6 +31,31 @@ from ..role_workflow_service import RoleWorkflowService
 from ..service import ManufacturingPredictiveMaintenanceService
 
 router = APIRouter(tags=["dashboards"])
+
+
+@router.get("/api/reports/draft")
+def get_report_draft(
+    workspace_id: str,
+    event_id: str,
+    principal: Principal = Depends(require_permission("events.read")),
+    identity: IdentityService = Depends(get_identity_service),
+    dashboards: DashboardService = Depends(get_dashboard_service),
+):
+    identity.require_workspace(principal, workspace_id)
+    draft = dashboards.get_report_draft(workspace_id=workspace_id, event_id=event_id)
+    return {"draft": draft.model_dump(mode="json") if draft is not None else None}
+
+
+@router.put("/api/reports/draft")
+def save_report_draft(
+    request: ReportDraftSaveRequest,
+    principal: Principal = Depends(require_permission("events.note")),
+    _: None = Depends(require_csrf),
+    identity: IdentityService = Depends(get_identity_service),
+    dashboards: DashboardService = Depends(get_dashboard_service),
+):
+    identity.require_workspace(principal, request.workspace_id)
+    return dashboards.save_report_draft(principal=principal, request=request).model_dump(mode="json")
 
 
 def require_template_role_context(principal: Principal, role_code: str) -> None:

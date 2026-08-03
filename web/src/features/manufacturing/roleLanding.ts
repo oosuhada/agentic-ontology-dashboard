@@ -7,6 +7,8 @@ export interface RoleLanding {
   legacyRole: Role;
   defaultIntent: Intent;
   focus: string[];
+  defaultWorkspaceView: "report" | "dashboard";
+  reportMode: "reader" | "editor";
 }
 
 export const ROLE_LANDING: Record<AppRole, RoleLanding> = {
@@ -17,6 +19,8 @@ export const ROLE_LANDING: Record<AppRole, RoleLanding> = {
     legacyRole: "manager",
     defaultIntent: "overview",
     focus: ["조직 운영", "권한 오류", "감사 상태"],
+    defaultWorkspaceView: "dashboard",
+    reportMode: "reader",
   },
   executive_viewer: {
     label: "임원 Viewer",
@@ -25,6 +29,8 @@ export const ROLE_LANDING: Record<AppRole, RoleLanding> = {
     legacyRole: "manager",
     defaultIntent: "overview",
     focus: ["전체 위험", "운영 영향", "대응 상태"],
+    defaultWorkspaceView: "report",
+    reportMode: "reader",
   },
   process_manager: {
     label: "운영 매니저",
@@ -33,6 +39,8 @@ export const ROLE_LANDING: Record<AppRole, RoleLanding> = {
     legacyRole: "manager",
     defaultIntent: "overview",
     focus: ["우선순위", "담당 배정", "기한·에스컬레이션"],
+    defaultWorkspaceView: "report",
+    reportMode: "reader",
   },
   process_engineer: {
     label: "도메인 엔지니어",
@@ -41,6 +49,8 @@ export const ROLE_LANDING: Record<AppRole, RoleLanding> = {
     legacyRole: "engineer",
     defaultIntent: "detail-engineer",
     focus: ["관측 추세", "근거 검토", "점검 계획"],
+    defaultWorkspaceView: "dashboard",
+    reportMode: "editor",
   },
   maintenance_technician: {
     label: "현장 작업자",
@@ -49,6 +59,8 @@ export const ROLE_LANDING: Record<AppRole, RoleLanding> = {
     legacyRole: "engineer",
     defaultIntent: "recommend-check",
     focus: ["안전", "체크리스트", "현장 기록"],
+    defaultWorkspaceView: "dashboard",
+    reportMode: "editor",
   },
   quality_auditor: {
     label: "품질·감사 Viewer",
@@ -57,6 +69,8 @@ export const ROLE_LANDING: Record<AppRole, RoleLanding> = {
     legacyRole: "manager",
     defaultIntent: "show-model-details",
     focus: ["Evidence", "Lineage", "행동 이력"],
+    defaultWorkspaceView: "report",
+    reportMode: "reader",
   },
   ml_validator: {
     label: "데이터 사이언티스트",
@@ -65,6 +79,8 @@ export const ROLE_LANDING: Record<AppRole, RoleLanding> = {
     legacyRole: "engineer",
     defaultIntent: "show-model-details",
     focus: ["모델 버전", "데이터 품질", "오류 분석"],
+    defaultWorkspaceView: "dashboard",
+    reportMode: "editor",
   },
   fde: {
     label: "Forward Deployed Engineer",
@@ -73,6 +89,8 @@ export const ROLE_LANDING: Record<AppRole, RoleLanding> = {
     legacyRole: "engineer",
     defaultIntent: "explain-risk",
     focus: ["Ontology binding", "Integration", "Role preview"],
+    defaultWorkspaceView: "dashboard",
+    reportMode: "editor",
   },
 };
 
