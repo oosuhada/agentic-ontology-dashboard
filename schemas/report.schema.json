@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://factory-signal-board.local/schemas/report.schema.json",
+  "$id": "https://ontology-dashboard.local/schemas/report.schema.json",
   "title": "Role-aware grounded report",
   "type": "object",
   "additionalProperties": false,

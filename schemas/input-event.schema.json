@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://factory-signal-board.local/schemas/input-event.schema.json",
-  "title": "Factory Signal Board Gold Input Event",
+  "$id": "https://ontology-dashboard.local/schemas/input-event.schema.json",
+  "title": "Ontology Dashboard Manufacturing Gold Input Event",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "scenario_id", "event_id", "equipment", "observation", "history", "runtime", "expected"],

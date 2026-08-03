@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/export.schema.json",
+  "title": "Ontology Dashboard Export Contracts",
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace_id", "format", "scope"],
+      "properties": {
+        "workspace_id": { "type": "string", "minLength": 1 },
+        "format": { "enum": ["json", "csv", "pdf"] },
+        "scope": { "enum": ["dashboard", "event", "role_workspace"] },
+        "event_id": { "type": ["string", "null"] },
+        "title": { "type": ["string", "null"], "maxLength": 160 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "scope": { "const": "event" } }, "required": ["scope"] },
+          "then": { "required": ["event_id"], "properties": { "event_id": { "type": "string", "minLength": 1 } } },
+          "else": { "properties": { "event_id": { "type": "null" } } }
+        }
+      ]
+    },
+    "checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "organization_id", "project_id", "workspace_id", "scope", "format", "event_id", "filename", "media_type", "content_bytes", "snapshot_hash", "content_hash", "requested_by", "requested_by_name", "created_at"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "organization_id": { "type": "string", "minLength": 1 },
+        "project_id": { "type": "string", "minLength": 1 },
+        "workspace_id": { "type": "string", "minLength": 1 },
+        "scope": { "enum": ["dashboard", "event", "role_workspace"] },
+        "format": { "enum": ["json", "csv", "pdf"] },
+        "event_id": { "type": ["string", "null"] },
+        "filename": { "type": "string", "minLength": 1 },
+        "media_type": { "type": "string", "minLength": 1 },
+        "content_bytes": { "type": "integer", "minimum": 1 },
+        "snapshot_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "content_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "requested_by": { "type": "string", "minLength": 1 },
+        "requested_by_name": { "type": "string", "minLength": 1 },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "checkpointList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": {
+        "items": { "type": "array", "items": { "$ref": "#/$defs/checkpoint" } }
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["export_schema_version", "organization_id", "project_id", "workspace_id", "scope", "event_id", "requested_by", "generated_at", "content"],
+      "properties": {
+        "export_schema_version": { "const": "1.0" },
+        "organization_id": { "type": "string", "minLength": 1 },
+        "project_id": { "type": "string", "minLength": 1 },
+        "workspace_id": { "type": "string" },
+        "scope": { "enum": ["dashboard", "event", "role_workspace"] },
+        "event_id": { "type": ["string", "null"] },
+        "requested_by": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["user_id", "display_name", "roles"],
+          "properties": {
+            "user_id": { "type": "string" },
+            "display_name": { "type": "string" },
+            "roles": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "content": { "type": "object" }
+      }
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/checkpoint" },
+    { "$ref": "#/$defs/checkpointList" },
+    { "$ref": "#/$defs/snapshot" }
+  ]
+}

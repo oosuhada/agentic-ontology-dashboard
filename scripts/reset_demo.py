@@ -15,7 +15,12 @@ def project_root() -> Path:
 
 
 def resolve_database(value: str | None) -> Path:
-    configured = value or os.getenv("FACTORY_SIGNAL_DB") or "data/local/factory_signal_board.db"
+    configured = (
+        value
+        or os.getenv("ONTOLOGY_DASHBOARD_DB")
+        or os.getenv("FACTORY_SIGNAL_DB")
+        or "data/local/ontology_dashboard.db"
+    )
     path = Path(configured).expanduser()
     return path if path.is_absolute() else project_root() / path
 
@@ -26,7 +31,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--database",
-        help="SQLite database path. Defaults to FACTORY_SIGNAL_DB or data/local/factory_signal_board.db.",
+        help="SQLite database path. Defaults to ONTOLOGY_DASHBOARD_DB or data/local/ontology_dashboard.db.",
     )
     parser.add_argument(
         "--yes",
