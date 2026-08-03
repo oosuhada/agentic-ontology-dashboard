@@ -103,7 +103,7 @@ export function VisualizationSwitcher({ runtime, settings, onChange, compact = f
       >
         <VisualizationKindMark kind={activeKind} variant="icon" />
         {compact ? <span className="visualization-switcher-mode" aria-hidden="true">{settings.mode === "manual" ? "M" : "A"}</span> : null}
-        <span className="visualization-switcher-label">{compact ? activeDefinition.shortName : `${modeLabel} · ${activeDefinition.shortName}`}</span>
+        <span className="visualization-switcher-label">{compact ? activeDefinition.compactName : `${modeLabel} · ${activeDefinition.shortName}`}</span>
         <ChevronDown size={11} />
       </button>
       {open ? (

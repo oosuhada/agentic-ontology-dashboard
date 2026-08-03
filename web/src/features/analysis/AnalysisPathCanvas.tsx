@@ -6,6 +6,7 @@ import {
   EdgeLabelRenderer,
   ReactFlow,
   getSmoothStepPath,
+  useViewport,
   type Connection,
   type EdgeChange,
   type EdgeProps,
@@ -30,12 +31,14 @@ interface InsertEdgeData extends Record<string, unknown> {
 
 function AnalysisInsertEdge(props: EdgeProps) {
   const [edgePath, labelX, labelY] = getSmoothStepPath(props);
+  const { zoom } = useViewport();
   const data = props.data as InsertEdgeData | undefined;
+  const inverseScale = 1 / Math.max(zoom, 0.35);
   return (
     <>
       <BaseEdge path={edgePath} markerEnd={props.markerEnd} style={props.style} />
       <EdgeLabelRenderer>
-        <div className={`analysis-edge-label semantic-${data?.semantic ?? "transform"} nodrag nopan`} style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)` }}>
+        <div className={`analysis-edge-label semantic-${data?.semantic ?? "transform"} nodrag nopan`} style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px) scale(${inverseScale})` }}>
           <span>{data?.contract ?? "rows<T>"}</span>
           <button type="button" title="Add board after current step" aria-label="Add board after current step" onClick={(event) => { event.stopPropagation(); data?.onInsert?.(); }}><Plus size={11} /></button>
         </div>
@@ -77,8 +80,8 @@ export function AnalysisPathCanvas({
     backgroundColor: "transparent",
     grid: { top: 18, right: 14, bottom: 30, left: 42 },
     tooltip: { trigger: "axis" },
-    xAxis: { type: "category", data: result.grouped.map((group) => group.key), axisLabel: { color: CHART_NEUTRAL.muted, fontSize: 9 } },
-    yAxis: { type: "value", max: 100, axisLabel: { formatter: "{value}%", color: CHART_NEUTRAL.muted, fontSize: 9 }, splitLine: { lineStyle: { color: CHART_NEUTRAL.border } } },
+    xAxis: { type: "category", data: result.grouped.map((group) => group.key), axisLabel: { color: CHART_NEUTRAL.muted, fontSize: 11 } },
+    yAxis: { type: "value", max: 100, axisLabel: { formatter: "{value}%", color: CHART_NEUTRAL.muted, fontSize: 11 }, splitLine: { lineStyle: { color: CHART_NEUTRAL.border } } },
     series: [{ type: "bar", data: result.grouped.map((group) => Number((group.averageRisk * 100).toFixed(2))), itemStyle: { color: CHART_SERIES[0], borderRadius: [2, 2, 0, 0] }, barMaxWidth: 34 }],
   }), [result.grouped]);
 

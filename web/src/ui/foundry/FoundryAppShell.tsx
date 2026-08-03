@@ -29,6 +29,7 @@ import {
 import { useAuth } from "../../features/auth/AuthContext";
 import type { AppRole, Project, Workspace } from "../../types";
 import { DisplayMenu } from "./DisplayMenu";
+import { FoundryDialog } from "./FoundryDialog";
 import { FoundryProductNavigation } from "./FoundryProductNavigation";
 
 export type FoundryRoute = "home" | "dashboard" | "analysis" | "agent" | "ontology" | "datasets" | "governance";
@@ -187,18 +188,16 @@ export function FoundryAppShell({ projectId, workspaceId, activeRoute, title, ch
 
       {mobileNavOpen ? <button type="button" className="od-mobile-backdrop" aria-label="내비게이션 닫기" onClick={() => setMobileNavOpen(false)} /> : null}
       {commandOpen ? (
-        <div className="command-palette-overlay" role="presentation" onMouseDown={() => setCommandOpen(false)}>
-          <section className="command-palette" role="dialog" aria-modal="true" aria-label="Command palette" onMouseDown={(event) => event.stopPropagation()}>
+        <FoundryDialog ariaLabel="Command palette" overlayClassName="command-palette-overlay" dialogClassName="command-palette" onClose={() => setCommandOpen(false)}>
             <header><div><span className="section-label">COMMAND PALETTE</span><strong>Navigate workbenches</strong></div><kbd>ESC</kbd></header>
-            <div className="command-search"><Search size={15} /><input autoFocus placeholder="Object, Dataset 또는 Workbench 검색" /></div>
+            <div className="command-search"><Search size={15} /><input data-dialog-initial-focus placeholder="Object, Dataset 또는 Workbench 검색" /></div>
             <div className="command-group"><span>Project resources</span>
               {NAV_ITEMS.filter((item) => item.enabled).map((item) => {
                 const Icon = item.icon;
                 return <button type="button" key={item.id} onClick={() => openRoute(item.id)}><b><Icon size={14} /></b><div><strong>{item.label}</strong><small>{routeFor(item.id)}</small></div></button>;
               })}
             </div>
-          </section>
-        </div>
+        </FoundryDialog>
       ) : null}
     </div>
   );

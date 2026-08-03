@@ -99,6 +99,46 @@ button, input, select, textarea { line-height: var(--od-leading-control); }
 .od-display-popover legend { margin-bottom: 5px; color: var(--fd-text-secondary); font-size: var(--od-type-2xs); font-weight: var(--od-weight-semibold); text-transform: uppercase; letter-spacing: .06em; }
 .od-display-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; }
 .od-display-options.three-up { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.od-display-presets { display: grid; gap: 4px; }
+.od-display-presets button {
+  display: flex;
+  min-height: var(--od-control-height);
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
+  border: 1px solid var(--fd-border);
+  border-radius: var(--fd-radius-xs);
+  padding: 6px 8px;
+  color: var(--fd-text-secondary);
+  background: var(--fd-surface);
+  text-align: left;
+}
+.od-display-presets button strong { font-size: var(--od-type-xs); }
+.od-display-presets button small { color: var(--fd-text-muted); font-size: var(--od-type-2xs); }
+.od-display-presets button.active { border-color: var(--fd-accent); color: var(--fd-accent); background: var(--fd-accent-soft); box-shadow: inset 3px 0 var(--fd-accent); }
+.od-display-advanced { margin-bottom: 10px; border-top: 1px solid var(--fd-border); padding-top: 7px; }
+.od-display-advanced > summary { cursor: pointer; color: var(--fd-text-secondary); font-size: var(--od-type-2xs); font-weight: var(--od-weight-semibold); }
+.od-display-advanced[open] > summary { margin-bottom: 8px; color: var(--fd-text); }
+.od-display-metadata-toggle {
+  display: flex;
+  width: 100%;
+  min-height: var(--od-control-height);
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+  border: 1px solid var(--fd-border);
+  border-radius: var(--fd-radius-xs);
+  padding: 6px 8px;
+  color: var(--fd-text-secondary);
+  background: var(--fd-surface);
+  text-align: left;
+}
+.od-display-metadata-toggle > span { display: flex; min-width: 0; flex-direction: column; gap: 1px; }
+.od-display-metadata-toggle strong { color: var(--fd-text); font-size: var(--od-type-xs); }
+.od-display-metadata-toggle small { color: var(--fd-text-muted); font-size: var(--od-type-2xs); }
+.od-display-metadata-toggle b { border-radius: 999px; padding: 2px 6px; color: var(--fd-accent); background: var(--fd-accent-soft); font-size: var(--od-type-2xs); }
 .od-display-options button, .od-display-reset {
   min-height: var(--od-control-height);
   border: 1px solid var(--fd-border);

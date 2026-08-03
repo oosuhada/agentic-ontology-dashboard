@@ -8,11 +8,11 @@
   --fd-resource-nav-w: 184px;
   --fd-sidebar-expanded-w: calc(var(--fd-platform-rail-w) + var(--fd-resource-nav-w));
   --fd-nav-rail-w: var(--fd-platform-rail-w);
-  --fd-topbar-h: 34px;
-  --fd-toolbar-h: 32px;
-  --fd-control-h: 26px;
-  --fd-board-header-h: 29px;
-  --fd-table-row-h: 28px;
+  --fd-topbar-h: var(--od-topbar-height);
+  --fd-toolbar-h: var(--od-toolbar-height);
+  --fd-control-h: var(--od-control-height);
+  --fd-board-header-h: var(--od-board-header-height);
+  --fd-table-row-h: var(--od-table-row-height);
   --fd-filter-rail-w: 218px;
   --fd-inspector-w: 292px;
   --fd-canvas: #f2f4f6;
@@ -319,10 +319,10 @@
 }
 
 .od-breadcrumbs { font-size: 8px; }
-.od-global-search { min-height: 24px; height: 24px; padding: 0 7px; }
+.od-global-search { min-height: var(--fd-control-h); height: var(--fd-control-h); padding: 0 7px; }
 .od-global-search span { font-size: 8px; }
 .od-global-search kbd { font-size: 7px; }
-.od-topbar-actions > button { width: 24px; height: 24px; }
+.od-topbar-actions > button { width: var(--fd-control-h); height: var(--fd-control-h); }
 .od-global-topbar .od-user-identity { display: none; }
 
 .od-context-header,
@@ -344,12 +344,12 @@
 
 .od-context-controls { gap: 5px; }
 .od-context-controls > label { min-width: 108px; font-size: 7px; }
-.od-context-controls select { height: 24px; min-height: 24px; font-size: 9px; }
-.workbench-switcher button { min-height: 22px; height: 22px; }
+.od-context-controls select { height: var(--fd-control-h); min-height: var(--fd-control-h); font-size: var(--fd-font-sm); }
+.workbench-switcher button { min-height: var(--fd-control-h); height: var(--fd-control-h); }
 
 .od-status-strip {
-  min-height: 22px;
-  height: 22px;
+  min-height: calc(var(--fd-control-h) - 4px);
+  height: calc(var(--fd-control-h) - 4px);
   padding: 0 8px;
   background: var(--fd-surface-subtle);
 }
@@ -363,7 +363,7 @@
 .dashboard-tabs > button { height: var(--fd-toolbar-h); min-height: var(--fd-toolbar-h); }
 .dashboard-edit-toolbar,
 .dashboard-edit-toolbar button,
-.dashboard-edit-toolbar select { height: 24px; min-height: 24px; }
+.dashboard-edit-toolbar select { height: var(--fd-control-h); min-height: var(--fd-control-h); }
 
 /* Dashboard behaves like a Contour surface rather than a card gallery. */
 .dashboard-workspace-layout { grid-template-columns: 244px minmax(0,1fr); align-items: stretch; }
@@ -377,8 +377,8 @@
 .dashboard-board-header { min-height: var(--fd-board-header-h); }
 .dashboard-board-frame { border-radius: 2px; }
 .dashboard-board-title strong { font-size: 10px; }
-.board-runtime-meta { min-height: 19px; }
-.board-runtime-footer { min-height: 18px; }
+.board-runtime-meta { min-height: calc(var(--fd-control-h) - 4px); }
+.board-runtime-footer { min-height: calc(var(--fd-control-h) - 6px); }
 .advanced-board { padding: 5px; }
 
 /* Remove the remaining generic SaaS-card treatment from authenticated workbenches. */
@@ -414,7 +414,7 @@
 }
 
 .fd-resource-table__row { min-height: var(--fd-table-row-h); }
-.fd-property-table__row { min-height: 28px; }
+.fd-property-table__row { min-height: var(--fd-table-row-h); }
 
 @media (max-width: 900px) {
   .od-primary-sidebar.fd-product-navigation {

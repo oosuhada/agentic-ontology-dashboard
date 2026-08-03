@@ -140,7 +140,7 @@ function cartesianOption(data: AggregatedDatum[], spec: RenderSpec, selectedValu
       itemStyle: { color, borderRadius: isLine || horizontal ? 0 : [3, 3, 0, 0] },
       lineStyle: { width: 2.25, color },
       areaStyle: isArea ? { color: withAlpha(color, seriesIndex === 0 ? .22 : .14) } : undefined,
-      label: { show: spec.labels === "show", color: CHART_NEUTRAL.muted, fontSize: 9 },
+      label: { show: spec.labels === "show", color: CHART_NEUTRAL.muted, fontSize: 11 },
       data: categories.map((category) => ({
         value: byCategory.get(category) ?? 0,
         itemStyle: category === String(selectedValue ?? "")
@@ -149,14 +149,14 @@ function cartesianOption(data: AggregatedDatum[], spec: RenderSpec, selectedValu
       })),
     };
   });
-  const categoryAxis = { type: "category", data: categories, axisLabel: { color: CHART_NEUTRAL.muted, fontSize: 9 }, axisLine: { lineStyle: { color: CHART_NEUTRAL.border } } };
-  const valueAxis = { type: "value", axisLabel: { color: CHART_NEUTRAL.muted, fontSize: 9 }, splitLine: { lineStyle: { color: withAlpha(CHART_NEUTRAL.border, .75) } } };
+  const categoryAxis = { type: "category", data: categories, axisLabel: { color: CHART_NEUTRAL.muted, fontSize: 11 }, axisLine: { lineStyle: { color: CHART_NEUTRAL.border } } };
+  const valueAxis = { type: "value", axisLabel: { color: CHART_NEUTRAL.muted, fontSize: 11 }, splitLine: { lineStyle: { color: withAlpha(CHART_NEUTRAL.border, .75) } } };
   return {
     color: CHART_SERIES,
     backgroundColor: "transparent",
     grid: { top: seriesNames.length > 1 ? 34 : 18, right: 16, bottom: spec.brushable ? 50 : 34, left: 48, containLabel: true },
     tooltip: { trigger: "axis", confine: true },
-    legend: { show: spec.legend !== "hide" && seriesNames.length > 1, top: 0, textStyle: { color: CHART_NEUTRAL.muted, fontSize: 9 } },
+    legend: { show: spec.legend !== "hide" && seriesNames.length > 1, top: 0, textStyle: { color: CHART_NEUTRAL.muted, fontSize: 11 } },
     dataZoom: spec.brushable ? [{ type: "inside" }, { type: "slider", height: 14, bottom: 3 }] : undefined,
     toolbox: spec.brushable ? { right: 8, top: 0, feature: { brush: { type: ["rect", "clear"] } } } : undefined,
     brush: spec.brushable ? { toolbox: ["rect", "clear"], xAxisIndex: "all", brushMode: "single", throttleType: "debounce", throttleDelay: 120 } : undefined,
@@ -176,7 +176,7 @@ function scatterOption(rows: ChartDatum[], spec: RenderSpec): DashboardChartOpti
     backgroundColor: "transparent",
     grid: { top: groups.length > 1 ? 34 : 18, right: 18, bottom: spec.brushable ? 46 : 32, left: 48, containLabel: true },
     tooltip: { trigger: "item", confine: true },
-    legend: { show: spec.legend !== "hide" && groups.length > 1, top: 0, textStyle: { color: CHART_NEUTRAL.muted, fontSize: 9 } },
+    legend: { show: spec.legend !== "hide" && groups.length > 1, top: 0, textStyle: { color: CHART_NEUTRAL.muted, fontSize: 11 } },
     brush: spec.brushable ? { toolbox: ["rect", "clear"], brushMode: "single" } : undefined,
     xAxis: { type: "value", name: xField, nameTextStyle: { color: CHART_NEUTRAL.muted }, axisLabel: { color: CHART_NEUTRAL.muted }, splitLine: { lineStyle: { color: CHART_NEUTRAL.border } } },
     yAxis: { type: "value", name: yField, nameTextStyle: { color: CHART_NEUTRAL.muted }, axisLabel: { color: CHART_NEUTRAL.muted }, splitLine: { lineStyle: { color: CHART_NEUTRAL.border } } },
@@ -202,10 +202,10 @@ function heatmapOption(rows: ChartDatum[], spec: RenderSpec): DashboardChartOpti
     backgroundColor: "transparent",
     grid: { top: 16, right: 22, bottom: 42, left: 62, containLabel: true },
     tooltip: { position: "top" },
-    xAxis: { type: "category", data: columns, splitArea: { show: true }, axisLabel: { color: CHART_NEUTRAL.muted, fontSize: 9 } },
-    yAxis: { type: "category", data: rowLabels, splitArea: { show: true }, axisLabel: { color: CHART_NEUTRAL.muted, fontSize: 9 } },
-    visualMap: { min: 0, max, calculable: true, orient: "horizontal", left: "center", bottom: 0, inRange: { color: [withAlpha(CHART_SERIES[0], .08), CHART_SERIES[0]] }, textStyle: { color: CHART_NEUTRAL.muted, fontSize: 9 } },
-    series: [{ type: "heatmap", data: values, label: { show: spec.labels === "show", color: CHART_NEUTRAL.ink, fontSize: 9 }, itemStyle: { borderColor: CHART_NEUTRAL.white, borderWidth: 1 }, emphasis: { itemStyle: { borderColor: CHART_SEMANTIC.accent, borderWidth: 2 } } }],
+    xAxis: { type: "category", data: columns, splitArea: { show: true }, axisLabel: { color: CHART_NEUTRAL.muted, fontSize: 11 } },
+    yAxis: { type: "category", data: rowLabels, splitArea: { show: true }, axisLabel: { color: CHART_NEUTRAL.muted, fontSize: 11 } },
+    visualMap: { min: 0, max, calculable: true, orient: "horizontal", left: "center", bottom: 0, inRange: { color: [withAlpha(CHART_SERIES[0], .08), CHART_SERIES[0]] }, textStyle: { color: CHART_NEUTRAL.muted, fontSize: 11 } },
+    series: [{ type: "heatmap", data: values, label: { show: spec.labels === "show", color: CHART_NEUTRAL.ink, fontSize: 11 }, itemStyle: { borderColor: CHART_NEUTRAL.white, borderWidth: 1 }, emphasis: { itemStyle: { borderColor: CHART_SEMANTIC.accent, borderWidth: 2 } } }],
   };
 }
 
@@ -226,13 +226,13 @@ export function EChartsRenderer({ boardId, rows, spec, selectedValue, ariaLabel,
         color: data.map((item) => categoryColor(item.label)),
         backgroundColor: "transparent",
         tooltip: { trigger: "item" },
-        legend: { show: spec.legend !== "hide", type: "scroll", bottom: 0, textStyle: { color: CHART_NEUTRAL.muted, fontSize: 9 } },
+        legend: { show: spec.legend !== "hide", type: "scroll", bottom: 0, textStyle: { color: CHART_NEUTRAL.muted, fontSize: 11 } },
         series: [{
           type: "pie",
           radius: spec.pie_style === "pie" ? "70%" : ["42%", "70%"],
           center: ["50%", "44%"],
           data: data.map((item) => ({ name: item.label, value: item.value, itemStyle: { color: categoryColor(item.label) } })),
-          label: { show: spec.labels !== "hide", color: CHART_NEUTRAL.muted, fontSize: 9 },
+          label: { show: spec.labels !== "hide", color: CHART_NEUTRAL.muted, fontSize: 11 },
           itemStyle: { borderRadius: 3, borderWidth: 2, borderColor: CHART_NEUTRAL.white },
           emphasis: { scaleSize: 7, itemStyle: { borderColor: CHART_SEMANTIC.accent, borderWidth: 2 } },
         }],

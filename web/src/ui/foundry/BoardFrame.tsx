@@ -1,4 +1,4 @@
-import { Copy, Eye, EyeOff, GripVertical, Maximize2, Minimize2, Star, Trash2 } from "lucide-react";
+import { Copy, Eye, EyeOff, GripVertical, Maximize2, Minimize2, MoreHorizontal, Star, Trash2 } from "lucide-react";
 import { forwardRef, type CSSProperties, type ReactNode } from "react";
 import type { DashboardBoard, DashboardMode } from "../../features/dashboard/types";
 
@@ -85,19 +85,21 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
         <div className="dashboard-board-actions fd-board-frame__actions">
           {affected ? <span className="affected-chip">필터 반영</span> : null}
           {headerActions}
-          <button
-            type="button"
-            className={`dashboard-board-favorite ${favorite ? "active" : ""}`}
-            aria-label={favorite ? `${board.title} 즐겨찾기 해제` : `${board.title} 즐겨찾기`}
-            aria-pressed={favorite}
-            title={favorite ? "즐겨찾기 해제" : "즐겨찾기"}
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleFavorite();
-            }}
-          >
-            <Star size={13} fill={favorite ? "currentColor" : "none"} />
-          </button>
+          {mode === "view" ? (
+            <button
+              type="button"
+              className={`dashboard-board-favorite ${favorite ? "active" : ""}`}
+              aria-label={favorite ? `${board.title} 즐겨찾기 해제` : `${board.title} 즐겨찾기`}
+              aria-pressed={favorite}
+              title={favorite ? "즐겨찾기 해제" : "즐겨찾기"}
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleFavorite();
+              }}
+            >
+              <Star size={13} fill={favorite ? "currentColor" : "none"} />
+            </button>
+          ) : null}
           <button
             type="button"
             aria-label={fullscreen ? "전체 화면 닫기" : `${board.title} 전체 화면`}
@@ -110,42 +112,15 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
             {fullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
           </button>
           {mode === "edit" ? (
-            <>
-              <button
-                type="button"
-                aria-label={board.hidden ? "표시" : "숨김"}
-                title={board.hidden ? "Board 표시" : "Board 숨김"}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onToggleHidden();
-                }}
-              >
-                {board.hidden ? <Eye size={13} /> : <EyeOff size={13} />}
-              </button>
-              <button
-                type="button"
-                aria-label="복제"
-                title="Board 복제"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onDuplicate();
-                }}
-              >
-                <Copy size={13} />
-              </button>
-              <button
-                type="button"
-                aria-label="삭제"
-                disabled={board.mandatory}
-                title={board.mandatory ? "필수 board는 삭제할 수 없습니다." : "Board 삭제"}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onRemove();
-                }}
-              >
-                <Trash2 size={13} />
-              </button>
-            </>
+            <details className="dashboard-board-more" onClick={(event) => event.stopPropagation()}>
+              <summary aria-label={`${board.title} 추가 작업`} title="추가 작업"><MoreHorizontal size={14} /></summary>
+              <div role="menu" aria-label={`${board.title} 추가 작업`}>
+                <button type="button" role="menuitem" onClick={(event) => { onToggleFavorite(); event.currentTarget.closest("details")?.removeAttribute("open"); }}><Star size={13} fill={favorite ? "currentColor" : "none"} />{favorite ? "즐겨찾기 해제" : "즐겨찾기"}</button>
+                <button type="button" role="menuitem" onClick={(event) => { onToggleHidden(); event.currentTarget.closest("details")?.removeAttribute("open"); }}>{board.hidden ? <Eye size={13} /> : <EyeOff size={13} />}{board.hidden ? "표시" : "숨기기"}</button>
+                <button type="button" role="menuitem" onClick={(event) => { onDuplicate(); event.currentTarget.closest("details")?.removeAttribute("open"); }}><Copy size={13} />복제</button>
+                <button type="button" role="menuitem" className="intent-danger" disabled={board.mandatory} title={board.mandatory ? "필수 board는 삭제할 수 없습니다." : "Board 삭제"} onClick={(event) => { onRemove(); event.currentTarget.closest("details")?.removeAttribute("open"); }}><Trash2 size={13} />삭제</button>
+              </div>
+            </details>
           ) : null}
         </div>
       </header>

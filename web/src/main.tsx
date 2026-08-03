@@ -16,6 +16,7 @@ import "./features/auth/auth-control-plane.css";
 import "./features/admin/admin-control-plane.css";
 import "./ui/foundry/convergence.css";
 import "./ui/foundry/interaction-polish.css";
+import "./ui/foundry/accessibility-overrides.css";
 import { installBatchedResizeObserver, installResizeObserverErrorGuard } from "./ui/foundry/resizeObserver";
 
 installBatchedResizeObserver();
