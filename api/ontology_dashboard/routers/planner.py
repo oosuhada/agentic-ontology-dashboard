@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from ..dependencies import (
     get_identity_service,
     get_ontology_planner_service,
+    get_predictive_maintenance_runtime_service,
     get_rate_limiter,
     rate_limit_subject,
     require_csrf,
@@ -21,7 +22,9 @@ from ..planner import (
     OntologyDashboardPlannerService,
     VisualizationRecommendationRequest,
 )
+from ..predictive_maintenance_runtime import PredictiveMaintenanceRuntimeService
 from ..security import PLANNER_RATE, RateLimiter
+from ..visualizations import SemanticVisualizationPlanRequest
 
 router = APIRouter(prefix="/api/planner", tags=["planner"])
 
@@ -92,6 +95,40 @@ def recommend_visualization(
     enforce_planner_rate(limiter, principal, "planner.visualization_recommend")
     identity.require_workspace(principal, request.workspace_id)
     return planner.visualization_recommendation(principal=principal, request=request).model_dump(mode="json")
+
+
+@router.post("/visualizations/semantic-plan")
+def plan_semantic_visualization(
+    request: SemanticVisualizationPlanRequest,
+    principal: Principal = Depends(require_permission("planner.board_recommend")),
+    _: None = Depends(require_csrf),
+    identity: IdentityService = Depends(get_identity_service),
+    planner: OntologyDashboardPlannerService = Depends(get_ontology_planner_service),
+    runtime: PredictiveMaintenanceRuntimeService = Depends(
+        get_predictive_maintenance_runtime_service
+    ),
+    limiter: RateLimiter = Depends(get_rate_limiter),
+):
+    enforce_planner_rate(limiter, principal, "planner.semantic_visualization_plan")
+    identity.require_workspace(principal, request.source.workspace_id)
+    identity.require_project(principal, request.source.project_id)
+    try:
+        context = runtime.context(
+            organization_id=principal.organization_id,
+            project_id=request.source.project_id,
+            workspace_id=request.source.workspace_id,
+            dataset_version_id=request.source.dataset_version_id,
+        )
+    except KeyError as error:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Dataset Version not found: {error.args[0]}",
+        ) from error
+    return planner.semantic_visualization_plan(
+        principal=principal,
+        request=request,
+        runtime_context=context,
+    ).model_dump(mode="json")
 
 
 @router.post("/grounded-narrative")

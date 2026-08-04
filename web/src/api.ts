@@ -4,6 +4,8 @@ import type {
   ExportArtifact,
   GroundedNarrativeResponse,
   ObjectQueryPlanResponse,
+  SemanticVisualizationPlanInput,
+  SemanticVisualizationPlanResponse,
   VisualizationPlannerResponse,
 } from "./features/planner/types";
 import type { AgentQueryInput, AgentRunPage, AgentRunResponse } from "./features/agent/types";
@@ -1067,6 +1069,26 @@ export function recommendVisualization(input: {
   return request<VisualizationPlannerResponse>("/api/planner/visualizations/recommend", {
     method: "POST",
     body: JSON.stringify({ use_llm: true, ...input }),
+  });
+}
+
+export function planSemanticVisualization(
+  input: SemanticVisualizationPlanInput,
+): Promise<SemanticVisualizationPlanResponse> {
+  return request<SemanticVisualizationPlanResponse>("/api/planner/visualizations/semantic-plan", {
+    method: "POST",
+    body: JSON.stringify({
+      dimensions: [],
+      measures: [],
+      filters: [],
+      order: [],
+      limit: 500,
+      field_cardinalities: {},
+      result_profile: [],
+      clamp_limits: true,
+      use_llm: true,
+      ...input,
+    }),
   });
 }
 

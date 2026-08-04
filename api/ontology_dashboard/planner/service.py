@@ -13,8 +13,24 @@ from ..identity import AuthError, Principal
 from ..llm import LLMProvider
 from ..ontology import OBJECT_TYPE_BY_ID
 from ..ontology_service import OntologyService
+from ..predictive_maintenance_runtime.models import DatasetVersionRuntimeContext
+from ..predictive_maintenance_runtime.service import (
+    V3_1_MODEL_VERSION,
+    V3_1_RESULT_SCHEMA,
+    V3_1_SOURCE_VERSION,
+)
 from ..service import ManufacturingPredictiveMaintenanceService
-from ..visualizations import VISUALIZATION_REGISTRY
+from ..visualizations import (
+    VISUALIZATION_REGISTRY,
+    SemanticVisualizationPlanRequest,
+    SemanticVisualizationPlanResponse,
+    build_typed_query_plan,
+    build_v3_1_semantic_catalog,
+    compile_postgresql_query,
+    context_from_source,
+    validate_override,
+    validate_override_channel_mapping,
+)
 from .models import (
     BoardRecommendationItem,
     BoardRecommendationRequest,
@@ -507,6 +523,205 @@ class OntologyDashboardPlannerService:
                 "workspace_scope_enforced_by_api": True,
                 "permission_enforced_by_api": True,
                 "query_rows_unchanged": True,
+            },
+        )
+
+    def semantic_visualization_plan(
+        self,
+        *,
+        principal: Principal,
+        request: SemanticVisualizationPlanRequest,
+        runtime_context: DatasetVersionRuntimeContext,
+    ) -> SemanticVisualizationPlanResponse:
+        source = request.source
+        if source.organization_id != principal.organization_id:
+            raise AuthError(403, "organization_scope_denied", "Organization 범위를 벗어난 source입니다.")
+        if source.workspace_id not in principal.workspace_scopes:
+            raise AuthError(403, "workspace_scope_denied", "Workspace 범위를 벗어난 source입니다.")
+        allowed_projects = set(principal.project_scopes)
+        if principal.active_project_id:
+            allowed_projects.add(principal.active_project_id)
+        if source.project_id not in allowed_projects:
+            raise AuthError(403, "project_scope_denied", "Project 범위를 벗어난 source입니다.")
+        expected_identity = {
+            "organization_id": runtime_context.organization_id,
+            "project_id": runtime_context.project_id,
+            "workspace_id": runtime_context.workspace_id,
+            "dataset_id": runtime_context.dataset_id,
+            "dataset_version_id": runtime_context.dataset_version_id,
+        }
+        mismatches = [
+            field_name
+            for field_name, expected in expected_identity.items()
+            if getattr(source, field_name) != expected
+        ]
+        if mismatches:
+            raise ValueError(
+                "semantic source identity does not match the server Dataset Version: "
+                + ",".join(mismatches)
+            )
+        if source.dataset_version != runtime_context.source_version:
+            raise ValueError("semantic source dataset_version does not match the server Dataset Version")
+        if source.source_version != runtime_context.source_version:
+            raise ValueError("semantic source source_version does not match the server Dataset Version")
+        if source.bundle_checksum_sha256 != runtime_context.bundle_checksum_sha256:
+            raise ValueError("semantic source checksum does not match the server Dataset Version")
+        if runtime_context.source_version != V3_1_SOURCE_VERSION:
+            raise ValueError("Semantic Visualization Planner only supports V3.1 Dataset Versions")
+        if source.model_version not in {None, V3_1_MODEL_VERSION}:
+            raise ValueError("semantic source model_version does not match the V3.1 model contract")
+        if source.result_artifact_schema_version not in {None, V3_1_RESULT_SCHEMA}:
+            raise ValueError(
+                "semantic source Result Artifact schema does not match the V3.1 contract"
+            )
+        source = source.model_copy(
+            update={
+                "dataset_version": runtime_context.source_version,
+                "source_version": runtime_context.source_version,
+                "bundle_checksum_sha256": runtime_context.bundle_checksum_sha256,
+                "model_version": V3_1_MODEL_VERSION,
+                "result_artifact_schema_version": V3_1_RESULT_SCHEMA,
+                "release_gates": runtime_context.governance.model_dump(mode="json"),
+                "graph_readiness": runtime_context.graph.status,
+                "relational_fallback_capability": not runtime_context.graph.required_for_runtime,
+            }
+        )
+        request = request.model_copy(update={"source": source})
+        if source.source_role == "result_artifact" and (
+            source.result_artifact_schema_version != V3_1_RESULT_SCHEMA
+        ):
+            raise ValueError("Result Artifact schema version is incompatible with the V3.1 catalog")
+
+        catalog = build_v3_1_semantic_catalog(context_from_source(source))
+        deterministic_plan, candidates = build_typed_query_plan(request, catalog)
+        base_plan = deterministic_plan
+        base_candidates = candidates
+        override = validate_override(request.saved_override, deterministic_plan, catalog)
+        override_applied = False
+        if request.saved_override is not None and override.status == "compatible":
+            overridden_request = request.model_copy(
+                update={
+                    "dimensions": request.saved_override.dimensions,
+                    "measures": request.saved_override.measures,
+                    "chart_kind": request.saved_override.chart_kind,
+                    "use_llm": False,
+                }
+            )
+            try:
+                deterministic_plan, candidates = build_typed_query_plan(
+                    overridden_request,
+                    catalog,
+                )
+                validate_override_channel_mapping(request.saved_override, deterministic_plan)
+                deterministic_plan = deterministic_plan.model_copy(
+                    update={
+                        "channel_mapping": request.saved_override.channel_mapping,
+                        "selection_reason": "Saved semantic visualization override applied.",
+                    }
+                )
+                request = overridden_request
+                override_applied = True
+            except ValueError as exc:
+                deterministic_plan = base_plan
+                candidates = base_candidates
+                override = override.model_copy(
+                    update={
+                        "status": "incompatible",
+                        "reasons": [f"override_validation:{exc}"],
+                    }
+                )
+        selected_kind = deterministic_plan.chart_kind
+        selected_rationale = deterministic_plan.selection_reason
+        mode = "deterministic"
+        provider = "none"
+        fallback_reason: str | None = None
+        if request.use_llm and not override_applied:
+            if self.provider is None:
+                mode = "deterministic_fallback"
+                fallback_reason = "planner_provider_unavailable"
+            else:
+                try:
+                    payload = self.provider.generate_json(
+                        (
+                            "Return JSON only with kind and rationale. Choose exactly one kind from candidates. "
+                            "Do not create or modify fields, SQL, aggregations, filters, derived expressions, "
+                            "Dataset Version, scope, or channel mappings."
+                        ),
+                        {
+                            "goal": request.goal,
+                            "intent": request.intent,
+                            "source_role": source.source_role,
+                            "semantic_fields": [
+                                catalog[field_id].model_dump(mode="json")
+                                for field_id in dict.fromkeys(
+                                    [
+                                        *request.dimensions,
+                                        *(item.field_id for item in request.measures),
+                                        *([request.time.field_id] if request.time else []),
+                                    ]
+                                )
+                            ],
+                            "candidates": [item.model_dump(mode="json") for item in candidates],
+                            "result_profile": [
+                                item.model_dump(mode="json") for item in request.result_profile
+                            ],
+                        },
+                    )
+                    requested_kind = str(payload.get("kind") or "")
+                    selected = next((item for item in candidates if item.kind == requested_kind), None)
+                    if selected is None:
+                        raise ValueError("provider selected a chart outside deterministic semantic candidates")
+                    selected_kind = selected.kind
+                    selected_rationale = str(payload.get("rationale") or selected.rationale)[:500]
+                    mode = "llm"
+                    provider = self._provider_name(self.provider)
+                except Exception as exc:
+                    mode = "deterministic_fallback"
+                    provider = self._provider_name(self.provider)
+                    fallback_reason = type(exc).__name__
+
+        if override_applied:
+            plan = deterministic_plan
+        else:
+            plan, candidates = build_typed_query_plan(
+                request,
+                catalog,
+                selected_kind=selected_kind,
+            )
+            plan = plan.model_copy(update={"selection_reason": selected_rationale})
+        compiled = compile_postgresql_query(
+            plan,
+            catalog,
+            clamp_limits=request.clamp_limits,
+        )
+        return SemanticVisualizationPlanResponse(
+            mode=mode,
+            provider=provider,
+            fallback_reason=fallback_reason,
+            plan=plan,
+            compiled_query=compiled,
+            candidates=candidates,
+            semantic_fields=list(catalog.values()),
+            override_compatibility=override,
+            validation={
+                "catalog_version": plan.catalog_version,
+                "field_registry_only": True,
+                "derived_expression_allowlist_only": True,
+                "parameterized_postgresql": True,
+                "llm_sql_generation": False,
+                "scope_enforced": True,
+                "dataset_version_enforced": True,
+                "result_artifact_schema_enforced": source.source_role != "result_artifact"
+                or source.result_artifact_schema_version == V3_1_RESULT_SCHEMA,
+                "release_gates_governance_only": True,
+                "binary_failure_class_preserved": True,
+                "evaluation_truth_available": False,
+                "graph_readiness": source.graph_readiness,
+                "relational_fallback": source.relational_fallback_capability,
+                "query_clamped": compiled.clamped,
+                "override_applied": override_applied,
+                "result_profile_compatible": True,
+                "server_authoritative_dataset_context": True,
             },
         )
 
