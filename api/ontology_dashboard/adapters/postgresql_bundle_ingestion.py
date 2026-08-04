@@ -28,6 +28,7 @@ ROLE_TARGET_TABLES = {
     "prediction_snapshot": "pm_prediction_snapshots",
     "prediction_factor": "pm_prediction_factors",
     "prediction_timeline": "pm_prediction_timeline",
+    "result_artifact": "pm_result_artifacts",
 }
 
 STAGING_TABLES = {
@@ -40,6 +41,7 @@ STAGING_TABLES = {
     "prediction_snapshot": "stg_pm_prediction_snapshots",
     "prediction_factor": "stg_pm_prediction_factors",
     "prediction_timeline": "stg_pm_prediction_timeline",
+    "result_artifact": "stg_pm_result_artifacts",
 }
 
 STAGING_DDL = {
@@ -267,7 +269,11 @@ class PostgreSQLPredictiveMaintenanceBundleIngestor:
                     (dataset_id, manifest.bundle_checksum_sha256),
                 ).fetchone()
                 if existing is not None:
-                    row_counts = self._target_row_counts(connection, str(existing["id"]))
+                    row_counts = self._target_row_counts(
+                        connection,
+                        str(existing["id"]),
+                        {item.role for item in validation.roles},
+                    )
                     self._assert_row_count_parity(validation, row_counts)
                     result = PostgreSQLBundleIngestionResult(
                         ingestion_run_id=run_id,
@@ -299,14 +305,19 @@ class PostgreSQLPredictiveMaintenanceBundleIngestor:
                     jsonb=Jsonb,
                 )
                 self._ensure_observation_partitions(connection, manifest)
-                self._create_staging_tables(connection)
-                for role in ROLE_CONTRACTS:
+                runtime_roles = [item.role for item in manifest.files]
+                self._create_staging_tables(connection, runtime_roles)
+                for role in runtime_roles:
                     self._copy_role(connection, manifest, role)
                     if fail_after_role == role:
                         raise RuntimeError(f"injected bundle transaction failure after role {role}")
                 self._validate_staging(connection, manifest, validation)
                 self._merge_targets(connection, manifest, version_id)
-                row_counts = self._target_row_counts(connection, version_id)
+                row_counts = self._target_row_counts(
+                    connection,
+                    version_id,
+                    {item.role for item in validation.roles},
+                )
                 self._assert_row_count_parity(validation, row_counts)
                 outbox_event_id = str(uuid.uuid4())
                 profile = {
@@ -315,6 +326,12 @@ class PostgreSQLPredictiveMaintenanceBundleIngestor:
                     "row_counts": row_counts,
                     "copy_protocol": "psycopg-copy",
                     "atomic_bundle_transaction": True,
+                    "source_contract": manifest.source_contract.model_dump(
+                        mode="json", exclude_none=True
+                    ),
+                    "governance_artifacts": [
+                        item.model_dump(mode="json") for item in manifest.governance_artifacts
+                    ],
                 }
                 connection.execute(
                     """
@@ -409,7 +426,7 @@ class PostgreSQLPredictiveMaintenanceBundleIngestor:
                 manifest.workspace_id,
                 _slug(manifest.manifest_id),
                 manifest.dataset_name,
-                "Predictive Maintenance Canonical v2 immutable runtime bundle",
+                "Predictive Maintenance immutable runtime bundle",
                 manifest.adapter_code,
             ),
         )
@@ -453,6 +470,9 @@ class PostgreSQLPredictiveMaintenanceBundleIngestor:
                 jsonb(
                     {
                         "bundle_schema_version": manifest.schema_version,
+                        "source_contract": manifest.source_contract.model_dump(
+                            mode="json", exclude_none=True
+                        ),
                         "roles": {
                             item.role: item.schema_.model_dump(mode="json")
                             for item in manifest.files
@@ -463,6 +483,10 @@ class PostgreSQLPredictiveMaintenanceBundleIngestor:
                     {
                         "validation_checksum_sha256": validation.validation_checksum_sha256,
                         "status": "copying",
+                        "governance_artifacts": [
+                            item.model_dump(mode="json")
+                            for item in manifest.governance_artifacts
+                        ],
                     }
                 ),
             ),
@@ -560,8 +584,8 @@ class PostgreSQLPredictiveMaintenanceBundleIngestor:
             current = following
 
     @staticmethod
-    def _create_staging_tables(connection: Any) -> None:
-        for role in ROLE_CONTRACTS:
+    def _create_staging_tables(connection: Any, roles: list[str]) -> None:
+        for role in roles:
             connection.execute(STAGING_DDL[role])
 
     def _copy_role(
@@ -609,7 +633,8 @@ class PostgreSQLPredictiveMaintenanceBundleIngestor:
         validation: BundleValidationResult,
     ) -> None:
         summaries = {item.role: item for item in validation.roles}
-        for role, staging in STAGING_TABLES.items():
+        for role in summaries:
+            staging = STAGING_TABLES[role]
             count = int(connection.execute(f"SELECT COUNT(*) AS count FROM {staging}").fetchone()["count"])
             if count != summaries[role].source_record_count:
                 raise ValueError(
@@ -686,6 +711,31 @@ class PostgreSQLPredictiveMaintenanceBundleIngestor:
                 """,
             ),
         ]
+        if "result_artifact" in summaries:
+            checks.extend(
+                [
+                    (
+                        "result artifact references unknown snapshot",
+                        """
+                        SELECT 1 FROM stg_pm_result_artifacts a
+                        LEFT JOIN stg_pm_prediction_snapshots p
+                          ON p.prediction_id=(a.provenance::jsonb->>'prediction_id')
+                        WHERE p.prediction_id IS NULL LIMIT 1
+                        """,
+                    ),
+                    (
+                        "result artifact does not cover assets exactly once",
+                        """
+                        SELECT 1
+                        FROM stg_pm_assets a
+                        FULL JOIN stg_pm_result_artifacts r ON r.asset_id=a.asset_id
+                        GROUP BY COALESCE(a.asset_id,r.asset_id)
+                        HAVING COUNT(a.asset_id)<>1 OR COUNT(r.asset_id)<>1
+                        LIMIT 1
+                        """,
+                    ),
+                ]
+            )
         for label, statement in checks:
             if connection.execute(statement).fetchone() is not None:
                 raise ValueError(f"PostgreSQL staging validation failed: {label}")
@@ -703,6 +753,8 @@ class PostgreSQLPredictiveMaintenanceBundleIngestor:
             "prediction_snapshot": ("stg_pm_prediction_snapshots", "observed_at"),
             "prediction_timeline": ("stg_pm_prediction_timeline", "observed_at"),
         }
+        if "result_artifact" in summaries:
+            timestamp_checks["result_artifact"] = ("stg_pm_result_artifacts", "observed_at")
         for role, (table, field) in timestamp_checks.items():
             outside = connection.execute(
                 f"SELECT 1 FROM {table} WHERE {field}::timestamptz < %s OR {field}::timestamptz > %s LIMIT 1",
@@ -888,10 +940,45 @@ class PostgreSQLPredictiveMaintenanceBundleIngestor:
             (*scope, checksums["prediction_timeline"]),
         )
 
+        if "result_artifact" in checksums:
+            connection.execute(
+                """
+                INSERT INTO pm_result_artifacts(
+                    organization_id,project_id,workspace_id,dataset_version_id,artifact_id,
+                    prediction_id,prediction_result_id,asset_id,asset_type,observed_at,
+                    prediction_horizon_hours,prediction_task,failure_probability,
+                    predicted_failure_type,status_grade,confidence,top_factors,
+                    recommended_action,provenance,schema_version,model_version,source_sha256
+                )
+                SELECT %s,%s,%s,%s,artifact_id,
+                       provenance::jsonb->>'prediction_id',
+                       'pmpr-'||md5(%s::text||':'||%s::text||':'||
+                           (provenance::jsonb->>'prediction_id')),
+                       asset_id,asset_type,observed_at::timestamptz,
+                       prediction_horizon_hours::integer,prediction_task,
+                       failure_probability::double precision,predicted_failure_type,
+                       status_grade,confidence::double precision,top_factors::jsonb,
+                       recommended_action::jsonb,provenance::jsonb,schema_version,
+                       provenance::jsonb->>'model_version',%s
+                FROM stg_pm_result_artifacts
+                """,
+                (
+                    *scope,
+                    manifest.project_id,
+                    version_id,
+                    checksums["result_artifact"],
+                ),
+            )
+
     @staticmethod
-    def _target_row_counts(connection: Any, version_id: str) -> dict[str, int]:
+    def _target_row_counts(
+        connection: Any,
+        version_id: str,
+        roles: set[str],
+    ) -> dict[str, int]:
         counts: dict[str, int] = {}
-        for role, table in ROLE_TARGET_TABLES.items():
+        for role in sorted(roles):
+            table = ROLE_TARGET_TABLES[role]
             row = connection.execute(
                 f"SELECT COUNT(*) AS count FROM {table} WHERE dataset_version_id=%s",
                 (version_id,),

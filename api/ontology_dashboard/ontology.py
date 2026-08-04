@@ -144,6 +144,29 @@ class DomainPackDefinition(BaseModel):
 
 OBJECT_TYPES: tuple[ObjectTypeDefinition, ...] = (
     ObjectTypeDefinition(
+        id="site",
+        display_name="Site",
+        description="Dataset Version 안에서 설비와 생산 셀을 묶는 물리 사이트입니다.",
+        domain_pack="manufacturing-predictive-maintenance",
+        interfaces=["location", "versioned"],
+        properties=[
+            OntologyProperty(id="display_name", display_name="사이트명", value_type="string", required=True),
+            OntologyProperty(id="dataset_version_id", display_name="Dataset Version", value_type="string", required=True),
+        ],
+    ),
+    ObjectTypeDefinition(
+        id="production_cell",
+        display_name="Production Cell",
+        description="사이트 하위의 설비 운영 단위입니다.",
+        domain_pack="manufacturing-predictive-maintenance",
+        interfaces=["location", "versioned"],
+        properties=[
+            OntologyProperty(id="display_name", display_name="생산 셀명", value_type="string", required=True),
+            OntologyProperty(id="site_id", display_name="사이트 ID", value_type="string", required=True),
+            OntologyProperty(id="dataset_version_id", display_name="Dataset Version", value_type="string", required=True),
+        ],
+    ),
+    ObjectTypeDefinition(
         id="equipment",
         display_name="Equipment",
         description="운영 상태와 정비 이력을 가지는 제조 설비 객체입니다.",
@@ -166,6 +189,33 @@ OBJECT_TYPES: tuple[ObjectTypeDefinition, ...] = (
             OntologyProperty(id="status", display_name="상태", value_type="string", required=True),
             OntologyProperty(id="failure_probability", display_name="고장 확률", value_type="number"),
             OntologyProperty(id="recommended_decision", display_name="권장 판단", value_type="string", required=True),
+        ],
+    ),
+    ObjectTypeDefinition(
+        id="prediction_result",
+        display_name="Prediction Result",
+        description="등록된 binary failure-within-horizon 예측 결과와 provenance입니다.",
+        domain_pack="manufacturing-predictive-maintenance",
+        interfaces=["event", "evidence-bearing", "versioned"],
+        properties=[
+            OntologyProperty(id="prediction_task", display_name="예측 과업", value_type="string", required=True),
+            OntologyProperty(id="failure_probability", display_name="고장 확률", value_type="number", required=True),
+            OntologyProperty(id="predicted_failure_type", display_name="Binary 위험 클래스", value_type="string", required=True),
+            OntologyProperty(id="observed_at", display_name="관측 시각", value_type="datetime", required=True),
+            OntologyProperty(id="dataset_version_id", display_name="Dataset Version", value_type="string", required=True),
+        ],
+    ),
+    ObjectTypeDefinition(
+        id="production_cycle",
+        display_name="Production Cycle",
+        description="Ontology 탐색용으로 선별된 최신 생산 cycle입니다.",
+        domain_pack="manufacturing-predictive-maintenance",
+        interfaces=["event", "versioned"],
+        properties=[
+            OntologyProperty(id="product_id", display_name="제품 ID", value_type="string", required=True),
+            OntologyProperty(id="cycle_started_at", display_name="시작 시각", value_type="datetime", required=True),
+            OntologyProperty(id="cycle_completed_at", display_name="완료 시각", value_type="datetime", required=True),
+            OntologyProperty(id="dataset_version_id", display_name="Dataset Version", value_type="string", required=True),
         ],
     ),
     ObjectTypeDefinition(
@@ -223,6 +273,30 @@ OBJECT_TYPES: tuple[ObjectTypeDefinition, ...] = (
 
 LINK_TYPES: tuple[LinkTypeDefinition, ...] = (
     LinkTypeDefinition(
+        id="site_contains_cell",
+        display_name="Site contains Production Cell",
+        source_type="site",
+        target_type="production_cell",
+        cardinality="one-to-many",
+        domain_pack="manufacturing-predictive-maintenance",
+    ),
+    LinkTypeDefinition(
+        id="cell_contains_equipment",
+        display_name="Production Cell contains Equipment",
+        source_type="production_cell",
+        target_type="equipment",
+        cardinality="one-to-many",
+        domain_pack="manufacturing-predictive-maintenance",
+    ),
+    LinkTypeDefinition(
+        id="equipment_supplies_air_to_equipment",
+        display_name="Equipment supplies air to Equipment",
+        source_type="equipment",
+        target_type="equipment",
+        cardinality="many-to-many",
+        domain_pack="manufacturing-predictive-maintenance",
+    ),
+    LinkTypeDefinition(
         id="equipment_has_risk_event",
         display_name="Equipment has Risk Event",
         source_type="equipment",
@@ -247,6 +321,22 @@ LINK_TYPES: tuple[LinkTypeDefinition, ...] = (
         domain_pack="manufacturing-predictive-maintenance",
     ),
     LinkTypeDefinition(
+        id="equipment_has_prediction_result",
+        display_name="Equipment has Prediction Result",
+        source_type="equipment",
+        target_type="prediction_result",
+        cardinality="one-to-many",
+        domain_pack="manufacturing-predictive-maintenance",
+    ),
+    LinkTypeDefinition(
+        id="risk_event_supported_by_prediction_result",
+        display_name="Risk Event supported by Prediction Result",
+        source_type="risk_event",
+        target_type="prediction_result",
+        cardinality="many-to-one",
+        domain_pack="manufacturing-predictive-maintenance",
+    ),
+    LinkTypeDefinition(
         id="risk_event_requires_work_order",
         display_name="Risk Event requires Work Order",
         source_type="risk_event",
@@ -259,6 +349,22 @@ LINK_TYPES: tuple[LinkTypeDefinition, ...] = (
         display_name="Work Order records Maintenance Action",
         source_type="work_order",
         target_type="maintenance_action",
+        cardinality="one-to-many",
+        domain_pack="manufacturing-predictive-maintenance",
+    ),
+    LinkTypeDefinition(
+        id="work_order_has_maintenance_action",
+        display_name="Work Order has Maintenance Action",
+        source_type="work_order",
+        target_type="maintenance_action",
+        cardinality="one-to-many",
+        domain_pack="manufacturing-predictive-maintenance",
+    ),
+    LinkTypeDefinition(
+        id="equipment_completed_production_cycle",
+        display_name="Equipment completed Production Cycle",
+        source_type="equipment",
+        target_type="production_cycle",
         cardinality="one-to-many",
         domain_pack="manufacturing-predictive-maintenance",
     ),

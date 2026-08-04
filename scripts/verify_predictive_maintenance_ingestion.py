@@ -25,6 +25,7 @@ ROLE_TABLES = {
     "prediction_snapshot": "pm_prediction_snapshots",
     "prediction_factor": "pm_prediction_factors",
     "prediction_timeline": "pm_prediction_timeline",
+    "result_artifact": "pm_result_artifacts",
 }
 
 
@@ -84,7 +85,8 @@ def verify(
             raise RuntimeError("no Dataset Version exists for the source bundle checksum")
         version_id = str(version["id"])
         actual: dict[str, int] = {}
-        for role, table in ROLE_TABLES.items():
+        for role in expected:
+            table = ROLE_TABLES[role]
             row = connection.execute(
                 sql.SQL("SELECT COUNT(*) AS count FROM {} WHERE dataset_version_id=%s").format(
                     sql.Identifier(table)
@@ -149,19 +151,34 @@ def verify(
                 WHERE f.dataset_version_id=%s AND a.asset_id IS NULL
             """,
         }
+        if "result_artifact" in expected:
+            fk_checks["result_artifacts"] = """
+                SELECT COUNT(*) AS count FROM pm_result_artifacts f
+                LEFT JOIN pm_assets a ON a.dataset_version_id=f.dataset_version_id
+                    AND a.asset_id=f.asset_id
+                LEFT JOIN pm_prediction_snapshots p
+                    ON p.dataset_version_id=f.dataset_version_id
+                    AND p.prediction_id=f.prediction_id
+                LEFT JOIN prediction_results pr ON pr.prediction_id=f.prediction_result_id
+                WHERE f.dataset_version_id=%s
+                  AND (a.asset_id IS NULL OR p.prediction_id IS NULL OR pr.prediction_id IS NULL)
+            """
         fk_orphans = {
             name: int(connection.execute(statement, (version_id,)).fetchone()["count"])
             for name, statement in fk_checks.items()
         }
         time_checks = {}
-        for role, table, field in (
+        time_specs = [
             ("compressor_sensor_observation", "pm_compressor_observations", "observed_at"),
             ("cnc_sensor_observation", "pm_cnc_observations", "observed_at"),
             ("cnc_production_cycle", "pm_production_cycles", "cycle_completed_at"),
             ("maintenance_event", "pm_maintenance_events", "started_at"),
             ("prediction_snapshot", "pm_prediction_snapshots", "observed_at"),
             ("prediction_timeline", "pm_prediction_timeline", "observed_at"),
-        ):
+        ]
+        if "result_artifact" in expected:
+            time_specs.append(("result_artifact", "pm_result_artifacts", "observed_at"))
+        for role, table, field in time_specs:
             row = connection.execute(
                 sql.SQL("SELECT MIN({0}) AS minimum,MAX({0}) AS maximum FROM {1} WHERE dataset_version_id=%s").format(
                     sql.Identifier(field), sql.Identifier(table)
@@ -202,7 +219,7 @@ def verify(
         with psycopg.connect(normalized_url, autocommit=True) as admin:
             admin.execute(sql.SQL("CREATE ROLE {} LOGIN").format(sql.Identifier(role_name)))
             admin.execute(sql.SQL("GRANT USAGE ON SCHEMA public TO {}").format(sql.Identifier(role_name)))
-            tables = ["datasets", "dataset_versions", *ROLE_TABLES.values()]
+            tables = ["datasets", "dataset_versions", *(ROLE_TABLES[role] for role in expected)]
             admin.execute(
                 sql.SQL("GRANT SELECT ON {} TO {}").format(
                     sql.SQL(",").join(sql.Identifier(table) for table in tables),

@@ -63,6 +63,10 @@ class BundleDatasetAdapter(Protocol):
     required_roles: frozenset[str]
     allowed_roles: frozenset[str]
 
+    def required_roles_for(self, manifest: DatasetBundleManifestV2) -> frozenset[str]: ...
+
+    def allowed_roles_for(self, manifest: DatasetBundleManifestV2) -> frozenset[str]: ...
+
     def validate_files(
         self,
         manifest: DatasetBundleManifestV2,

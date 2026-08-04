@@ -135,18 +135,42 @@ def get_adapter_service() -> AdapterService:
     return AdapterService(target, root=ROOT)
 
 
+def _ontology_principal(
+    request: Request,
+    identity: IdentityService = Depends(get_identity_service),
+) -> Principal:
+    token = request.cookies.get(SESSION_COOKIE)
+    if not token:
+        raise AuthError(401, "authentication_required", "로그인이 필요합니다.")
+    return identity.principal_for_token(
+        token,
+        user_agent=request.headers.get("User-Agent"),
+        client_ip=client_ip(request),
+    )
+
+
 def get_ontology_service(
     service: ManufacturingPredictiveMaintenanceService = Depends(get_service),
+    principal: Principal = Depends(_ontology_principal),
 ) -> OntologyService:
     target = str(service.repository.path)
     if is_postgresql(target):
+        project_id = principal.active_project_id
+        if not project_id and len(principal.project_scopes) == 1:
+            project_id = principal.project_scopes[0]
+        if not project_id:
+            raise AuthError(
+                409,
+                "active_project_required",
+                "Ontology를 조회하기 전에 Project를 활성화해야 합니다.",
+            )
         return OntologyService(
             service,
             action_repository=PostgreSQLOntologyActionRepository(target),
             instance_repository=PostgreSQLOntologyInstanceRepository(
                 target,
-                organization_id="org-ontology-demo",
-                project_id="manufacturing-demo-project",
+                organization_id=principal.organization_id,
+                project_id=project_id,
             ),
             role_workflow_repository=PostgreSQLRoleWorkflowRepository(target),
         )

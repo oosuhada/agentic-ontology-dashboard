@@ -55,9 +55,19 @@ class BundleFileAdapter:
 
     def validate(self, manifest: DatasetBundleManifestV2) -> BundleValidationResult:
         adapter = self.registry.get_bundle(manifest.adapter_code)
+        required_roles = (
+            adapter.required_roles_for(manifest)
+            if hasattr(adapter, "required_roles_for")
+            else adapter.required_roles
+        )
+        allowed_roles = (
+            adapter.allowed_roles_for(manifest)
+            if hasattr(adapter, "allowed_roles_for")
+            else adapter.allowed_roles
+        )
         descriptors = {item.role: item for item in manifest.files}
-        missing = sorted(adapter.required_roles - set(descriptors))
-        unexpected = sorted(set(descriptors) - adapter.allowed_roles)
+        missing = sorted(required_roles - set(descriptors))
+        unexpected = sorted(set(descriptors) - allowed_roles)
         issues: list[BundleValidationIssue] = []
         issue_total = 0
         summaries: dict[str, BundleRoleValidationSummary] = {}
@@ -149,7 +159,7 @@ class BundleFileAdapter:
         access_gate_passed = (
             not missing
             and not unexpected
-            and set(resolved) == adapter.required_roles
+            and set(resolved) == required_roles
             and not issues
         )
         if access_gate_passed:

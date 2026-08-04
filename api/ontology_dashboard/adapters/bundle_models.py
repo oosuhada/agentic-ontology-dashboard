@@ -76,6 +76,48 @@ class PredictiveMaintenanceSourceContract(StrictBundleModel):
     synthetic_effect_columns_in_source: bool
     prediction_outputs_in_source: bool
     evaluation_truth_separate: Literal[True]
+    cnc_ai4i_physical_relations: Literal[True] | None = None
+    failure_modes_satisfy_sensor_conditions: Literal[True] | None = None
+    asset_variability_policy: Literal[
+        "small_offsets_plus_time_varying_physical_process"
+    ] | None = None
+
+    @model_validator(mode="after")
+    def v3_fields_are_declared_as_one_contract(self) -> "PredictiveMaintenanceSourceContract":
+        values = (
+            self.cnc_ai4i_physical_relations,
+            self.failure_modes_satisfy_sensor_conditions,
+            self.asset_variability_policy,
+        )
+        if any(value is not None for value in values) and not all(
+            value is not None for value in values
+        ):
+            raise ValueError("predictive maintenance v3 source-contract fields must be declared together")
+        return self
+
+    @property
+    def is_v3(self) -> bool:
+        return self.cnc_ai4i_physical_relations is True
+
+
+class BundleGovernanceArtifact(StrictBundleModel):
+    role: Literal["package_validation"]
+    uri: str = Field(min_length=1, max_length=2048)
+    checksum_sha256: str = Field(pattern=SHA256_PATTERN)
+    media_type: Literal["application/json"] = "application/json"
+    summary: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("checksum_sha256")
+    @classmethod
+    def normalize_governance_checksum(cls, value: str) -> str:
+        return value.lower()
+
+    @model_validator(mode="after")
+    def governance_artifact_must_not_be_runtime_truth(self) -> "BundleGovernanceArtifact":
+        normalized_uri = self.uri.replace("\\", "/").lower()
+        if "/evaluation_truth/" in f"/{normalized_uri.strip('/')}/" or "/hidden_truth/" in f"/{normalized_uri.strip('/')}/":
+            raise ValueError("truth and hidden-truth files cannot be governance artifacts")
+        return self
 
 
 class BundleGenerationMetadata(StrictBundleModel):
@@ -130,7 +172,7 @@ def canonical_bundle_checksum_payload(
             "observation_interval_minutes": generation.observation_interval_minutes,
             "rate_profile": generation.rate_profile,
         },
-        "source_contract": source_contract.model_dump(mode="json"),
+        "source_contract": source_contract.model_dump(mode="json", exclude_none=True),
         "files": canonical_files,
     }
 
@@ -168,6 +210,7 @@ class DatasetBundleManifestV2(StrictBundleModel):
     generation: BundleGenerationMetadata
     source_contract: PredictiveMaintenanceSourceContract
     files: list[DatasetBundleFile] = Field(min_length=1)
+    governance_artifacts: list[BundleGovernanceArtifact] = Field(default_factory=list)
     created_at: datetime
 
     @field_validator("bundle_checksum_sha256")
@@ -180,6 +223,9 @@ class DatasetBundleManifestV2(StrictBundleModel):
         roles = [item.role for item in self.files]
         if len(roles) != len(set(roles)):
             raise ValueError("bundle file roles must be unique")
+        governance_roles = [item.role for item in self.governance_artifacts]
+        if len(governance_roles) != len(set(governance_roles)):
+            raise ValueError("bundle governance artifact roles must be unique")
         expected = compute_bundle_checksum(
             dataset_version=self.dataset_version,
             schema_version=self.schema_version,

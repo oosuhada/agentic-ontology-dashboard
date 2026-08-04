@@ -63,6 +63,7 @@ def list_action_types(_: Principal = Depends(require_permission("ontology.regist
 def query_ontology_objects(
     workspace_id: str,
     object_type: str | None = None,
+    dataset_version_id: str | None = None,
     q: str | None = None,
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=200),
@@ -74,6 +75,7 @@ def query_ontology_objects(
     return ontology.query_objects(
         workspace_id=workspace_id,
         object_type=object_type,
+        dataset_version_id=dataset_version_id,
         search=q,
         offset=offset,
         limit=limit,
@@ -84,6 +86,7 @@ def query_ontology_objects(
 def aggregate_ontology_objects(
     workspace_id: str,
     object_type: str,
+    dataset_version_id: str | None = None,
     group_by: list[str] = Query(default=[]),
     metrics: list[str] = Query(default=[]),
     q: str | None = None,
@@ -95,6 +98,7 @@ def aggregate_ontology_objects(
     return ontology.aggregate_objects(
         workspace_id=workspace_id,
         object_type=object_type,
+        dataset_version_id=dataset_version_id,
         group_by=group_by,
         metrics=metrics,
         search=q,
@@ -105,6 +109,7 @@ def aggregate_ontology_objects(
 def get_ontology_object(
     object_id: str,
     workspace_id: str,
+    dataset_version_id: str | None = None,
     principal: Principal = Depends(require_permission("ontology.objects.read")),
     identity: IdentityService = Depends(get_identity_service),
     ontology: OntologyService = Depends(get_ontology_service),
@@ -113,6 +118,7 @@ def get_ontology_object(
     return ontology.get_object(
         workspace_id=workspace_id,
         object_id=object_id,
+        dataset_version_id=dataset_version_id,
     ).model_dump(mode="json")
 
 
@@ -120,6 +126,7 @@ def get_ontology_object(
 def traverse_ontology_object(
     object_id: str,
     workspace_id: str,
+    dataset_version_id: str | None = None,
     direction: Literal["outgoing", "incoming", "both"] = "outgoing",
     depth: int = Query(default=1, ge=1, le=5),
     link_type: str | None = None,
@@ -134,6 +141,7 @@ def traverse_ontology_object(
         direction=direction,
         depth=depth,
         link_type=link_type,
+        dataset_version_id=dataset_version_id,
     ).model_dump(mode="json")
 
 

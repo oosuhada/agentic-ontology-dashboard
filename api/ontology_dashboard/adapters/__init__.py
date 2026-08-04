@@ -3,6 +3,7 @@
 from .bundle_models import (
     BundleFileSchemaMetadata,
     BundleGenerationMetadata,
+    BundleGovernanceArtifact,
     BundleRoleValidationSummary,
     BundleValidationIssue,
     BundleValidationResult,
@@ -29,6 +30,7 @@ __all__ = [
     "BundleFileSchemaMetadata",
     "BundleFileAdapter",
     "BundleGenerationMetadata",
+    "BundleGovernanceArtifact",
     "BundleRoleValidationSummary",
     "BundleValidationIssue",
     "BundleValidationResult",

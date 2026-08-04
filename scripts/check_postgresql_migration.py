@@ -71,24 +71,25 @@ def main() -> int:
                     "-f",
                     str(migration),
                 ])
-            predictive_maintenance_migration = (
-                MIGRATION_DIR / "0011_predictive_maintenance_domain_pack.sql"
-            )
-            run([
-                "psql",
-                "-v",
-                "ON_ERROR_STOP=1",
-                "-h",
-                "127.0.0.1",
-                "-p",
-                str(port),
-                "-U",
-                "postgres",
-                "-d",
-                "ontology_test",
-                "-f",
-                str(predictive_maintenance_migration),
-            ])
+            for predictive_maintenance_migration in (
+                MIGRATION_DIR / "0011_predictive_maintenance_domain_pack.sql",
+                MIGRATION_DIR / "0012_predictive_maintenance_v3_materialization.sql",
+            ):
+                run([
+                    "psql",
+                    "-v",
+                    "ON_ERROR_STOP=1",
+                    "-h",
+                    "127.0.0.1",
+                    "-p",
+                    str(port),
+                    "-U",
+                    "postgres",
+                    "-d",
+                    "ontology_test",
+                    "-f",
+                    str(predictive_maintenance_migration),
+                ])
             tables = run([
                 "psql",
                 "-h",
@@ -165,6 +166,8 @@ def main() -> int:
                 "pm_prediction_snapshots",
                 "pm_prediction_factors",
                 "pm_prediction_timeline",
+                "pm_result_artifacts",
+                "ontology_materialization_mappings",
                 "transactional_outbox",
                 "schema_migrations",
             }
@@ -202,6 +205,8 @@ def main() -> int:
                 "pm_prediction_snapshots",
                 "pm_prediction_factors",
                 "pm_prediction_timeline",
+                "pm_result_artifacts",
+                "ontology_materialization_mappings",
                 "transactional_outbox",
             }
             run([
@@ -301,7 +306,7 @@ def main() -> int:
                 "rls_prediction_query_output": prediction_result,
                 "rls_visible_predictions_for_project_a1": visible_predictions,
                 "required_rls_tables": sorted(required_rls),
-                "predictive_maintenance_migration_reapplied": True,
+                "predictive_maintenance_migrations_reapplied": ["0011", "0012"],
                 "pass": passed,
             }, ensure_ascii=False, indent=2))
             return 0 if passed else 1

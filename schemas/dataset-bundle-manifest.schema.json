@@ -38,6 +38,11 @@
       "minItems": 1,
       "items": { "$ref": "#/$defs/runtimeFile" }
     },
+    "governance_artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/governanceArtifact" },
+      "default": []
+    },
     "created_at": { "type": "string", "format": "date-time" }
   },
   "$defs": {
@@ -85,7 +90,29 @@
         "upstream_features_in_source": { "type": "boolean" },
         "synthetic_effect_columns_in_source": { "type": "boolean" },
         "prediction_outputs_in_source": { "type": "boolean" },
-        "evaluation_truth_separate": { "const": true }
+        "evaluation_truth_separate": { "const": true },
+        "cnc_ai4i_physical_relations": { "enum": [true, null] },
+        "failure_modes_satisfy_sensor_conditions": { "enum": [true, null] },
+        "asset_variability_policy": {
+          "enum": ["small_offsets_plus_time_varying_physical_process", null]
+        }
+      }
+    },
+    "governanceArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "uri", "checksum_sha256", "media_type", "summary"],
+      "properties": {
+        "role": { "const": "package_validation" },
+        "uri": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "not": { "pattern": "(^|[\\/])(evaluation_truth|hidden_truth)([\\/]|$)" }
+        },
+        "checksum_sha256": { "$ref": "#/$defs/sha256" },
+        "media_type": { "const": "application/json" },
+        "summary": { "type": "object" }
       }
     },
     "fileSchema": {

@@ -53,12 +53,20 @@ class OntologyService:
         )
 
     def _require_workspace(self, workspace_id: str) -> None:
-        if not self.adapter.supports_workspace(workspace_id):
+        if self.adapter.supports_workspace(workspace_id):
+            return
+        try:
+            items = self.instance_repository.list_objects(workspace_id=workspace_id)
+        except Exception as exc:
+            raise EventNotFound(workspace_id) from exc
+        if not items:
             raise EventNotFound(workspace_id)
 
     def _sync_workspace(self, workspace_id: str) -> None:
         """Materialize the domain adapter snapshot into the persistent instance store."""
         self._require_workspace(workspace_id)
+        if not self.adapter.supports_workspace(workspace_id):
+            return
         snapshot = self.adapter.snapshot()
         self.instance_repository.replace_source_snapshot(
             workspace_id=workspace_id,
@@ -73,6 +81,7 @@ class OntologyService:
         *,
         workspace_id: str,
         object_type: str | None = None,
+        dataset_version_id: str | None = None,
         search: str | None = None,
         offset: int = 0,
         limit: int = 100,
@@ -86,6 +95,12 @@ class OntologyService:
             workspace_id=workspace_id,
             object_type=object_type,
         )
+        if dataset_version_id is not None:
+            items = [
+                item
+                for item in items
+                if item.properties.get("dataset_version_id") == dataset_version_id
+            ]
         if search:
             needle = search.strip().lower()
             if needle:
@@ -98,6 +113,7 @@ class OntologyService:
             "workspace_id": workspace_id,
             "domain_pack": self.adapter.domain_pack,
             "object_type": object_type,
+            "dataset_version_id": dataset_version_id,
             "search": search,
             "offset": offset,
             "limit": limit,
@@ -110,6 +126,7 @@ class OntologyService:
         *,
         workspace_id: str,
         object_type: str,
+        dataset_version_id: str | None = None,
         group_by: list[str] | None = None,
         metrics: list[str] | None = None,
         search: str | None = None,
@@ -151,6 +168,12 @@ class OntologyService:
             workspace_id=workspace_id,
             object_type=object_type,
         )
+        if dataset_version_id is not None:
+            items = [
+                item
+                for item in items
+                if item.properties.get("dataset_version_id") == dataset_version_id
+            ]
         if search:
             needle = search.strip().lower()
             if needle:
@@ -194,6 +217,7 @@ class OntologyService:
         return {
             "workspace_id": workspace_id,
             "object_type": object_type,
+            "dataset_version_id": dataset_version_id,
             "group_by": groups,
             "metrics": metric_specs,
             "source_rows": len(items),
@@ -220,13 +244,24 @@ class OntologyService:
         ).lower()
         return needle in haystack
 
-    def get_object(self, *, workspace_id: str, object_id: str) -> ObjectRecord:
+    def get_object(
+        self,
+        *,
+        workspace_id: str,
+        object_id: str,
+        dataset_version_id: str | None = None,
+    ) -> ObjectRecord:
         self._sync_workspace(workspace_id)
         item = self.instance_repository.get_object(
             workspace_id=workspace_id,
             object_id=object_id,
         )
         if item is None:
+            raise EventNotFound(object_id)
+        if (
+            dataset_version_id is not None
+            and item.properties.get("dataset_version_id") != dataset_version_id
+        ):
             raise EventNotFound(object_id)
         return item
 
@@ -238,6 +273,7 @@ class OntologyService:
         direction: TraversalDirection = "outgoing",
         depth: int = 1,
         link_type: str | None = None,
+        dataset_version_id: str | None = None,
     ) -> OntologyTraversal:
         self._require_workspace(workspace_id)
         if link_type is not None and link_type not in LINK_TYPE_BY_ID:
@@ -245,6 +281,12 @@ class OntologyService:
 
         self._sync_workspace(workspace_id)
         objects = self.instance_repository.list_objects(workspace_id=workspace_id)
+        if dataset_version_id is not None:
+            objects = [
+                item
+                for item in objects
+                if item.properties.get("dataset_version_id") == dataset_version_id
+            ]
         object_index = {item.id: item for item in objects}
         try:
             root = object_index[object_id]
@@ -255,6 +297,12 @@ class OntologyService:
             workspace_id=workspace_id,
             link_type=link_type,
         )
+        if dataset_version_id is not None:
+            candidate_edges = [
+                item
+                for item in candidate_edges
+                if item.properties.get("dataset_version_id") == dataset_version_id
+            ]
         visited_ids = {root.id}
         frontier = {root.id}
         selected_edges: dict[str, LinkRecord] = {}
