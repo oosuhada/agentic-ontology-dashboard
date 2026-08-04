@@ -79,6 +79,7 @@ test("cross-filter selection updates downstream boards", async ({ page }) => {
   await page.locator(".generic-data-table-body > button").nth(1).click();
   await expect(page.locator(".cross-filter-summary")).toContainText("active cross-filter");
   await expect(page.locator(".dashboard-board-frame.is-affected").first()).toBeVisible();
+  await expect(page.locator(".dashboard-cross-filter-runtime.server").first()).toContainText("Server filtered");
   await page.locator(".cross-filter-summary").getByRole("button", { name: "Clear" }).click();
   await expect(page.locator(".cross-filter-summary")).toHaveCount(0);
 });

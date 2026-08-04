@@ -3,7 +3,7 @@
 - 작성일: 2026-08-02 (1차 문서 `palantir-ui-gap-verification-and-plan.md` 이후 재검증)
 - 방식: 이전 문서에서 "미검증"으로 남긴 항목 위주로 실제 소스를 다시 열어 확인. 이번에도 "파일이 있다"가 아니라 "실제로 동작한다" 기준.
 - 결론 먼저: **1차 문서의 P0 4개, P1(Agent Evidence UI) 전부 실제로 구현되어 있는 것을 확인했다.** 이번 문서는 남은 격차와 이번에 새로 드러난 두 가지 확인 필요 항목을 정리한다.
-- 실행 결과(2026-08-02): 미사용 `langgraph`/local vector Python adapter 의존성을 제거했고, Project 2 local pgvector를 인프라·projection schema 경계로 재확정했다. Dashboard cross-filter는 server-query board와 client-filter legacy board가 공존하는 hybrid 구조로 확인했으며, Analysis Result Inspector의 고정 Lineage 목록은 실제 upstream DAG mini graph로 교체했다. Dashboard Audit Trace의 Agent Evidence drill-down은 이미 구현돼 있어 유지했다.
+- 실행 결과(2026-08-02): 미사용 `langgraph`/local vector Python adapter 의존성을 제거했고, Project 2 local pgvector를 인프라·projection schema 경계로 재확정했다. Dashboard cross-filter는 board dependency/accepted parameter를 기준으로 downstream scope를 계산하고, risk-event legacy/advanced renderer도 서버가 반환한 전체 matching object ID 집합으로 재조회하도록 전환했다. API 실패 시에만 명시적 client fallback badge를 표시한다. Analysis Result Inspector의 고정 Lineage 목록은 실제 upstream DAG mini graph로 교체했고 Dashboard Audit Trace의 Agent Evidence drill-down은 기존 구현을 유지했다.
 
 ---
 
@@ -73,7 +73,7 @@ langgraph-checkpoint-postgres>=2
 | Analysis Path 서버 실행/검증/품질 지표 | 완료 |
 | Agent Evidence UI + 라우팅 | 완료 |
 | Blueprint 컴포넌트 + 디자인 토큰 채택 | 진행됨. Dashboard·Analysis·Agent·Governance·Datasets를 동일한 1440×1000 light-theme viewport로 캡처했고 review manifest를 추가했다. |
-| Dashboard cross-filter engine | Hybrid 확인. `EventDataGrid`와 catalog-backed board는 selection filter를 서버 API로 재쿼리하고, 일부 legacy/fixed renderer는 전달받은 EventSummary 배열을 client-side로 필터링한다. 서버 우선 renderer와 fallback 경계를 UI·문서에 명시하고 legacy 전면 전환은 별도 단계로 남긴다. |
+| Dashboard cross-filter engine | 완료. `EventDataGrid`/catalog board뿐 아니라 risk-event scope를 소비하는 legacy·advanced renderer도 server board query의 `matching_object_ids`로 scope를 구성한다. dependency edge가 없는 source는 target definition의 accepted parameter binding으로 fallback하며, API 오류 때만 동일 selection의 client fallback과 경고 badge를 노출한다. |
 | Analysis Result Inspector의 "Lineage" 섹션 | 완료. 선택 node의 실제 upstream nodes/edges를 React Flow read-only mini graph로 렌더링하고 선택 node, model version, Analysis revision을 함께 표시한다. |
 | langgraph 의존성 실사용 여부 | 미사용 확인 및 dependency 제거 완료 |
 | Project 2 자체 pgvector 소비처 | runtime 소비처 없음 확인. infrastructure/projection schema only 경계 유지, 미사용 Python adapter dependency 제거 완료 |
@@ -86,7 +86,7 @@ langgraph-checkpoint-postgres>=2
 ### P0 — 완료
 1. `langgraph`/checkpoint package 미사용 확인 후 dependency 제거
 2. Project 2 local pgvector runtime 소비처 부재 확인, infrastructure/projection schema only 경계와 Project 3 typed RAG 경계 문서화, 미사용 Python vector adapter dependency 제거
-3. Dashboard cross-filter를 hybrid 구조로 재확인: server-query board와 client-filter legacy board를 구분
+3. Dashboard cross-filter를 server-first 구조로 전환: downstream dependency/accepted parameter scope, 전체 matching object IDs, 명시적 client fallback 및 E2E 검증
 
 ### P1 — 완료
 1. Analysis Result Inspector Lineage를 실제 upstream DAG React Flow mini graph로 교체
@@ -95,7 +95,7 @@ langgraph-checkpoint-postgres>=2
 ### P2 — 캡처 완료, 시각 검토 artifact 준비
 1. Playwright 고정 viewport(1440×1000, light theme)로 Dashboard, Analysis Path, Agent Workbench, Governance, Datasets 5개 PNG를 생성했다.
 2. `docs/ui/screenshots/palantir-gap-v2/README.md`에 각 화면과 `palantir-contour-ui-reference.md` 공식 이미지의 대응표를 기록했다.
-3. E2E는 각 route의 primary workbench와 Analysis upstream DAG mini graph 렌더링을 검증한다. 밀도·여백·색 대비의 최종 선호 평가는 저장된 PNG를 공식 이미지와 나란히 보는 human review로 남긴다.
+3. E2E는 각 route의 primary workbench와 Analysis upstream DAG mini graph 렌더링을 검증한다. `comparison.html`은 로컬 5개 캡처와 공식 Palantir 5개 이미지를 나란히 렌더링하며, `comparison-sheet.png`는 해당 화면의 합성 캡처다. 구조·정보 계층에 대한 provisional verdict는 README에 기록했고 최종 미적 수용 여부만 human review로 남긴다.
 
 ---
 

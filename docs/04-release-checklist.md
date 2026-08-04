@@ -77,6 +77,8 @@ PYTHONPATH=api:ml/src .venv/bin/python scripts/release_gate.py --with-e2e
 - [ ] deleted Project tombstone UX
 - [x] 다중 Project switch와 resource isolation E2E
 - [x] role dashboard가 project별 template과 active role context를 사용한다.
+- [x] Dashboard cross-filter가 dependency/accepted parameter scope를 server query에 재적용하고 전체 matching object ID를 downstream renderer에 전달한다.
+- [x] server cross-filter 실패 시 client fallback을 명시적인 badge로 표시한다.
 - [x] error/loading/empty 상태 존재
 - [ ] unsaved dashboard edit 경고 또는 복구 존재
 
@@ -104,6 +106,8 @@ PYTHONPATH=api:ml/src .venv/bin/python scripts/release_gate.py --with-e2e
 - [x] Dataset materialization과 reusable Analysis input
 - [x] Agent persisted run/claim/evidence restore
 - [x] live PostgreSQL+Neo4j+Project 3 RAG hybrid gate
+- [x] server-first Dashboard cross-filter와 explicit client fallback E2E
+- [x] Palantir local/official side-by-side visual comparison render E2E
 
 ## 7. Dataset and Adapter
 

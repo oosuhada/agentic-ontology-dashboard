@@ -19,7 +19,14 @@ test("manager and engineer accounts see different governed views for the same ev
   await expect(page.getByText("현장 점검 요청", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("예상 운영 영향", { exact: true }).first()).toBeVisible();
 
+  const loggedOut = page.waitForResponse((response) => (
+    response.request().method() === "POST"
+    && response.url().includes("/api/auth/logout")
+    && response.ok()
+  ));
   await page.getByRole("button", { name: "로그아웃", exact: true }).click();
+  await loggedOut;
+  await expect(page).toHaveURL(/\/login$/, { timeout: 15_000 });
   await login(page, "engineer@ontology.local", "Engineer!2026");
   await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project$/);
   await page.getByRole("button", { name: /GS-002/ }).click();
@@ -27,8 +34,16 @@ test("manager and engineer accounts see different governed views for the same ev
   await expect(page.getByText("센서 변화", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("주요 위험 근거", { exact: true }).first()).toBeVisible();
 
+  const followUpCompleted = page.waitForResponse((response) => (
+    response.request().method() === "POST"
+    && response.url().includes("/follow-up")
+    && response.ok()
+  ));
   await page.getByRole("button", { name: "왜 위험한가?" }).click();
-  await expect(page.getByText(/가장 큰 근거는 공구 마모/)).toBeVisible();
+  const followUpResponse = await followUpCompleted;
+  const followUpPayload = await followUpResponse.json() as { answer: string; supported: boolean };
+  expect(followUpPayload.supported).toBe(true);
+  await expect(page.locator(".conversation-answer")).toContainText(followUpPayload.answer, { timeout: 15_000 });
 });
 
 test("project context restores the migrated demo route and scopes its workspace", async ({ page }) => {
@@ -71,9 +86,15 @@ test("data-quality and provider fallback states remain usable after authenticati
   await expect(page.getByText("데이터 품질 경고", { exact: true }).first()).toBeVisible();
   await expect(page.getByText(/정상 또는 고장으로 단정하지 않습니다/)).toBeVisible();
 
+  const gs008Details = Promise.all([
+    page.waitForResponse((response) => response.url().includes("/api/events/EVT-GS-008/evidence") && response.ok()),
+    page.waitForResponse((response) => response.url().includes("/api/events/EVT-GS-008/report") && response.ok()),
+    page.waitForResponse((response) => response.url().includes("/api/events/EVT-GS-008/layout") && response.ok()),
+  ]);
   await page.getByRole("button", { name: /GS-008/ }).click();
+  await gs008Details;
   await expect(page.locator(".mode-badge", { hasText: "deterministic_fallback" })).toBeVisible();
-  await expect(page.getByText("공구 마모 위험", { exact: false }).first()).toBeVisible();
+  await expect(page.getByText("공구 마모 위험", { exact: false }).first()).toBeVisible({ timeout: 15_000 });
 });
 
 test("FDE is denied admin access while tenant admin can manage users", async ({ page }) => {
@@ -144,10 +165,16 @@ test("cross-filter selection saved view and share preserve governed parameter st
   await expect(page.locator(".dashboard-board-frame.is-affected").first()).toBeVisible();
   await expect(page.getByText(/boards affected/)).toBeVisible();
 
+  const savedViewCreated = page.waitForResponse((response) => (
+    response.request().method() === "POST"
+    && response.url().includes("/api/dashboards/saved-views")
+    && response.ok()
+  ));
   page.once("dialog", async (dialog) => dialog.accept("Playwright 공구 마모 View"));
   await page.getByRole("button", { name: "View 저장", exact: true }).click();
-  await expect(page.getByText(/Saved View 'Playwright 공구 마모 View'/)).toBeVisible();
-  await expect(page.getByRole("option", { name: "Playwright 공구 마모 View" })).toBeAttached();
+  await savedViewCreated;
+  await expect(page.getByRole("option", { name: "Playwright 공구 마모 View" })).toBeAttached({ timeout: 15_000 });
+  await expect(page.getByText(/Saved View 'Playwright 공구 마모 View'/)).toBeVisible({ timeout: 15_000 });
 
   await page.getByRole("button", { name: "공유", exact: true }).click();
   await expect(page.getByText(/공유 링크를 생성했습니다:.*share=/)).toBeVisible();

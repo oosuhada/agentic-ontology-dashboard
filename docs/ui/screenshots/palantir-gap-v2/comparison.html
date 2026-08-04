@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ontology Dashboard · Palantir visual comparison</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #eef1f5; color: #182026; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px; }
+    header { max-width: 1600px; margin: 0 auto 18px; border: 1px solid #c8d0d9; border-radius: 8px; padding: 18px 20px; background: #fff; }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    header p { margin: 0; color: #5c7080; font-size: 13px; }
+    main { display: grid; max-width: 1600px; margin: 0 auto; gap: 18px; }
+    article { overflow: hidden; border: 1px solid #c8d0d9; border-radius: 8px; background: #fff; box-shadow: 0 2px 6px rgba(16, 22, 26, .08); }
+    article > header { display: flex; max-width: none; margin: 0; align-items: flex-start; justify-content: space-between; gap: 16px; border: 0; border-bottom: 1px solid #d8e1e8; border-radius: 0; padding: 12px 14px; background: #f5f8fa; }
+    article h2 { margin: 0 0 3px; font-size: 16px; }
+    article header p { font-size: 12px; }
+    .verdict { border: 1px solid #a7b6c2; border-radius: 999px; padding: 4px 8px; color: #394b59; background: #fff; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: #c8d0d9; }
+    figure { min-width: 0; margin: 0; padding: 12px; background: #fff; }
+    figcaption { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; color: #5c7080; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    figure img { display: block; width: 100%; min-height: 260px; max-height: 620px; object-fit: contain; border: 1px solid #d8e1e8; background: #f5f8fa; }
+    .notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 12px; border-top: 1px solid #d8e1e8; background: #f5f8fa; }
+    .notes div { border: 1px solid #d8e1e8; border-radius: 5px; padding: 9px; background: #fff; }
+    .notes strong { display: block; margin-bottom: 4px; font-size: 11px; }
+    .notes span { color: #5c7080; font-size: 11px; line-height: 1.45; }
+    footer { max-width: 1600px; margin: 18px auto 0; color: #5c7080; font-size: 11px; }
+    @media (max-width: 900px) { body { padding: 10px; } .pair, .notes { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Ontology Dashboard · Palantir visual comparison</h1>
+    <p>Local captures are fixed at 1440×1000. Official images are visual references, not pixel-perfect acceptance baselines. Review hierarchy, density, spacing, contrast, and operational clarity.</p>
+  </header>
+  <main>
+    <article>
+      <header><div><h2>Role Dashboard</h2><p>Operational dashboard composition and chart-to-chart filtering.</p></div><span class="verdict">Strong structural match</span></header>
+      <div class="pair">
+        <figure><figcaption><span>Ontology Dashboard</span><span>dashboard.png</span></figcaption><img class="local" src="dashboard.png" alt="Ontology Dashboard role dashboard" /></figure>
+        <figure><figcaption><span>Palantir Contour</span><span>Dashboard overview</span></figcaption><img class="official" src="https://www.palantir.com/docs/resources/foundry/contour/dashboard-overview.png" alt="Palantir Contour dashboard overview" /></figure>
+      </div>
+      <div class="notes"><div><strong>Hierarchy</strong><span>Both prioritize global navigation, active scope, parameters, and a dense governed canvas.</span></div><div><strong>Interaction</strong><span>Local implementation exposes server-filter state, affected boards, tabs, edit/view, export, and object drill-down.</span></div><div><strong>Human review</strong><span>Check whether local header height and status strip consume too much vertical space beside the official reference.</span></div></div>
+    </article>
+
+    <article>
+      <header><div><h2>Analysis Path</h2><p>Board rail, transformation path, result preview, inspector, and lineage.</p></div><span class="verdict">Direct product-pattern match</span></header>
+      <div class="pair">
+        <figure><figcaption><span>Ontology Dashboard</span><span>analysis.png</span></figcaption><img class="local" src="analysis.png" alt="Ontology Dashboard analysis path" /></figure>
+        <figure><figcaption><span>Palantir Contour</span><span>Contour overview</span></figcaption><img class="official" src="https://www.palantir.com/docs/resources/foundry/contour/overview.png" alt="Palantir Contour overview" /></figure>
+      </div>
+      <div class="notes"><div><strong>Hierarchy</strong><span>Rail → path canvas → inspector is aligned with the reference model.</span></div><div><strong>Correctness UI</strong><span>Local inspector adds server-run quality, timezone, warnings, freshness, sample rows, and an upstream DAG mini graph.</span></div><div><strong>Human review</strong><span>Compare node/card scale and ensure the inspector remains readable without reducing the central canvas too aggressively.</span></div></div>
+    </article>
+
+    <article>
+      <header><div><h2>Agent Evidence Workbench</h2><p>Grounded query, evidence trace, claims, persisted runs, and orchestration lineage.</p></div><span class="verdict">Foundry-language adaptation</span></header>
+      <div class="pair">
+        <figure><figcaption><span>Ontology Dashboard</span><span>agent.png</span></figcaption><img class="local" src="agent.png" alt="Ontology Dashboard agent evidence workbench" /></figure>
+        <figure><figcaption><span>Palantir Foundry</span><span>Agent template experience</span></figcaption><img class="official" src="https://www.palantir.com/docs/resources/foundry/announcements/release-notes/2026-07-09-133715-agent-flows-agent-flows-2-pn.png" alt="Palantir Foundry agent template interface" /></figure>
+      </div>
+      <div class="notes"><div><strong>Hierarchy</strong><span>Local three-pane evidence-first layout is intentionally operational rather than a clone of the agent repository screen.</span></div><div><strong>Trust</strong><span>Claims, evidence IDs, stores, versions, checkpoints, and trace metadata remain visible together.</span></div><div><strong>Human review</strong><span>Judge density and contrast, not feature parity; the official image represents agent authoring while local UI represents governed execution.</span></div></div>
+    </article>
+
+    <article>
+      <header><div><h2>Governance Workbench</h2><p>Projection status, persisted traces, approvals, and audit review.</p></div><span class="verdict">Operational pattern match</span></header>
+      <div class="pair">
+        <figure><figcaption><span>Ontology Dashboard</span><span>governance.png</span></figcaption><img class="local" src="governance.png" alt="Ontology Dashboard governance workbench" /></figure>
+        <figure><figcaption><span>Palantir Foundry</span><span>Checkpoints application</span></figcaption><img class="official" src="https://www.palantir.com/docs/resources/foundry/checkpoints/checkpoints-app.png" alt="Palantir Foundry checkpoints application" /></figure>
+      </div>
+      <div class="notes"><div><strong>Hierarchy</strong><span>Both favor compact registries, filters, state tags, and a selected-record detail surface.</span></div><div><strong>Auditability</strong><span>Local workbench keeps projection failures, retries, traces, and evidence details in one governed route.</span></div><div><strong>Human review</strong><span>Check that warning and failure colors remain distinguishable without overpowering neutral operational data.</span></div></div>
+    </article>
+
+    <article>
+      <header><div><h2>Dataset Catalog</h2><p>Dataset identity, versions, metadata, preview, projection, and lineage.</p></div><span class="verdict">Strong information-architecture match</span></header>
+      <div class="pair">
+        <figure><figcaption><span>Ontology Dashboard</span><span>datasets.png</span></figcaption><img class="local" src="datasets.png" alt="Ontology Dashboard dataset catalog" /></figure>
+        <figure><figcaption><span>Palantir Foundry</span><span>Dataset Preview</span></figcaption><img class="official" src="https://www.palantir.com/docs/resources/foundry/dataset-preview/dataset.png" alt="Palantir Foundry Dataset Preview" /></figure>
+      </div>
+      <div class="notes"><div><strong>Hierarchy</strong><span>Dataset identity and controls lead into versions, metadata, table/detail, and operational health.</span></div><div><strong>Reproducibility</strong><span>Local UI makes source version, materialization, quarantine, projection state, and lineage references explicit.</span></div><div><strong>Human review</strong><span>Compare table row height and left-rail width; Dataset Preview is an especially useful density benchmark.</span></div></div>
+    </article>
+  </main>
+  <footer>Provisional conclusion: the product now uses a coherent Foundry/Blueprint visual language and matches the target information architecture. It should be described as Foundry-inspired rather than a pixel clone. Final aesthetic acceptance remains a human review decision.</footer>
+</body>
+</html>

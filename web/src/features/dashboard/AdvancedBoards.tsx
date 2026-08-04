@@ -13,6 +13,7 @@ import "@xyflow/react/dist/style.css";
 import { queryDashboardBoard, traverseOntologyObject } from "../../api";
 import type { OntologyTraversal } from "../ontology/types";
 import type { Evidence, EventSummary, Report } from "../../types";
+import { filterEventsBySelection } from "./cross-filter-engine";
 import type { RenderSpec, SelectionFilter } from "./types";
 import { EChartsRenderer } from "./renderers/EChartsRenderer";
 import { DataTableRenderer, type DataTableColumn, type TableDatum } from "./renderers/DataTableRenderer";
@@ -162,7 +163,7 @@ export function EventDataGridBoard({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const fallbackRows = useMemo<TableDatum[]>(() => visibleEvents(events, parameterState).map((event) => ({
+  const fallbackRows = useMemo<TableDatum[]>(() => visibleEvents(filterEventsBySelection(events, selectionFilters), parameterState).map((event) => ({
     event_id: event.event_id,
     equipment: event.equipment.display_name,
     line: event.equipment.line,
@@ -171,7 +172,7 @@ export function EventDataGridBoard({
     failure_type: event.predicted_failure_type,
     downtime: event.equipment.estimated_downtime_minutes,
     confidence: event.confidence,
-  })), [events, parameterState]);
+  })), [events, parameterState, selectionFilters]);
 
   useEffect(() => {
     let active = true;

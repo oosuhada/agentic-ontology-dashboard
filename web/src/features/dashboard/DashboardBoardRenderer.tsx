@@ -14,6 +14,7 @@ import type {
 } from "../../types";
 import type { DashboardDraftResponse } from "../planner/types";
 import type { RoleWorkspaceData } from "../roles/types";
+import { ServerFilteredEventScope } from "./ServerFilteredEventScope";
 import type { BoardCatalogDefinition, DashboardBoard, SelectionFilter } from "./types";
 
 const BlockRenderer = lazy(() => import("../../components").then((module) => ({ default: module.BlockRenderer })));
@@ -172,12 +173,12 @@ export function DashboardBoardRenderer({
           data_fields: [],
           collapsed: false,
         };
-    return (
-      <LazyBoard><BlockRenderer
+    const renderLegacy = (scopedEvents: EventSummary[]) => (
+      <BlockRenderer
         block={block}
         evidence={evidence}
         report={report}
-        events={events}
+        events={scopedEvents}
         selectedEventId={selectedEventId}
         role={role}
         canRecordDecision={canRecordDecision}
@@ -187,7 +188,24 @@ export function DashboardBoardRenderer({
         onNote={onNote}
         onAsk={onAsk}
         lastFollowUp={lastFollowUp}
-      /></LazyBoard>
+      />
+    );
+    const usesRiskEventScope = definition.object_types.length === 0 || definition.object_types.includes("risk_event");
+    return (
+      <LazyBoard>
+        {usesRiskEventScope ? (
+          <ServerFilteredEventScope
+            boardId={board.id}
+            dashboardId={dashboardId}
+            workspaceId={workspaceId}
+            events={events}
+            parameterState={parameterState}
+            selectionFilters={selectionFilters}
+          >
+            {renderLegacy}
+          </ServerFilteredEventScope>
+        ) : renderLegacy(events)}
+      </LazyBoard>
     );
   }
 
@@ -207,17 +225,37 @@ export function DashboardBoardRenderer({
 
   switch (definition.renderer) {
     case "OperationsKpi":
-      return <LazyBoard><OperationsKpiBoard events={events} parameterState={parameterState} /></LazyBoard>;
+      return (
+        <LazyBoard><ServerFilteredEventScope
+          boardId={board.id}
+          dashboardId={dashboardId}
+          workspaceId={workspaceId}
+          events={events}
+          parameterState={parameterState}
+          selectionFilters={selectionFilters}
+        >
+          {(scopedEvents) => <OperationsKpiBoard events={scopedEvents} parameterState={parameterState} />}
+        </ServerFilteredEventScope></LazyBoard>
+      );
     case "RiskTrendWorkbench":
       return (
-        <LazyBoard><RiskTrendWorkbench
+        <LazyBoard><ServerFilteredEventScope
           boardId={board.id}
+          dashboardId={dashboardId}
+          workspaceId={workspaceId}
           events={events}
-          selectedEventId={selectedEventId}
           parameterState={parameterState}
-          onSelectEvent={(eventId) => onSelectEvent(board.id, eventId)}
-          onSelectionFilter={onSelectionFilter}
-        /></LazyBoard>
+          selectionFilters={selectionFilters}
+        >
+          {(scopedEvents) => <RiskTrendWorkbench
+            boardId={board.id}
+            events={scopedEvents}
+            selectedEventId={selectedEventId}
+            parameterState={parameterState}
+            onSelectEvent={(eventId) => onSelectEvent(board.id, eventId)}
+            onSelectionFilter={onSelectionFilter}
+          />}
+        </ServerFilteredEventScope></LazyBoard>
       );
     case "EventDataGrid":
       return (
@@ -254,13 +292,22 @@ export function DashboardBoardRenderer({
       );
     case "ActivityStream":
       return (
-        <LazyBoard><ActivityStreamBoard
+        <LazyBoard><ServerFilteredEventScope
+          boardId={board.id}
+          dashboardId={dashboardId}
+          workspaceId={workspaceId}
           events={events}
-          selectedEventId={selectedEventId}
-          evidence={evidence}
-          report={report}
-          onSelectEvent={(eventId) => onSelectEvent(board.id, eventId)}
-        /></LazyBoard>
+          parameterState={parameterState}
+          selectionFilters={selectionFilters}
+        >
+          {(scopedEvents) => <ActivityStreamBoard
+            events={scopedEvents}
+            selectedEventId={selectedEventId}
+            evidence={evidence}
+            report={report}
+            onSelectEvent={(eventId) => onSelectEvent(board.id, eventId)}
+          />}
+        </ServerFilteredEventScope></LazyBoard>
       );
     case "ObjectContext": {
       const selected = events.find((event) => event.event_id === selectedEventId);

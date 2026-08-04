@@ -454,6 +454,13 @@ kbd { border: 1px solid var(--od-border); border-bottom-width: 2px; border-radiu
 
 .cross-filter-summary { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 6px 0; border: 1px solid color-mix(in srgb,var(--od-purple) 35%,var(--od-border)); border-radius: 4px; padding: 6px; color: var(--od-purple); background: color-mix(in srgb,var(--od-purple) 8%,var(--od-surface)); font-size: 7px; }
 .cross-filter-summary button { border: 1px solid var(--od-border); border-radius: 3px; padding: 3px 6px; color: var(--od-text); background: var(--od-surface); font-size: 7px; }
+.server-filtered-event-scope { display: flex; min-height: 0; height: 100%; flex-direction: column; }
+.server-filtered-event-scope > .advanced-board,
+.server-filtered-event-scope > .card { flex: 1; min-height: 0; }
+.dashboard-cross-filter-runtime { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 0 0 5px; border: 1px solid color-mix(in srgb,var(--od-success) 40%,var(--od-border)); border-radius: 4px; padding: 4px 6px; color: var(--od-success); background: color-mix(in srgb,var(--od-success) 7%,var(--od-surface)); font-size: 6px; }
+.dashboard-cross-filter-runtime span { overflow: hidden; color: var(--od-text-muted); text-overflow: ellipsis; white-space: nowrap; }
+.dashboard-cross-filter-runtime.loading { border-color: color-mix(in srgb,var(--od-warning) 40%,var(--od-border)); color: var(--od-warning); background: color-mix(in srgb,var(--od-warning) 7%,var(--od-surface)); }
+.dashboard-cross-filter-runtime.fallback { border-color: color-mix(in srgb,var(--od-danger) 40%,var(--od-border)); color: var(--od-danger); background: color-mix(in srgb,var(--od-danger) 7%,var(--od-surface)); }
 .analysis-reference-board { display: flex; height: 100%; box-sizing: border-box; flex-direction: column; gap: 8px; padding: 12px !important; }
 .analysis-reference-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .analysis-reference-heading h2 { display: block !important; margin: 2px 0 0 !important; font-size: 12px !important; }
