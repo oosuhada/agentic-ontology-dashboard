@@ -1,4 +1,5 @@
 import { BlockRenderer, StatusBadge } from "../../components";
+import { agentPath, navigate } from "../../routing";
 import type {
   AppRole,
   BlockType,
@@ -51,6 +52,7 @@ interface DashboardBoardRendererProps {
   events: EventSummary[];
   selectedEventId: string;
   dashboardId: string;
+  projectId: string;
   workspaceId: string;
   appRole: AppRole;
   role: Role;
@@ -98,6 +100,7 @@ export function DashboardBoardRenderer({
   events,
   selectedEventId,
   dashboardId,
+  projectId,
   workspaceId,
   appRole,
   role,
@@ -288,6 +291,17 @@ export function DashboardBoardRenderer({
             <li><span>Human Action</span><strong>{evidence.recommended_decision}</strong></li>
           </ol>
           <small>Action invocation과 audit ID는 Object action history API에서 재구성됩니다.</small>
+          <button
+            type="button"
+            className="secondary agent-drilldown-button"
+            onClick={() => navigate(agentPath(projectId, workspaceId, {
+              question: `${evidence.event_id}의 위험 근거, 관계 경로, 관련 문서를 검증해줘`,
+              objectType: "risk_event",
+              objectId: evidence.event_id,
+            }))}
+          >
+            Agent Evidence에서 추적
+          </button>
         </section>
       );
     case "IntegrationHealth":
