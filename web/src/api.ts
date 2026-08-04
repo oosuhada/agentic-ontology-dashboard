@@ -5,6 +5,7 @@ import type {
   GroundedNarrativeResponse,
   ObjectQueryPlanResponse,
 } from "./features/planner/types";
+import type { AgentQueryInput, AgentRunPage, AgentRunResponse } from "./features/agent/types";
 import type {
   AdminWorkflowApprovals,
   AuditReconstruction,
@@ -14,6 +15,15 @@ import type {
   ModelConsole,
   WorkflowRequest,
 } from "./features/roles/types";
+import type {
+  DatasetCatalogDetail,
+  DatasetCatalogItem,
+} from "./features/datasets/types";
+import type {
+  GovernanceAgentRunDetail,
+  GovernanceOverview,
+  ProjectionRetryResult,
+} from "./features/governance/types";
 import type {
   BoardCatalogDefinition,
   DashboardShareCreated,
@@ -34,7 +44,12 @@ import type {
 import type {
   OntologyAggregateResult,
   OntologyObjectQueryResult,
+  OntologyRegistry,
   OntologyTraversal,
+  Project3DegradedResponse,
+  Project3GraphSchema,
+  Project3IntegrationSnapshot,
+  Project3Subgraph,
 } from "./features/ontology/types";
 import type {
   AdminAuditEntry,
@@ -215,6 +230,21 @@ export async function updateProjectMembership(
   );
 }
 
+export async function getDatasetCatalog(projectId: string): Promise<DatasetCatalogItem[]> {
+  return (await request<{ items: DatasetCatalogItem[] }>(
+    `/api/projects/${encodeURIComponent(projectId)}/dataset-catalog`,
+  )).items;
+}
+
+export function getDatasetCatalogDetail(
+  projectId: string,
+  datasetId: string,
+): Promise<DatasetCatalogDetail> {
+  return request<DatasetCatalogDetail>(
+    `/api/projects/${encodeURIComponent(projectId)}/dataset-catalog/${encodeURIComponent(datasetId)}`,
+  );
+}
+
 export async function getProjectEvents(projectId: string): Promise<EventSummary[]> {
   return (await request<{ items: EventSummary[] }>(
     `/api/projects/${encodeURIComponent(projectId)}/events`,
@@ -227,6 +257,10 @@ export async function getWorkspaces(): Promise<Workspace[]> {
 
 export async function getDomainPacks(): Promise<DomainPack[]> {
   return (await request<{ items: DomainPack[] }>("/api/domain-packs")).items;
+}
+
+export function getOntologyRegistry(): Promise<OntologyRegistry> {
+  return request<OntologyRegistry>("/api/ontology/registry");
 }
 
 export function queryOntologyObjects(input: {
@@ -275,6 +309,102 @@ export function traverseOntologyObject(
   if (input.link_type) params.set("link_type", input.link_type);
   return request<OntologyTraversal>(
     `/api/ontology/objects/${encodeURIComponent(objectId)}/links?${params.toString()}`,
+  );
+}
+
+export function getProject3Status(projectId: string): Promise<Project3IntegrationSnapshot> {
+  const params = new URLSearchParams({ project_id: projectId });
+  return request<Project3IntegrationSnapshot>(`/api/integrations/project3/status?${params.toString()}`);
+}
+
+export function getProject3Schema(
+  projectId: string,
+): Promise<Project3GraphSchema | Project3DegradedResponse> {
+  const params = new URLSearchParams({ project_id: projectId });
+  return request<Project3GraphSchema | Project3DegradedResponse>(
+    `/api/integrations/project3/schema?${params.toString()}`,
+  );
+}
+
+export function getProject3Subgraph(input: {
+  project_id: string;
+  label: string;
+  identity: string;
+  depth?: number;
+  limit?: number;
+}): Promise<Project3Subgraph | Project3DegradedResponse> {
+  const params = new URLSearchParams({
+    project_id: input.project_id,
+    label: input.label,
+    identity: input.identity,
+    depth: String(input.depth ?? 2),
+    limit: String(input.limit ?? 50),
+  });
+  return request<Project3Subgraph | Project3DegradedResponse>(
+    `/api/integrations/project3/subgraph?${params.toString()}`,
+  );
+}
+
+export function runAgentQuery(input: AgentQueryInput): Promise<AgentRunResponse> {
+  return request<AgentRunResponse>("/api/agent/query", {
+    method: "POST",
+    body: JSON.stringify({ route: "auto", top_k: 8, ...input }),
+  });
+}
+
+export function listAgentRuns(input: {
+  project_id: string;
+  workspace_id: string;
+  offset?: number;
+  limit?: number;
+  status?: string;
+  route?: string;
+  search?: string;
+}): Promise<AgentRunPage> {
+  const params = new URLSearchParams({
+    project_id: input.project_id,
+    workspace_id: input.workspace_id,
+    offset: String(input.offset ?? 0),
+    limit: String(input.limit ?? 25),
+  });
+  if (input.status) params.set("status", input.status);
+  if (input.route) params.set("route", input.route);
+  if (input.search) params.set("search", input.search);
+  return request<AgentRunPage>(`/api/agent/runs?${params.toString()}`);
+}
+
+export function getAgentRun(projectId: string, workspaceId: string, runId: string): Promise<AgentRunResponse> {
+  const params = new URLSearchParams({ project_id: projectId, workspace_id: workspaceId });
+  return request<AgentRunResponse>(`/api/agent/runs/${encodeURIComponent(runId)}?${params.toString()}`);
+}
+
+export function getGovernanceOverview(
+  projectId: string,
+  workspaceId: string,
+): Promise<GovernanceOverview> {
+  return request<GovernanceOverview>(
+    `/api/projects/${encodeURIComponent(projectId)}/workspaces/${encodeURIComponent(workspaceId)}/governance`,
+  );
+}
+
+export function getGovernanceAgentRun(
+  projectId: string,
+  workspaceId: string,
+  runId: string,
+): Promise<GovernanceAgentRunDetail> {
+  return request<GovernanceAgentRunDetail>(
+    `/api/projects/${encodeURIComponent(projectId)}/workspaces/${encodeURIComponent(workspaceId)}/governance/agent-runs/${encodeURIComponent(runId)}`,
+  );
+}
+
+export function retryGovernanceProjection(
+  projectId: string,
+  workspaceId: string,
+  projectionId: string,
+): Promise<ProjectionRetryResult> {
+  return request<ProjectionRetryResult>(
+    `/api/projects/${encodeURIComponent(projectId)}/workspaces/${encodeURIComponent(workspaceId)}/governance/projections/${encodeURIComponent(projectionId)}/retry`,
+    { method: "POST" },
   );
 }
 
