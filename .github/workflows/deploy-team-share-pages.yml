@@ -35,7 +35,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: web
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Build static Team Share site
         working-directory: web
