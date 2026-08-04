@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/project3-graph-projection.schema.json",
+  "title": "Ontology Dashboard to Project 3 Graph Projection Contract",
+  "oneOf": [
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/response" }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "organization_id",
+        "project_id",
+        "dataset_id",
+        "dataset_version_id",
+        "object_type",
+        "source_identity"
+      ],
+      "properties": {
+        "organization_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "project_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "dataset_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "dataset_version_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "object_type": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "source_identity": { "type": "string", "minLength": 1, "maxLength": 256 }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "properties", "source_reference", "source_sha256"],
+      "properties": {
+        "identity": { "$ref": "#/$defs/identity" },
+        "properties": { "type": "object" },
+        "source_reference": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "source_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "relationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relationship_type",
+        "from_identity",
+        "to_identity",
+        "properties",
+        "source_reference",
+        "source_sha256"
+      ],
+      "properties": {
+        "relationship_type": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{1,127}$"
+        },
+        "from_identity": { "$ref": "#/$defs/identity" },
+        "to_identity": { "$ref": "#/$defs/identity" },
+        "properties": { "type": "object" },
+        "source_reference": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "source_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "message_type",
+        "projection_id",
+        "idempotency_key",
+        "organization_id",
+        "project_id",
+        "workspace_id",
+        "dataset_id",
+        "dataset_version_id",
+        "bundle_checksum_sha256",
+        "mapping_version",
+        "nodes",
+        "relationships",
+        "requested_at"
+      ],
+      "properties": {
+        "contract_version": { "const": "1.0" },
+        "message_type": { "const": "graph_projection_request" },
+        "projection_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "idempotency_key": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "organization_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "project_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "workspace_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "dataset_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "dataset_version_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "bundle_checksum_sha256": { "$ref": "#/$defs/sha256" },
+        "mapping_version": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "nodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/node" },
+          "default": []
+        },
+        "relationships": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/relationship" },
+          "default": []
+        },
+        "requested_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable", "details"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "validation_failed",
+            "project_not_ready",
+            "schema_version_unsupported",
+            "identity_conflict",
+            "graph_unavailable",
+            "timeout",
+            "internal_error"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "retryable": { "type": "boolean" },
+        "retry_after_seconds": { "type": ["integer", "null"], "minimum": 1 },
+        "details": { "type": "object" }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nodes_received",
+        "relationships_received",
+        "nodes_written",
+        "relationships_written"
+      ],
+      "properties": {
+        "nodes_received": { "type": "integer", "minimum": 0 },
+        "relationships_received": { "type": "integer", "minimum": 0 },
+        "nodes_written": { "type": "integer", "minimum": 0 },
+        "relationships_written": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "message_type",
+        "projection_id",
+        "status",
+        "counts",
+        "error",
+        "updated_at"
+      ],
+      "properties": {
+        "contract_version": { "const": "1.0" },
+        "message_type": { "const": "graph_projection_response" },
+        "projection_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "status": {
+          "type": "string",
+          "enum": ["accepted", "processing", "completed", "failed", "blocked"]
+        },
+        "project3_run_id": { "type": ["string", "null"], "maxLength": 160 },
+        "counts": { "$ref": "#/$defs/counts" },
+        "error": {
+          "oneOf": [
+            { "$ref": "#/$defs/error" },
+            { "type": "null" }
+          ]
+        },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": { "enum": ["failed", "blocked"] }
+            },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "error": { "$ref": "#/$defs/error" }
+            }
+          },
+          "else": {
+            "properties": {
+              "error": { "type": "null" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

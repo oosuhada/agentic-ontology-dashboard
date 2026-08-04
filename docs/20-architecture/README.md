@@ -8,6 +8,7 @@
 - [ADR registry](adr/README.md)
 - [Service contract](service-contract.md)
 - [Project 3 adapter contract](project3-adapter-contract.md)
+- [Predictive maintenance bundle and projection contract](predictive-maintenance-projection-contract.md)
 - [Physical namespace relocation inventory](physical-namespace-relocation-inventory.md)
 
 새로운 구조적 결정은 `docs/20-architecture/adr/`에 ADR로 기록하고 이 인덱스에서 연결한다.

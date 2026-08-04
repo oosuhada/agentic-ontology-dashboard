@@ -213,7 +213,7 @@ Held-out test, Recall-constrained threshold 0.20:
 api/          FastAPI, identity/RBAC, ontology registry, Planner, export and security services
 web/          Vite React auth, dashboard, role/planner workspaces, admin app and Playwright tests
 ml/           dataset audit, training, thresholding, evidence generation
-schemas/      input, Evidence, Report, Layout, ontology, dashboard, role, planner and export contracts
+schemas/      input, Dataset Bundle, Prediction, projection, Evidence, UI and export contracts
 prompts/      manager, engineer, UI planner grounding rules
 data/         Gold fixtures and optional local/raw data
 evaluation/   accepted Gold scenarios and evaluation result location
@@ -230,6 +230,7 @@ tests/        backend contract/integration/safety tests
 - [`docs/00-team-onboarding/04-demo-guide.md`](./docs/00-team-onboarding/04-demo-guide.md) — 15분 데모 시나리오
 - [`docs/00-team-onboarding/06-implementation-status.md`](./docs/00-team-onboarding/06-implementation-status.md) — 구현 완료와 경계
 - [`docs/README.md`](./docs/README.md) — 제품·아키텍처·구현·UI·운영 문서 전체 지도
+- [`docs/20-architecture/predictive-maintenance-projection-contract.md`](./docs/20-architecture/predictive-maintenance-projection-contract.md) — Dataset Bundle v2, identity, truth 격리와 Project 3 graph projection 계약
 
 ## 안전 경계
 

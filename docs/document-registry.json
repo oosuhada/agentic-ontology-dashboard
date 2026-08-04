@@ -39,6 +39,7 @@
     "20-architecture/README.md",
     "20-architecture/system-architecture.md",
     "20-architecture/architecture-decisions.md",
+    "20-architecture/predictive-maintenance-projection-contract.md",
     "20-architecture/adr/README.md",
     "30-implementation/README.md",
     "30-implementation/implementation-status.md",
