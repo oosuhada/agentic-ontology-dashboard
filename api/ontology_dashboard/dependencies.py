@@ -16,12 +16,17 @@ from fastapi import Depends, Request, Response
 from .adapters.service import AdapterService
 from .analysis_service import AnalysisService
 from .dashboard_service import DashboardService
+from .datasets import DatasetCatalogService, DatasetRepository
 from .export_service import ExportService
+from .governance import GovernanceService
 from .identity import CSRF_COOKIE, SESSION_COOKIE, AuthError, IdentityService, Principal
+from .integrations.project3 import Project3Client
 from .llm import configured_provider
 from .migrations import migrate
-from .ontology_planner_service import OntologyDashboardPlannerService
+from .planner import OntologyDashboardPlannerService
 from .ontology_service import OntologyService
+from .orchestration import AgentRunRepository, MultiStoreOrchestrator
+from .orchestration.ports import Project3GraphPort, Project3VectorPort, RelationalOntologyPort
 from .postgresql_ontology_repository import PostgreSQLOntologyInstanceRepository
 from .postgresql_repositories import (
     PostgreSQLAdapterRepository,
@@ -191,6 +196,46 @@ def get_export_service(
             repository=PostgreSQLExportRepository(target),
         )
     return ExportService(service)
+
+
+@lru_cache(maxsize=1)
+def get_dataset_catalog_service() -> DatasetCatalogService:
+    target = database_target()
+    migrate(target)
+    return DatasetCatalogService(DatasetRepository(target))
+
+
+def get_governance_service(
+    datasets: DatasetCatalogService = Depends(get_dataset_catalog_service),
+    workflows: RoleWorkflowService = Depends(get_role_workflow_service),
+) -> GovernanceService:
+    target = database_target()
+    migrate(target)
+    return GovernanceService(
+        datasets=datasets.repository,
+        agents=AgentRunRepository(target),
+        workflows=workflows,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_project3_client() -> Project3Client:
+    return Project3Client.from_environment()
+
+
+def get_multistore_orchestrator(
+    service: ManufacturingPredictiveMaintenanceService = Depends(get_service),
+    ontology: OntologyService = Depends(get_ontology_service),
+    project3: Project3Client = Depends(get_project3_client),
+) -> MultiStoreOrchestrator:
+    target = str(service.repository.path)
+    migrate(target)
+    return MultiStoreOrchestrator(
+        AgentRunRepository(target),
+        relational_port=RelationalOntologyPort(ontology),
+        graph_port=Project3GraphPort(project3),
+        vector_port=Project3VectorPort(project3),
+    )
 
 
 @lru_cache(maxsize=1)

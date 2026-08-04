@@ -19,14 +19,18 @@ from ontology_dashboard.dependencies import (
 )
 from ontology_dashboard.identity import AuthError
 from ontology_dashboard.routers.adapters import router as adapters_router
+from ontology_dashboard.routers.agent import router as agent_router
 from ontology_dashboard.routers.admin import router as admin_router
 from ontology_dashboard.routers.analyses import router as analyses_router
 from ontology_dashboard.routers.auth import router as auth_router
 from ontology_dashboard.routers.dashboards import router as dashboards_router
+from ontology_dashboard.routers.datasets import router as datasets_router
 from ontology_dashboard.routers.exports import router as exports_router
+from ontology_dashboard.routers.governance import router as governance_router
 from ontology_dashboard.routers.manufacturing import router as manufacturing_router
 from ontology_dashboard.routers.ontology import router as ontology_router
 from ontology_dashboard.routers.planner import router as planner_router
+from ontology_dashboard.routers.project3 import router as project3_router
 from ontology_dashboard.routers.projects import router as projects_router
 from ontology_dashboard.routers.role_workspaces import router as role_workspaces_router
 from ontology_dashboard.routers.system import router as system_router
@@ -89,13 +93,17 @@ async def rate_limit_handler(_: Request, exc: RateLimitExceeded) -> JSONResponse
 for feature_router in (
     system_router,
     auth_router,
+    agent_router,
     adapters_router,
+    datasets_router,
     ontology_router,
     analyses_router,
     projects_router,
     dashboards_router,
     exports_router,
+    governance_router,
     planner_router,
+    project3_router,
     role_workspaces_router,
     manufacturing_router,
     admin_router,

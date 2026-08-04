@@ -50,6 +50,7 @@ class AnalysisService:
 
     def create(self, request: AnalysisCreateRequest, principal: Principal) -> AnalysisSnapshot:
         organization_id, project_id = self._scope(principal, request.workspace_id)
+        self._validate_definition(request.nodes, request.edges)
         analysis_id = request.id or self.repository.new_id("analysis")
         return self.repository.create(
             analysis_id=analysis_id,
@@ -91,6 +92,7 @@ class AnalysisService:
         principal: Principal,
     ) -> AnalysisSnapshot:
         organization_id, project_id = self._scope(principal, request.workspace_id)
+        self._validate_definition(request.nodes, request.edges)
         return self.repository.update(
             analysis_id=analysis_id,
             organization_id=organization_id,
@@ -331,6 +333,7 @@ class AnalysisService:
                 "row_count": len(rows),
                 "columns": self._columns(rows),
                 "profile": self._profile(rows),
+                "quality": self._quality_summary(rows),
                 "render_spec": render_spec,
                 "elapsed_ms": elapsed_ms,
                 "cache_hit": False,
@@ -341,6 +344,20 @@ class AnalysisService:
             }
             results[node_id] = result
         return results
+
+    def _validate_definition(self, nodes: list[Any], edges: list[Any]) -> None:
+        nodes_by_id = {node.id: node for node in nodes}
+        if len(nodes_by_id) != len(nodes):
+            raise ValueError("analysis node ids must be unique")
+        self._topological_order(nodes_by_id, edges)
+        for node in nodes:
+            kind = str(node.data.get("kind") or "input")
+            if kind not in {"join", "evidence"}:
+                continue
+            config = node.data.get("config") if isinstance(node.data.get("config"), dict) else {}
+            relationship = str(config.get("relationship") or "risk_event_evidence")
+            if relationship not in self.ALLOWED_JOIN_RELATIONSHIPS:
+                raise ValueError(f"join relationship is not allowed: {relationship}")
 
     @staticmethod
     def _topological_order(nodes: dict[str, Any], edges: list[Any]) -> list[str]:
@@ -587,6 +604,29 @@ class AnalysisService:
                 "distinct_count": len(distinct),
             }
         return profile
+
+    @staticmethod
+    def _quality_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+        profile = AnalysisService._profile(rows)
+        null_cells = sum(int(item["null_count"]) for item in profile.values())
+        cell_count = len(rows) * len(profile)
+        identities = [
+            AnalysisService._hashable(
+                row.get("event_id")
+                or row.get("object_id")
+                or row.get("id")
+                or row
+            )
+            for row in rows
+        ]
+        return {
+            "row_count": len(rows),
+            "column_count": len(profile),
+            "null_cell_count": null_cells,
+            "null_rate": null_cells / cell_count if cell_count else 0,
+            "duplicate_key_count": len(identities) - len(set(identities)),
+            "computed_by": "server",
+        }
 
     @staticmethod
     def _hashable(value: Any) -> str:
