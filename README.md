@@ -7,6 +7,8 @@
 > Story 데스크톱·모바일 + 기능 캡처 15장: [`docs/00-team-onboarding/02-feature-tour.md`](./docs/00-team-onboarding/02-feature-tour.md)
 >
 > 브라우저 인터랙티브 Story: `http://127.0.0.1:3100/team-share`
+> V3.1 + Adaptive Modeling 비교 Story: `http://127.0.0.1:3100/team-share-adaptive`
+> 독립 HTML 공유본: `http://127.0.0.1:3100/team-share-adaptive.html`
 >
 > 전체 문서 지도: [`docs/README.md`](./docs/README.md)
 

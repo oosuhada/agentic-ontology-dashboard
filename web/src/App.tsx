@@ -54,6 +54,9 @@ const ReferenceGallery = lazy(() =>
 const TeamShareStory = lazy(() =>
   import("./features/teamshare/TeamShareStory").then((module) => ({ default: module.TeamShareStory })),
 );
+const AdaptiveTeamShareStory = lazy(() =>
+  import("./features/teamshare/AdaptiveTeamShareStory").then((module) => ({ default: module.AdaptiveTeamShareStory })),
+);
 
 const LAST_VALID_PROJECT_KEY = "ontology-dashboard:last-valid-project";
 const IS_PUBLIC_STORY = import.meta.env.VITE_PUBLIC_STORY === "1";
@@ -164,6 +167,7 @@ function AppRouter() {
 
   if (pathname === "/reference") return <ReferenceGallery />;
   if (pathname === "/team-share") return <TeamShareStory />;
+  if (pathname === "/team-share-adaptive") return <AdaptiveTeamShareStory />;
 
   if (loading) {
     return <RouteLoading operation="Checking session" detail="Resolving identity and governed scope." />;

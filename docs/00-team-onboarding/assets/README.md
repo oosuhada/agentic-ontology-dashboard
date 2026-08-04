@@ -7,6 +7,7 @@
 
 - 캡처 생성: `cd web && CAPTURE_TEAM_SHARE=1 npx playwright test e2e/team-share-captures.spec.ts`
 - Story 캡처 생성: `cd web && npm run capture:team-share-story`
+- V3.1 + Adaptive Modeling 비교 캡처와 Story 생성: `cd web && npm run capture:team-share-adaptive`
 - 화면 크기: 1440 × 1000, light theme
 - 데이터: Playwright 격리 SQLite 데이터베이스와 demo seed
 - 비밀번호나 실제 개인정보는 캡처하지 않는다.
@@ -20,3 +21,11 @@ Story 자산:
 
 - `00-team-share-story.png`: 데스크톱 전체 페이지
 - `00-team-share-story-mobile.png`: 390×844 모바일 전체 페이지
+
+## V3.1 + Adaptive Modeling 별도 비교 자료
+
+- 기존 `/team-share`와 기존 캡처는 변경하지 않는다.
+- 새 인터랙티브 경로: `/team-share-adaptive`
+- 새 독립 HTML: `/team-share-adaptive.html`
+- 새 자산 폴더: `web/public/team-share-adaptive-assets/`
+- 캡처는 loader, skeleton, refreshing, `aria-busy=true`, 미완성 image/font 상태가 모두 사라진 뒤 생성한다.
