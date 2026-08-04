@@ -1,6 +1,10 @@
 # Next Session Master Prompt — Ontology Dashboard
 
-이 파일은 새로운 ChatGPT/AI 작업 세션의 유일한 공식 진입점이다.
+이 파일은 새로운 ChatGPT/AI 작업 세션의 공식 진입점이다.
+
+> **Temporary product priority override — 2026-08-02**
+>
+> 현재 최우선 작업은 backend/infra 확장이 아니라 Palantir/Foundry 스타일 UI 전면 개편이다. UI 작업 세션은 가장 먼저 `docs/next-session-palantir-ui-overhaul-prompt.md`와 `docs/palantir-ui-overhaul-master-plan.md`를 읽고 그 지시를 이 문서의 일반 운영 우선순위보다 앞서 적용한다. UI를 직접 막지 않는 connector, SSO, managed infrastructure, physical namespace relocation은 후순위다.
 
 ## 1. Role
 

@@ -58,4 +58,21 @@ jobs:
       - name: Run full release gate
         env:
           PYTHONPATH: ${{ github.workspace }}/api:${{ github.workspace }}/ml/src
-        run: python scripts/release_gate.py --with-e2e
+        run: |
+          mkdir -p artifacts/palantir-overhaul-ubuntu
+          fc-list : family | sort -u > artifacts/palantir-overhaul-ubuntu/font-families.txt
+          dpkg-query -W -f='${Package}\t${Version}\n' \
+            'font*' 'libfont*' 2>/dev/null \
+            > artifacts/palantir-overhaul-ubuntu/font-packages.txt || true
+          python scripts/release_gate.py \
+            --with-e2e \
+            --e2e-artifact-dir artifacts/palantir-overhaul-ubuntu \
+            --output artifacts/palantir-overhaul-ubuntu/release-gate.json
+      - name: Upload Ubuntu visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: palantir-overhaul-ubuntu-${{ github.run_id }}
+          path: artifacts/palantir-overhaul-ubuntu
+          if-no-files-found: error
+          retention-days: 30

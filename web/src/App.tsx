@@ -15,6 +15,7 @@ import { AuthProvider, useAuth } from "./features/auth/AuthContext";
 import { LoginPage } from "./features/auth/LoginPage";
 import { PendingPage } from "./features/auth/PendingPage";
 import { RegisterPage } from "./features/auth/RegisterPage";
+import { FoundryAppShell } from "./ui/foundry/FoundryAppShell";
 
 const AdminApp = lazy(() =>
   import("./features/admin/AdminApp").then((module) => ({ default: module.AdminApp })),
@@ -160,7 +161,9 @@ function AppRouter() {
     return (
       <ProjectRouteBoundary projectId={projectHomeRoute.projectId}>
         <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Project Home을 불러오고 있습니다.</p></div>}>
-          <ProjectHomePage projectId={projectHomeRoute.projectId} />
+          <FoundryAppShell projectId={projectHomeRoute.projectId} activeRoute="home" title="Project Home">
+            <ProjectHomePage projectId={projectHomeRoute.projectId} />
+          </FoundryAppShell>
         </Suspense>
       </ProjectRouteBoundary>
     );
@@ -171,7 +174,9 @@ function AppRouter() {
     return (
       <ProjectRouteBoundary projectId={datasetRoute.projectId} requiredPermission="datasets.read">
         <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Dataset Catalog를 불러오고 있습니다.</p></div>}>
-          <DatasetCatalogPage projectId={datasetRoute.projectId} />
+          <FoundryAppShell projectId={datasetRoute.projectId} activeRoute="datasets" title="Dataset Catalog">
+            <DatasetCatalogPage projectId={datasetRoute.projectId} />
+          </FoundryAppShell>
         </Suspense>
       </ProjectRouteBoundary>
     );
@@ -186,7 +191,9 @@ function AppRouter() {
         requiredPermission="planner.object_query"
       >
         <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Agent Evidence Workbench를 불러오고 있습니다.</p></div>}>
-          <AgentWorkbenchPage projectId={agentRoute.projectId} workspaceId={agentRoute.workspaceId} />
+          <FoundryAppShell projectId={agentRoute.projectId} workspaceId={agentRoute.workspaceId} activeRoute="agent" title="Agent Evidence Workbench">
+            <AgentWorkbenchPage projectId={agentRoute.projectId} workspaceId={agentRoute.workspaceId} />
+          </FoundryAppShell>
         </Suspense>
       </ProjectRouteBoundary>
     );
@@ -201,7 +208,9 @@ function AppRouter() {
         requiredPermission="governance.read"
       >
         <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Governance Workbench를 불러오고 있습니다.</p></div>}>
-          <GovernanceWorkbenchPage projectId={governanceRoute.projectId} workspaceId={governanceRoute.workspaceId} />
+          <FoundryAppShell projectId={governanceRoute.projectId} workspaceId={governanceRoute.workspaceId} activeRoute="governance" title="Governance Workbench">
+            <GovernanceWorkbenchPage projectId={governanceRoute.projectId} workspaceId={governanceRoute.workspaceId} />
+          </FoundryAppShell>
         </Suspense>
       </ProjectRouteBoundary>
     );
@@ -216,7 +225,9 @@ function AppRouter() {
         requiredPermission="ontology.objects.read"
       >
         <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Ontology Workbench를 불러오고 있습니다.</p></div>}>
-          <OntologyPreviewPage projectId={ontologyRoute.projectId} workspaceId={ontologyRoute.workspaceId} />
+          <FoundryAppShell projectId={ontologyRoute.projectId} workspaceId={ontologyRoute.workspaceId} activeRoute="ontology" title="Ontology Object Explorer">
+            <OntologyPreviewPage projectId={ontologyRoute.projectId} workspaceId={ontologyRoute.workspaceId} />
+          </FoundryAppShell>
         </Suspense>
       </ProjectRouteBoundary>
     );

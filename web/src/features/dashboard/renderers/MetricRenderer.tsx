@@ -1,3 +1,6 @@
+import { MetricStrip } from "../../../ui/foundry/MetricStrip";
+import { StatusPill } from "../../../ui/foundry/StatusPill";
+
 export interface MetricItem {
   id: string;
   label: string;
@@ -15,15 +18,19 @@ interface MetricRendererProps {
 export function MetricRenderer({ metrics, footer, compact = false }: MetricRendererProps) {
   return (
     <section className={`generic-metric-renderer ${compact ? "is-compact" : ""}`}>
-      <div className="generic-metric-grid">
-        {metrics.map((metric) => (
-          <article key={metric.id} className={`tone-${metric.tone ?? "default"}`}>
-            <header><span>{metric.label}</span>{metric.tone && metric.tone !== "default" ? <span className={`od-tag intent-${metric.tone}`}>{metric.tone}</span> : null}</header>
-            <strong>{metric.value}</strong>
-            {metric.detail ? <small>{metric.detail}</small> : null}
-          </article>
-        ))}
-      </div>
+      <MetricStrip
+        className="generic-metric-grid"
+        metrics={metrics.map((metric) => ({
+          id: metric.id,
+          label: metric.label,
+          value: metric.value,
+          detail: metric.detail,
+          tone: metric.tone,
+          accessory: metric.tone && metric.tone !== "default"
+            ? <StatusPill intent={metric.tone === "danger" ? "danger" : metric.tone}>{metric.tone}</StatusPill>
+            : null,
+        }))}
+      />
       {footer ? (
         <footer>
           <span>{footer.label}</span>

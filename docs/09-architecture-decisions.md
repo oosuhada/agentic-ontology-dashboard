@@ -373,3 +373,40 @@ Docker, managed stores, IdP, production connector, object storage와 observabili
 - configuration이나 compose 파일 존재만으로 production 완료를 주장하지 않는다.
 - current host의 missing Docker/credentials는 `blocked`로 보고한다.
 - staging CI는 strict mode와 `docs/production-environment-completion-runbook.md`를 사용한다.
+
+## ADR-023 — Foundry-Inspired UI Is a Shared Primitive Layer, Not a Product Clone
+
+### Decision
+
+- Palantir Foundry/Contour/Object Explorer는 information density, pane hierarchy, resource chrome과 interaction pattern의 reference로 사용한다.
+- proprietary HTML, CSS, asset, font 또는 trademark를 복사하지 않고 Apache-2.0/MIT reference의 공개 pattern을 Ontology Dashboard 타입과 API에 맞춰 재작성한다.
+- `web/src/ui/foundry/`가 token, shell, header/toolbar, board frame, metric, table, chart와 state primitive를 소유한다.
+- 기존 `--od-*` 변수는 단계적 migration 동안 `--fd-*` token으로 compatibility mapping하되 새 UI의 source of truth는 `--fd-*`다.
+- 모든 primary Workbench는 48px collapsed rail, 40px global topbar, border-led pane hierarchy와 compact control density를 공유한다.
+- visual baseline은 starting SHA의 before evidence와 current after evidence를 분리하며, before refresh는 명시적 opt-in으로만 허용한다.
+
+### Consequences
+
+- Dashboard 외 Project Home, Agent, Ontology, Dataset과 Governance 화면도 동일 제품으로 인식된다.
+- UI 변경은 backend contract, Project scope, permission과 audit vertical을 재구현하지 않고 composition layer에서 진행된다.
+- 공통 primitive 변경은 live DOM geometry, interaction E2E, accessibility/overflow와 screenshot evidence로 검증된다.
+- reference license와 adaptation 범위는 `THIRD_PARTY_NOTICES.md`에 추적된다.
+
+## ADR-024 — Visual Regression Separates Approved Artifacts, Candidates, and Platform Profiles
+
+### Decision
+
+- `docs/ui/palantir-overhaul/baseline/`은 작업 시작 SHA의 historical evidence이고, `final/`은 명시적으로 승인된 현재 화면이다.
+- `visual-manifest.json`은 baseline/final 48장의 dimensions, bytes, SHA-256와 24개 pair delta를 소유한다.
+- 일반 Playwright 실행은 승인 파일을 수정하지 않고 `web/test-results/palantir-overhaul-candidate/`에 candidate 24장을 생성한다.
+- 승인 갱신은 `CAPTURE_PALANTIR_FINAL=1`을 명시한 실행에서만 허용하고 historical baseline은 별도 clean worktree에서만 재생성한다.
+- 승인 이미지와 동일 플랫폼에서는 raw mean pixel delta 0.15%, changed pixel ratio 0.75%, blurred structural delta 0.10%를 모두 적용한다.
+- 다른 운영체제에서는 시스템 font rasterization 차이로 raw pixel gate를 적용하지 않고, grayscale downsample과 Gaussian blur를 거친 structural delta 2.0%를 적용한다.
+- GitHub Actions의 `release_gate.py --with-e2e`는 candidate capture가 끝난 뒤 48-image checker를 실행한다.
+
+### Consequences
+
+- 승인 이미지가 일반 test run에 의해 조용히 덮어써지지 않는다.
+- 같은 플랫폼의 작은 spacing, color, text 또는 layout 회귀를 엄격하게 감지한다.
+- Ubuntu CI에서는 macOS font anti-aliasing 차이를 허용하면서 pane, hierarchy, density와 주요 구조 변화는 structural diff로 감지한다.
+- 첫 Ubuntu artifact의 실제 structural delta를 관찰한 뒤 현재 2.0% cross-platform ceiling을 더 낮출 수 있다.

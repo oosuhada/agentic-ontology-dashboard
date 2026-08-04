@@ -456,6 +456,28 @@ function AnalysisPageInner({
     }
   }
 
+  async function saveDefinition() {
+    setBusy(true);
+    try {
+      const saved = await ensureSaved(false);
+      setNotice(`Analysis definition saved · revision ${saved.current_version}`);
+    } catch (error) {
+      setNotice(`Analysis save failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function shareAnalysis() {
+    const url = `${window.location.origin}${window.location.pathname}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setNotice("Analysis deep link copied to clipboard.");
+    } catch {
+      setNotice(`Analysis deep link · ${url}`);
+    }
+  }
+
   async function saveDataset() {
     if (!selectedNode) {
       setNotice("Dataset으로 저장할 Analysis node를 선택하세요.");
@@ -509,13 +531,17 @@ function AnalysisPageInner({
       analysisId={analysisId}
       revision={revision}
       notice={busy ? `Working · ${notice}` : notice}
+      dirty={dirty}
       showInspector={showInspector}
       canAddToDashboard={Boolean(selectedNode && onAddToDashboard)}
       canSaveDataset={canMaterialize && Boolean(selectedNode)}
       running={Boolean(activeRunId)}
+      busy={busy}
       runProgress={runProgress}
       onRun={run}
       onCancelRun={cancelRun}
+      onSave={saveDefinition}
+      onShare={shareAnalysis}
       onSaveDataset={saveDataset}
       onAddToDashboard={addToDashboard}
       onToggleInspector={() => setShowInspector((current) => !current)}
@@ -526,10 +552,13 @@ function AnalysisPageInner({
           nodes={nodes}
           edges={edges}
           result={result}
+          running={Boolean(activeRunId)}
+          runProgress={runProgress}
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgesChange}
           onConnect={onConnect}
           onSelectNode={setSelectedNodeId}
+          onInsertStep={() => addStep("filter")}
         />
       )}
       inspector={(

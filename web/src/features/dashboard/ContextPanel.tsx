@@ -76,6 +76,21 @@ export function ContextPanel({
             ))}
           </select>
         </label>
+        <div className="fd-filter-chips" role="group" aria-label="상태 필터 바로가기">
+          {(statusDefinition?.options ?? ["all"]).map((option) => {
+            const value = String(option);
+            return (
+              <button
+                type="button"
+                key={value}
+                className={String(parameterState.status_filter ?? "all") === value ? "active" : ""}
+                onClick={() => onParameterChange("status_filter", value)}
+              >
+                {value}
+              </button>
+            );
+          })}
+        </div>
         <label className="context-field">
           화면 관점
           <select
