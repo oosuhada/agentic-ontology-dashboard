@@ -238,6 +238,17 @@ def verify(
             """,
             (dataset_version_id,),
         ).fetchone()
+        projection_outbox = connection.execute(
+            """
+            SELECT payload_json FROM transactional_outbox
+            WHERE aggregate_id=%s AND event_type='ontology.materialization.completed'
+            ORDER BY created_at DESC LIMIT 1
+            """,
+            (dataset_version_id,),
+        ).fetchone()
+        projection_payload = (
+            projection_outbox["payload_json"] if projection_outbox is not None else None
+        )
 
     role = f"pm_ontology_rls_{uuid.uuid4().hex[:12]}"
     rls: dict[str, object] = {"checked": False}
@@ -272,6 +283,53 @@ def verify(
             pass
 
     expected_risk = source_counts["result_artifacts"] or source_counts["prediction_snapshots"]
+    phase4_payload_ready = isinstance(projection_payload, dict)
+    if phase4_payload_ready:
+        expected_source_role = (
+            "result_artifact"
+            if source_counts["result_artifacts"]
+            else "prediction_snapshot_compatibility"
+        )
+        result_contract = projection_payload.get("result_contract", {})
+        topology_semantics = projection_payload.get("topology_semantics", {})
+        phase4_payload_ready = (
+            projection_payload.get("organization_id") == organization_id
+            and projection_payload.get("project_id") == project_id
+            and projection_payload.get("workspace_id") == workspace_id
+            and projection_payload.get("dataset_id") == dataset_id
+            and projection_payload.get("dataset_version_id") == dataset_version_id
+            and projection_payload.get("source_version") == str(version["source_version"])
+            and projection_payload.get("bundle_checksum_sha256")
+            == str(version["checksum_sha256"])
+            and isinstance(projection_payload.get("materialization_checksum_sha256"), str)
+            and result_contract.get("source_role") == expected_source_role
+            and result_contract.get("prediction_tasks")
+            == ["binary_failure_within_horizon"]
+            and result_contract.get("predicted_failure_type_semantics")
+            == "generic_binary_risk_not_ai4i_failure_mode"
+            and topology_semantics
+            == {
+                "SUPPLIES_AIR_TO": "topology_only_not_causal_truth",
+                "causal_claim_allowed": False,
+            }
+            and "canonical/evaluation_truth"
+            in projection_payload.get("excluded_sources", [])
+            and "experiments/connected_air_supply/hidden_truth"
+            in projection_payload.get("excluded_sources", [])
+        )
+        if str(version["source_version"]) == "canonical-ai4i-physics-v3.1":
+            release_gates = projection_payload.get("release_gates", {})
+            continuity = release_gates.get("tool_wear_continuity", {})
+            agent_evaluation = release_gates.get("agent_example_evaluation", {})
+            phase4_payload_ready = phase4_payload_ready and (
+                result_contract.get("schema_versions") == ["result-artifact-v1.0"]
+                and result_contract.get("model_versions") == ["independent-logreg-v3.1"]
+                and continuity.get("pass") is True
+                and continuity.get("running_reset_count") == 0
+                and continuity.get("tool_replacement_event_count") == 731
+                and continuity.get("aligned_reset_transition_count") == 731
+                and agent_evaluation.get("maintenance_evidence_accuracy") == 1.0
+            )
     passed = (
         object_counts.get("equipment") == source_counts["assets"]
         and object_counts.get("risk_event") == expected_risk
@@ -291,6 +349,7 @@ def verify(
         and materialization_idempotent
         and graph_projection is not None
         and graph_projection["status"] == "pending"
+        and phase4_payload_ready
         and bool(rls.get("pass"))
     )
     return {
@@ -314,6 +373,8 @@ def verify(
         "truth_leakage": leakage,
         "materialization_idempotent": materialization_idempotent,
         "graph_projection": None if graph_projection is None else dict(graph_projection),
+        "phase4_projection_payload_ready": phase4_payload_ready,
+        "phase4_projection_payload": projection_payload,
         "rls": rls,
     }
 

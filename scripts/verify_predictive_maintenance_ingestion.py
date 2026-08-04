@@ -74,7 +74,7 @@ def verify(
         version = connection.execute(
             """
             SELECT v.id,v.dataset_id,v.version_number,v.source_version,v.status,
-                   v.organization_id,v.project_id,v.workspace_id
+                   v.organization_id,v.project_id,v.workspace_id,v.profile_json
             FROM dataset_versions v
             WHERE v.organization_id=%s AND v.project_id=%s AND v.checksum_sha256=%s
             ORDER BY v.version_number DESC LIMIT 1
@@ -84,6 +84,15 @@ def verify(
         if version is None:
             raise RuntimeError("no Dataset Version exists for the source bundle checksum")
         version_id = str(version["id"])
+        version_profile = version["profile_json"]
+        if not isinstance(version_profile, dict):
+            version_profile = {}
+        release_gates = version_profile.get("release_gates", {})
+        if not isinstance(release_gates, dict):
+            release_gates = {}
+        governance_artifacts = version_profile.get("governance_artifacts", [])
+        if not isinstance(governance_artifacts, list):
+            governance_artifacts = []
         actual: dict[str, int] = {}
         for role in expected:
             table = ROLE_TABLES[role]
@@ -248,6 +257,26 @@ def verify(
         except Exception:
             pass
 
+    v3_1_release_gate_pass = True
+    if manifest.dataset_version == "canonical-ai4i-physics-v3.1":
+        continuity = release_gates.get("tool_wear_continuity", {})
+        agent_evaluation = release_gates.get("agent_example_evaluation", {})
+        v3_1_release_gate_pass = (
+            isinstance(continuity, dict)
+            and continuity.get("pass") is True
+            and continuity.get("running_reset_count") == 0
+            and continuity.get("tool_replacement_event_count") == 731
+            and continuity.get("aligned_reset_transition_count") == 731
+            and continuity.get("reset_without_matching_maintenance_count") == 0
+            and continuity.get("replacement_without_reset_count") == 0
+            and isinstance(agent_evaluation, dict)
+            and agent_evaluation.get("maintenance_evidence_claims") == 1
+            and agent_evaluation.get("maintenance_evidence_accuracy") == 1.0
+            and agent_evaluation.get("false_upstream_claim_rate") == 0.0
+            and {item.get("role") for item in governance_artifacts if isinstance(item, dict)}
+            == {"package_validation", "agent_example_evaluation"}
+        )
+
     passed = (
         actual == expected
         and all(count == 0 for count in fk_orphans.values())
@@ -255,6 +284,7 @@ def verify(
         and version_count == 1
         and outbox_count == 1
         and bool(rls_result.get("pass"))
+        and v3_1_release_gate_pass
     )
     return {
         "pass": passed,
@@ -270,6 +300,9 @@ def verify(
         "time_range_checks": time_checks,
         "same_checksum_version_count": version_count,
         "relational_ready_outbox_count": outbox_count,
+        "governance_artifacts": governance_artifacts,
+        "release_gates": release_gates,
+        "v3_1_release_gate_pass": v3_1_release_gate_pass,
         "rls": rls_result,
     }
 

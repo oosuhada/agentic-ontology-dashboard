@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import csv
 from pathlib import Path
 
 from test_predictive_maintenance_bundle_adapter import (
@@ -23,6 +24,7 @@ def create_small_v3_package(tmp_path: Path) -> Path:
     root = create_small_package(tmp_path)
     dataset_path = root / "canonical" / "dataset" / "dataset_manifest.json"
     dataset = json.loads(dataset_path.read_text(encoding="utf-8"))
+    dataset["dataset_version"] = "canonical-ai4i-physics-v3.1"
     dataset["source_contract"].update(
         {
             "cnc_ai4i_physical_relations": True,
@@ -39,7 +41,33 @@ def create_small_v3_package(tmp_path: Path) -> Path:
     }
     dataset_path.write_text(json.dumps(dataset, indent=2), encoding="utf-8")
 
+    for filename in (
+        "compressor_sensor_observation.csv",
+        "cnc_sensor_observation.csv",
+    ):
+        path = root / "canonical" / "dataset" / filename
+        with path.open(newline="", encoding="utf-8") as handle:
+            reader = csv.DictReader(handle)
+            rows = list(reader)
+            fieldnames = list(reader.fieldnames or [])
+        for row in rows:
+            row["generator_version"] = dataset["dataset_version"]
+        with path.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+
     model_dir = root / "canonical" / "model_outputs"
+    for filename in ("prediction_snapshot.jsonl", "prediction_timeline.jsonl"):
+        path = model_dir / filename
+        rows = [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        for row in rows:
+            row["model_version"] = "independent-logreg-v3.1"
+        write_jsonl(path, rows)
     snapshots = [
         json.loads(line)
         for line in (model_dir / "prediction_snapshot.jsonl").read_text(encoding="utf-8").splitlines()
@@ -99,6 +127,8 @@ def create_small_v3_package(tmp_path: Path) -> Path:
     refresh_contracts(root)
     model_path = model_dir / "model_contract.json"
     model = json.loads(model_path.read_text(encoding="utf-8"))
+    model["model_version"] = "independent-logreg-v3.1"
+    model["dataset_version"] = dataset["dataset_version"]
     model["result_artifact"] = {
         "schema_version": "result-artifact-v1.0",
         "row_count": len(artifacts),
@@ -107,6 +137,72 @@ def create_small_v3_package(tmp_path: Path) -> Path:
     }
     model["output_sha256"]["result_artifact.jsonl"] = _sha256(result_path)
     model_path.write_text(json.dumps(model, indent=2), encoding="utf-8")
+
+    validation_dir = root / "canonical" / "validation"
+    validation_dir.mkdir(parents=True, exist_ok=True)
+    package_validation = {
+        "valid": True,
+        "canonical_source_separation": "pass",
+        "canonical_checksum_integrity": "pass",
+        "truth_separation": "pass",
+        "topology_integrity": "pass",
+        "observation_key_integrity": "pass",
+        "failure_maintenance_coverage": "pass",
+        "experiment_isolation": "pass",
+        "hidden_truth_not_public": "pass",
+        "negative_control_benchmark": "pass",
+        "agent_positive_negative_evaluator": "pass",
+        "model_contract": "pass",
+        "model_dataset_binding": "pass",
+        "row_counts": {
+            "assets": 100,
+            "relations": 80,
+            "compressor_observations": 86_400,
+            "cnc_observations": 345_600,
+            "production_cycles": 170_875,
+            "maintenance_events": 790,
+            "prediction_timeline_rows": 68_208,
+            "result_artifact_rows": 100,
+        },
+        "tool_wear_continuity": {
+            "tolerance_minutes": 1.0,
+            "reset_value_max_minutes": 5.0,
+            "running_reset_count": 0,
+            "maximum_allowed": 0,
+            "tool_replacement_event_count": 731,
+            "aligned_reset_transition_count": 731,
+            "reset_without_matching_maintenance_count": 0,
+            "replacement_without_reset_count": 0,
+            "pass": True,
+        },
+        "ai4i_physics": {
+            "air_process_correlation": {"value": 0.92, "minimum": 0.8, "pass": True},
+            "rpm_torque_correlation": {"value": -0.84, "maximum": -0.6, "pass": True},
+            "process_temperature_ordering": {
+                "process_below_air_rows": 0,
+                "fraction": 0.0,
+                "maximum_fraction": 0.0,
+                "pass": True,
+            },
+            "sensor_distribution": {},
+            "pass": True,
+        },
+    }
+    (validation_dir / "package_validation.json").write_text(
+        json.dumps(package_validation, indent=2),
+        encoding="utf-8",
+    )
+    agent_evaluation = {
+        "positive_upstream_accuracy": 1.0,
+        "negative_rejection_accuracy": 1.0,
+        "false_upstream_claim_rate": 0.0,
+        "maintenance_evidence_claims": 1,
+        "maintenance_evidence_accuracy": 1.0,
+    }
+    (validation_dir / "agent_claims_example_evaluation.json").write_text(
+        json.dumps(agent_evaluation, indent=2),
+        encoding="utf-8",
+    )
     return root
 
 

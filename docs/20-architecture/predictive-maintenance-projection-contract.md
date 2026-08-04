@@ -1,6 +1,6 @@
 # Predictive Maintenance Bundle and Projection Contract
 
-- Status: frozen draft for Phase 0
+- Status: implemented through Phase 3; V3.1 graph boundary ready for Phase 4
 - Contract date: 2026-08-04
 - Runtime owner: Ontology Dashboard / Project 2
 - Graph capability owner: Project 3
@@ -8,8 +8,8 @@
 
 ## 1. Scope
 
-This contract freezes the boundary before PostgreSQL ingestion, Ontology
-materialization, or Neo4j writes are implemented.
+This contract defines the implemented PostgreSQL and Ontology boundary and the
+typed payload that Phase 4 will deliver to Project 3 for Neo4j projection.
 
 It defines:
 
@@ -19,8 +19,9 @@ It defines:
 - runtime source and evaluation-truth separation
 - Project 3 graph projection request, response, status, and error payloads
 
-This phase does **not** implement fact tables, `COPY`, materialization, graph
-writes, delivery retries, or Dashboard UI.
+PostgreSQL fact tables, `COPY`, V2/V3.1 compatibility, Result Artifact storage,
+and version-scoped Ontology materialization are implemented. Neo4j writes,
+delivery retries, replay, and Dashboard UI remain outside this contract stage.
 
 ## 2. Dataset Bundle Manifest v2
 
@@ -46,6 +47,7 @@ bundle_checksum_sha256
 generation
 source_contract
 files[]
+governance_artifacts[]
 created_at
 ```
 
@@ -78,6 +80,29 @@ prediction_snapshot
 prediction_factor
 prediction_timeline
 ```
+
+V3.1 additionally requires:
+
+```text
+result_artifact
+```
+
+V2 remains valid without that role. V3.1 requires `result-artifact-v1.0`, one
+artifact per asset, snapshot provenance binding, and the binary prediction task
+`binary_failure_within_horizon`.
+
+Governance artifacts are not runtime facts and do not enter the bundle content
+checksum. V3.1 registers checksummed summaries for:
+
+```text
+package_validation
+agent_example_evaluation
+```
+
+The release gate requires tool-wear continuity with zero running-state resets,
+731 replacement events aligned to 731 maintenance reset transitions, and
+passing maintenance-evidence validation. Detailed evaluation-truth rows are
+never copied into governance summaries.
 
 The generic v2 contract requires role uniqueness but leaves required role-set
 enforcement to the domain adapter so future domain packs can reuse the bundle
@@ -260,9 +285,9 @@ cnc_failure_truth
 Any URI containing an `evaluation_truth` path segment is also rejected. The
 manifest must set `source_contract.evaluation_truth_separate=true`.
 
-Model outputs such as `prediction_snapshot`, `prediction_factor`, and
-`prediction_timeline` are runtime artifacts, but they remain separate from the
-canonical source inputs. The source-contract flag
+Model outputs such as `prediction_snapshot`, `prediction_factor`,
+`prediction_timeline`, and V3.1 `result_artifact` are runtime artifacts, but they
+remain separate from the canonical source inputs. The source-contract flag
 `prediction_outputs_in_source=false` describes that producer boundary; it does
 not forbid registered model-output roles in the runtime bundle.
 
@@ -293,8 +318,16 @@ project_id
 workspace_id
 dataset_id
 dataset_version_id
+source_version
 bundle_checksum_sha256
+materialization_checksum_sha256
 mapping_version
+role_checksums
+result_contract
+release_gates
+governance_artifacts
+topology_semantics
+excluded_sources
 nodes[]
 relationships[]
 requested_at
@@ -314,6 +347,23 @@ properties, source reference, and source checksum.
 
 All node and relationship endpoint scopes must match the request envelope.
 Duplicate `(object_type, source_identity)` nodes in one request are invalid.
+
+For `canonical-ai4i-physics-v3.1`, the request must carry:
+
+```text
+result_contract.source_role = result_artifact
+result_contract.schema_versions = [result-artifact-v1.0]
+result_contract.model_versions = [independent-logreg-v3.1]
+result_contract.prediction_tasks = [binary_failure_within_horizon]
+topology_semantics.SUPPLIES_AIR_TO = topology_only_not_causal_truth
+topology_semantics.causal_claim_allowed = false
+```
+
+The payload rejects `CAUSES` and `ROOT_CAUSE_OF` relationships, detailed
+evaluation/hidden-truth fields, and any attempt to interpret the binary
+`predicted_failure_type` as PWF/HDF/OSF/TWF multiclass output. Raw sensor rows
+and prediction timeline points are listed in `excluded_sources` rather than
+projected as graph nodes.
 
 ### 6.2 Response Status
 
@@ -370,13 +420,13 @@ Project 2 must not reset, rewrite, or silently replace a failed Dataset Version.
 It records the attempt and last error in projection state and keeps relational
 screens available in degraded mode.
 
-## 7. Phase 1 Implementation Obligations
+## 7. Implemented Adapter and Materialization Guarantees
 
-The next phase must implement a
-`PredictiveMaintenanceCanonicalV2Adapter` that:
+`PredictiveMaintenanceCanonicalV2Adapter` is retained as the backward-compatible
+class name and now supports V2 and the V3.1 release package. It:
 
 1. loads or generates Manifest v2 from the package metadata;
-2. requires the nine predictive-maintenance runtime roles;
+2. requires nine V2 roles or ten V3.1 roles including Result Artifact;
 3. validates file existence, size, checksum, header/schema version, join keys,
    referenced assets, and time ranges;
 4. verifies the bundle checksum before creating an ingestion run;
@@ -386,3 +436,9 @@ The next phase must implement a
 7. treats an identical bundle checksum as idempotent Dataset Version
    registration;
 8. keeps evaluation-truth paths inaccessible to runtime readers.
+
+Phase 3 materialization additionally emits `ontology.materialization.completed`
+with the Dataset/Version scope, bundle and materialization checksums, role
+checksums, Result Artifact contract, V3.1 release gates, topology semantics, and
+explicit non-projection sources. This outbox payload is the sole Phase 4 input;
+Project 3 must not inspect the local dataset package directly.

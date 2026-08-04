@@ -101,7 +101,10 @@ class PredictiveMaintenanceSourceContract(StrictBundleModel):
 
 
 class BundleGovernanceArtifact(StrictBundleModel):
-    role: Literal["package_validation"]
+    role: Literal[
+        "package_validation",
+        "agent_example_evaluation",
+    ]
     uri: str = Field(min_length=1, max_length=2048)
     checksum_sha256: str = Field(pattern=SHA256_PATTERN)
     media_type: Literal["application/json"] = "application/json"
@@ -117,6 +120,28 @@ class BundleGovernanceArtifact(StrictBundleModel):
         normalized_uri = self.uri.replace("\\", "/").lower()
         if "/evaluation_truth/" in f"/{normalized_uri.strip('/')}/" or "/hidden_truth/" in f"/{normalized_uri.strip('/')}/":
             raise ValueError("truth and hidden-truth files cannot be governance artifacts")
+        forbidden_summary_keys = {
+            "event_condition_details",
+            "condition_variant",
+            "failure_occurred_at",
+            "failure_schedule",
+            "hidden_truth",
+            "source_event_id",
+        }
+
+        def contains_forbidden_key(value: Any) -> bool:
+            if isinstance(value, dict):
+                for key, item in value.items():
+                    if str(key).lower() in forbidden_summary_keys:
+                        return True
+                    if contains_forbidden_key(item):
+                        return True
+            elif isinstance(value, list):
+                return any(contains_forbidden_key(item) for item in value)
+            return False
+
+        if contains_forbidden_key(self.summary):
+            raise ValueError("governance summaries cannot expose evaluation or hidden-truth details")
         return self
 
 

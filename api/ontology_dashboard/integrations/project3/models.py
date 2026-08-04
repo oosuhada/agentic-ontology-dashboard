@@ -130,7 +130,11 @@ class Project3IntegrationSnapshot(Project3Model):
 class Project3ProjectionModel(BaseModel):
     """Strict draft boundary for Project 2 → Project 3 graph projection."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        populate_by_name=True,
+        serialize_by_alias=True,
+    )
 
 
 class Project3ProjectionIdentity(Project3ProjectionModel):
@@ -173,7 +177,33 @@ class Project3ProjectionRelationship(Project3ProjectionModel):
         )
         if source_scope != target_scope:
             raise ValueError("projection relationship endpoints must share dataset version scope")
+        if self.relationship_type in {"CAUSES", "ROOT_CAUSE_OF"}:
+            raise ValueError("topology projection cannot assert a causal relationship")
         return self
+
+
+class Project3GovernanceArtifactReference(Project3ProjectionModel):
+    role: Literal["package_validation", "agent_example_evaluation"]
+    checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    media_type: Literal["application/json"] = "application/json"
+
+
+class Project3ResultProjectionContract(Project3ProjectionModel):
+    source_role: Literal["result_artifact", "prediction_snapshot_compatibility"]
+    schema_versions: list[str] = Field(min_length=1)
+    model_versions: list[str] = Field(min_length=1)
+    prediction_tasks: list[Literal["binary_failure_within_horizon"]] = Field(min_length=1)
+    predicted_failure_type_semantics: Literal[
+        "generic_binary_risk_not_ai4i_failure_mode"
+    ]
+    source_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
+class Project3TopologyProjectionContract(Project3ProjectionModel):
+    supplies_air_to: Literal["topology_only_not_causal_truth"] = Field(
+        alias="SUPPLIES_AIR_TO"
+    )
+    causal_claim_allowed: Literal[False] = False
 
 
 class Project3GraphProjectionRequest(Project3ProjectionModel):
@@ -186,8 +216,18 @@ class Project3GraphProjectionRequest(Project3ProjectionModel):
     workspace_id: str = Field(min_length=1, max_length=160)
     dataset_id: str = Field(min_length=1, max_length=160)
     dataset_version_id: str = Field(min_length=1, max_length=160)
+    source_version: str = Field(min_length=1, max_length=160)
     bundle_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    materialization_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     mapping_version: str = Field(min_length=1, max_length=160)
+    role_checksums: dict[str, str] = Field(default_factory=dict)
+    result_contract: Project3ResultProjectionContract
+    release_gates: dict[str, Any] = Field(default_factory=dict)
+    governance_artifacts: list[Project3GovernanceArtifactReference] = Field(
+        default_factory=list
+    )
+    topology_semantics: Project3TopologyProjectionContract
+    excluded_sources: list[str] = Field(default_factory=list)
     nodes: list[Project3ProjectionNode] = Field(default_factory=list)
     relationships: list[Project3ProjectionRelationship] = Field(default_factory=list)
     requested_at: datetime
@@ -219,6 +259,51 @@ class Project3GraphProjectionRequest(Project3ProjectionModel):
         ]
         if len(node_keys) != len(set(node_keys)):
             raise ValueError("projection request contains duplicate node identities")
+
+        invalid_role_checksums = {
+            role: checksum
+            for role, checksum in self.role_checksums.items()
+            if not isinstance(checksum, str)
+            or len(checksum) != 64
+            or any(character not in "0123456789abcdef" for character in checksum)
+        }
+        if invalid_role_checksums:
+            raise ValueError("projection role_checksums must be lowercase SHA-256 values")
+
+        forbidden_runtime_terms = {
+            "evaluation_truth",
+            "hidden_truth",
+            "condition_variant",
+            "failure_occurred_at",
+            "source_event_id",
+        }
+        runtime_payload = {
+            "nodes": [node.model_dump(mode="json") for node in self.nodes],
+            "relationships": [
+                relationship.model_dump(mode="json")
+                for relationship in self.relationships
+            ],
+        }
+        rendered_runtime_payload = str(runtime_payload).lower()
+        if any(term in rendered_runtime_payload for term in forbidden_runtime_terms):
+            raise ValueError("projection runtime payload exposes forbidden truth metadata")
+
+        if self.source_version == "canonical-ai4i-physics-v3.1":
+            if self.result_contract.source_role != "result_artifact":
+                raise ValueError("v3.1 projection requires Result Artifact precedence")
+            if self.result_contract.schema_versions != ["result-artifact-v1.0"]:
+                raise ValueError("v3.1 projection requires result-artifact-v1.0")
+            if self.result_contract.model_versions != ["independent-logreg-v3.1"]:
+                raise ValueError("v3.1 projection requires independent-logreg-v3.1")
+            continuity = self.release_gates.get("tool_wear_continuity")
+            if not isinstance(continuity, dict) or continuity.get("pass") is not True:
+                raise ValueError("v3.1 projection requires a passing tool-wear release gate")
+            if continuity.get("running_reset_count") != 0:
+                raise ValueError("v3.1 projection rejects running-state tool-wear resets")
+            if continuity.get("tool_replacement_event_count") != continuity.get(
+                "aligned_reset_transition_count"
+            ):
+                raise ValueError("v3.1 projection requires replacement/reset parity")
         return self
 
 

@@ -20,7 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from ...ontology import LinkRecord, ObjectRecord
 
 
-DEFAULT_MAPPING_VERSION = "predictive-maintenance-v3.0"
+DEFAULT_MAPPING_VERSION = "predictive-maintenance-v3.1"
 SOURCE_SYSTEM = "predictive-maintenance-postgresql-materialization"
 
 DEFAULT_MAPPING: dict[str, Any] = {
@@ -151,6 +151,81 @@ class PredictiveMaintenanceOntologyMaterializer:
             "SELECT set_config('app.organization_id',%s,true)", (organization_id,)
         )
         connection.execute("SELECT set_config('app.project_id',%s,true)", (project_id,))
+
+    @staticmethod
+    def _projection_contract(
+        connection: Any,
+        *,
+        dataset_version_id: str,
+        role_checksums: dict[str, str],
+        version_profile: dict[str, Any],
+    ) -> dict[str, Any]:
+        result_rows = connection.execute(
+            """
+            SELECT DISTINCT schema_version,model_version,prediction_task,source_sha256
+            FROM pm_result_artifacts
+            WHERE dataset_version_id=%s
+            ORDER BY schema_version,model_version,prediction_task,source_sha256
+            """,
+            (dataset_version_id,),
+        ).fetchall()
+        if result_rows:
+            result_contract = {
+                "source_role": "result_artifact",
+                "schema_versions": sorted({str(row["schema_version"]) for row in result_rows}),
+                "model_versions": sorted({str(row["model_version"]) for row in result_rows}),
+                "prediction_tasks": sorted({str(row["prediction_task"]) for row in result_rows}),
+                "predicted_failure_type_semantics": "generic_binary_risk_not_ai4i_failure_mode",
+                "source_sha256": role_checksums.get("result_artifact"),
+            }
+        else:
+            snapshot_rows = connection.execute(
+                """
+                SELECT DISTINCT model_version FROM pm_prediction_snapshots
+                WHERE dataset_version_id=%s ORDER BY model_version
+                """,
+                (dataset_version_id,),
+            ).fetchall()
+            result_contract = {
+                "source_role": "prediction_snapshot_compatibility",
+                "schema_versions": ["prediction-snapshot-compat-v1"],
+                "model_versions": [str(row["model_version"]) for row in snapshot_rows],
+                "prediction_tasks": ["binary_failure_within_horizon"],
+                "predicted_failure_type_semantics": "generic_binary_risk_not_ai4i_failure_mode",
+                "source_sha256": role_checksums.get("prediction_snapshot"),
+            }
+
+        raw_governance_artifacts = version_profile.get("governance_artifacts", [])
+        if not isinstance(raw_governance_artifacts, list):
+            raw_governance_artifacts = []
+        governance_artifacts = [
+            {
+                key: item.get(key)
+                for key in ("role", "checksum_sha256", "media_type")
+                if item.get(key) is not None
+            }
+            for item in raw_governance_artifacts
+            if isinstance(item, dict)
+        ]
+        release_gates = version_profile.get("release_gates", {})
+        if not isinstance(release_gates, dict):
+            release_gates = {}
+        return {
+            "result_contract": result_contract,
+            "release_gates": release_gates,
+            "governance_artifacts": governance_artifacts,
+            "topology_semantics": {
+                "SUPPLIES_AIR_TO": "topology_only_not_causal_truth",
+                "causal_claim_allowed": False,
+            },
+            "excluded_sources": [
+                "compressor_sensor_observation",
+                "cnc_sensor_observation",
+                "prediction_timeline",
+                "canonical/evaluation_truth",
+                "experiments/connected_air_supply/hidden_truth",
+            ],
+        }
 
     def ensure_default_mapping(
         self,
@@ -283,6 +358,15 @@ class PredictiveMaintenanceOntologyMaterializer:
                         (dataset_version_id,),
                     ).fetchall()
                 }
+                version_profile = version["profile_json"]
+                if not isinstance(version_profile, dict):
+                    version_profile = {}
+                projection_contract = self._projection_contract(
+                    connection,
+                    dataset_version_id=dataset_version_id,
+                    role_checksums=role_checksums,
+                    version_profile=version_profile,
+                )
                 objects, links = self._build_snapshot(
                     connection,
                     organization_id=organization_id,
@@ -405,13 +489,20 @@ class PredictiveMaintenanceOntologyMaterializer:
                         dataset_version_id,
                         Jsonb(
                             {
+                                "organization_id": organization_id,
+                                "project_id": project_id,
+                                "workspace_id": workspace_id,
                                 "dataset_id": dataset_id,
                                 "dataset_version_id": dataset_version_id,
+                                "source_version": str(version["source_version"]),
+                                "bundle_checksum_sha256": str(version["checksum_sha256"]),
                                 "mapping_id": str(mapping["id"]),
                                 "mapping_version": mapping_version,
                                 "materialization_checksum_sha256": checksum,
                                 "object_counts": object_counts,
                                 "link_counts": link_counts,
+                                "role_checksums": role_checksums,
+                                **projection_contract,
                                 "graph_projection_status": "pending",
                             }
                         ),

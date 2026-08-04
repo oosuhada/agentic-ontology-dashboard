@@ -172,6 +172,82 @@ class PostgreSQLPredictiveMaintenanceBundleIngestor:
             (manifest.project_id,),
         )
 
+    @staticmethod
+    def _governance_metadata(manifest: DatasetBundleManifestV2) -> dict[str, Any]:
+        artifacts = [item.model_dump(mode="json") for item in manifest.governance_artifacts]
+        package_validation = next(
+            (item for item in manifest.governance_artifacts if item.role == "package_validation"),
+            None,
+        )
+        release_gates: dict[str, Any] = {}
+        if package_validation is not None:
+            summary = package_validation.summary
+            release_gates = {
+                key: summary[key]
+                for key in (
+                    "release_identity",
+                    "tool_wear_continuity",
+                    "agent_example_evaluation",
+                )
+                if key in summary
+            }
+        return {
+            "governance_artifacts": artifacts,
+            "release_gates": release_gates,
+        }
+
+    @classmethod
+    def _version_profile(
+        cls,
+        *,
+        manifest: DatasetBundleManifestV2,
+        validation: BundleValidationResult,
+        row_counts: dict[str, int],
+    ) -> dict[str, Any]:
+        return {
+            "bundle_checksum_sha256": manifest.bundle_checksum_sha256,
+            "validation_checksum_sha256": validation.validation_checksum_sha256,
+            "row_counts": row_counts,
+            "copy_protocol": "psycopg-copy",
+            "atomic_bundle_transaction": True,
+            "source_contract": manifest.source_contract.model_dump(
+                mode="json", exclude_none=True
+            ),
+            **cls._governance_metadata(manifest),
+        }
+
+    @classmethod
+    def _refresh_existing_version_metadata(
+        cls,
+        connection: Any,
+        *,
+        version_id: str,
+        manifest: DatasetBundleManifestV2,
+        validation: BundleValidationResult,
+        row_counts: dict[str, int],
+        jsonb: Any,
+    ) -> None:
+        connection.execute(
+            """
+            UPDATE dataset_versions
+            SET profile_json=%s,record_count=%s,status='projecting'
+            WHERE id=%s AND organization_id=%s AND project_id=%s
+            """,
+            (
+                jsonb(
+                    cls._version_profile(
+                        manifest=manifest,
+                        validation=validation,
+                        row_counts=row_counts,
+                    )
+                ),
+                sum(row_counts.values()),
+                version_id,
+                manifest.organization_id,
+                manifest.project_id,
+            ),
+        )
+
     def _start_control_run(
         self,
         manifest: DatasetBundleManifestV2,
@@ -275,6 +351,14 @@ class PostgreSQLPredictiveMaintenanceBundleIngestor:
                         {item.role for item in validation.roles},
                     )
                     self._assert_row_count_parity(validation, row_counts)
+                    self._refresh_existing_version_metadata(
+                        connection,
+                        version_id=str(existing["id"]),
+                        manifest=manifest,
+                        validation=validation,
+                        row_counts=row_counts,
+                        jsonb=Jsonb,
+                    )
                     result = PostgreSQLBundleIngestionResult(
                         ingestion_run_id=run_id,
                         manifest_record_id=manifest_record_id,
@@ -320,19 +404,11 @@ class PostgreSQLPredictiveMaintenanceBundleIngestor:
                 )
                 self._assert_row_count_parity(validation, row_counts)
                 outbox_event_id = str(uuid.uuid4())
-                profile = {
-                    "bundle_checksum_sha256": manifest.bundle_checksum_sha256,
-                    "validation_checksum_sha256": validation.validation_checksum_sha256,
-                    "row_counts": row_counts,
-                    "copy_protocol": "psycopg-copy",
-                    "atomic_bundle_transaction": True,
-                    "source_contract": manifest.source_contract.model_dump(
-                        mode="json", exclude_none=True
-                    ),
-                    "governance_artifacts": [
-                        item.model_dump(mode="json") for item in manifest.governance_artifacts
-                    ],
-                }
+                profile = self._version_profile(
+                    manifest=manifest,
+                    validation=validation,
+                    row_counts=row_counts,
+                )
                 connection.execute(
                     """
                     UPDATE dataset_versions
@@ -377,6 +453,7 @@ class PostgreSQLPredictiveMaintenanceBundleIngestor:
                                 "source_version": manifest.dataset_version,
                                 "bundle_checksum_sha256": manifest.bundle_checksum_sha256,
                                 "row_counts": row_counts,
+                                **self._governance_metadata(manifest),
                             }
                         ),
                     ),
@@ -483,10 +560,7 @@ class PostgreSQLPredictiveMaintenanceBundleIngestor:
                     {
                         "validation_checksum_sha256": validation.validation_checksum_sha256,
                         "status": "copying",
-                        "governance_artifacts": [
-                            item.model_dump(mode="json")
-                            for item in manifest.governance_artifacts
-                        ],
+                        **self._governance_metadata(manifest),
                     }
                 ),
             ),

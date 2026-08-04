@@ -22,9 +22,13 @@ from ontology_dashboard.adapters.bundle_models import (
 from ontology_dashboard.integrations.project3 import (
     Project3GraphProjectionRequest,
     Project3GraphProjectionResponse,
+    Project3GovernanceArtifactReference,
     Project3ProjectionError,
     Project3ProjectionIdentity,
     Project3ProjectionNode,
+    Project3ProjectionRelationship,
+    Project3ResultProjectionContract,
+    Project3TopologyProjectionContract,
 )
 
 
@@ -36,6 +40,52 @@ SHA_C = "c" * 64
 
 def load_schema(name: str) -> dict:
     return json.loads((ROOT / "schemas" / name).read_text(encoding="utf-8"))
+
+
+def project3_v3_1_contract() -> dict[str, object]:
+    return {
+        "source_version": "canonical-ai4i-physics-v3.1",
+        "materialization_checksum_sha256": SHA_B,
+        "role_checksums": {
+            "asset_master": SHA_A,
+            "result_artifact": SHA_C,
+        },
+        "result_contract": Project3ResultProjectionContract(
+            source_role="result_artifact",
+            schema_versions=["result-artifact-v1.0"],
+            model_versions=["independent-logreg-v3.1"],
+            prediction_tasks=["binary_failure_within_horizon"],
+            predicted_failure_type_semantics=(
+                "generic_binary_risk_not_ai4i_failure_mode"
+            ),
+            source_sha256=SHA_C,
+        ),
+        "release_gates": {
+            "tool_wear_continuity": {
+                "pass": True,
+                "running_reset_count": 0,
+                "tool_replacement_event_count": 731,
+                "aligned_reset_transition_count": 731,
+            }
+        },
+        "governance_artifacts": [
+            Project3GovernanceArtifactReference(
+                role="package_validation",
+                checksum_sha256=SHA_B,
+            )
+        ],
+        "topology_semantics": Project3TopologyProjectionContract(
+            SUPPLIES_AIR_TO="topology_only_not_causal_truth",
+            causal_claim_allowed=False,
+        ),
+        "excluded_sources": [
+            "compressor_sensor_observation",
+            "cnc_sensor_observation",
+            "prediction_timeline",
+            "canonical/evaluation_truth",
+            "experiments/connected_air_supply/hidden_truth",
+        ],
+    }
 
 
 def source_contract() -> PredictiveMaintenanceSourceContract:
@@ -277,6 +327,7 @@ def test_project3_graph_projection_draft_validates_status_and_scope() -> None:
         dataset_version_id="dsv-001",
         bundle_checksum_sha256=SHA_A,
         mapping_version="mapping-v1",
+        **project3_v3_1_contract(),
         nodes=[
             Project3ProjectionNode(
                 identity=identity,
@@ -327,6 +378,7 @@ def test_project3_graph_projection_draft_validates_status_and_scope() -> None:
             dataset_version_id="dsv-001",
             bundle_checksum_sha256=SHA_A,
             mapping_version="mapping-v1",
+            **project3_v3_1_contract(),
             nodes=[
                 Project3ProjectionNode(
                     identity=wrong_scope,
@@ -335,6 +387,44 @@ def test_project3_graph_projection_draft_validates_status_and_scope() -> None:
                     source_sha256=SHA_A,
                 )
             ],
+            relationships=[],
+            requested_at=datetime(2026, 8, 4, tzinfo=timezone.utc),
+        )
+
+    with pytest.raises(ValidationError, match="cannot assert a causal relationship"):
+        Project3ProjectionRelationship(
+            relationship_type="CAUSES",
+            from_identity=identity,
+            to_identity=identity.model_copy(
+                update={"object_type": "risk_event", "source_identity": "RISK-001"}
+            ),
+            properties={},
+            source_reference="dataset:pm-canonical:version:dsv-001",
+            source_sha256=SHA_A,
+        )
+
+    failed_gate = project3_v3_1_contract()
+    failed_gate["release_gates"] = {
+        "tool_wear_continuity": {
+            "pass": False,
+            "running_reset_count": 1,
+            "tool_replacement_event_count": 731,
+            "aligned_reset_transition_count": 730,
+        }
+    }
+    with pytest.raises(ValidationError, match="passing tool-wear release gate"):
+        Project3GraphProjectionRequest(
+            projection_id="projection-003",
+            idempotency_key="projection-key-failed-gate",
+            organization_id="org-ontology-demo",
+            project_id="predictive-maintenance-v2",
+            workspace_id="predictive-maintenance-main",
+            dataset_id="pm-canonical",
+            dataset_version_id="dsv-001",
+            bundle_checksum_sha256=SHA_A,
+            mapping_version="mapping-v1",
+            **failed_gate,
+            nodes=[],
             relationships=[],
             requested_at=datetime(2026, 8, 4, tzinfo=timezone.utc),
         )

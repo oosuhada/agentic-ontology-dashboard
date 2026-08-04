@@ -103,7 +103,10 @@
       "additionalProperties": false,
       "required": ["role", "uri", "checksum_sha256", "media_type", "summary"],
       "properties": {
-        "role": { "const": "package_validation" },
+        "role": {
+          "type": "string",
+          "enum": ["package_validation", "agent_example_evaluation"]
+        },
         "uri": {
           "type": "string",
           "minLength": 1,

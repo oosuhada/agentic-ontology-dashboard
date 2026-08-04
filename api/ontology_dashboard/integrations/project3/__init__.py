@@ -12,6 +12,7 @@ from .models import (
     Project3GraphProjectionRequest,
     Project3GraphProjectionResponse,
     Project3GraphSchema,
+    Project3GovernanceArtifactReference,
     Project3Health,
     Project3IntegrationSnapshot,
     Project3NodeSearch,
@@ -20,10 +21,12 @@ from .models import (
     Project3ProjectionIdentity,
     Project3ProjectionNode,
     Project3ProjectionRelationship,
+    Project3ResultProjectionContract,
     Project3Query,
     Project3RagResult,
     Project3Readiness,
     Project3Subgraph,
+    Project3TopologyProjectionContract,
 )
 
 __all__ = [
@@ -34,6 +37,7 @@ __all__ = [
     "Project3GraphProjectionRequest",
     "Project3GraphProjectionResponse",
     "Project3GraphSchema",
+    "Project3GovernanceArtifactReference",
     "Project3Health",
     "Project3IntegrationSnapshot",
     "Project3NodeSearch",
@@ -42,10 +46,12 @@ __all__ = [
     "Project3ProjectionIdentity",
     "Project3ProjectionNode",
     "Project3ProjectionRelationship",
+    "Project3ResultProjectionContract",
     "Project3Query",
     "Project3RagResult",
     "Project3Readiness",
     "Project3Subgraph",
+    "Project3TopologyProjectionContract",
     "Project3Unavailable",
     "parse_project_mapping",
 ]

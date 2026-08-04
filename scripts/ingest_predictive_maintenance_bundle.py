@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate and optionally COPY a Predictive Maintenance Canonical v2 bundle."""
+"""Validate and optionally COPY a Predictive Maintenance Canonical v2/v3.1 bundle."""
 
 from __future__ import annotations
 
@@ -30,12 +30,19 @@ def _write_json(path: str | Path, payload: dict[str, object]) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("package_root", help="Path to predictive_maintenance_canonical_v2")
+    parser.add_argument(
+        "package_root",
+        help="Path to predictive_maintenance_canonical_v2 or predictive_maintenance_canonical_v3.1",
+    )
     parser.add_argument("--organization-id", default="org-ontology-demo")
     parser.add_argument("--project-id", default="predictive-maintenance-v2")
     parser.add_argument("--workspace-id", default="predictive-maintenance-main")
     parser.add_argument("--manifest-id", default="predictive-maintenance-canonical-v2")
-    parser.add_argument("--dataset-name", default="Predictive Maintenance Canonical v2")
+    parser.add_argument(
+        "--dataset-name",
+        default=None,
+        help="Optional display name. Defaults to the package Dataset Version.",
+    )
     parser.add_argument(
         "--allow-root",
         action="append",

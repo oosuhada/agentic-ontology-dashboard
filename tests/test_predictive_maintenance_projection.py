@@ -117,6 +117,47 @@ def test_v2_v3_materialization_is_versioned_governed_and_idempotent(
     assert first.link_count == second.link_count == 13
     assert first.materialization_checksum_sha256 == second.materialization_checksum_sha256
     assert first.outbox_event_id == second.outbox_event_id
+    assert first.mapping_version == "predictive-maintenance-v3.1"
+
+    with psycopg.connect(postgresql_database, row_factory=dict_row) as connection:
+        outbox_payload = connection.execute(
+            """
+            SELECT payload_json FROM transactional_outbox
+            WHERE id=%s AND event_type='ontology.materialization.completed'
+            """,
+            (first.outbox_event_id,),
+        ).fetchone()["payload_json"]
+    assert outbox_payload["source_version"] == "canonical-ai4i-physics-v3.1"
+    assert outbox_payload["bundle_checksum_sha256"] == v3_manifest.bundle_checksum_sha256
+    assert outbox_payload["materialization_checksum_sha256"] == (
+        first.materialization_checksum_sha256
+    )
+    assert outbox_payload["result_contract"] == {
+        "source_role": "result_artifact",
+        "schema_versions": ["result-artifact-v1.0"],
+        "model_versions": ["independent-logreg-v3.1"],
+        "prediction_tasks": ["binary_failure_within_horizon"],
+        "predicted_failure_type_semantics": (
+            "generic_binary_risk_not_ai4i_failure_mode"
+        ),
+        "source_sha256": outbox_payload["role_checksums"]["result_artifact"],
+    }
+    assert outbox_payload["release_gates"]["tool_wear_continuity"]["pass"] is True
+    assert outbox_payload["release_gates"]["tool_wear_continuity"][
+        "tool_replacement_event_count"
+    ] == 731
+    assert outbox_payload["release_gates"]["agent_example_evaluation"][
+        "maintenance_evidence_accuracy"
+    ] == 1.0
+    assert {item["role"] for item in outbox_payload["governance_artifacts"]} == {
+        "package_validation",
+        "agent_example_evaluation",
+    }
+    assert outbox_payload["topology_semantics"] == {
+        "SUPPLIES_AIR_TO": "topology_only_not_causal_truth",
+        "causal_claim_allowed": False,
+    }
+    assert "canonical/evaluation_truth" in outbox_payload["excluded_sources"]
 
     repository = PostgreSQLOntologyInstanceRepository(
         postgresql_database,

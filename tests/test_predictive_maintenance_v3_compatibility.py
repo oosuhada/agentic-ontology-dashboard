@@ -20,7 +20,7 @@ from predictive_maintenance_v3_helpers import (
 
 ROOT = Path(__file__).resolve().parents[1]
 V2_ROOT = ROOT.parent / "predictive_maintenance_canonical_v2"
-V3_ROOT = ROOT.parent / "predictive_maintenance_canonical_v3"
+V3_ROOT = ROOT.parent / "predictive_maintenance_canonical_v3.1"
 V2_CHECKSUM = "ac12fdc33f1e03b46447687e689566fd2b66f5d30bb253fbe82309770313594b"
 ROW_COUNT_KEYS = {
     "asset_master": "assets",
@@ -78,10 +78,26 @@ def test_v2_checksum_is_stable_and_v3_is_a_new_version() -> None:
         "prediction_timeline",
         "result_artifact",
     }
-    assert v3.governance_artifacts[0].role == "package_validation"
-    rendered = json.dumps(v3.governance_artifacts[0].summary, ensure_ascii=False)
+    assert [item.role for item in v3.governance_artifacts] == [
+        "package_validation",
+        "agent_example_evaluation",
+    ]
+    package_validation = v3.governance_artifacts[0]
+    rendered = json.dumps(package_validation.summary, ensure_ascii=False)
     assert "event_condition_details" not in rendered
     assert "condition_variant" not in rendered
+    assert package_validation.summary["tool_wear_continuity"] == {
+        "tolerance_minutes": 1.0,
+        "reset_value_max_minutes": 5.0,
+        "running_reset_count": 0,
+        "maximum_allowed": 0,
+        "tool_replacement_event_count": 731,
+        "aligned_reset_transition_count": 731,
+        "reset_without_matching_maintenance_count": 0,
+        "replacement_without_reset_count": 0,
+        "pass": True,
+    }
+    assert v3.governance_artifacts[1].summary["maintenance_evidence_accuracy"] == 1.0
 
 
 def test_real_v3_bundle_validates_with_result_artifact_parity() -> None:
@@ -144,3 +160,23 @@ def test_v3_rejects_result_checksum_and_prediction_binding(tmp_path: Path) -> No
     binding_result = BundleFileAdapter(allowed_roots=[root]).validate(binding_manifest)
     assert binding_result.status == "failed"
     assert any(item.code == "result_artifact_prediction_mismatch" for item in binding_result.issues)
+
+
+def test_v3_1_rejects_failed_tool_wear_and_maintenance_evidence_gates(
+    tmp_path: Path,
+) -> None:
+    root = create_small_v3_package(tmp_path)
+    validation_path = root / "canonical" / "validation" / "package_validation.json"
+    validation = json.loads(validation_path.read_text(encoding="utf-8"))
+    validation["tool_wear_continuity"]["running_reset_count"] = 1
+    validation_path.write_text(json.dumps(validation, indent=2), encoding="utf-8")
+    with pytest.raises(ValueError, match="tool-wear continuity gate failed"):
+        build(root)
+
+    root = create_small_v3_package(tmp_path / "agent")
+    agent_path = root / "canonical" / "validation" / "agent_claims_example_evaluation.json"
+    agent = json.loads(agent_path.read_text(encoding="utf-8"))
+    agent["maintenance_evidence_accuracy"] = 0.0
+    agent_path.write_text(json.dumps(agent, indent=2), encoding="utf-8")
+    with pytest.raises(ValueError, match="agent evidence gate failed"):
+        build(root)
