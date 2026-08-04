@@ -26,6 +26,8 @@ def test_migrations_are_idempotent_and_create_outbox(tmp_path: Path) -> None:
         "0005_project_memberships",
         "0006_outbox_worker",
         "0007_analysis_engine",
+        "0008_dataset_projection_pipeline",
+        "0009_agent_orchestration",
     ]
     assert second == []
 

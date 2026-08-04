@@ -190,6 +190,8 @@ def test_analysis_persistence_run_and_reference_result(client: TestClient) -> No
     assert set(run_payload["node_results"]) == {"input:0", "filter:1", "group:2", "chart:3"}
     assert run_payload["node_results"]["chart:3"]["render_spec"]["kind"] == "bar"
     assert run_payload["node_results"]["group:2"]["warnings"]
+    assert run_payload["node_results"]["input:0"]["quality"]["computed_by"] == "server"
+    assert run_payload["node_results"]["input:0"]["quality"]["row_count"] >= 1
 
     node_result = client.get(
         f"/api/analyses/{ANALYSIS_ID}/nodes/chart:3/result",
@@ -229,6 +231,61 @@ def test_analysis_persistence_run_and_reference_result(client: TestClient) -> No
     )
     assert conflict.status_code == 409
     assert conflict.json()["error"]["code"] == "analysis_version_conflict"
+
+
+def test_analysis_definition_rejects_unknown_join_and_cycles_before_persistence(client: TestClient) -> None:
+    login(client)
+    headers = csrf_headers(client)
+    join_nodes = analysis_nodes()
+    join_nodes.insert(
+        1,
+        {
+            "id": "join:blocked",
+            "type": "analysisStep",
+            "position": {"x": 100, "y": 120},
+            "data": {
+                "kind": "join",
+                "title": "Unsafe join",
+                "config": {"relationship": "risk_event_secret_table"},
+                "rows": 0,
+                "outputKind": "rows",
+                "elapsedMs": 0,
+                "status": "idle",
+            },
+        },
+    )
+    unknown_join = client.post(
+        "/api/analyses",
+        headers=headers,
+        json={
+            "id": "unsafe-join-analysis",
+            "workspace_id": WORKSPACE,
+            "display_name": "Unsafe join",
+            "nodes": join_nodes,
+            "edges": [{"id": "e0", "source": "input:0", "target": "join:blocked"}],
+        },
+    )
+    assert unknown_join.status_code == 422
+    assert unknown_join.json()["error"]["code"] == "contract_validation_failed"
+    assert "join relationship is not allowed" in unknown_join.json()["error"]["message"]
+
+    cycle = client.post(
+        "/api/analyses",
+        headers=headers,
+        json={
+            "id": "cyclic-analysis",
+            "workspace_id": WORKSPACE,
+            "display_name": "Cyclic analysis",
+            "nodes": analysis_nodes()[:2],
+            "edges": [
+                {"id": "cycle-1", "source": "input:0", "target": "filter:1"},
+                {"id": "cycle-2", "source": "filter:1", "target": "input:0"},
+            ],
+        },
+    )
+    assert cycle.status_code == 422
+    assert cycle.json()["error"]["code"] == "contract_validation_failed"
+    assert cycle.json()["error"]["message"] == "analysis graph must be acyclic"
 
 
 def test_dashboard_board_query_reapplies_selection_on_server(client: TestClient) -> None:

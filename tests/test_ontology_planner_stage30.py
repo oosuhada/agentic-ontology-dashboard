@@ -15,7 +15,7 @@ from ontology_dashboard.main import (
     get_ontology_planner_service,
     get_service,
 )
-from ontology_dashboard.ontology_planner_service import OntologyDashboardPlannerService
+from ontology_dashboard.planner import OntologyDashboardPlannerService
 from ontology_dashboard.service import ManufacturingPredictiveMaintenanceService as FactorySignalService
 
 ROOT = Path(__file__).resolve().parents[1]
