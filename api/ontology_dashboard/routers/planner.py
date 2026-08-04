@@ -13,13 +13,13 @@ from ..dependencies import (
     require_permission,
 )
 from ..identity import IdentityService, Principal
-from ..ontology_planner_models import (
+from ..planner import (
     BoardRecommendationRequest,
     DashboardDraftRequest,
     GroundedNarrativeRequest,
     NaturalLanguageObjectQueryRequest,
+    OntologyDashboardPlannerService,
 )
-from ..ontology_planner_service import OntologyDashboardPlannerService
 from ..security import PLANNER_RATE, RateLimiter
 
 router = APIRouter(prefix="/api/planner", tags=["planner"])
