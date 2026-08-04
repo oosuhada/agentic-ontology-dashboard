@@ -57,6 +57,7 @@ import {
 } from "../dashboard/cross-filter-engine";
 import type { DashboardDraftResponse } from "../planner/types";
 import { primaryRole, ROLE_LANDING } from "./roleLanding";
+import { PredictiveMaintenanceReplayPanel } from "../predictive-maintenance/PredictiveMaintenanceReplayPanel";
 import { useEventDetail, useRoleWorkspace, useWorkspaceCatalog } from "./useManufacturingData";
 import { useDashboardEditor } from "./useDashboardEditor";
 import { VisualizationSwitcher } from "../dashboard/visualization/VisualizationSwitcher";
@@ -1102,6 +1103,10 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
 
   const boardCanvas = draftDashboard && evidence && report && layout ? (
     <>
+      <PredictiveMaintenanceReplayPanel
+        projectId={selectedProjectId}
+        workspaceId={selectedWorkspaceId}
+      />
       {detailLoading || roleWorkspaceLoading ? <div className="loading-panel"><WorkbenchState kind="refreshing" title={detailLoading ? "Refreshing object evidence" : "Refreshing role workspace"} /></div> : null}
       <BoardCanvas
         tab={activeTab}

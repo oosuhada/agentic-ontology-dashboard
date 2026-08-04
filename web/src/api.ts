@@ -50,6 +50,11 @@ import type {
   AnalysisServerSnapshot,
 } from "./features/analysis/types";
 import type {
+  PredictiveMaintenanceRuntimeContext,
+  ProductResultPage,
+  ReplaySessionSnapshot,
+} from "./features/predictive-maintenance/types";
+import type {
   OntologyAggregateResult,
   OntologyObjectQueryResult,
   OntologyRegistry,
@@ -369,6 +374,70 @@ export function traverseOntologyObject(
 export function getProject3Status(projectId: string): Promise<Project3IntegrationSnapshot> {
   const params = new URLSearchParams({ project_id: projectId });
   return request<Project3IntegrationSnapshot>(`/api/integrations/project3/status?${params.toString()}`);
+}
+
+function predictiveMaintenanceBase(projectId: string, workspaceId: string): string {
+  return `/api/projects/${encodeURIComponent(projectId)}/workspaces/${encodeURIComponent(workspaceId)}/predictive-maintenance`;
+}
+
+export function getPredictiveMaintenanceRuntimeContext(
+  projectId: string,
+  workspaceId: string,
+  signal?: AbortSignal,
+): Promise<PredictiveMaintenanceRuntimeContext> {
+  return request<PredictiveMaintenanceRuntimeContext>(
+    `${predictiveMaintenanceBase(projectId, workspaceId)}/context`,
+    { signal },
+  );
+}
+
+export function getPredictiveMaintenanceLatestResults(
+  projectId: string,
+  workspaceId: string,
+  limit = 100,
+  signal?: AbortSignal,
+): Promise<ProductResultPage> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  return request<ProductResultPage>(
+    `${predictiveMaintenanceBase(projectId, workspaceId)}/results/latest?${params.toString()}`,
+    { signal },
+  );
+}
+
+export function startPredictiveMaintenanceReplay(
+  projectId: string,
+  workspaceId: string,
+  input: {
+    dataset_version_id?: string;
+    start_time?: string;
+    speed_minutes_per_second?: number;
+  },
+): Promise<ReplaySessionSnapshot> {
+  return request<ReplaySessionSnapshot>(
+    `${predictiveMaintenanceBase(projectId, workspaceId)}/replay/sessions`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
+}
+
+export function controlPredictiveMaintenanceReplay(
+  projectId: string,
+  workspaceId: string,
+  sessionId: string,
+  action: "pause" | "resume" | "reset" | "seek" | "speed",
+  input: { time?: string; speed_minutes_per_second?: number },
+): Promise<ReplaySessionSnapshot> {
+  return request<ReplaySessionSnapshot>(
+    `${predictiveMaintenanceBase(projectId, workspaceId)}/replay/sessions/${encodeURIComponent(sessionId)}/${action}`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
+}
+
+export function predictiveMaintenanceReplayEventsUrl(
+  projectId: string,
+  workspaceId: string,
+  sessionId: string,
+): string {
+  return `${API_BASE}${predictiveMaintenanceBase(projectId, workspaceId)}/replay/sessions/${encodeURIComponent(sessionId)}/events`;
 }
 
 export function getProject3Schema(

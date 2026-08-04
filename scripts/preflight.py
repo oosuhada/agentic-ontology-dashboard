@@ -68,8 +68,14 @@ REQUIRED_FILES = [
     "api/ontology_dashboard/adapters/predictive_maintenance_v2.py",
     "api/ontology_dashboard/adapters/postgresql_bundle_ingestion.py",
     "api/ontology_dashboard/domain_packs/predictive_maintenance/materialization.py",
+    "api/ontology_dashboard/predictive_maintenance_runtime/models.py",
+    "api/ontology_dashboard/predictive_maintenance_runtime/repository.py",
+    "api/ontology_dashboard/predictive_maintenance_runtime/service.py",
+    "api/ontology_dashboard/routers/predictive_maintenance_runtime.py",
     "api/migrations/postgresql/0011_predictive_maintenance_domain_pack.sql",
     "api/migrations/postgresql/0012_predictive_maintenance_v3_materialization.sql",
+    "api/migrations/postgresql/0013_project3_graph_projection.sql",
+    "api/migrations/postgresql/0014_predictive_maintenance_replay.sql",
     "schemas/input-event.schema.json",
     "schemas/evidence-package.schema.json",
     "schemas/report.schema.json",
@@ -92,6 +98,7 @@ REQUIRED_FILES = [
     "web/src/features/dashboard/DashboardShell.tsx",
     "web/src/features/roles/RoleBoardRenderer.tsx",
     "web/src/features/planner/PlannerAssistantBoard.tsx",
+    "web/src/features/predictive-maintenance/PredictiveMaintenanceReplayPanel.tsx",
 ]
 
 

@@ -47,6 +47,10 @@ from .postgresql_repositories import (
     seed_runtime_reference_data,
 )
 from .projects import ProjectRepository, ProjectService
+from .predictive_maintenance_runtime import (
+    PredictiveMaintenanceRuntimeRepository,
+    PredictiveMaintenanceRuntimeService,
+)
 from .role_workflow_service import RoleWorkflowService
 from .security import InMemoryRateLimiter, RateLimiter, RedisRateLimiter
 from .service import ManufacturingPredictiveMaintenanceService
@@ -259,6 +263,17 @@ def get_governance_service(
         datasets=datasets.repository,
         agents=AgentRunRepository(target),
         workflows=workflows,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_predictive_maintenance_runtime_service() -> PredictiveMaintenanceRuntimeService:
+    target = database_target()
+    migrate(target)
+    if not is_postgresql(target):
+        raise RuntimeError("predictive-maintenance Result Artifact/replay APIs require PostgreSQL")
+    return PredictiveMaintenanceRuntimeService(
+        PredictiveMaintenanceRuntimeRepository(target)
     )
 
 

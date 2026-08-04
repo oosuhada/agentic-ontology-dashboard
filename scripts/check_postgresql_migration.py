@@ -75,6 +75,7 @@ def main() -> int:
                 MIGRATION_DIR / "0011_predictive_maintenance_domain_pack.sql",
                 MIGRATION_DIR / "0012_predictive_maintenance_v3_materialization.sql",
                 MIGRATION_DIR / "0013_project3_graph_projection.sql",
+                MIGRATION_DIR / "0014_predictive_maintenance_replay.sql",
             ):
                 run([
                     "psql",
@@ -185,6 +186,7 @@ def main() -> int:
                 "pm_prediction_factors",
                 "pm_prediction_timeline",
                 "pm_result_artifacts",
+                "pm_replay_sessions",
                 "ontology_materialization_mappings",
                 "transactional_outbox",
                 "schema_migrations",
@@ -224,6 +226,7 @@ def main() -> int:
                 "pm_prediction_factors",
                 "pm_prediction_timeline",
                 "pm_result_artifacts",
+                "pm_replay_sessions",
                 "ontology_materialization_mappings",
                 "transactional_outbox",
             }
@@ -332,6 +335,7 @@ def main() -> int:
                     "0011",
                     "0012",
                     "0013",
+                    "0014",
                 ],
                 "graph_projection_provider_columns": sorted(
                     {

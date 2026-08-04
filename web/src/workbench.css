@@ -1,3 +1,57 @@
+.pm-replay-panel {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--od-border, #d8dee9);
+  border-radius: 8px;
+  background: var(--od-surface, #fff);
+}
+
+.pm-replay-panel > header,
+.pm-replay-summary,
+.pm-replay-cursor,
+.pm-replay-results {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.pm-replay-panel small,
+.pm-replay-panel .eyebrow {
+  display: block;
+  color: var(--od-text-muted, #667085);
+  font-size: 11px;
+}
+
+.pm-replay-summary > span,
+.pm-replay-cursor > span,
+.pm-replay-results > div {
+  min-width: 140px;
+}
+
+.pm-replay-results {
+  align-items: stretch;
+}
+
+.pm-replay-results > div {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid var(--od-border, #d8dee9);
+  border-radius: 6px;
+}
+
+.pm-replay-graph {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pm-replay-graph.status-failed {
+  color: var(--od-warning-text, #8a4b08);
+}
 :root {
   --od-font: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --od-bg: #eef1f5;
