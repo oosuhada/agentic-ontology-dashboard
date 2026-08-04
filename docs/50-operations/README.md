@@ -4,6 +4,7 @@
 
 - [Demo runbook](demo-runbook.md)
 - [Release checklist](release-checklist.md)
+- [Predictive Maintenance v3.1 release runbook](predictive-maintenance-v3.1-release-runbook.md)
 - [Release gate report](release-gate-report.md)
 - [Production environment completion](production-environment-completion-runbook.md)
 - [DevSpace workflow](devspace-workflow.md)

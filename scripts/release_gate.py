@@ -105,11 +105,11 @@ def main() -> None:
                 ".vite",
             ),
         )
-        visual_audit_source = root / "docs" / "ui" / "screenshots" / "palantir-gap-v2"
-        if visual_audit_source.is_dir():
+        docs_source = root / "docs"
+        if docs_source.is_dir():
             shutil.copytree(
-                visual_audit_source,
-                frontend_temp.parent / "docs" / "ui" / "screenshots" / "palantir-gap-v2",
+                docs_source,
+                frontend_temp.parent / "docs",
             )
         checks.append(run(["npm", "install", "--no-audit", "--no-fund"], cwd=frontend_temp, timeout=600))
         if checks[-1]["pass"]:

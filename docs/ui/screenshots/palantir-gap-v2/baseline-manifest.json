@@ -1,43 +1,43 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-08-03",
+  "generated_at": "2026-08-05",
   "viewport": "1440x1000",
   "artifacts": {
     "agent.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 122391,
-      "sha256": "111dfa6c3101ab4dfb7dfd52c259da6c92080e41b7bf41640ca85cb4cc633f6c"
+      "bytes": 117761,
+      "sha256": "21116ee8ba5e197576aa5fd5565f57bc15c5d83b5c32da0fc2bd5f18d2e9c7b5"
     },
     "analysis.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 223907,
-      "sha256": "b13c4f1a5088aeda2eae03ff83d80a4f3599f392740978e8d495cb7ad03177b4"
+      "bytes": 220404,
+      "sha256": "4ec3b8bbea5d1ab83e1225b2d0492f024cabe28027bf6fabb8def04c01af24eb"
     },
     "comparison-sheet.png": {
       "width": 1440,
       "height": 3645,
-      "bytes": 953346,
-      "sha256": "d8ab90ec43a9624350b8dd245ebd6fee1b65d349c1ae8055a26b430525089fe9"
+      "bytes": 963827,
+      "sha256": "a72e11773319e77e5daff5d881e39ae5fc7199de7af6b267e9c7f69b0b42f2df"
     },
     "dashboard.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 171411,
-      "sha256": "93b1e852de2c5c08c21059ab2de09864a9913376e788ec0973f6368dd9339bb7"
+      "bytes": 230653,
+      "sha256": "039fd915b3e9dee95b9293bb0861d087899b8ec8cf40ced86e88d4b527e04e47"
     },
     "datasets.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 80168,
-      "sha256": "8f73578abfce109341cd386b66444e65c7e08f15f95d325a6e37d7869ac4104c"
+      "bytes": 80972,
+      "sha256": "10065f7e54e854a708ac57bacb8bb609cf0a7e8c594db58254e2441000d59ebe"
     },
     "governance.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 117531,
-      "sha256": "7617e81f9dfc3f2e238798b4a5b5e201bd797cf05277fc3ed82a91c90b0b9f9b"
+      "bytes": 112934,
+      "sha256": "1a8b83a881988d7fa7208eff3ec4a37995148f0520c2042df5f84316444aa398"
     }
   }
 }

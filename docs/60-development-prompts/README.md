@@ -6,6 +6,8 @@
 
 - [Master prompt](next-session-master-prompt.md)
 - [Remaining work execution plan](next-session-remaining-work-execution-plan.md)
+- [Predictive Maintenance Canonical v3.1 phases](next-session-predictive-maintenance-canonical-v3.1-prompts.md)
+- [Post-v3.1 adaptive modeling phases](next-session-predictive-maintenance-adaptive-modeling-prompts.md)
 
 ## 주제별 프롬프트
 

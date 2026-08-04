@@ -76,6 +76,7 @@ REQUIRED_FILES = [
     "api/migrations/postgresql/0012_predictive_maintenance_v3_materialization.sql",
     "api/migrations/postgresql/0013_project3_graph_projection.sql",
     "api/migrations/postgresql/0014_predictive_maintenance_replay.sql",
+    "api/migrations/postgresql/0015_identity_permission_overrides.sql",
     "schemas/input-event.schema.json",
     "schemas/evidence-package.schema.json",
     "schemas/report.schema.json",

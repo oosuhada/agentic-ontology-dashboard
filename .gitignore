@@ -75,6 +75,7 @@ evaluation/results/*
 # Generated reports
 /reports/
 artifacts/
+.artifacts/
 
 # Docker/local overrides
 docker-compose.override.yml

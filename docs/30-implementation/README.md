@@ -9,6 +9,8 @@
 - [Product convergence roadmap](product-convergence-roadmap.md)
 - [Autonomous implementation progress](autonomous-implementation-progress.md)
 - [Pre-release gap analysis](pre-release-gap-analysis-and-upgrade-plan.md)
+- [Predictive Maintenance Canonical v3.1 upgrade](predictive-maintenance-canonical-v3-upgrade-plan.md)
+- [Post-v3.1 adaptive modeling engine integration](predictive-maintenance-adaptive-modeling-integration-plan.md)
 
 ## 구현 이력
 
@@ -25,4 +27,5 @@
 - [Stage 41](stage-history/stage41-palantir-analytics-workbench-summary.md)
 - [Stage 42](stage-history/stage42-palantir-ui-modernization-summary.md)
 - [Stage 43](stage-history/stage43-sprint0-5-frontend-acceleration-summary.md)
+- [Stage 44 — Predictive Maintenance v3.1 release](stage-history/stage44-predictive-maintenance-v3.1-release-summary.md)
 

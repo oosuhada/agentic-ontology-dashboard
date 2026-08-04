@@ -65,8 +65,8 @@ def collect_architecture_debt(root: Path) -> list[DebtItem]:
     dependencies = root / "api" / "ontology_dashboard" / "dependencies.py"
     feature_flags = root / "web" / "src" / "featureFlags.ts"
     dashboard_shell = root / "web" / "src" / "features" / "dashboard" / "DashboardShell.tsx"
-    roadmap = root / "docs" / "10-product-convergence-polyglot-agentic-roadmap.md"
-    master_prompt = root / "docs" / "next-session-master-prompt.md"
+    roadmap = root / "docs" / "30-implementation" / "product-convergence-roadmap.md"
+    master_prompt = root / "docs" / "60-development-prompts" / "next-session-master-prompt.md"
     project3_client = root / "api" / "ontology_dashboard" / "integrations" / "project3" / "client.py"
     pyproject = root / "api" / "pyproject.toml"
     foundation_modules = (
@@ -137,7 +137,10 @@ def collect_architecture_debt(root: Path) -> list[DebtItem]:
         )
     )
     nav_uses_flags = _contains(dashboard_shell, "featureFlags.ontologyWorkbench")
-    roadmap_is_override = _contains(master_prompt, "10-product-convergence-polyglot-agentic-roadmap.md")
+    roadmap_is_override = _contains(
+        master_prompt,
+        "docs/30-implementation/product-convergence-roadmap.md",
+    )
     polyglot_target = all(
         _contains(roadmap, token)
         for token in ("PostgreSQL", "pgvector", "Neo4j", "LangGraph")

@@ -213,6 +213,7 @@ def test_fde_template_publish_requires_admin_approval_and_hides_secrets(client: 
         "/api/dashboard-templates/process_manager/preview",
         params={"workspace_id": WORKSPACE},
     ).json()
+    current_template_version = int(preview["template_version"])
     direct = client.post(
         "/api/dashboard-templates/process_manager/publish",
         headers=csrf_headers(client),
@@ -252,7 +253,7 @@ def test_fde_template_publish_requires_admin_approval_and_hides_secrets(client: 
     )
     assert approved.status_code == 200, approved.text
     assert approved.json()["status"] == "approved"
-    assert approved.json()["published_template"]["version"] == 5
+    assert approved.json()["published_template"]["version"] == current_template_version + 1
 
 
 def test_model_console_separates_metrics_and_thresholds_and_release_is_approved(client: TestClient) -> None:
