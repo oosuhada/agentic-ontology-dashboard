@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Bell,
+  BrainCircuit,
   Bot,
   ChevronRight,
   Database,
@@ -21,6 +22,7 @@ import {
   analysisPath,
   datasetCatalogPath,
   governancePath,
+  modelingPath,
   navigate,
   ontologyPath,
   projectDashboardPath,
@@ -33,7 +35,7 @@ import { FoundryDialog } from "./FoundryDialog";
 import { FoundryProductNavigation } from "./FoundryProductNavigation";
 import { useI18n } from "../i18n/I18nProvider";
 
-export type FoundryRoute = "home" | "dashboard" | "analysis" | "agent" | "ontology" | "datasets" | "governance";
+export type FoundryRoute = "home" | "dashboard" | "analysis" | "agent" | "ontology" | "datasets" | "governance" | "modeling";
 
 interface FoundryAppShellProps {
   projectId: string;
@@ -62,6 +64,7 @@ const NAV_ITEMS = [
   { id: "ontology", label: "Ontology", icon: Network, enabled: featureFlags.ontologyWorkbench },
   { id: "datasets", label: "Datasets", icon: Database, enabled: featureFlags.datasetCatalog },
   { id: "governance", label: "Governance", icon: ShieldCheck, enabled: featureFlags.governanceWorkbench },
+  { id: "modeling", label: "ML Validator", icon: BrainCircuit, enabled: true },
 ] as const;
 
 function initialTheme(): "light" | "dark" {
@@ -134,6 +137,7 @@ export function FoundryAppShell({ projectId, workspaceId, activeRoute, title, ch
     if (!resolvedWorkspaceId) return projectHomePath(projectId);
     if (route === "agent") return agentPath(projectId, resolvedWorkspaceId);
     if (route === "ontology") return ontologyPath(projectId, resolvedWorkspaceId);
+    if (route === "modeling") return modelingPath(projectId, resolvedWorkspaceId);
     return governancePath(projectId, resolvedWorkspaceId);
   }
 
@@ -153,7 +157,9 @@ export function FoundryAppShell({ projectId, workspaceId, activeRoute, title, ch
       <FoundryProductNavigation
         items={NAV_ITEMS.map((item) => ({
           ...item,
-          enabled: item.enabled && (!(item.id === "agent" || item.id === "ontology" || item.id === "governance") || Boolean(resolvedWorkspaceId)),
+          enabled: item.enabled
+            && (!(item.id === "agent" || item.id === "ontology" || item.id === "governance" || item.id === "modeling") || Boolean(resolvedWorkspaceId))
+            && (item.id !== "modeling" || user.permissions.includes("ml.console.read")),
         }))}
         activeId={activeRoute}
         collapsed={sidebarCollapsed}

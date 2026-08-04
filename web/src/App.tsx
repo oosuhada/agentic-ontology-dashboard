@@ -4,6 +4,7 @@ import {
   matchAnalysisPath,
   matchDatasetCatalogPath,
   matchGovernancePath,
+  matchModelingPath,
   matchOntologyPath,
   matchProjectDashboardPath,
   matchProjectHomePath,
@@ -43,6 +44,9 @@ const DatasetCatalogPage = lazy(() =>
 );
 const GovernanceWorkbenchPage = lazy(() =>
   import("./features/governance/GovernanceWorkbenchPage").then((module) => ({ default: module.GovernanceWorkbenchPage })),
+);
+const MLValidatorWorkbench = lazy(() =>
+  import("./features/modeling/MLValidatorWorkbench").then((module) => ({ default: module.MLValidatorWorkbench })),
 );
 const ReferenceGallery = lazy(() =>
   import("./features/reference/ReferenceGallery").then((module) => ({ default: module.ReferenceGallery })),
@@ -231,6 +235,23 @@ function AppRouter() {
         <Suspense fallback={<RouteLoading operation="Loading Governance Workbench" />}>
           <FoundryAppShell projectId={governanceRoute.projectId} workspaceId={governanceRoute.workspaceId} activeRoute="governance" title="Governance Workbench">
             <GovernanceWorkbenchPage projectId={governanceRoute.projectId} workspaceId={governanceRoute.workspaceId} />
+          </FoundryAppShell>
+        </Suspense>
+      </ProjectRouteBoundary>
+    );
+  }
+
+  const modelingRoute = matchModelingPath(pathname);
+  if (modelingRoute) {
+    return (
+      <ProjectRouteBoundary
+        projectId={modelingRoute.projectId}
+        workspaceId={modelingRoute.workspaceId}
+        requiredPermission="ml.console.read"
+      >
+        <Suspense fallback={<RouteLoading operation="Loading ML Validator Workbench" detail="Resolving experiment, registry, and release artifacts." />}>
+          <FoundryAppShell projectId={modelingRoute.projectId} workspaceId={modelingRoute.workspaceId} activeRoute="modeling" title="ML Validator Workbench">
+            <MLValidatorWorkbench projectId={modelingRoute.projectId} workspaceId={modelingRoute.workspaceId} />
           </FoundryAppShell>
         </Suspense>
       </ProjectRouteBoundary>

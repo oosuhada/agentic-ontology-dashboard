@@ -106,6 +106,17 @@ export function matchGovernancePath(pathname: string): { projectId: string; work
     : null;
 }
 
+export function modelingPath(projectId: string, workspaceId: string) {
+  return `/app/projects/${encodeURIComponent(projectId)}/workspaces/${encodeURIComponent(workspaceId)}/modeling`;
+}
+
+export function matchModelingPath(pathname: string): { projectId: string; workspaceId: string } | null {
+  const match = pathname.match(/^\/app\/projects\/([^/]+)\/workspaces\/([^/]+)\/modeling$/);
+  return match
+    ? { projectId: decodeURIComponent(match[1]), workspaceId: decodeURIComponent(match[2]) }
+    : null;
+}
+
 export function usePathname() {
   const [pathname, setPathname] = useState(() => normalizePathname(window.location.pathname));
 
