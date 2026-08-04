@@ -67,6 +67,7 @@ class Project3NodeSearch(Project3Model):
     label: str
     query: str
     identity_property: str
+    dataset_version_id: str | None = None
     nodes: list[dict[str, Any]] = Field(default_factory=list)
     count: int = 0
 
@@ -77,6 +78,7 @@ class Project3Subgraph(Project3Model):
     relationships: list[dict[str, Any]] = Field(default_factory=list)
     node_count: int = 0
     relationship_count: int = 0
+    dataset_version_id: str | None = None
     depth: int = 1
     truncated: bool = False
 
@@ -219,8 +221,11 @@ class Project3GraphProjectionRequest(Project3ProjectionModel):
     source_version: str = Field(min_length=1, max_length=160)
     bundle_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     materialization_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    mapping_id: str = Field(min_length=1, max_length=256)
     mapping_version: str = Field(min_length=1, max_length=160)
     role_checksums: dict[str, str] = Field(default_factory=dict)
+    object_counts: dict[str, int] = Field(default_factory=dict)
+    link_counts: dict[str, int] = Field(default_factory=dict)
     result_contract: Project3ResultProjectionContract
     release_gates: dict[str, Any] = Field(default_factory=dict)
     governance_artifacts: list[Project3GovernanceArtifactReference] = Field(
@@ -228,6 +233,7 @@ class Project3GraphProjectionRequest(Project3ProjectionModel):
     )
     topology_semantics: Project3TopologyProjectionContract
     excluded_sources: list[str] = Field(default_factory=list)
+    graph_projection_status: Literal["pending"] = "pending"
     nodes: list[Project3ProjectionNode] = Field(default_factory=list)
     relationships: list[Project3ProjectionRelationship] = Field(default_factory=list)
     requested_at: datetime
@@ -259,6 +265,20 @@ class Project3GraphProjectionRequest(Project3ProjectionModel):
         ]
         if len(node_keys) != len(set(node_keys)):
             raise ValueError("projection request contains duplicate node identities")
+        node_key_set = set(node_keys)
+        for relationship in self.relationships:
+            source_key = (
+                relationship.from_identity.object_type,
+                relationship.from_identity.source_identity,
+            )
+            target_key = (
+                relationship.to_identity.object_type,
+                relationship.to_identity.source_identity,
+            )
+            if source_key not in node_key_set or target_key not in node_key_set:
+                raise ValueError(
+                    "projection relationships must reference nodes in the same request"
+                )
 
         invalid_role_checksums = {
             role: checksum
@@ -269,6 +289,16 @@ class Project3GraphProjectionRequest(Project3ProjectionModel):
         }
         if invalid_role_checksums:
             raise ValueError("projection role_checksums must be lowercase SHA-256 values")
+        if any(value < 0 for value in self.object_counts.values()):
+            raise ValueError("projection object counts must not be negative")
+        if any(value < 0 for value in self.link_counts.values()):
+            raise ValueError("projection link counts must not be negative")
+        if sum(self.object_counts.values()) != len(self.nodes):
+            raise ValueError("projection object count contract does not match nodes")
+        if sum(self.link_counts.values()) != len(self.relationships):
+            raise ValueError(
+                "projection relationship count contract does not match relationships"
+            )
 
         forbidden_runtime_terms = {
             "evaluation_truth",
@@ -304,6 +334,30 @@ class Project3GraphProjectionRequest(Project3ProjectionModel):
                 "aligned_reset_transition_count"
             ):
                 raise ValueError("v3.1 projection requires replacement/reset parity")
+            expected_continuity = {
+                "tool_replacement_event_count": 731,
+                "aligned_reset_transition_count": 731,
+                "reset_without_matching_maintenance_count": 0,
+                "replacement_without_reset_count": 0,
+            }
+            for field, expected_value in expected_continuity.items():
+                if continuity.get(field) != expected_value:
+                    raise ValueError(
+                        f"v3.1 projection release gate mismatch: {field}"
+                    )
+            agent_gate = self.release_gates.get("agent_example_evaluation")
+            if not isinstance(agent_gate, dict):
+                raise ValueError(
+                    "v3.1 projection requires agent evidence release metadata"
+                )
+            if agent_gate.get("maintenance_evidence_accuracy") != 1.0:
+                raise ValueError(
+                    "v3.1 projection requires valid maintenance evidence"
+                )
+            if agent_gate.get("false_upstream_claim_rate") != 0.0:
+                raise ValueError(
+                    "v3.1 projection rejects false upstream causal claims"
+                )
         return self
 
 
@@ -338,8 +392,14 @@ class Project3GraphProjectionResponse(Project3ProjectionModel):
     contract_version: Literal["1.0"] = "1.0"
     message_type: Literal["graph_projection_response"] = "graph_projection_response"
     projection_id: str = Field(min_length=1, max_length=160)
+    project_id: str = Field(min_length=1, max_length=160)
+    dataset_version_id: str = Field(min_length=1, max_length=160)
     status: Project3ProjectionStatus
     project3_run_id: str | None = Field(default=None, max_length=160)
+    projection_checksum_sha256: str | None = Field(
+        default=None, pattern=r"^[a-f0-9]{64}$"
+    )
+    idempotent_replay: bool = False
     counts: Project3ProjectionCounts = Field(default_factory=Project3ProjectionCounts)
     error: Project3ProjectionError | None = None
     updated_at: datetime

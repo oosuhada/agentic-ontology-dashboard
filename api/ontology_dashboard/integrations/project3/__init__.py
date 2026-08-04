@@ -28,6 +28,10 @@ from .models import (
     Project3Subgraph,
     Project3TopologyProjectionContract,
 )
+from .projection import (
+    PredictiveMaintenanceProject3ProjectionHandler,
+    Project3ProjectionDeliveryError,
+)
 
 __all__ = [
     "Project3AgentRun",
@@ -53,5 +57,7 @@ __all__ = [
     "Project3Subgraph",
     "Project3TopologyProjectionContract",
     "Project3Unavailable",
+    "PredictiveMaintenanceProject3ProjectionHandler",
+    "Project3ProjectionDeliveryError",
     "parse_project_mapping",
 ]

@@ -74,6 +74,7 @@ def main() -> int:
             for predictive_maintenance_migration in (
                 MIGRATION_DIR / "0011_predictive_maintenance_domain_pack.sql",
                 MIGRATION_DIR / "0012_predictive_maintenance_v3_materialization.sql",
+                MIGRATION_DIR / "0013_project3_graph_projection.sql",
             ):
                 run([
                     "psql",
@@ -131,6 +132,23 @@ def main() -> int:
                 "SELECT tablename FROM pg_tables WHERE schemaname='public' "
                 "AND tablename IN ('projects','workspaces') AND rowsecurity ORDER BY tablename",
             ], capture=True).splitlines()
+            projection_columns = set(
+                run([
+                    "psql",
+                    "-h",
+                    "127.0.0.1",
+                    "-p",
+                    str(port),
+                    "-U",
+                    "postgres",
+                    "-d",
+                    "ontology_test",
+                    "-Atc",
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema='public' AND table_name='store_projections' "
+                    "ORDER BY column_name",
+                ], capture=True).splitlines()
+            )
             required = {
                 "organizations",
                 "projects",
@@ -294,6 +312,10 @@ def main() -> int:
                 and project_rls_rows == ["projects", "workspaces"]
                 and visible_objects == "object-a1"
                 and visible_predictions == "prediction-a1"
+                and {
+                    "provider_run_id",
+                    "provider_metadata_json",
+                }.issubset(projection_columns)
             )
             print(json.dumps({
                 "check": "postgresql-migration",
@@ -306,7 +328,18 @@ def main() -> int:
                 "rls_prediction_query_output": prediction_result,
                 "rls_visible_predictions_for_project_a1": visible_predictions,
                 "required_rls_tables": sorted(required_rls),
-                "predictive_maintenance_migrations_reapplied": ["0011", "0012"],
+                "predictive_maintenance_migrations_reapplied": [
+                    "0011",
+                    "0012",
+                    "0013",
+                ],
+                "graph_projection_provider_columns": sorted(
+                    {
+                        "provider_run_id",
+                        "provider_metadata_json",
+                    }
+                    & projection_columns
+                ),
                 "pass": passed,
             }, ensure_ascii=False, indent=2))
             return 0 if passed else 1

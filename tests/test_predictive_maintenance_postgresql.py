@@ -54,7 +54,7 @@ def postgresql_database():
     dsn = _dsn_for_database(database)
     try:
         applied = migrate(dsn)
-        assert applied[-1] == "0012_predictive_maintenance_v3_materialization"
+        assert applied[-1] == "0013_project3_graph_projection"
         assert migrate(dsn) == []
         import psycopg
 

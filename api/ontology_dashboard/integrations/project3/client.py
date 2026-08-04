@@ -14,6 +14,8 @@ from pydantic import BaseModel
 
 from .models import (
     Project3AgentRun,
+    Project3GraphProjectionRequest,
+    Project3GraphProjectionResponse,
     Project3GraphSchema,
     Project3Health,
     Project3NodeSearch,
@@ -156,6 +158,7 @@ class Project3Client:
         label: str,
         query: str,
         limit: int = 12,
+        dataset_version_id: str | None = None,
     ) -> Project3NodeSearch:
         mapped = self.map_project_id(project_id)
         return self._model(
@@ -167,6 +170,11 @@ class Project3Client:
                 "label": label,
                 "q": query,
                 "limit": min(max(limit, 1), 50),
+                **(
+                    {"dataset_version_id": dataset_version_id}
+                    if dataset_version_id
+                    else {}
+                ),
             },
         )
 
@@ -178,6 +186,7 @@ class Project3Client:
         identity: str,
         depth: int = 2,
         limit: int = 50,
+        dataset_version_id: str | None = None,
     ) -> Project3Subgraph:
         mapped = self.map_project_id(project_id)
         return self._model(
@@ -190,6 +199,11 @@ class Project3Client:
                 "identity": identity,
                 "depth": min(max(depth, 1), 3),
                 "limit": min(max(limit, 1), 100),
+                **(
+                    {"dataset_version_id": dataset_version_id}
+                    if dataset_version_id
+                    else {}
+                ),
             },
         )
 
@@ -259,6 +273,33 @@ class Project3Client:
             json_body=payload,
         )
 
+    def project_graph(
+        self,
+        request: Project3GraphProjectionRequest,
+    ) -> Project3GraphProjectionResponse:
+        mapped = self.map_project_id(request.project_id)
+        if mapped != request.project_id:
+            raise Project3ContractError(
+                "graph projection project mappings must preserve the payload project_id"
+            )
+        headers = {
+            "X-Organization-ID": request.organization_id,
+            "X-Project-ID": request.project_id,
+            "X-Workspace-ID": request.workspace_id,
+        }
+        projection_secret = os.getenv(
+            "ONTOLOGY_DASHBOARD_PROJECT3_PROJECTION_SECRET"
+        )
+        if projection_secret:
+            headers["X-Projection-Secret"] = projection_secret
+        return self._model(
+            Project3GraphProjectionResponse,
+            "POST",
+            f"/api/v1/projects/{mapped}/graph/projections",
+            json_body=request.model_dump(mode="json", by_alias=True),
+            headers=headers,
+        )
+
     def _model(
         self,
         model: type[TModel],
@@ -267,8 +308,15 @@ class Project3Client:
         *,
         params: dict[str, Any] | None = None,
         json_body: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> TModel:
-        payload = self._request_json(method, path, params=params, json_body=json_body)
+        payload = self._request_json(
+            method,
+            path,
+            params=params,
+            json_body=json_body,
+            headers=headers,
+        )
         try:
             return model.model_validate(payload)
         except Exception as error:
@@ -283,12 +331,19 @@ class Project3Client:
         *,
         params: dict[str, Any] | None = None,
         json_body: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         self._ensure_circuit_allows_request()
         last_error: Exception | None = None
         for attempt in range(self.max_retries + 1):
             try:
-                response = self._client.request(method, path, params=params, json=json_body)
+                response = self._client.request(
+                    method,
+                    path,
+                    params=params,
+                    json=json_body,
+                    headers=headers,
+                )
                 if response.status_code >= 500:
                     raise Project3Unavailable(
                         f"Project 3 returned HTTP {response.status_code} for {path}"

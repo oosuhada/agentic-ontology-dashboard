@@ -38,7 +38,7 @@
       "properties": {
         "identity": { "$ref": "#/$defs/identity" },
         "properties": { "type": "object" },
-        "source_reference": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "source_reference": { "type": "string", "minLength": 1, "maxLength": 4096 },
         "source_sha256": { "$ref": "#/$defs/sha256" }
       }
     },
@@ -62,7 +62,7 @@
         "from_identity": { "$ref": "#/$defs/identity" },
         "to_identity": { "$ref": "#/$defs/identity" },
         "properties": { "type": "object" },
-        "source_reference": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "source_reference": { "type": "string", "minLength": 1, "maxLength": 4096 },
         "source_sha256": { "$ref": "#/$defs/sha256" }
       }
     },
@@ -141,13 +141,17 @@
         "source_version",
         "bundle_checksum_sha256",
         "materialization_checksum_sha256",
+        "mapping_id",
         "mapping_version",
         "role_checksums",
+        "object_counts",
+        "link_counts",
         "result_contract",
         "release_gates",
         "governance_artifacts",
         "topology_semantics",
         "excluded_sources",
+        "graph_projection_status",
         "nodes",
         "relationships",
         "requested_at"
@@ -165,10 +169,19 @@
         "source_version": { "type": "string", "minLength": 1, "maxLength": 160 },
         "bundle_checksum_sha256": { "$ref": "#/$defs/sha256" },
         "materialization_checksum_sha256": { "$ref": "#/$defs/sha256" },
+        "mapping_id": { "type": "string", "minLength": 1, "maxLength": 256 },
         "mapping_version": { "type": "string", "minLength": 1, "maxLength": 160 },
         "role_checksums": {
           "type": "object",
           "additionalProperties": { "$ref": "#/$defs/sha256" }
+        },
+        "object_counts": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "link_counts": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
         },
         "result_contract": { "$ref": "#/$defs/resultContract" },
         "release_gates": { "type": "object" },
@@ -181,6 +194,7 @@
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
         },
+        "graph_projection_status": { "const": "pending" },
         "nodes": {
           "type": "array",
           "items": { "$ref": "#/$defs/node" },
@@ -221,7 +235,10 @@
               },
               "release_gates": {
                 "type": "object",
-                "required": ["tool_wear_continuity"],
+                "required": [
+                  "tool_wear_continuity",
+                  "agent_example_evaluation"
+                ],
                 "properties": {
                   "tool_wear_continuity": {
                     "type": "object",
@@ -229,13 +246,28 @@
                       "pass",
                       "running_reset_count",
                       "tool_replacement_event_count",
-                      "aligned_reset_transition_count"
+                      "aligned_reset_transition_count",
+                      "reset_without_matching_maintenance_count",
+                      "replacement_without_reset_count"
                     ],
                     "properties": {
                       "pass": { "const": true },
                       "running_reset_count": { "const": 0 },
                       "tool_replacement_event_count": { "const": 731 },
-                      "aligned_reset_transition_count": { "const": 731 }
+                      "aligned_reset_transition_count": { "const": 731 },
+                      "reset_without_matching_maintenance_count": { "const": 0 },
+                      "replacement_without_reset_count": { "const": 0 }
+                    }
+                  },
+                  "agent_example_evaluation": {
+                    "type": "object",
+                    "required": [
+                      "maintenance_evidence_accuracy",
+                      "false_upstream_claim_rate"
+                    ],
+                    "properties": {
+                      "maintenance_evidence_accuracy": { "const": 1.0 },
+                      "false_upstream_claim_rate": { "const": 0.0 }
                     }
                   }
                 }
@@ -291,7 +323,10 @@
         "contract_version",
         "message_type",
         "projection_id",
+        "project_id",
+        "dataset_version_id",
         "status",
+        "idempotent_replay",
         "counts",
         "error",
         "updated_at"
@@ -300,11 +335,20 @@
         "contract_version": { "const": "1.0" },
         "message_type": { "const": "graph_projection_response" },
         "projection_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "project_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "dataset_version_id": { "type": "string", "minLength": 1, "maxLength": 160 },
         "status": {
           "type": "string",
           "enum": ["accepted", "processing", "completed", "failed", "blocked"]
         },
         "project3_run_id": { "type": ["string", "null"], "maxLength": 160 },
+        "projection_checksum_sha256": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "idempotent_replay": { "type": "boolean" },
         "counts": { "$ref": "#/$defs/counts" },
         "error": {
           "oneOf": [

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import time
 import uuid
@@ -244,8 +245,13 @@ class OutboxRepository:
         error: str,
         max_attempts: int,
         retry_delay_seconds: int,
+        retryable: bool = True,
     ) -> None:
-        status = "dead_letter" if message.attempt_count >= max_attempts else "retry"
+        status = (
+            "dead_letter"
+            if not retryable or message.attempt_count >= max_attempts
+            else "retry"
+        )
         available_at = (
             self._now() + timedelta(seconds=max(1, retry_delay_seconds))
         ).isoformat()
@@ -308,6 +314,7 @@ class OutboxWorker:
                     error=f"{type(exc).__name__}: {exc}",
                     max_attempts=self.max_attempts,
                     retry_delay_seconds=self.retry_delay_seconds,
+                    retryable=bool(getattr(exc, "retryable", True)),
                 )
             return True
         return False
@@ -328,7 +335,12 @@ def delivery_log_handler(_: OutboxMessage) -> None:
     """Safe default handler: delivery is acknowledged in the immutable log."""
 
 
-def default_outbox_worker(database: str | Path) -> OutboxWorker:
+def default_outbox_worker(
+    database: str | Path,
+    *,
+    project3_client: Any | None = None,
+    enable_project3_projection: bool | None = None,
+) -> OutboxWorker:
     worker = OutboxWorker(database)
     for event_type in (
         "field_task.complete",
@@ -336,4 +348,28 @@ def default_outbox_worker(database: str | Path) -> OutboxWorker:
         "field_task.blocked",
     ):
         worker.register(event_type, "delivery-log-v1", delivery_log_handler)
+    enabled = (
+        enable_project3_projection
+        if enable_project3_projection is not None
+        else os.getenv(
+            "ONTOLOGY_DASHBOARD_PROJECT3_PROJECTION_ENABLED", "1"
+        ).strip()
+        not in {"0", "false", "no"}
+    )
+    if worker.repository.postgresql and enabled:
+        from .integrations.project3 import (
+            PredictiveMaintenanceProject3ProjectionHandler,
+            Project3Client,
+        )
+
+        client = project3_client or Project3Client.from_environment()
+        handler = PredictiveMaintenanceProject3ProjectionHandler(
+            str(database),
+            client,
+        )
+        worker.register(
+            handler.event_type,
+            handler.handler_code,
+            handler,
+        )
     return worker

@@ -46,6 +46,7 @@ def project3_v3_1_contract() -> dict[str, object]:
     return {
         "source_version": "canonical-ai4i-physics-v3.1",
         "materialization_checksum_sha256": SHA_B,
+        "mapping_id": "mapping-001",
         "role_checksums": {
             "asset_master": SHA_A,
             "result_artifact": SHA_C,
@@ -66,7 +67,13 @@ def project3_v3_1_contract() -> dict[str, object]:
                 "running_reset_count": 0,
                 "tool_replacement_event_count": 731,
                 "aligned_reset_transition_count": 731,
-            }
+                "reset_without_matching_maintenance_count": 0,
+                "replacement_without_reset_count": 0,
+            },
+            "agent_example_evaluation": {
+                "maintenance_evidence_accuracy": 1.0,
+                "false_upstream_claim_rate": 0.0,
+            },
         },
         "governance_artifacts": [
             Project3GovernanceArtifactReference(
@@ -327,6 +334,8 @@ def test_project3_graph_projection_draft_validates_status_and_scope() -> None:
         dataset_version_id="dsv-001",
         bundle_checksum_sha256=SHA_A,
         mapping_version="mapping-v1",
+        object_counts={"equipment": 1},
+        link_counts={},
         **project3_v3_1_contract(),
         nodes=[
             Project3ProjectionNode(
@@ -344,6 +353,8 @@ def test_project3_graph_projection_draft_validates_status_and_scope() -> None:
     )
     response = Project3GraphProjectionResponse(
         projection_id="projection-001",
+        project_id="predictive-maintenance-v2",
+        dataset_version_id="dsv-001",
         status="blocked",
         error=Project3ProjectionError(
             code="project_not_ready",
@@ -362,6 +373,8 @@ def test_project3_graph_projection_draft_validates_status_and_scope() -> None:
     with pytest.raises(ValidationError, match="require an error"):
         Project3GraphProjectionResponse(
             projection_id="projection-001",
+            project_id="predictive-maintenance-v2",
+            dataset_version_id="dsv-001",
             status="failed",
             updated_at=datetime(2026, 8, 4, tzinfo=timezone.utc),
         )
@@ -378,6 +391,8 @@ def test_project3_graph_projection_draft_validates_status_and_scope() -> None:
             dataset_version_id="dsv-001",
             bundle_checksum_sha256=SHA_A,
             mapping_version="mapping-v1",
+            object_counts={"equipment": 1},
+            link_counts={},
             **project3_v3_1_contract(),
             nodes=[
                 Project3ProjectionNode(
@@ -423,6 +438,8 @@ def test_project3_graph_projection_draft_validates_status_and_scope() -> None:
             dataset_version_id="dsv-001",
             bundle_checksum_sha256=SHA_A,
             mapping_version="mapping-v1",
+            object_counts={},
+            link_counts={},
             **failed_gate,
             nodes=[],
             relationships=[],
