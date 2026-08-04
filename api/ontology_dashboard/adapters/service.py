@@ -16,9 +16,14 @@ from ontology_dashboard.identity import AuthError, IdentityService, Principal
 
 from .file_adapter import FileAdapter
 from .bundle_file_adapter import BundleFileAdapter
-from .bundle_models import BundleValidationResult, DatasetBundleManifestV2
+from .bundle_models import (
+    BundleValidationResult,
+    DatasetBundleManifestV2,
+    PostgreSQLBundleIngestionResult,
+)
 from .models import DatasetManifest, IngestionResult, PredictionResult
 from .prediction_repository import PredictionResultRepository
+from .postgresql_bundle_ingestion import PostgreSQLPredictiveMaintenanceBundleIngestor
 from .registry import AdapterRegistry, default_adapter_registry
 from .repository import AdapterRepository
 
@@ -121,6 +126,41 @@ class AdapterService:
                 "Bundle Manifest의 Project가 요청 경로와 일치하지 않습니다.",
             )
         return self.bundle_file_adapter.validate(manifest)
+
+    def ingest_bundle_postgresql(
+        self,
+        principal: Principal,
+        project_id: str,
+        manifest: DatasetBundleManifestV2,
+        *,
+        database_url: str,
+        validation: BundleValidationResult | None = None,
+    ) -> PostgreSQLBundleIngestionResult:
+        """Validate and atomically COPY a bundle through the PostgreSQL production port."""
+
+        checked = validation or self.validate_bundle(principal, project_id, manifest)
+        if validation is not None:
+            self._require_permission(principal, "datasets.ingest")
+            self._require_active_project(principal, project_id)
+            self._require_workspace(principal, manifest.workspace_id)
+            if manifest.organization_id != principal.organization_id:
+                raise AuthError(
+                    403,
+                    "tenant_scope_denied",
+                    "다른 조직의 Dataset은 수집할 수 없습니다.",
+                )
+            if manifest.project_id != project_id:
+                raise AuthError(
+                    422,
+                    "project_context_mismatch",
+                    "Bundle Manifest의 Project가 요청 경로와 일치하지 않습니다.",
+                )
+        return PostgreSQLPredictiveMaintenanceBundleIngestor(
+            database_url
+        ).ingest_validated_bundle(
+            manifest=manifest,
+            validation=checked,
+        )
 
     def _sync_dataset_catalog(
         self,
@@ -228,5 +268,6 @@ __all__ = [
     "DatasetBundleManifestV2",
     "DatasetManifest",
     "IngestionResult",
+    "PostgreSQLBundleIngestionResult",
     "PredictionResult",
 ]

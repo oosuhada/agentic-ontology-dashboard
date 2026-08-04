@@ -71,6 +71,24 @@ def main() -> int:
                     "-f",
                     str(migration),
                 ])
+            predictive_maintenance_migration = (
+                MIGRATION_DIR / "0011_predictive_maintenance_domain_pack.sql"
+            )
+            run([
+                "psql",
+                "-v",
+                "ON_ERROR_STOP=1",
+                "-h",
+                "127.0.0.1",
+                "-p",
+                str(port),
+                "-U",
+                "postgres",
+                "-d",
+                "ontology_test",
+                "-f",
+                str(predictive_maintenance_migration),
+            ])
             tables = run([
                 "psql",
                 "-h",
@@ -136,6 +154,17 @@ def main() -> int:
                 "adapter_ingestion_runs",
                 "adapter_quarantine_records",
                 "prediction_results",
+                "pm_assets",
+                "pm_asset_relations",
+                "pm_compressor_observations",
+                "pm_compressor_observations_default",
+                "pm_cnc_observations",
+                "pm_cnc_observations_default",
+                "pm_production_cycles",
+                "pm_maintenance_events",
+                "pm_prediction_snapshots",
+                "pm_prediction_factors",
+                "pm_prediction_timeline",
                 "transactional_outbox",
                 "schema_migrations",
             }
@@ -162,6 +191,17 @@ def main() -> int:
                 "adapter_ingestion_runs",
                 "adapter_quarantine_records",
                 "prediction_results",
+                "pm_assets",
+                "pm_asset_relations",
+                "pm_compressor_observations",
+                "pm_compressor_observations_default",
+                "pm_cnc_observations",
+                "pm_cnc_observations_default",
+                "pm_production_cycles",
+                "pm_maintenance_events",
+                "pm_prediction_snapshots",
+                "pm_prediction_factors",
+                "pm_prediction_timeline",
                 "transactional_outbox",
             }
             run([
@@ -261,6 +301,7 @@ def main() -> int:
                 "rls_prediction_query_output": prediction_result,
                 "rls_visible_predictions_for_project_a1": visible_predictions,
                 "required_rls_tables": sorted(required_rls),
+                "predictive_maintenance_migration_reapplied": True,
                 "pass": passed,
             }, ensure_ascii=False, indent=2))
             return 0 if passed else 1

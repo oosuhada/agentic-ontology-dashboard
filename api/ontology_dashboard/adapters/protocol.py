@@ -10,6 +10,7 @@ from .bundle_models import (
     BundleValidationResult,
     DatasetBundleFile,
     DatasetBundleManifestV2,
+    PostgreSQLBundleIngestionResult,
 )
 from .models import DatasetManifest, QuarantinedRecord
 
@@ -80,4 +81,4 @@ class ValidatedBundleIngestionPort(Protocol):
         *,
         manifest: DatasetBundleManifestV2,
         validation: BundleValidationResult,
-    ) -> dict[str, Any]: ...
+    ) -> PostgreSQLBundleIngestionResult: ...

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate a Predictive Maintenance Canonical v2 bundle before PostgreSQL COPY."""
+"""Validate and optionally COPY a Predictive Maintenance Canonical v2 bundle."""
 
 from __future__ import annotations
 
@@ -10,8 +10,10 @@ from pathlib import Path
 
 from ontology_dashboard.adapters import (
     BundleFileAdapter,
+    PostgreSQLPredictiveMaintenanceBundleIngestor,
     PredictiveMaintenanceCanonicalV2Adapter,
 )
+from ontology_dashboard.migrations import migrate
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,18 +44,22 @@ def main() -> int:
     )
     parser.add_argument("--manifest-output", help="Optional generated Bundle Manifest v2 JSON")
     parser.add_argument("--output", help="Optional validation artifact JSON")
+    parser.add_argument("--ingestion-output", help="Optional PostgreSQL ingestion artifact JSON")
     parser.add_argument("--issue-sample-limit", type=int, default=100)
     parser.add_argument(
         "--execute-postgresql",
         action="store_true",
-        help=(
-            "Reserved Phase 2 switch. Validation runs now, but PostgreSQL fact-table "
-            "COPY is intentionally not implemented in Phase 1."
-        ),
+        help="Apply migrations and atomically COPY the validated bundle into PostgreSQL.",
     )
     parser.add_argument(
         "--postgresql-dsn",
-        help="Reserved Phase 2 PostgreSQL destination; no connection is opened in Phase 1.",
+        default=os.getenv("ONTOLOGY_DASHBOARD_DATABASE_URL"),
+        help="PostgreSQL URL. Defaults to ONTOLOGY_DASHBOARD_DATABASE_URL.",
+    )
+    parser.add_argument(
+        "--skip-migrations",
+        action="store_true",
+        help="Skip migration application when the destination is already migrated.",
     )
     args = parser.parse_args()
 
@@ -87,16 +93,35 @@ def main() -> int:
         _write_json(args.manifest_output, manifest_payload)
     if args.output:
         _write_json(args.output, validation_payload)
-    print(json.dumps(validation_payload, ensure_ascii=False, indent=2))
-
     if validation.status != "completed":
+        print(json.dumps(validation_payload, ensure_ascii=False, indent=2))
         return 1
     if args.execute_postgresql:
-        destination = args.postgresql_dsn or "<not provided>"
-        raise RuntimeError(
-            "PostgreSQL bundle ingestion is a Phase 2 capability. "
-            f"Validated artifact is ready for destination {destination}, but no COPY was executed."
+        if not args.postgresql_dsn:
+            parser.error(
+                "--execute-postgresql requires --postgresql-dsn or "
+                "ONTOLOGY_DASHBOARD_DATABASE_URL"
+            )
+        if not args.skip_migrations:
+            migrate(args.postgresql_dsn)
+        ingestion = PostgreSQLPredictiveMaintenanceBundleIngestor(
+            args.postgresql_dsn
+        ).ingest_validated_bundle(
+            manifest=manifest,
+            validation=validation,
         )
+        ingestion_payload = ingestion.model_dump(mode="json")
+        if args.ingestion_output:
+            _write_json(args.ingestion_output, ingestion_payload)
+        print(
+            json.dumps(
+                {"validation": validation_payload, "postgresql_ingestion": ingestion_payload},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
+    print(json.dumps(validation_payload, ensure_ascii=False, indent=2))
     return 0
 
 

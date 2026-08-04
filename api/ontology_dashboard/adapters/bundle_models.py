@@ -275,6 +275,43 @@ class BundleValidationResult(StrictBundleModel):
         return self
 
 
+class PostgreSQLBundleIngestionResult(StrictBundleModel):
+    """Committed PostgreSQL identity and row-count artifact for one bundle."""
+
+    contract_version: Literal["1.0"] = "1.0"
+    artifact_kind: Literal["postgresql_bundle_ingestion"] = "postgresql_bundle_ingestion"
+    ingestion_run_id: str = Field(min_length=1, max_length=160)
+    manifest_record_id: str = Field(min_length=1, max_length=160)
+    organization_id: str = Field(pattern=IDENTITY_PATTERN)
+    project_id: str = Field(pattern=IDENTITY_PATTERN)
+    workspace_id: str = Field(pattern=IDENTITY_PATTERN)
+    dataset_id: str = Field(pattern=IDENTITY_PATTERN)
+    dataset_version_id: str = Field(pattern=IDENTITY_PATTERN)
+    version_number: int = Field(ge=1)
+    source_version: str = Field(min_length=1, max_length=160)
+    bundle_checksum_sha256: str = Field(pattern=SHA256_PATTERN)
+    validation_checksum_sha256: str = Field(pattern=SHA256_PATTERN)
+    status: Literal["completed"] = "completed"
+    reused_dataset_version: bool = False
+    row_counts: dict[str, int]
+    source_record_count: int = Field(ge=0)
+    outbox_event_id: str | None = Field(default=None, max_length=160)
+    completed_at: datetime
+
+    @field_validator("row_counts")
+    @classmethod
+    def row_counts_are_non_negative(cls, value: dict[str, int]) -> dict[str, int]:
+        if any(count < 0 for count in value.values()):
+            raise ValueError("PostgreSQL ingestion row counts must be non-negative")
+        return value
+
+    @model_validator(mode="after")
+    def source_count_matches_roles(self) -> "PostgreSQLBundleIngestionResult":
+        if sum(self.row_counts.values()) != self.source_record_count:
+            raise ValueError("PostgreSQL role row counts must equal source_record_count")
+        return self
+
+
 class DatasetVersionIdentity(StrictBundleModel):
     organization_id: str = Field(pattern=IDENTITY_PATTERN)
     project_id: str = Field(pattern=IDENTITY_PATTERN)
