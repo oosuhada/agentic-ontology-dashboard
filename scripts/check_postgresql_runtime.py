@@ -65,7 +65,7 @@ def main() -> int:
                     "-D",
                     str(data_dir),
                     "-o",
-                    f"-p {port} -h 127.0.0.1",
+                    f"-p {port} -h 127.0.0.1 -k /tmp",
                     "-w",
                     "start",
                 ]
