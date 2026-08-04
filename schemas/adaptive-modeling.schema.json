@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/adaptive-modeling.schema.json",
+  "title": "Adaptive Modeling Contracts",
+  "oneOf": [
+    {"$ref": "#/$defs/DatasetIntakeProfile"},
+    {"$ref": "#/$defs/ManifestDraft"},
+    {"$ref": "#/$defs/MappingSet"},
+    {"$ref": "#/$defs/FeatureRecipeSet"},
+    {"$ref": "#/$defs/FeatureDatasetVersion"},
+    {"$ref": "#/$defs/ExperimentRun"},
+    {"$ref": "#/$defs/ModelVersion"},
+    {"$ref": "#/$defs/ExplanationArtifact"}
+  ],
+  "$defs": {
+    "Scope": {
+      "type": "object",
+      "required": ["schema_version", "organization_id", "project_id", "workspace_id"],
+      "properties": {
+        "schema_version": {"const": "adaptive-modeling-v1"},
+        "organization_id": {"type": "string", "minLength": 1},
+        "project_id": {"type": "string", "minLength": 1},
+        "workspace_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "Checksum": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "ArtifactReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "checksum_sha256", "media_type", "size_bytes", "created_at", "store_capability"],
+      "properties": {
+        "uri": {"type": "string", "pattern": "^(artifact|s3|gs|az|file)://"},
+        "checksum_sha256": {"$ref": "#/$defs/Checksum"},
+        "media_type": {"type": "string"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "created_at": {"type": "string", "format": "date-time"},
+        "store_capability": {"enum": ["ready", "blocked"]}
+      }
+    },
+    "DatasetIntakeProfile": {
+      "allOf": [
+        {"$ref": "#/$defs/Scope"},
+        {
+          "type": "object",
+          "required": ["profile_id", "source_uri", "source_checksum_sha256", "parser_version", "cache_key", "byte_size", "media_type", "status", "structure_type", "field_profiles", "preview_rows", "retryable", "idempotency_key", "revision", "created_at"],
+          "properties": {
+            "profile_id": {"type": "string"},
+            "dataset_id": {"type": ["string", "null"]},
+            "source_uri": {"type": "string"},
+            "source_checksum_sha256": {"$ref": "#/$defs/Checksum"},
+            "parser_version": {"type": "string"},
+            "cache_key": {"$ref": "#/$defs/Checksum"},
+            "byte_size": {"type": "integer", "minimum": 0},
+            "media_type": {"type": "string"},
+            "status": {"enum": ["profiling", "ready_for_review", "unsupported", "failed"]},
+            "structure_type": {"enum": ["tabular_column_as_attribute", "tabular_row_as_attribute", "wide_pivot", "key_value", "multi_header", "unsupported"]},
+            "field_profiles": {"type": "array"},
+            "preview_rows": {"type": "array"},
+            "row_count": {"type": ["integer", "null"], "minimum": 0},
+            "retryable": {"type": "boolean"},
+            "failure_reason": {"type": ["string", "null"]},
+            "idempotency_key": {"type": "string"},
+            "revision": {"type": "integer", "minimum": 1},
+            "created_at": {"type": "string", "format": "date-time"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ManifestDraft": {
+      "allOf": [
+        {"$ref": "#/$defs/Scope"},
+        {
+          "type": "object",
+          "required": ["draft_id", "profile_id", "source_checksum_sha256", "revision", "status", "format", "field_suggestions", "quality_rules", "missing_prerequisites", "idempotency_key", "created_at"],
+          "properties": {
+            "draft_id": {"type": "string"}, "profile_id": {"type": "string"},
+            "dataset_id": {"type": ["string", "null"]},
+            "source_checksum_sha256": {"$ref": "#/$defs/Checksum"},
+            "revision": {"type": "integer", "minimum": 1},
+            "status": {"enum": ["draft", "approved", "rejected", "superseded"]},
+            "format": {"enum": ["csv", "xlsx"]},
+            "encoding": {"type": ["string", "null"]}, "delimiter": {"type": ["string", "null"]},
+            "sheet": {"type": ["string", "null"]}, "field_suggestions": {"type": "array"},
+            "quality_rules": {"type": "array"}, "missing_prerequisites": {"type": "array"},
+            "approved_by": {"type": ["string", "null"]}, "decision_rationale": {"type": ["string", "null"]},
+            "idempotency_key": {"type": "string"}, "created_at": {"type": "string", "format": "date-time"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "MappingSet": {"allOf": [{"$ref": "#/$defs/Scope"}, {"type": "object", "required": ["mapping_set_id", "dataset_version_id", "version", "checksum_sha256", "status", "candidates", "revision", "idempotency_key", "created_at"], "properties": {"mapping_set_id": {"type": "string"}, "dataset_version_id": {"type": "string"}, "version": {"type": "integer", "minimum": 1}, "checksum_sha256": {"$ref": "#/$defs/Checksum"}, "status": {"enum": ["draft", "approved", "rejected", "superseded"]}, "candidates": {"type": "array"}, "approved_by": {"type": ["string", "null"]}, "revision": {"type": "integer"}, "idempotency_key": {"type": "string"}, "created_at": {"type": "string", "format": "date-time"}}}], "unevaluatedProperties": false},
+    "FeatureRecipeSet": {"allOf": [{"$ref": "#/$defs/Scope"}, {"type": "object", "required": ["recipe_set_id", "dataset_version_id", "mapping_set_id", "version", "checksum_sha256", "status", "recipes", "label_policy", "validation_report", "revision", "idempotency_key", "created_at"], "properties": {"recipe_set_id": {"type": "string"}, "dataset_version_id": {"type": "string"}, "mapping_set_id": {"type": "string"}, "version": {"type": "integer"}, "checksum_sha256": {"$ref": "#/$defs/Checksum"}, "status": {"enum": ["draft", "approved", "rejected", "superseded"]}, "recipes": {"type": "array"}, "label_policy": {"type": "object"}, "validation_report": {"type": "object"}, "revision": {"type": "integer"}, "idempotency_key": {"type": "string"}, "created_at": {"type": "string", "format": "date-time"}}}], "unevaluatedProperties": false},
+    "FeatureDatasetVersion": {"allOf": [{"$ref": "#/$defs/Scope"}, {"type": "object", "required": ["feature_dataset_version_id", "dataset_version_id", "mapping_set_id", "recipe_set_id", "label_policy_id", "materialization_checksum_sha256", "status", "row_count", "feature_count", "equipment_count", "schema_metadata", "idempotency_key", "revision", "created_at"], "properties": {"feature_dataset_version_id": {"type": "string"}, "dataset_version_id": {"type": "string"}, "mapping_set_id": {"type": "string"}, "recipe_set_id": {"type": "string"}, "label_policy_id": {"type": "string"}, "materialization_checksum_sha256": {"$ref": "#/$defs/Checksum"}, "status": {"enum": ["queued", "running", "succeeded", "failed", "cancelled"]}, "row_count": {"type": "integer"}, "feature_count": {"type": "integer"}, "equipment_count": {"type": "integer"}, "time_start": {"type": ["string", "null"], "format": "date-time"}, "time_end": {"type": ["string", "null"], "format": "date-time"}, "artifact": {"anyOf": [{"$ref": "#/$defs/ArtifactReference"}, {"type": "null"}]}, "schema_metadata": {"type": "object"}, "idempotency_key": {"type": "string"}, "revision": {"type": "integer"}, "created_at": {"type": "string", "format": "date-time"}}}], "unevaluatedProperties": false},
+    "ExperimentRun": {"allOf": [{"$ref": "#/$defs/Scope"}, {"type": "object", "required": ["experiment_id", "dataset_version_id", "mapping_set_id", "recipe_set_id", "feature_dataset_version_id", "label_policy_id", "status", "split_policy", "random_seed", "progress", "candidates", "idempotency_key", "retry_count", "revision", "created_at", "updated_at"], "properties": {"experiment_id": {"type": "string"}, "dataset_version_id": {"type": "string"}, "mapping_set_id": {"type": "string"}, "recipe_set_id": {"type": "string"}, "feature_dataset_version_id": {"type": "string"}, "label_policy_id": {"type": "string"}, "status": {"enum": ["queued", "running", "succeeded", "failed", "cancelled"]}, "split_policy": {"type": "object"}, "random_seed": {"type": "integer"}, "progress": {"type": "number"}, "candidates": {"type": "array"}, "selected_candidate_id": {"type": ["string", "null"]}, "threshold_policy_id": {"type": ["string", "null"]}, "artifact": {"anyOf": [{"$ref": "#/$defs/ArtifactReference"}, {"type": "null"}]}, "idempotency_key": {"type": "string"}, "retry_count": {"type": "integer"}, "revision": {"type": "integer"}, "created_at": {"type": "string", "format": "date-time"}, "updated_at": {"type": "string", "format": "date-time"}}}], "unevaluatedProperties": false},
+    "ModelVersion": {"allOf": [{"$ref": "#/$defs/Scope"}, {"type": "object", "required": ["model_version_id", "experiment_id", "candidate_id", "dataset_version_id", "mapping_set_id", "recipe_set_id", "feature_dataset_version_id", "label_policy_id", "status", "artifact", "input_schema_checksum_sha256", "runtime_versions", "threshold_policy", "explanation_provider", "explanation_provider_version", "limitations", "revision", "created_at"], "properties": {"model_version_id": {"type": "string"}, "experiment_id": {"type": "string"}, "candidate_id": {"type": "string"}, "dataset_version_id": {"type": "string"}, "mapping_set_id": {"type": "string"}, "recipe_set_id": {"type": "string"}, "feature_dataset_version_id": {"type": "string"}, "label_policy_id": {"type": "string"}, "status": {"enum": ["candidate", "approved", "active", "retired", "rejected"]}, "artifact": {"$ref": "#/$defs/ArtifactReference"}, "input_schema_checksum_sha256": {"$ref": "#/$defs/Checksum"}, "runtime_versions": {"type": "object"}, "calibration_method": {"type": ["string", "null"]}, "calibration_artifact": {"anyOf": [{"$ref": "#/$defs/ArtifactReference"}, {"type": "null"}]}, "threshold_policy": {"type": "object"}, "explanation_provider": {"type": "string"}, "explanation_provider_version": {"type": "string"}, "limitations": {"type": "array"}, "revision": {"type": "integer"}, "activated_at": {"type": ["string", "null"], "format": "date-time"}, "retired_at": {"type": ["string", "null"], "format": "date-time"}, "created_at": {"type": "string", "format": "date-time"}}}], "unevaluatedProperties": false},
+    "ExplanationArtifact": {"allOf": [{"$ref": "#/$defs/Scope"}, {"type": "object", "required": ["explanation_id", "prediction_result_id", "observation_id", "observed_at", "model_version_id", "recipe_set_id", "provider", "provider_version", "status", "top_factors", "input_schema_checksum_sha256", "checksum_sha256", "generated_at", "causal_proof"], "properties": {"explanation_id": {"type": "string"}, "prediction_result_id": {"type": "string"}, "observation_id": {"type": "string"}, "observed_at": {"type": "string", "format": "date-time"}, "model_version_id": {"type": "string"}, "recipe_set_id": {"type": "string"}, "provider": {"type": "string"}, "provider_version": {"type": "string"}, "status": {"enum": ["available", "unavailable", "failed"]}, "top_factors": {"type": "array"}, "input_schema_checksum_sha256": {"$ref": "#/$defs/Checksum"}, "checksum_sha256": {"$ref": "#/$defs/Checksum"}, "unavailable_reason": {"type": ["string", "null"]}, "generated_at": {"type": "string", "format": "date-time"}, "causal_proof": {"const": false}}}], "unevaluatedProperties": false}
+  }
+}

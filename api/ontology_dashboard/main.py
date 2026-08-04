@@ -23,6 +23,7 @@ from .routers.datasets import router as datasets_router
 from .routers.exports import router as exports_router
 from .routers.governance import router as governance_router
 from .routers.manufacturing import router as manufacturing_router
+from .routers.modeling import router as modeling_router
 from .routers.ontology import router as ontology_router
 from .routers.planner import router as planner_router
 from .routers.project3 import router as project3_router
@@ -103,6 +104,7 @@ for feature_router in (
     planner_router,
     project3_router,
     predictive_maintenance_runtime_router,
+    modeling_router,
     role_workspaces_router,
     manufacturing_router,
     admin_router,

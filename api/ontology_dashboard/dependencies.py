@@ -27,6 +27,7 @@ from .governance import GovernanceService
 from .identity import CSRF_COOKIE, SESSION_COOKIE, AuthError, IdentityService, Principal
 from .integrations.project3 import Project3Client
 from .llm import configured_provider
+from .modeling import ModelingService
 from .migrations import migrate
 from .planner import OntologyDashboardPlannerService
 from .ontology_service import OntologyService
@@ -274,6 +275,18 @@ def get_predictive_maintenance_runtime_service() -> PredictiveMaintenanceRuntime
         raise RuntimeError("predictive-maintenance Result Artifact/replay APIs require PostgreSQL")
     return PredictiveMaintenanceRuntimeService(
         PredictiveMaintenanceRuntimeRepository(target)
+    )
+
+
+@lru_cache(maxsize=1)
+def get_modeling_service() -> ModelingService:
+    ensure_database_migrations()
+    target = database_target()
+    if is_postgresql(target):
+        raise RuntimeError("PostgreSQL adaptive modeling repository is not configured")
+    return ModelingService.configured(
+        target,
+        os.getenv("ONTOLOGY_DASHBOARD_MODELING_ARTIFACT_ROOT"),
     )
 
 

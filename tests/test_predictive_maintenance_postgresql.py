@@ -54,7 +54,7 @@ def postgresql_database():
     dsn = _dsn_for_database(database)
     try:
         applied = migrate(dsn)
-        assert applied[-1] == "0015_identity_permission_overrides"
+        assert applied[-1] == "0016_adaptive_modeling_foundation"
         assert migrate(dsn) == []
         import psycopg
 
