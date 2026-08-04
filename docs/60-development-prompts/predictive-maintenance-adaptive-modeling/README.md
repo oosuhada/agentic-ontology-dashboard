@@ -78,3 +78,24 @@ Dataset Intake Profile
 → Prediction Result + Explanation Artifact
 → ML Validator and role Dashboard
 ```
+
+## 2026-08-05 implementation audit
+
+Phase 9~14와 Phase 16의 local backend release path는 구현·검증됐다. Controlled E2E는
+approved Manifest Draft를 기존 Adapter에 전달해 immutable Dataset Version을 생성하고,
+Mapping/Feature/Experiment/Model approval/Prediction/Explanation까지 통과한다.
+
+Phase 15는 실제 Experiment/Model 기반 Workbench, PR/ROC/threshold/calibration/lineage,
+permission-aware release/rollback, loading/empty/error/blocked 상태, role-based Playwright와
+desktop/tablet/mobile pixel baseline까지 구현됐다. 다만 source upload, mapping 편집과
+recipe authoring은 API 및 기존 Dataset/Governance 화면을 함께 사용한다.
+
+검증 근거:
+
+- `scripts/verify_adaptive_modeling_release.py`
+- `tests/test_adaptive_modeling_e2e.py`
+- `docs/30-implementation/stage-history/stage45-adaptive-modeling-release-summary.md`
+- `docs/50-operations/adaptive-modeling-release-runbook.md`
+
+현재 local release는 pass지만 production credential, optional LightGBM/XGBoost/SHAP,
+Project 3/Neo4j endpoint가 설정되지 않은 환경에서는 strict release가 blocked다.
