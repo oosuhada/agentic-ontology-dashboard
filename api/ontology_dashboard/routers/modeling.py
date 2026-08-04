@@ -10,6 +10,10 @@ from ..modeling.models import (
     ManifestDraftCreateRequest,
     ManifestDraftDecisionRequest,
     ManifestDraftUpdateRequest,
+    MappingCandidateDecisionRequest,
+    MappingGenerateRequest,
+    MappingSetCloneRequest,
+    MappingSetDecisionRequest,
 )
 from .predictive_maintenance_runtime import require_scope
 
@@ -211,3 +215,154 @@ def approved_manifest_payload(
         project_id=project_id,
         workspace_id=workspace_id,
     )
+
+
+@router.post("/mapping-sets")
+def create_mapping_set(
+    request: MappingGenerateRequest,
+    principal: Principal = Depends(require_permission("datasets.ingest")),
+    identity: IdentityService = Depends(get_identity_service),
+    service: ModelingService = Depends(get_modeling_service),
+):
+    require_scope(
+        principal=principal,
+        identity=identity,
+        project_id=request.project_id,
+        workspace_id=request.workspace_id,
+    )
+    return service.create_mapping_set(
+        profile_id=request.profile_id,
+        dataset_version_id=request.dataset_version_id,
+        organization_id=principal.organization_id,
+        project_id=request.project_id,
+        workspace_id=request.workspace_id,
+        use_llm=request.use_llm,
+        idempotency_key=request.idempotency_key,
+        actor_id=principal.user_id,
+    ).model_dump(mode="json")
+
+
+@router.get("/mapping-sets/{mapping_set_id}")
+def get_mapping_set(
+    mapping_set_id: str,
+    project_id: str,
+    workspace_id: str,
+    principal: Principal = Depends(require_permission("ontology.registry.read")),
+    identity: IdentityService = Depends(get_identity_service),
+    service: ModelingService = Depends(get_modeling_service),
+):
+    require_scope(
+        principal=principal,
+        identity=identity,
+        project_id=project_id,
+        workspace_id=workspace_id,
+    )
+    try:
+        return service.mapping_set(
+            mapping_set_id,
+            organization_id=principal.organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+        ).model_dump(mode="json")
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Mapping Set not found") from exc
+
+
+@router.post("/mapping-sets/{mapping_set_id}/candidate-decision")
+def decide_mapping_candidate(
+    mapping_set_id: str,
+    request: MappingCandidateDecisionRequest,
+    principal: Principal = Depends(require_permission("datasets.ingest")),
+    identity: IdentityService = Depends(get_identity_service),
+    service: ModelingService = Depends(get_modeling_service),
+):
+    require_scope(
+        principal=principal,
+        identity=identity,
+        project_id=request.project_id,
+        workspace_id=request.workspace_id,
+    )
+    return service.decide_mapping_candidate(
+        mapping_set_id,
+        organization_id=principal.organization_id,
+        project_id=request.project_id,
+        workspace_id=request.workspace_id,
+        request=request,
+        actor_id=principal.user_id,
+    ).model_dump(mode="json")
+
+
+@router.post("/mapping-sets/{mapping_set_id}/decision")
+def decide_mapping_set(
+    mapping_set_id: str,
+    request: MappingSetDecisionRequest,
+    principal: Principal = Depends(require_permission("datasets.ingest")),
+    identity: IdentityService = Depends(get_identity_service),
+    service: ModelingService = Depends(get_modeling_service),
+):
+    require_scope(
+        principal=principal,
+        identity=identity,
+        project_id=request.project_id,
+        workspace_id=request.workspace_id,
+    )
+    return service.decide_mapping_set(
+        mapping_set_id,
+        organization_id=principal.organization_id,
+        project_id=request.project_id,
+        workspace_id=request.workspace_id,
+        request=request,
+        actor_id=principal.user_id,
+    ).model_dump(mode="json")
+
+
+@router.post("/mapping-sets/{mapping_set_id}/versions")
+def clone_mapping_set(
+    mapping_set_id: str,
+    request: MappingSetCloneRequest,
+    principal: Principal = Depends(require_permission("datasets.ingest")),
+    identity: IdentityService = Depends(get_identity_service),
+    service: ModelingService = Depends(get_modeling_service),
+):
+    require_scope(
+        principal=principal,
+        identity=identity,
+        project_id=request.project_id,
+        workspace_id=request.workspace_id,
+    )
+    return service.clone_mapping_set(
+        mapping_set_id,
+        organization_id=principal.organization_id,
+        project_id=request.project_id,
+        workspace_id=request.workspace_id,
+        idempotency_key=request.idempotency_key,
+        actor_id=principal.user_id,
+    ).model_dump(mode="json")
+
+
+@router.get("/mapping-sets/{mapping_set_id}/capabilities")
+def mapping_capabilities(
+    mapping_set_id: str,
+    project_id: str,
+    workspace_id: str,
+    principal: Principal = Depends(require_permission("ontology.registry.read")),
+    identity: IdentityService = Depends(get_identity_service),
+    service: ModelingService = Depends(get_modeling_service),
+):
+    require_scope(
+        principal=principal,
+        identity=identity,
+        project_id=project_id,
+        workspace_id=workspace_id,
+    )
+    return {
+        "items": [
+            item.model_dump(mode="json")
+            for item in service.mapping_capabilities(
+                mapping_set_id,
+                organization_id=principal.organization_id,
+                project_id=project_id,
+                workspace_id=workspace_id,
+            )
+        ]
+    }

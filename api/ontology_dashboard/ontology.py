@@ -144,6 +144,31 @@ class DomainPackDefinition(BaseModel):
 
 OBJECT_TYPES: tuple[ObjectTypeDefinition, ...] = (
     ObjectTypeDefinition(
+        id="telemetry_observation",
+        display_name="Telemetry Observation",
+        description=(
+            "Adaptive Modeling과 semantic query가 사용하는 센서 관측 schema입니다. "
+            "원본 관측 행은 PostgreSQL에 유지하며 기본 Ontology/Neo4j object로 물질화하지 않습니다."
+        ),
+        domain_pack="manufacturing-predictive-maintenance",
+        interfaces=["observation", "versioned", "model-input"],
+        properties=[
+            OntologyProperty(id="equipment_id", display_name="설비 ID", value_type="string", required=True),
+            OntologyProperty(id="observed_at", display_name="관측 시각", value_type="datetime", required=True),
+            OntologyProperty(id="product_type", display_name="제품 유형", value_type="string"),
+            OntologyProperty(id="equipment_age_years", display_name="설비 연령", value_type="number", unit="year"),
+            OntologyProperty(id="voltage_v", display_name="전압", value_type="number", unit="V"),
+            OntologyProperty(id="rotational_speed_rpm", display_name="회전 속도", value_type="number", unit="rpm"),
+            OntologyProperty(id="pressure", display_name="압력", value_type="number"),
+            OntologyProperty(id="vibration", display_name="진동", value_type="number"),
+            OntologyProperty(id="air_temperature_k", display_name="공기 온도", value_type="number", unit="K"),
+            OntologyProperty(id="process_temperature_k", display_name="공정 온도", value_type="number", unit="K"),
+            OntologyProperty(id="torque_nm", display_name="토크", value_type="number", unit="N·m"),
+            OntologyProperty(id="tool_wear_min", display_name="공구 마모", value_type="number", unit="minute"),
+            OntologyProperty(id="machine_failure", display_name="고장 라벨", value_type="boolean"),
+        ],
+    ),
+    ObjectTypeDefinition(
         id="site",
         display_name="Site",
         description="Dataset Version 안에서 설비와 생산 셀을 묶는 물리 사이트입니다.",

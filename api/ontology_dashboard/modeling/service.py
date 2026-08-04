@@ -5,12 +5,24 @@ from typing import Any
 
 from .artifacts import ArtifactStoreBlocked, LocalArtifactStore
 from .intake import DatasetIntakeProfiler, IntakeLLMProvider, draft_from_profile
+from .mapping import (
+    MappingLLMProvider,
+    evaluate_capabilities,
+    generate_mapping_set,
+    update_candidate,
+    validate_mapping_set_for_approval,
+)
 from .models import (
+    CapabilityEvaluation,
     DatasetIntakeProfile,
     ManifestDraft,
     ManifestDraftDecisionRequest,
     ManifestDraftUpdateRequest,
+    MappingCandidateDecisionRequest,
+    MappingSet,
+    MappingSetDecisionRequest,
     ModelingContractSummary,
+    canonical_checksum,
 )
 from .repository import ModelingRepository
 
@@ -23,11 +35,13 @@ class ModelingService:
         artifact_store: LocalArtifactStore | None = None,
         artifact_blocked_reason: str | None = None,
         intake_profiler: DatasetIntakeProfiler | None = None,
+        mapping_provider: MappingLLMProvider | None = None,
     ) -> None:
         self.repository = repository
         self.artifact_store = artifact_store
         self.artifact_blocked_reason = artifact_blocked_reason
         self.intake_profiler = intake_profiler
+        self.mapping_provider = mapping_provider
 
     @classmethod
     def configured(
@@ -37,6 +51,7 @@ class ModelingService:
         *,
         intake_roots: list[str | Path] | None = None,
         intake_provider: IntakeLLMProvider | None = None,
+        mapping_provider: MappingLLMProvider | None = None,
     ) -> "ModelingService":
         profiler = (
             DatasetIntakeProfiler(intake_roots, provider=intake_provider)
@@ -49,6 +64,7 @@ class ModelingService:
                 ModelingRepository(database),
                 artifact_store=store,
                 intake_profiler=profiler,
+                mapping_provider=mapping_provider,
             )
         except ArtifactStoreBlocked as exc:
             return cls(
@@ -56,6 +72,7 @@ class ModelingService:
                 artifact_store=None,
                 artifact_blocked_reason=str(exc),
                 intake_profiler=profiler,
+                mapping_provider=mapping_provider,
             )
 
     def contract_summary(self) -> ModelingContractSummary:
@@ -340,3 +357,267 @@ class ModelingService:
                 "rationale": draft.decision_rationale,
             },
         }
+
+    def create_mapping_set(
+        self,
+        *,
+        profile_id: str,
+        dataset_version_id: str,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        use_llm: bool,
+        idempotency_key: str,
+        actor_id: str,
+    ) -> MappingSet:
+        profile = self.intake_profile(
+            profile_id,
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+        )
+        existing = self.repository.list(
+            "mapping_set",
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            limit=500,
+        )
+        versions = [
+            int(item.get("version", 0))
+            for item in existing
+            if item.get("dataset_version_id") == dataset_version_id
+        ]
+        mapping_set = generate_mapping_set(
+            profile,
+            dataset_version_id=dataset_version_id,
+            version=max(versions, default=0) + 1,
+            idempotency_key=idempotency_key,
+            use_llm=use_llm,
+            provider=self.mapping_provider,
+        )
+        stored = MappingSet.model_validate(
+            self.repository.put(
+                "mapping_set",
+                mapping_set.model_dump(mode="json"),
+                idempotency_key=idempotency_key,
+            )
+        )
+        self.repository.record_audit(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            actor_id=actor_id,
+            action="modeling.mapping_set.created",
+            aggregate_type="MappingSet",
+            aggregate_id=stored.mapping_set_id,
+            payload={
+                "profile_id": profile_id,
+                "dataset_version_id": dataset_version_id,
+                "candidate_count": len(stored.candidates),
+            },
+        )
+        return stored
+
+    def mapping_set(
+        self,
+        mapping_set_id: str,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+    ) -> MappingSet:
+        return MappingSet.model_validate(
+            self.repository.get(
+                "mapping_set",
+                mapping_set_id,
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=workspace_id,
+            )
+        )
+
+    def decide_mapping_candidate(
+        self,
+        mapping_set_id: str,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        request: MappingCandidateDecisionRequest,
+        actor_id: str,
+    ) -> MappingSet:
+        current = self.mapping_set(
+            mapping_set_id,
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+        )
+        if str(current.status) != "draft":
+            raise ValueError("approved/rejected Mapping Set is immutable; create a new version")
+        found = False
+        candidates = []
+        for candidate in current.candidates:
+            if candidate.candidate_id != request.candidate_id:
+                candidates.append(candidate)
+                continue
+            found = True
+            candidates.append(
+                update_candidate(
+                    candidate,
+                    decision=request.decision,
+                    target_object_type=request.target_object_type,
+                    target_property=request.target_property,
+                    datatype=request.datatype,
+                    physical_unit=request.physical_unit,
+                    grain=request.grain,
+                    semantic_role=request.semantic_role,
+                    group_key=request.group_key,
+                    join_key=request.join_key,
+                    actor_id=actor_id,
+                    rationale=request.rationale,
+                )
+            )
+        if not found:
+            raise KeyError(request.candidate_id)
+        checksum = canonical_checksum([item.model_dump(mode="json") for item in candidates])
+        updated = MappingSet.model_validate(
+            self.repository.update(
+                "mapping_set",
+                mapping_set_id,
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                expected_revision=request.expected_revision,
+                updated_payload={
+                    "candidates": [item.model_dump(mode="json") for item in candidates],
+                    "checksum_sha256": checksum,
+                },
+            )
+        )
+        self.repository.record_audit(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            actor_id=actor_id,
+            action=f"modeling.mapping_candidate.{request.decision}",
+            aggregate_type="MappingSet",
+            aggregate_id=mapping_set_id,
+            payload={
+                "candidate_id": request.candidate_id,
+                "revision": updated.revision,
+                "rationale": request.rationale,
+            },
+        )
+        return updated
+
+    def decide_mapping_set(
+        self,
+        mapping_set_id: str,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        request: MappingSetDecisionRequest,
+        actor_id: str,
+    ) -> MappingSet:
+        current = self.mapping_set(
+            mapping_set_id,
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+        )
+        target = {
+            "approve": "approved",
+            "reject": "rejected",
+            "supersede": "superseded",
+        }[request.decision]
+        if target == "approved":
+            validate_mapping_set_for_approval(current)
+        updated = MappingSet.model_validate(
+            self.repository.transition(
+                "mapping_set",
+                mapping_set_id,
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                target_status=target,
+                expected_revision=request.expected_revision,
+                transition_kind="review",
+                updated_payload={"approved_by": actor_id if target == "approved" else None},
+            )
+        )
+        self.repository.record_audit(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            actor_id=actor_id,
+            action=f"modeling.mapping_set.{target}",
+            aggregate_type="MappingSet",
+            aggregate_id=mapping_set_id,
+            payload={"revision": updated.revision, "rationale": request.rationale},
+        )
+        return updated
+
+    def clone_mapping_set(
+        self,
+        mapping_set_id: str,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        idempotency_key: str,
+        actor_id: str,
+    ) -> MappingSet:
+        current = self.mapping_set(
+            mapping_set_id,
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+        )
+        clone_payload = current.model_dump(mode="json")
+        clone_payload.update(
+            {
+                "mapping_set_id": f"mapping-set-{canonical_checksum({'source': mapping_set_id, 'key': idempotency_key})[:24]}",
+                "version": current.version + 1,
+                "status": "draft",
+                "approved_by": None,
+                "revision": 1,
+                "idempotency_key": idempotency_key,
+            }
+        )
+        clone = MappingSet.model_validate(clone_payload)
+        stored = MappingSet.model_validate(
+            self.repository.put(
+                "mapping_set",
+                clone.model_dump(mode="json"),
+                idempotency_key=idempotency_key,
+            )
+        )
+        self.repository.record_audit(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            actor_id=actor_id,
+            action="modeling.mapping_set.version_created",
+            aggregate_type="MappingSet",
+            aggregate_id=stored.mapping_set_id,
+            payload={"source_mapping_set_id": mapping_set_id, "version": stored.version},
+        )
+        return stored
+
+    def mapping_capabilities(
+        self,
+        mapping_set_id: str,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+    ) -> list[CapabilityEvaluation]:
+        mapping_set = self.mapping_set(
+            mapping_set_id,
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+        )
+        return evaluate_capabilities(mapping_set)

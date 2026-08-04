@@ -276,6 +276,48 @@ class MappingSet(ScopedIdentity):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class MappingGenerateRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    profile_id: str
+    dataset_version_id: str
+    use_llm: bool = False
+    idempotency_key: str
+
+
+class MappingCandidateDecisionRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    expected_revision: int = Field(ge=1)
+    candidate_id: str
+    decision: Literal["approve", "reject", "edit"]
+    rationale: str = Field(min_length=2, max_length=1000)
+    target_object_type: str | None = None
+    target_property: str | None = None
+    datatype: str | None = None
+    physical_unit: str | None = None
+    grain: str | None = None
+    semantic_role: Literal[
+        "identifier", "timestamp", "dimension", "measure", "status", "text", "unresolved"
+    ] | None = None
+    group_key: bool | None = None
+    join_key: bool | None = None
+
+
+class MappingSetDecisionRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    expected_revision: int = Field(ge=1)
+    decision: Literal["approve", "reject", "supersede"]
+    rationale: str = Field(min_length=2, max_length=1000)
+
+
+class MappingSetCloneRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    idempotency_key: str
+
+
 class CapabilityEvaluation(ScopedIdentity):
     evaluation_id: str
     dataset_version_id: str
