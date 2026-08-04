@@ -1,13 +1,117 @@
+name: ontology-dashboard
+
 services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    profiles: ["polyglot"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ontology_dashboard}
+      POSTGRES_USER: ${POSTGRES_USER:-ontology}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ontology-local-only}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ontology_postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  neo4j:
+    image: neo4j:5.26-community
+    profiles: ["polyglot"]
+    environment:
+      NEO4J_AUTH: ${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-ontology-local-only}
+      NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-ontology-local-only}
+      NEO4J_server_memory_heap_initial__size: ${NEO4J_HEAP_INITIAL:-512m}
+      NEO4J_server_memory_heap_max__size: ${NEO4J_HEAP_MAX:-1G}
+      NEO4J_server_memory_pagecache_size: ${NEO4J_PAGECACHE:-512m}
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+      NEO4J_dbms_security_procedures_allowlist: apoc.*
+      NEO4J_PLUGINS: '["apoc"]'
+    ports:
+      - "${NEO4J_HTTP_PORT:-7474}:7474"
+      - "${NEO4J_BOLT_PORT:-7687}:7687"
+    volumes:
+      - ontology_neo4j_data:/data
+      - ontology_neo4j_logs:/logs
+      - ontology_neo4j_import:/var/lib/neo4j/import
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "cypher-shell -a bolt://127.0.0.1:7687 -u $${NEO4J_USERNAME} -p $${NEO4J_PASSWORD} 'RETURN 1 AS ok' >/dev/null",
+        ]
+      interval: 8s
+      timeout: 5s
+      retries: 25
+      start_period: 20s
+
+  redis:
+    image: redis:7.4-alpine
+    profiles: ["cache"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-ontology-local-only}"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - ontology_redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a '$${REDIS_PASSWORD:-ontology-local-only}' ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  migration-bootstrap:
+    profiles: ["polyglot"]
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+      args:
+        API_EXTRAS: polyglot
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      SEED_DEMO_ACCOUNTS: ${SEED_DEMO_ACCOUNTS:-1}
+      ONTOLOGY_DASHBOARD_SEED_REFERENCE_DATA: ${ONTOLOGY_DASHBOARD_SEED_REFERENCE_DATA:-true}
+      ONTOLOGY_DASHBOARD_DATABASE_URL: ${ONTOLOGY_DASHBOARD_DATABASE_URL:-postgresql://ontology:ontology-local-only@postgres:5432/ontology_dashboard}
+      ONTOLOGY_DASHBOARD_NEO4J_URI: ${ONTOLOGY_DASHBOARD_NEO4J_URI:-bolt://neo4j:7687}
+      ONTOLOGY_DASHBOARD_NEO4J_DATABASE: ${ONTOLOGY_DASHBOARD_NEO4J_DATABASE:-neo4j}
+      ONTOLOGY_DASHBOARD_NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
+      ONTOLOGY_DASHBOARD_NEO4J_PASSWORD: ${NEO4J_PASSWORD:-ontology-local-only}
+      ONTOLOGY_DASHBOARD_VECTOR_DIMENSIONS: ${ONTOLOGY_DASHBOARD_VECTOR_DIMENSIONS:-1536}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    command: ["python", "-m", "ontology_dashboard.bootstrap"]
+    restart: "no"
+
   api:
     build:
       context: ..
       dockerfile: api/Dockerfile
+      args:
+        API_EXTRAS: ${API_EXTRAS:-}
     environment:
       APP_ENV: ${APP_ENV:-development}
       SEED_DEMO_ACCOUNTS: ${SEED_DEMO_ACCOUNTS:-1}
+      ONTOLOGY_DASHBOARD_SEED_REFERENCE_DATA: ${ONTOLOGY_DASHBOARD_SEED_REFERENCE_DATA:-true}
       ONTOLOGY_DASHBOARD_ALLOWED_ORIGINS: ${ONTOLOGY_DASHBOARD_ALLOWED_ORIGINS:-}
       ONTOLOGY_DASHBOARD_DB: /app/data/local/ontology_dashboard.db
+      ONTOLOGY_DASHBOARD_DATABASE_URL: ${ONTOLOGY_DASHBOARD_DATABASE_URL:-}
+      ONTOLOGY_DASHBOARD_REDIS_URL: ${ONTOLOGY_DASHBOARD_REDIS_URL:-}
+      ONTOLOGY_DASHBOARD_NEO4J_URI: ${ONTOLOGY_DASHBOARD_NEO4J_URI:-}
+      ONTOLOGY_DASHBOARD_NEO4J_DATABASE: ${ONTOLOGY_DASHBOARD_NEO4J_DATABASE:-neo4j}
+      ONTOLOGY_DASHBOARD_NEO4J_USERNAME: ${ONTOLOGY_DASHBOARD_NEO4J_USERNAME:-neo4j}
+      ONTOLOGY_DASHBOARD_NEO4J_PASSWORD: ${ONTOLOGY_DASHBOARD_NEO4J_PASSWORD:-}
+      ONTOLOGY_DASHBOARD_VECTOR_DIMENSIONS: ${ONTOLOGY_DASHBOARD_VECTOR_DIMENSIONS:-1536}
+      ONTOLOGY_DASHBOARD_PROJECT3_URL: ${ONTOLOGY_DASHBOARD_PROJECT3_URL:-http://host.docker.internal:8001}
+      ONTOLOGY_DASHBOARD_PROJECT3_PROJECT_MAP: ${ONTOLOGY_DASHBOARD_PROJECT3_PROJECT_MAP:-{"manufacturing-demo-project":"cip-dmd"}}
+      ONTOLOGY_DASHBOARD_PROJECT3_TIMEOUT_SECONDS: ${ONTOLOGY_DASHBOARD_PROJECT3_TIMEOUT_SECONDS:-4}
       LLM_API_KEY: ${LLM_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-}
@@ -15,11 +119,11 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-deterministic}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
       GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-global}
-      # The host path below is mounted at this fixed in-container path.
       GOOGLE_APPLICATION_CREDENTIALS: /var/run/secrets/google/credentials.json
+      MAINTENANCE_CONTEXT_PROVIDER: ${MAINTENANCE_CONTEXT_PROVIDER:-fixture}
       PROJECT3_API_URL: ${PROJECT3_API_URL:-}
     ports:
-      - "8100:8000"
+      - "${API_PORT:-8100}:8000"
     volumes:
       - factory_signal_data:/app/data/local
       - ${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:/var/run/secrets/google/credentials.json:ro
@@ -34,12 +138,20 @@ services:
       context: ..
       dockerfile: web/Dockerfile
       args:
-        VITE_API_BASE_URL: http://127.0.0.1:8100
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://127.0.0.1:8100}
+        VITE_FEATURE_ONTOLOGY_WORKBENCH: ${VITE_FEATURE_ONTOLOGY_WORKBENCH:-true}
+        VITE_FEATURE_DATASET_CATALOG: ${VITE_FEATURE_DATASET_CATALOG:-false}
+        VITE_FEATURE_GOVERNANCE_WORKBENCH: ${VITE_FEATURE_GOVERNANCE_WORKBENCH:-false}
     depends_on:
       api:
         condition: service_healthy
     ports:
-      - "3100:3100"
+      - "${WEB_PORT:-3100}:3100"
 
 volumes:
   factory_signal_data:
+  ontology_postgres_data:
+  ontology_neo4j_data:
+  ontology_neo4j_logs:
+  ontology_neo4j_import:
+  ontology_redis_data:

@@ -22,10 +22,30 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8.3"]
 postgres = ["psycopg[binary]>=3.2", "psycopg_pool>=3.2"]
-production = ["psycopg[binary]>=3.2", "psycopg_pool>=3.2", "redis>=5.0"]
+polyglot = [
+  "psycopg[binary]>=3.2",
+  "psycopg_pool>=3.2",
+  "pgvector>=0.3",
+  "neo4j>=5",
+  "redis>=5.0",
+  "langgraph>=0.2",
+  "langgraph-checkpoint-postgres>=2",
+  "llama-index-vector-stores-postgres>=0.3"
+]
+production = [
+  "psycopg[binary]>=3.2",
+  "psycopg_pool>=3.2",
+  "pgvector>=0.3",
+  "neo4j>=5",
+  "redis>=5.0",
+  "langgraph>=0.2",
+  "langgraph-checkpoint-postgres>=2",
+  "llama-index-vector-stores-postgres>=0.3"
+]
 
-[tool.setuptools]
-packages = ["ontology_dashboard", "factory_signal_board"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ontology_dashboard*", "factory_signal_board*"]
 
 [tool.pytest.ini_options]
 testpaths = ["../tests", "tests"]
