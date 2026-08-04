@@ -119,6 +119,8 @@ FDE
 
 보고서에서 확인할 수 있는 정보:
 
+- 문서 번호, 발행일, revision과 발행 상태
+- 임원 의사결정 요약
 - 보고서 제목과 요약
 - 섹션별 설명
 - 각 섹션이 참조한 Evidence field
@@ -129,6 +131,8 @@ FDE
 - 예상 정지 시간
 - 모델 신뢰도
 - 현재 고위험·미종결 Event 수
+- 승인 후 실행할 후속 조치
+- Print/PDF 출력
 
 `Open detailed dashboard`를 선택하면 동일한 Project, Workspace와 Event context를 유지한 채 Dashboard로 이동한다.
 

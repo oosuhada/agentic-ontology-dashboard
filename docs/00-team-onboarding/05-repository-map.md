@@ -25,6 +25,7 @@ mvp-프로젝트2/
 | 역할별 Landing | `roleLanding.ts`, `ManufacturingApp.tsx` | Principal roles·permissions | `role-report-adaptive-preferences.spec.ts` |
 | 보고서 | `web/src/features/reports/` | Report draft router·repository | Report E2E와 backend tests |
 | Dashboard | `web/src/features/dashboard/` | `dashboard_service.py`, catalog·preference repository | Dashboard stage tests·E2E |
+| ECharts 렌더 완료 상태 | `EChartCanvas.tsx`, `EChartRuntime.tsx` | 해당 없음 | `team-share-captures.spec.ts` Canvas pixel 검증 |
 | Dataset 적응형 구성 | `adaptiveExperience.ts` | Dataset Catalog API | Adaptive profile E2E |
 | Analysis | `web/src/features/analysis/` | Analysis routers·execution·materialization | Analysis tests·E2E |
 | Ontology | `web/src/features/ontology/` | Ontology registry·query·action·traversal | Ontology tests·E2E |
@@ -50,6 +51,7 @@ roleLanding.ts
 adaptiveExperience.ts
 → dashboard_catalog.py
 → DashboardBoardRenderer.tsx
+→ EChartRuntime.tsx render completion state
 → Dataset Catalog types
 → adaptive profile E2E
 ```

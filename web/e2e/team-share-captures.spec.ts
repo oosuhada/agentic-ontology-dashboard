@@ -3,6 +3,15 @@ import { expect, type Page, test } from "@playwright/test";
 const captureRoot = "../docs/00-team-onboarding/assets/screenshots";
 
 async function screenshot(page: Page, name: string) {
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    window.scrollTo(0, 0);
+    document.querySelectorAll<HTMLElement>(".fd-route-shell__content,.report-workspace-region,.dashboard-canvas-region,.admin-main").forEach((element) => {
+      element.scrollTop = 0;
+      element.scrollLeft = 0;
+    });
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  });
   await page.addStyleTag({
     content: `
       *, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; caret-color: transparent !important; }
@@ -17,6 +26,81 @@ async function screenshot(page: Page, name: string) {
   });
 }
 
+async function waitForStableWorkbench(page: Page, readySelector: string) {
+  await expect(page.locator(readySelector).first()).toBeVisible({ timeout: 60_000 });
+  await page.waitForFunction(() => {
+    const transientSelectors = [
+      ".route-loading",
+      ".role-report-loading",
+      ".role-report-refresh",
+      ".loading-panel",
+      ".fd-state.state-loading",
+      ".fd-state.state-refreshing",
+      ".visualization-switcher-skeleton",
+    ];
+    return transientSelectors.every((selector) => Array.from(document.querySelectorAll<HTMLElement>(selector)).every((element) => {
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display === "none" || style.visibility === "hidden" || rect.width === 0 || rect.height === 0;
+    }));
+  }, { timeout: 60_000 });
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await Promise.all(Array.from(document.images).map((image) => image.complete ? Promise.resolve() : new Promise<void>((resolve) => {
+      image.addEventListener("load", () => resolve(), { once: true });
+      image.addEventListener("error", () => resolve(), { once: true });
+    })));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  });
+}
+
+async function waitForStableAdaptiveDashboard(page: Page, profile: string) {
+  const shell = page.locator(`.ontology-dashboard-shell[data-adaptive-profile="${profile}"]`);
+  await expect(shell).toBeVisible({ timeout: 60_000 });
+  await waitForStableWorkbench(page, ".dashboard-board-canvas .dashboard-board-frame");
+  await expect(page.locator(".dashboard-board-canvas .dashboard-board-frame")).toHaveCount(8, { timeout: 60_000 });
+  await page.waitForFunction(() => {
+    const visible = (element: Element) => {
+      const node = element as HTMLElement;
+      const style = window.getComputedStyle(node);
+      const rect = node.getBoundingClientRect();
+      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+    };
+    const frames = Array.from(document.querySelectorAll(".dashboard-board-canvas .dashboard-board-frame")).filter(visible);
+    const canvas = document.querySelector<HTMLElement>(".dashboard-board-canvas");
+    const loadingCharts = Array.from(document.querySelectorAll('[aria-label$=" loading"]')).filter(visible);
+    return frames.length >= 8
+      && loadingCharts.length === 0
+      && frames.every((frame) => (frame.textContent?.trim().length ?? 0) > 40)
+      && (canvas?.textContent?.trim().length ?? 0) > 500
+      && Boolean(canvas?.textContent?.includes("ready"));
+  }, { timeout: 60_000 });
+
+  if (profile === "factory-reliability") {
+    const riskTrendBoard = page.locator('[data-definition-id="risk-trend-workbench"]');
+    await expect(riskTrendBoard).toBeVisible({ timeout: 60_000 });
+    await expect(riskTrendBoard.locator('.echart-canvas[data-chart-state="ready"]')).toBeVisible({ timeout: 60_000 });
+    await page.waitForFunction(() => {
+      const board = document.querySelector<HTMLElement>('[data-definition-id="risk-trend-workbench"]');
+      const host = board?.querySelector<HTMLElement>('.echart-canvas[data-chart-state="ready"]');
+      const canvas = host?.querySelector<HTMLCanvasElement>('canvas');
+      if (!board || !host || !canvas || host.getAttribute('aria-busy') !== 'false') return false;
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width < 180 || rect.height < 120 || canvas.width < 180 || canvas.height < 120) return false;
+      const context = canvas.getContext('2d');
+      if (!context) return false;
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      let paintedPixels = 0;
+      for (let index = 3; index < pixels.length; index += 16) {
+        if (pixels[index] > 0) paintedPixels += 1;
+        if (paintedPixels > 250) return true;
+      }
+      return false;
+    }, { timeout: 60_000 });
+  }
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+}
+
 async function login(page: Page, email: string, password: string) {
   await page.goto("/login");
   await page.getByLabel("이메일").fill(email);
@@ -28,6 +112,40 @@ async function login(page: Page, email: string, password: string) {
 async function logout(page: Page) {
   await page.getByRole("button", { name: "로그아웃" }).click();
   await expect(page).toHaveURL(/\/login$/);
+}
+
+async function expectAdminShellLayout(page: Page) {
+  await expect(page.locator(".admin-shell")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".admin-sidebar")).toBeVisible();
+  await expect(page.locator(".admin-main")).toBeVisible();
+  const layout = await page.evaluate(() => {
+    const shell = document.querySelector<HTMLElement>(".admin-shell");
+    const sidebar = document.querySelector<HTMLElement>(".admin-sidebar");
+    const main = document.querySelector<HTMLElement>(".admin-main");
+    if (!shell || !sidebar || !main) return null;
+    const shellStyle = window.getComputedStyle(shell);
+    const sidebarStyle = window.getComputedStyle(sidebar);
+    const shellRect = shell.getBoundingClientRect();
+    const sidebarRect = sidebar.getBoundingClientRect();
+    const mainRect = main.getBoundingClientRect();
+    return {
+      shellDisplay: shellStyle.display,
+      sidebarDisplay: sidebarStyle.display,
+      shellWidth: shellRect.width,
+      sidebarWidth: sidebarRect.width,
+      sidebarHeight: sidebarRect.height,
+      mainLeft: mainRect.left,
+      mainWidth: mainRect.width,
+    };
+  });
+  expect(layout).not.toBeNull();
+  expect(layout?.shellDisplay).toBe("grid");
+  expect(layout?.sidebarDisplay).toBe("flex");
+  expect(layout?.sidebarWidth ?? 0).toBeGreaterThanOrEqual(190);
+  expect(layout?.sidebarWidth ?? 999).toBeLessThanOrEqual(240);
+  expect(layout?.sidebarHeight ?? 0).toBeGreaterThanOrEqual(900);
+  expect(layout?.mainLeft ?? 0).toBeGreaterThanOrEqual(190);
+  expect((layout?.sidebarWidth ?? 0) + (layout?.mainWidth ?? 0)).toBeCloseTo(layout?.shellWidth ?? 0, 0);
 }
 
 test.use({ viewport: { width: 1440, height: 1000 }, colorScheme: "light" });
@@ -52,6 +170,7 @@ test("capture governed onboarding, role homes, adaptive workspaces, and analysis
   await screenshot(page, "02-pending-approval");
 
   await login(page, "admin@ontology.local", "OntologyAdmin!2026");
+  await expectAdminShellLayout(page);
   await page.getByRole("button", { name: /Notifications/ }).click();
   const notification = page.locator(".admin-notification-list button", { hasText: email });
   await expect(notification).toBeVisible();
@@ -63,21 +182,23 @@ test("capture governed onboarding, role homes, adaptive workspaces, and analysis
   await row.getByLabel(`${email} workspace`).selectOption("manufacturing-demo");
   await row.locator(".permission-override-editor summary").click();
   await row.getByLabel(`${email} dashboards.share 권한`).selectOption("deny");
+  await row.scrollIntoViewIfNeeded();
+  await expectAdminShellLayout(page);
   await screenshot(page, "04-admin-role-permission-confirmation");
   await row.getByRole("button", { name: "승인", exact: true }).click();
   await expect(page.locator(".admin-user-table tbody tr", { hasText: email }).locator(".account-status")).toHaveText("active", { timeout: 15_000 });
 
   await logout(page);
   await login(page, email, password);
-  await expect(page.locator(".role-report-workbench")).toBeVisible({ timeout: 45_000 });
+  await waitForStableWorkbench(page, ".role-report-workbench .role-report-document");
   await screenshot(page, "05-manager-report-home");
   await page.getByRole("button", { name: /Open detailed dashboard/ }).click();
-  await expect(page.locator(".dashboard-board-canvas")).toBeVisible({ timeout: 45_000 });
+  await waitForStableWorkbench(page, ".dashboard-board-canvas .dashboard-board-frame");
   await screenshot(page, "06-manager-dashboard-drilldown");
 
   await logout(page);
   await login(page, "engineer@ontology.local", "Engineer!2026");
-  await expect(page.locator(".dashboard-board-canvas")).toBeVisible({ timeout: 45_000 });
+  await waitForStableWorkbench(page, ".dashboard-board-canvas .dashboard-board-frame");
   await screenshot(page, "07-engineer-dashboard-home");
   await page.getByRole("button", { name: "Reports", exact: true }).click();
   await page.getByRole("button", { name: "Edit report" }).click();
@@ -92,13 +213,13 @@ test("capture governed onboarding, role homes, adaptive workspaces, and analysis
 
   await logout(page);
   await login(page, "fde@ontology.local", "FDE!2026");
-  await expect(page.locator('.ontology-dashboard-shell[data-adaptive-profile="factory-reliability"]')).toBeVisible({ timeout: 45_000 });
+  await waitForStableAdaptiveDashboard(page, "factory-reliability");
   await screenshot(page, "10-factory-adaptive-dashboard");
   await page.getByLabel("Project", { exact: true }).selectOption("azure-fleet-maintenance-project");
-  await expect(page.locator('.ontology-dashboard-shell[data-adaptive-profile="fleet-maintenance"]')).toBeVisible({ timeout: 45_000 });
+  await waitForStableAdaptiveDashboard(page, "fleet-maintenance");
   await screenshot(page, "11-fleet-adaptive-dashboard");
   await page.getByLabel("Project", { exact: true }).selectOption("metropt-compressor-project");
-  await expect(page.locator('.ontology-dashboard-shell[data-adaptive-profile="compressor-monitoring"]')).toBeVisible({ timeout: 45_000 });
+  await waitForStableAdaptiveDashboard(page, "compressor-monitoring");
   await screenshot(page, "12-compressor-adaptive-dashboard");
 
   await page.goto("/app/analysis/team-share-analysis");

@@ -56,8 +56,10 @@ Manager!2026
 1. 로그인 후 Reports가 첫 화면인지 확인한다.
 2. 엔지니어가 수정한 제목과 요약을 확인한다.
 3. 텍스트 섹션과 오른쪽 근거 시각화의 연결을 설명한다.
-4. `Open detailed dashboard`로 상세 화면을 연다.
-5. 다시 로그인했을 때 Reports로 복귀하는지 확인한다.
+4. 문서 번호·발행일·의사결정 요약·후속 조치를 확인한다.
+5. `Print / PDF`에서 앱 메뉴가 제외된 A4 보고서 레이아웃을 확인한다.
+6. `Open detailed dashboard`로 상세 화면을 연다.
+7. 다시 로그인했을 때 Reports로 복귀하는지 확인한다.
 
 ## Demo 3 — Dataset별 적응형 화면 · 3분
 
@@ -82,6 +84,7 @@ Manufacturing Demo Project
 - Board definition 목록이 달라진다.
 - 첫 행 폭과 정보 구조가 달라진다.
 - Factory는 위험·원인·점검, Fleet은 서비스·운행 영향, Compressor는 시계열·이상 구간 중심이다.
+- Factory의 `Equipment · Interactive Risk Trend`가 로딩 placeholder가 아니라 실제 막대/선 Canvas를 표시하는지 확인한다.
 
 ## Demo 4 — 사용자별 개인화 · 2분
 

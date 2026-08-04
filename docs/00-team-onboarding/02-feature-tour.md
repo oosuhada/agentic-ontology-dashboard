@@ -4,7 +4,17 @@
 >
 > 전체 HTML Story 캡처: [`assets/screenshots/00-team-share-story.png`](./assets/screenshots/00-team-share-story.png)
 
-모든 이미지는 Playwright 격리 DB와 demo seed에서 1440×1000 화면으로 생성했다. 재생성 명령은 문서 마지막에 있다.
+모든 이미지는 Playwright 격리 DB와 demo seed에서 1440×1000 화면으로 생성했다. 단순히 route나 Board 외곽이 나타나는지만 확인하지 않고, 역할별 셸 배치, 비동기 데이터 종료, 개별 ECharts의 `finished` 이벤트와 실제 Canvas 픽셀 렌더링까지 확인한 뒤 저장한다. 재생성 명령은 문서 마지막에 있다.
+
+## 캡처 신뢰성 기준
+
+캡처 테스트는 다음 조건을 만족하지 않으면 실패한다.
+
+- 관리자 화면이 좌측 Control Plane과 우측 본문으로 실제 가로 배치됨
+- Report revision과 Evidence 로딩이 끝나고 출력용 문서 본문이 표시됨
+- Adaptive Dashboard에 8개 Board가 모두 렌더링되고 공통 loading·refreshing·skeleton이 사라짐
+- `Interactive Risk Trend`의 ECharts가 `finished` 상태이며 내부 Canvas에 실제 그래프 픽셀이 존재함
+- 이미지·웹폰트가 준비되고 스크롤 위치가 캡처 기준점으로 복원됨
 
 ## 인터랙티브 Story
 
@@ -67,12 +77,16 @@
 
 관리자 자기 잠금과 알 수 없는 permission은 서버에서 차단된다.
 
+관리자 캡처는 `.admin-shell`이 `grid`, 사이드바가 화면 높이의 `flex` column으로 계산되는지도 측정한다. 공통 CSS가 빠져 좌측 메뉴가 상단에 쌓이는 회귀는 이 단계에서 차단된다.
+
 ## 5. 운영 매니저와 임원은 Reports로 진입한다
 
 ![매니저 보고서 메인](./assets/screenshots/05-manager-report-home.png)
 
 보고서에는 다음이 함께 표시된다.
 
+- 문서 번호, 발행일, revision과 상태
+- 임원 의사결정 요약과 승인 후 실행할 조치
 - 텍스트 제목·요약·섹션
 - 섹션별 Evidence field ID
 - Primary metric 추세
@@ -80,6 +94,7 @@
 - Decision context
 - 위험도, 미종결·고위험 Event 수
 - 담당자, Downtime, Confidence
+- Print / PDF 버튼과 A4 전용 출력 레이아웃
 
 핵심 파일: `web/src/features/reports/RoleReportWorkbench.tsx`
 
@@ -134,12 +149,14 @@
 대표 구성:
 
 - Operations KPI
-- Risk Trend
+- Equipment · Interactive Risk Trend
 - Factor Contribution
 - Priority List
 - Event Data Grid
 - Ontology Relationship
 - Recommended Actions
+
+`Equipment · Interactive Risk Trend`는 Board 제목이나 `ready` 문자열만 확인하지 않는다. ECharts 모듈 로딩이 끝나고, `finished` 이벤트 이후 Canvas에 실제 축·막대·선 픽셀이 그려진 경우에만 이 이미지가 갱신된다.
 
 ## 11. 차량 Dataset은 Fleet 화면을 만든다
 
@@ -202,7 +219,9 @@ CAPTURE_TEAM_SHARE=1 \
 PLAYWRIGHT_WEB_PORT=3260 \
 PLAYWRIGHT_API_PORT=8260 \
 npx playwright test e2e/team-share-captures.spec.ts --project=chromium
+
+npm run capture:team-share-story
 ```
 
-캡처는 코드와 테스트가 동작할 때만 갱신되므로 설명 문서와 실제 화면의 차이를 줄인다.
+첫 명령은 01–15 원본 이미지를 갱신하고 개별 Workbench 렌더 상태를 검증한다. 두 번째 명령은 새 원본 이미지를 포함한 `/team-share` 데스크톱·모바일 전체 페이지를 다시 캡처한다.
 

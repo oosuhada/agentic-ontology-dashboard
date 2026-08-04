@@ -1,6 +1,8 @@
 # 구현 상태와 경계
 
-기준 commit: `064fb49`
+기준 브랜치: `prototype/ontology-dashboard-prebuild`
+
+검증 태그: `team-share-capture-integrity-20260804`
 
 ## 상태 정의
 
@@ -19,6 +21,7 @@
 | 보고서 | 연결 완료 | 공용 draft revision, Evidence 시각화, 편집·열람 | 결재·반려·코멘트 workflow |
 | Dashboard 편집 | 연결 완료 | Tab, Board, drag, resize, hide, saved view, cross-filter | 다중 사용자 실시간 협업 |
 | Dataset 적응형 구성 | 연결 완료 | Schema signal 기반 Board definition·배치 선택 | 고객별 semantic rule 관리 UI |
+| Team Share 캡처 무결성 | 연결 완료 | 관리자 셸, Report 준비, 8개 Board, ECharts finished·Canvas pixel 검증 | 브라우저별 visual baseline 확장 |
 | 사용자별 Preference | 연결 완료 | Dashboard와 Display 계정 저장·격리 | 조직 정책 기반 설정 강제 |
 | Analysis | 연결 완료 | Path·Canvas·Graph, 실행, 결과, materialization | 대규모 distributed execution |
 | Forecast Editor | UI·계약 완료 | Range, model, horizon, confidence band | authoritative prediction service |
@@ -36,8 +39,8 @@
 ```text
 Backend targeted tests        18 passed
 Frontend unit tests           16 passed
-Core user-flow Playwright      6 passed
-Team-share capture flow        1 passed / 15 screenshots
+Team-share capture E2E         1 passed / 15 screenshots
+Team-share Story E2E           5 passed / 4 viewports + interaction
 ```
 
 검증 명령:
@@ -73,7 +76,7 @@ npm run build
 ## 기준 태그
 
 ```text
-complete-user-flow-20260803
+team-share-capture-integrity-20260804
 ```
 
 팀이 기능을 채택하기 전 상태로 돌아갈 때는 태그를 삭제하거나 reset하지 않고 별도 브랜치로 확인한다.

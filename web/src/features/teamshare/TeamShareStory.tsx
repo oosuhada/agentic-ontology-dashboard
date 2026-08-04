@@ -45,7 +45,7 @@ type RoleId = "admin" | "manager" | "engineer";
 type DatasetId = "factory" | "fleet" | "compressor";
 type SectionId = "overview" | "user-flow" | "roles" | "adaptive" | "workbenches" | "capabilities" | "review";
 
-const VERIFIED_TAG = "team-share-audit-ready-20260804";
+const VERIFIED_TAG = "team-share-capture-integrity-20260804";
 const REVIEW_TEMPLATE = `채택해야 하는 기능:
 수정이 필요한 기능:
 후속으로 미룰 기능:
@@ -151,15 +151,15 @@ const roles: Record<RoleId, {
     description: "일반 업무 화면과 분리된 Control Plane에서 사용자 상태, 역할, Workspace scope와 permission override를 관리합니다.",
     firstView: "Admin Control Plane",
     capabilities: ["가입 알림", "역할·Scope 승인", "개별 권한 허용·차단", "감사 기록"],
-    image: adminNotification,
+    image: adminConfirmation,
   },
   manager: {
     label: "운영 매니저·임원",
     eyebrow: "REPORT-FIRST DECISION FLOW",
     headline: "설명과 근거를 먼저 읽고 세부 Dashboard로 이동합니다",
-    description: "실무자가 원래 작성해야 했던 운영 보고서를 메인 화면으로 제공하고, 텍스트와 시각화가 같은 Evidence를 참조합니다.",
+    description: "실무자가 원래 작성해야 했던 운영 보고서를 메인 화면으로 제공하고, 임원 의사결정 요약·문서 메타데이터·근거 차트·조치 항목을 한 문서에서 검토하고 A4 PDF로 출력할 수 있습니다.",
     firstView: "Operational Reports",
-    capabilities: ["보고서 검토", "근거 차트", "위험·영향 요약", "상세 Dashboard drill-down"],
+    capabilities: ["임원 요약", "근거 차트", "위험·영향·조치", "A4 Print/PDF", "Dashboard drill-down"],
     image: managerReport,
   },
   engineer: {
@@ -258,9 +258,9 @@ interface ScreenshotSelection {
   label: string;
 }
 
-function Screenshot({ src, alt, label, onOpen }: ScreenshotSelection & { onOpen: (selection: ScreenshotSelection) => void }) {
+function Screenshot({ src, alt, label, onOpen, className = "" }: ScreenshotSelection & { onOpen: (selection: ScreenshotSelection) => void; className?: string }) {
   return (
-    <figure className="team-share-screenshot">
+    <figure className={`team-share-screenshot ${className}`.trim()}>
       <figcaption>{label}</figcaption>
       <button type="button" aria-label={`${label} 확대 보기`} onClick={() => onOpen({ src, alt, label })}>
         <img src={src} alt={alt} />
@@ -371,11 +371,11 @@ export function TeamShareStory() {
             <span><strong>8</strong><small>업무 역할</small></span>
             <span><strong>3</strong><small>적응형 Dataset 사례</small></span>
             <span><strong>16</strong><small>Story + 기능 캡처</small></span>
-            <span><strong>39</strong><small>핵심 자동 테스트</small></span>
+            <span><strong>40</strong><small>핵심 자동 테스트</small></span>
           </div>
           <div className="team-share-verification" aria-label="Verified package status">
             <span><ShieldCheck size={13} /><strong>{VERIFIED_TAG}</strong></span>
-            <span>Backend 18</span><span>Frontend 16</span><span>Story E2E 5</span><span>2026-08-04</span>
+            <span>Backend 18</span><span>Frontend 16</span><span>Capture E2E 1</span><span>Story E2E 5</span><span>2026-08-04</span>
           </div>
         </div>
         <div className="team-share-product-loop" aria-label="Ontology Dashboard product loop">
@@ -423,7 +423,7 @@ export function TeamShareStory() {
           {(Object.keys(roles) as RoleId[]).map((id) => <button type="button" role="tab" aria-selected={activeRole === id} className={activeRole === id ? "active" : ""} key={id} onClick={() => setActiveRole(id)}>{roles[id].label}</button>)}
         </div>
         <article className="team-share-role-detail">
-          <Screenshot src={role.image} alt={`${role.label} 화면`} label={`${role.eyebrow} · ${role.firstView}`} onOpen={setSelectedScreenshot} />
+          <Screenshot className={`team-share-role-screenshot role-${activeRole}`} src={role.image} alt={`${role.label} 화면`} label={`${role.eyebrow} · ${role.firstView}`} onOpen={setSelectedScreenshot} />
           <div>
             <span className="team-share-kicker">{role.eyebrow}</span>
             <h3>{role.headline}</h3>

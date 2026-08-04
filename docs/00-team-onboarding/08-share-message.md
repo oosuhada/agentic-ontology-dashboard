@@ -10,9 +10,9 @@
 - 구성원이 희망 역할을 선택해 가입 요청
 - 관리자가 알림을 받고 역할·Workspace·개별 권한을 확인해 승인
 - 운영 매니저·임원은 Reports, 엔지니어·실무자는 Dashboard로 진입
-- 실무자가 텍스트 보고서를 수정하고 매니저가 같은 수정본과 근거 시각화를 검토
+- 실무자가 텍스트 보고서를 수정하고 매니저가 같은 수정본, 근거 시각화와 출력용 Executive Briefing을 검토
 - 보고서에서 상세 Dashboard로 drill-down
-- Dataset schema에 따라 Factory, Fleet, Compressor 화면의 Board 종류와 배치가 변경
+- Dataset schema에 따라 Factory, Fleet, Compressor 화면의 Board 종류와 배치가 변경되고, 캡처는 개별 차트의 실제 Canvas 렌더 완료까지 검증
 - 같은 역할이어도 사용자 ID별 Dashboard·Filter·Display 설정을 저장하고 재로그인 시 복원
 - Analysis Path/Canvas/Graph와 Ontology ObjectSet 탐색
 

@@ -19,7 +19,7 @@ function chartKind(option: DashboardChartOption): string {
 export function EChartCanvas(props: EChartCanvasProps) {
   const Component = chartKind(props.option) === "pie" ? EChartPieCanvas : EChartCartesianCanvas;
   return (
-    <Suspense fallback={<div className={`echart-canvas ${props.className ?? ""}`} role="img" aria-label={`${props.ariaLabel} loading`} />}>
+    <Suspense fallback={<div className={`echart-canvas ${props.className ?? ""}`} role="img" aria-label={`${props.ariaLabel} loading`} data-chart-state="loading" />}>
       <Component {...props} />
     </Suspense>
   );

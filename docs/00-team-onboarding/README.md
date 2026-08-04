@@ -23,7 +23,7 @@ Ontology Dashboard는 **Dataset → Ontology Object → Analysis → Report/Dash
 ## 5분 읽기 순서
 
 1. [`01-product-overview.md`](./01-product-overview.md) — 왜 만들었고 무엇이 핵심인가
-2. [`02-feature-tour.md`](./02-feature-tour.md) — Story 데스크톱·모바일과 기능 캡처 15장
+2. [`02-feature-tour.md`](./02-feature-tour.md) — Story 데스크톱·모바일과 렌더 완료를 검증한 기능 캡처 15장
 3. [`03-user-flow.md`](./03-user-flow.md) — 가입부터 역할별 업무와 개인화까지
 4. [`06-implementation-status.md`](./06-implementation-status.md) — API·DB 연결과 프로토타입 경계
 5. [`09-verification-report.md`](./09-verification-report.md) — Story·문서 구조 재검증 결과
@@ -65,8 +65,8 @@ Dataset schema, 시간·수치·범주·관계·문서 신호와 projection 상�
 ## 현재 기준 버전
 
 ```text
-Commit  064fb49
-Tag     complete-user-flow-20260803
+Branch  prototype/ontology-dashboard-prebuild
+Tag     team-share-capture-integrity-20260804
 Web     http://127.0.0.1:3100/
 API     http://127.0.0.1:8100/
 ```

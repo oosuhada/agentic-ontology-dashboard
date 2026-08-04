@@ -2,7 +2,7 @@
 
 검증 기준:
 
-- Tag: `team-share-audit-ready-20260804`
+- Tag: `team-share-capture-integrity-20260804`
 - 검증일: 2026-08-04
 - 공개 Story: `/team-share`
 - 검증 데이터: Playwright 격리 SQLite DB와 demo seed
@@ -19,6 +19,14 @@
 - 검증 Tag·날짜·테스트 결과 표시
 - 구현 수준을 설명하는 구체적인 연결 항목
 - 팀 피드백 양식 복사
+
+이후 역할·Dataset 캡처를 다시 검토하면서 다음 회귀도 추가로 발견했다.
+
+- Admin Control Plane에 `display: grid`와 sidebar flex 계약이 빠져 좌측 메뉴가 상단 블록으로 쌓임
+- 엔지니어 Dashboard가 route loading 상태에서 캡처됨
+- Factory Reliability가 Board 외곽만 준비된 시점에 캡처됨
+- `Equipment · Interactive Risk Trend`의 ECharts lazy module이 아직 빈 Canvas인 상태여도 기존 검증을 통과함
+- 운영 매니저 Report가 설명 카드 수준에 머물러 출력용 Executive Briefing으로 사용하기 부족함
 
 ## 반영한 개선
 
@@ -51,6 +59,44 @@ Sticky Navigation은 현재 섹션에 `aria-current="location"`을 표시한다.
 - 배경 클릭으로 닫기
 - 원본 이미지 새 탭 열기
 - 모바일에서도 확대 버튼 상시 표시
+
+### 역할·Dataset 캡처 무결성
+
+`team-share-captures.spec.ts`는 이제 화면별 준비 조건을 따로 검증한다.
+
+```text
+Admin
+→ shell display:grid
+→ 190–240px sidebar
+→ viewport 높이 유지
+
+Report
+→ shared revision loading 종료
+→ Executive Summary·Action·Evidence 본문 표시
+
+Adaptive Dashboard
+→ 8개 Board 렌더
+→ loading/refreshing/skeleton 0개
+→ Board별 실제 데이터 본문 존재
+
+Interactive Risk Trend
+→ ECharts finished 이벤트
+→ data-chart-state=ready
+→ aria-busy=false
+→ 내부 Canvas에 실제 비투명 픽셀 존재
+```
+
+이 검증으로 route·Board frame·`ready` 문자열만 존재하는 빈 화면은 더 이상 캡처 테스트를 통과할 수 없다.
+
+### 임원 보고서 출력 품질
+
+- 문서 번호와 발행일
+- revision·status·confidence
+- Executive Decision Summary
+- 승인 후 실행할 후속 조치
+- 근거 차트와 기여 요인
+- Print/PDF 버튼
+- 앱 sidebar·topbar를 제외한 A4 인쇄 CSS
 
 ### 구현 상태 표현
 
@@ -103,6 +149,7 @@ npm run verify:team-share
 ```text
 Backend targeted tests      18 passed
 Frontend unit tests         16 passed
+Team-share Capture E2E       1 passed
 Team-share Story E2E         1 passed
 Responsive Story E2E         4 passed
 TypeScript lint              passed

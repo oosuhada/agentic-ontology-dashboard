@@ -10,6 +10,9 @@
 - 화면 크기: 1440 × 1000, light theme
 - 데이터: Playwright 격리 SQLite 데이터베이스와 demo seed
 - 비밀번호나 실제 개인정보는 캡처하지 않는다.
+- Admin 캡처는 shell/sidebar의 계산된 레이아웃을 측정한다.
+- Adaptive Dashboard 캡처는 8개 Board와 비동기 상태 종료를 확인한다.
+- ECharts 캡처는 `finished` 이벤트와 실제 Canvas 픽셀을 확인한다.
 
 이미지는 직접 수정하지 않고 캡처 시나리오를 다시 실행해 갱신한다.
 

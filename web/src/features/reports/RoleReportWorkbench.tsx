@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, Check, FilePenLine, LayoutDashboard, RefreshCw, Save, TrendingUp } from "lucide-react";
+import { AlertTriangle, BarChart3, Check, FilePenLine, LayoutDashboard, Printer, RefreshCw, Save, TrendingUp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getReportDraft, saveReportDraft } from "../../api";
 import type { Evidence, EventSummary, Report } from "../../types";
@@ -60,6 +60,17 @@ function TrendVisual({ values }: { values: number[] }) {
   );
 }
 
+function formatReportDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
 export function RoleReportWorkbench({
   workspaceId,
   roleLabel,
@@ -113,6 +124,7 @@ export function RoleReportWorkbench({
   const trend = useMemo(() => metricValues(evidence, profile), [evidence, profile]);
   const criticalEvents = events.filter((event) => (event.failure_probability ?? 0) >= .7).length;
   const pendingEvents = events.filter((event) => !["closed", "resolved", "completed"].includes(event.status.toLowerCase())).length;
+  const riskPercent = Math.round((evidence?.failure_probability ?? 0) * 100);
 
   function changeSection(index: number, patch: Partial<ReportDraftSection>) {
     setSections((current) => current.map((section, sectionIndex) => sectionIndex === index ? { ...section, ...patch } : section));
@@ -147,49 +159,78 @@ export function RoleReportWorkbench({
 
   return (
     <article className={`role-report-workbench profile-${profile.id} ${editing ? "is-editing" : ""}`}>
-      <header className="role-report-cover">
-        <div>
-          <span>{profile.eyebrow}</span>
-          <small>{projectName} · {roleLabel} · {profile.datasetSummary}</small>
-          {editing ? <input className="role-report-headline-input" value={headline} onChange={(event) => { setHeadline(event.target.value); setDirty(true); }} /> : <h1>{headline}</h1>}
-          {editing ? <textarea className="role-report-summary-input" value={summary} onChange={(event) => { setSummary(event.target.value); setDirty(true); }} /> : <p>{summary}</p>}
+      <div className="role-report-document">
+        <header className="role-report-cover">
+          <div>
+            <span>{profile.eyebrow}</span>
+            <small>{projectName} · {roleLabel} · {profile.datasetSummary}</small>
+            {editing ? <input className="role-report-headline-input" value={headline} onChange={(event) => { setHeadline(event.target.value); setDirty(true); }} /> : <h1>{headline}</h1>}
+            {editing ? <textarea className="role-report-summary-input" value={summary} onChange={(event) => { setSummary(event.target.value); setDirty(true); }} /> : <p>{summary}</p>}
+          </div>
+          <div className="role-report-actions">
+            <StatusPill intent={savedDraft ? "success" : "primary"}>{savedDraft ? `Shared revision ${savedDraft.revision}` : "Generated report"}</StatusPill>
+            {canEdit ? editing
+              ? <button type="button" className="primary" disabled={!dirty || saving} onClick={() => void saveDraft()}><Save size={13} /> {saving ? "Saving" : "Save report"}</button>
+              : <button type="button" disabled={loading} onClick={() => setEditing(true)}><FilePenLine size={13} /> {loading ? "Resolving report" : "Edit report"}</button>
+              : null}
+            <button type="button" onClick={() => window.print()}><Printer size={13} /> Print / PDF</button>
+            <button type="button" onClick={onOpenDashboard}><LayoutDashboard size={13} /> Open detailed dashboard</button>
+          </div>
+        </header>
+
+        <section className="role-report-meta" aria-label="Report metadata">
+          <div><span>DOCUMENT ID</span><strong>{report.report_id}</strong></div>
+          <div><span>ISSUED</span><strong>{formatReportDate(report.generated_at)}</strong></div>
+          <div><span>STATUS</span><strong>{report.status}</strong></div>
+          <div><span>CONFIDENCE</span><strong>{report.confidence}</strong></div>
+        </section>
+
+        <section className="role-report-scopebar">
+          <label>Report subject<select aria-label="Report subject" value={selectedEventId} onChange={(event) => onSelectEvent(event.target.value)}>{events.map((event) => <option key={event.event_id} value={event.event_id}>{event.equipment.display_name} · {event.predicted_failure_type}</option>)}</select></label>
+          <div><span>Primary object<strong>{evidence.equipment.display_name}</strong></span><span>Risk<strong>{riskPercent}%</strong></span><span>Open events<strong>{pendingEvents}</strong></span><span>High risk<strong>{criticalEvents}</strong></span></div>
+        </section>
+
+        <section className="role-report-decision-brief">
+          <div>
+            <span>EXECUTIVE DECISION REQUIRED</span>
+            <strong>{report.recommended_decision}</strong>
+            <p>현재 위험도 {riskPercent}%이며 예상 비가동 영향은 {evidence.equipment.estimated_downtime_minutes}분입니다. 담당자는 {evidence.equipment.assigned_engineer}이며, 상세 근거는 아래 분석 항목과 연결되어 있습니다.</p>
+          </div>
+          <dl>
+            <div><dt>Risk level</dt><dd>{riskPercent >= 70 ? "High" : riskPercent >= 40 ? "Medium" : "Low"}</dd></div>
+            <div><dt>Operational impact</dt><dd>{evidence.equipment.estimated_downtime_minutes} min</dd></div>
+            <div><dt>Accountable owner</dt><dd>{evidence.equipment.assigned_engineer}</dd></div>
+          </dl>
+        </section>
+
+        {message ? <div className={`role-report-message ${message.includes("실패") || message.includes("could not") ? "is-error" : ""}`}><Check size={12} />{message}</div> : null}
+        {loading ? <div className="role-report-refresh"><RefreshCw className="spin" size={14} /> Loading shared report revision</div> : null}
+
+        <div className="role-report-grid">
+          <main className="role-report-narrative">
+            {sections.map((section, index) => (
+              <section key={section.section_id}>
+                <span>{String(index + 1).padStart(2, "0")} · {profile.reportSections[index] ?? "Evidence-based finding"}</span>
+                {editing ? <input value={section.title} onChange={(event) => changeSection(index, { title: event.target.value })} /> : <h2>{section.title}</h2>}
+                {editing ? <textarea value={section.body} onChange={(event) => changeSection(index, { body: event.target.value })} /> : <p>{section.body}</p>}
+                <div className="role-report-citations">{section.evidence_field_ids.map((field) => <code key={field}>{field}</code>)}</div>
+              </section>
+            ))}
+            {report.actions.length ? <section className="role-report-actions-list"><span>RECOMMENDED ACTIONS</span><h2>승인 후 실행할 조치</h2><ol>{report.actions.map((action) => <li key={action.action_id}><Check size={12} /><div><strong>{action.label}</strong><small>{action.requires_human_approval ? "Human approval required" : "Ready for governed execution"}</small></div></li>)}</ol></section> : null}
+            {report.limitations.length ? <section className="role-report-limitations"><h2><AlertTriangle size={15} /> Limitations</h2>{report.limitations.map((item) => <p key={item}>{item}</p>)}</section> : null}
+          </main>
+
+          <aside className="role-report-evidence">
+            <section className="role-report-visual-card wide"><header><TrendingUp size={14} /><div><strong>{profile.primaryMetric} trend</strong><small>Linked to the narrative and selected object</small></div></header><TrendVisual values={trend} /></section>
+            <section className="role-report-visual-card"><header><BarChart3 size={14} /><div><strong>Contributing evidence</strong><small>{evidence.top_factors.length} grounded factors</small></div></header><div className="role-report-factor-bars">{evidence.top_factors.slice(0, 5).map((factor) => <div key={factor.evidence_field_id}><span>{factor.display_name}</span><i><b style={{ width: `${Math.max(8, Math.min(100, factor.contribution * 100))}%` }} /></i><strong>{Math.round(factor.contribution * 100)}%</strong></div>)}</div></section>
+            <section className="role-report-visual-card"><header><LayoutDashboard size={14} /><div><strong>Decision context</strong><small>Operational impact linked to the report</small></div></header><dl><div><dt>Decision</dt><dd>{report.recommended_decision}</dd></div><div><dt>Downtime</dt><dd>{evidence.equipment.estimated_downtime_minutes} min</dd></div><div><dt>Owner</dt><dd>{evidence.equipment.assigned_engineer}</dd></div><div><dt>Confidence</dt><dd>{report.confidence}</dd></div></dl></section>
+          </aside>
         </div>
-        <div className="role-report-actions">
-          <StatusPill intent={savedDraft ? "success" : "primary"}>{savedDraft ? `Shared revision ${savedDraft.revision}` : "Generated report"}</StatusPill>
-          {canEdit ? editing
-            ? <button type="button" className="primary" disabled={!dirty || saving} onClick={() => void saveDraft()}><Save size={13} /> {saving ? "Saving" : "Save report"}</button>
-            : <button type="button" disabled={loading} onClick={() => setEditing(true)}><FilePenLine size={13} /> {loading ? "Resolving report" : "Edit report"}</button>
-            : null}
-          <button type="button" onClick={onOpenDashboard}><LayoutDashboard size={13} /> Open detailed dashboard</button>
-        </div>
-      </header>
 
-      <section className="role-report-scopebar">
-        <label>Report subject<select aria-label="Report subject" value={selectedEventId} onChange={(event) => onSelectEvent(event.target.value)}>{events.map((event) => <option key={event.event_id} value={event.event_id}>{event.equipment.display_name} · {event.predicted_failure_type}</option>)}</select></label>
-        <div><span>Primary object<strong>{evidence.equipment.display_name}</strong></span><span>Risk<strong>{Math.round((evidence.failure_probability ?? 0) * 100)}%</strong></span><span>Open events<strong>{pendingEvents}</strong></span><span>High risk<strong>{criticalEvents}</strong></span></div>
-      </section>
-
-      {message ? <div className={`role-report-message ${message.includes("실패") || message.includes("could not") ? "is-error" : ""}`}><Check size={12} />{message}</div> : null}
-      {loading ? <div className="role-report-refresh"><RefreshCw className="spin" size={14} /> Loading shared report revision</div> : null}
-
-      <div className="role-report-grid">
-        <main className="role-report-narrative">
-          {sections.map((section, index) => (
-            <section key={section.section_id}>
-              <span>{String(index + 1).padStart(2, "0")} · {profile.reportSections[index] ?? "Evidence-based finding"}</span>
-              {editing ? <input value={section.title} onChange={(event) => changeSection(index, { title: event.target.value })} /> : <h2>{section.title}</h2>}
-              {editing ? <textarea value={section.body} onChange={(event) => changeSection(index, { body: event.target.value })} /> : <p>{section.body}</p>}
-              <div className="role-report-citations">{section.evidence_field_ids.map((field) => <code key={field}>{field}</code>)}</div>
-            </section>
-          ))}
-          {report.limitations.length ? <section className="role-report-limitations"><h2><AlertTriangle size={15} /> Limitations</h2>{report.limitations.map((item) => <p key={item}>{item}</p>)}</section> : null}
-        </main>
-
-        <aside className="role-report-evidence">
-          <section className="role-report-visual-card wide"><header><TrendingUp size={14} /><div><strong>{profile.primaryMetric} trend</strong><small>Linked to the narrative and selected object</small></div></header><TrendVisual values={trend} /></section>
-          <section className="role-report-visual-card"><header><BarChart3 size={14} /><div><strong>Contributing evidence</strong><small>{evidence.top_factors.length} grounded factors</small></div></header><div className="role-report-factor-bars">{evidence.top_factors.slice(0, 5).map((factor) => <div key={factor.evidence_field_id}><span>{factor.display_name}</span><i><b style={{ width: `${Math.max(8, Math.min(100, factor.contribution * 100))}%` }} /></i><strong>{Math.round(factor.contribution * 100)}%</strong></div>)}</div></section>
-          <section className="role-report-visual-card"><header><LayoutDashboard size={14} /><div><strong>Decision context</strong><small>Operational impact linked to the report</small></div></header><dl><div><dt>Decision</dt><dd>{report.recommended_decision}</dd></div><div><dt>Downtime</dt><dd>{evidence.equipment.estimated_downtime_minutes} min</dd></div><div><dt>Owner</dt><dd>{evidence.equipment.assigned_engineer}</dd></div><div><dt>Confidence</dt><dd>{report.confidence}</dd></div></dl></section>
-        </aside>
+        <footer className="role-report-footer">
+          <span>Ontology Dashboard · Governed operational briefing</span>
+          <span>{report.report_id} · {savedDraft ? `revision ${savedDraft.revision}` : "generated baseline"}</span>
+        </footer>
       </div>
     </article>
   );

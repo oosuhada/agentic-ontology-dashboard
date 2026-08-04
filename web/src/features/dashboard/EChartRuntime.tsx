@@ -35,7 +35,14 @@ export function EChartRuntime({
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+    host.dataset.chartState = "rendering";
     const chart = initChart(host);
+    const handleFinished = () => {
+      host.dataset.chartState = "ready";
+      host.setAttribute("aria-busy", "false");
+    };
+    chart.on("finished", handleFinished);
+    host.setAttribute("aria-busy", "true");
     chart.setOption(option, { notMerge: true, lazyUpdate: false });
     const handleClick = (params: unknown) => clickRef.current?.(params as Parameters<NonNullable<typeof clickRef.current>>[0]);
     const handleBrush = (params: unknown) => brushRef.current?.(params);
@@ -44,6 +51,7 @@ export function EChartRuntime({
     const stopObserving = observeElementSize(host, () => chart.resize());
     return () => {
       stopObserving();
+      chart.off("finished", handleFinished);
       chart.off("click", handleClick);
       chart.off("brushSelected", handleBrush);
       chart.dispose();
@@ -53,8 +61,12 @@ export function EChartRuntime({
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
-    getChart(host)?.setOption(option, { notMerge: true, lazyUpdate: true });
+    const chart = getChart(host);
+    if (!chart) return;
+    host.dataset.chartState = "rendering";
+    host.setAttribute("aria-busy", "true");
+    chart.setOption(option, { notMerge: true, lazyUpdate: false });
   }, [getChart, option]);
 
-  return <div ref={hostRef} className={`echart-canvas ${className}`} role="img" aria-label={ariaLabel} />;
+  return <div ref={hostRef} className={`echart-canvas ${className}`} role="img" aria-label={ariaLabel} aria-busy="true" data-chart-state="rendering" />;
 }
