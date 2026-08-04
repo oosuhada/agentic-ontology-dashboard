@@ -46,10 +46,11 @@ export function AnalysisPathCanvas({
   }), [result.grouped]);
 
   return (
-    <main className="analysis-flow-canvas">
+    <section className="analysis-flow-canvas" aria-label="Analysis path canvas">
       <div className="analysis-flow-graph">
         <div className="analysis-path-meta"><span>Workspace · {workspaceId}</span><span>Timezone · Asia/Seoul</span><span>Source · risk_event objects</span><span>{nodes.length} nodes · {edges.length} edges</span></div>
         <ReactFlow
+        id="analysis-path-flow"
         nodes={nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}
@@ -71,6 +72,6 @@ export function AnalysisPathCanvas({
         <header><div><span className="section-label">RESULT PREVIEW</span><strong>Risk by production line</strong></div><div><span>{result.rows.length} rows</span><span>{result.grouped.length} groups</span><span>{(result.averageRisk * 100).toFixed(1)}% avg risk</span></div></header>
         <EChartCanvas option={option} ariaLabel="Analysis result chart" className="analysis-result-echart" />
       </section>
-    </main>
+    </section>
   );
 }

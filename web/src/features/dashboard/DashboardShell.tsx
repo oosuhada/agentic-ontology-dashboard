@@ -21,6 +21,7 @@ import {
   Plus,
   Redo2,
   RotateCcw,
+  Undo2,
   Save,
   Search,
   Settings,
@@ -70,6 +71,9 @@ interface DashboardShellProps {
   inspector: ReactNode;
   catalog: ReactNode;
   analysisWorkbench: ReactNode;
+  draftRecovery?: ReactNode;
+  canUndo: boolean;
+  canRedo: boolean;
   initialWorkspaceView?: WorkspaceView;
   onWorkspaceViewChange?: (view: WorkspaceView) => void;
   onProjectChange: (projectId: string) => void;
@@ -77,6 +81,8 @@ interface DashboardShellProps {
   onActiveTabChange: (tabId: string) => void;
   onReorderTabs: (sourceId: string, targetId: string) => void;
   onModeChange: (mode: DashboardMode) => void;
+  onUndo: () => void;
+  onRedo: () => void;
   onOpenCatalog: () => void;
   onAddTab: () => void;
   onSave: () => void;
@@ -163,6 +169,9 @@ export function DashboardShell({
   inspector,
   catalog,
   analysisWorkbench,
+  draftRecovery,
+  canUndo,
+  canRedo,
   initialWorkspaceView = "dashboard",
   onWorkspaceViewChange,
   onProjectChange,
@@ -170,6 +179,8 @@ export function DashboardShell({
   onActiveTabChange,
   onReorderTabs,
   onModeChange,
+  onUndo,
+  onRedo,
   onOpenCatalog,
   onAddTab,
   onSave,
@@ -212,6 +223,12 @@ export function DashboardShell({
         event.preventDefault();
         if (dirty && !saving) onSave();
       }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        if (event.shiftKey) {
+          if (canRedo) onRedo();
+        } else if (canUndo) onUndo();
+      }
       if (event.key === "Escape") {
         setCommandOpen(false);
         setMobileNavOpen(false);
@@ -219,7 +236,7 @@ export function DashboardShell({
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [dirty, onSave, saving]);
+  }, [canRedo, canUndo, dirty, onRedo, onSave, onUndo, saving]);
 
   function runCommand(action: () => void) {
     action();
@@ -306,7 +323,7 @@ export function DashboardShell({
 
       <div className="od-shell-main">
         <header className="od-global-topbar">
-          <button type="button" className="od-mobile-menu" onClick={() => setMobileNavOpen((current) => !current)}><Menu size={17} /></button>
+          <button type="button" className="od-mobile-menu" aria-label="Product navigation 열기" onClick={() => setMobileNavOpen((current) => !current)}><Menu size={17} /></button>
           <div className="od-breadcrumbs">
             <span>{selectedProject?.display_name ?? "Project"}</span><ChevronRight size={12} />
             <span>{selectedWorkspace?.display_name ?? "Workspace"}</span><ChevronRight size={12} />
@@ -336,6 +353,8 @@ export function DashboardShell({
             </div>
           </div>
         </section>
+
+        {draftRecovery}
 
         <section className="od-status-strip">
           <div className="role-focus-list">{roleFocus.map((item) => <span key={item}>{item}</span>)}</div>
@@ -372,7 +391,11 @@ export function DashboardShell({
                 <button type="button" className={mode === "view" ? "active" : ""} onClick={() => onModeChange("view")}><Eye size={12} /> View</button>
                 <button type="button" className={mode === "edit" ? "active" : ""} onClick={() => onModeChange("edit")}><Blocks size={12} /> Edit</button>
               </div>
-              {mode === "edit" ? <button type="button" className="secondary" aria-label="Board Catalog" onClick={onOpenCatalog}><Plus size={12} /> Add board</button> : null}
+              {mode === "edit" ? <>
+                <button type="button" className="icon-button" aria-label="Undo dashboard edit" title="실행 취소 (⌘Z)" disabled={!canUndo} onClick={onUndo}><Undo2 size={13} /></button>
+                <button type="button" className="icon-button" aria-label="Redo dashboard edit" title="다시 실행 (⌘⇧Z)" disabled={!canRedo} onClick={onRedo}><Redo2 size={13} /></button>
+                <button type="button" className="secondary" aria-label="Board Catalog" onClick={onOpenCatalog}><Plus size={12} /> Add board</button>
+              </> : null}
               <button type="button" className="secondary" aria-label="View 저장" onClick={onSaveView}><Sparkles size={12} /> Save view</button>
               <button type="button" className="secondary" aria-label="공유" onClick={onShare}><Share2 size={12} /> Share</button>
               <div className="dashboard-export-control"><select aria-label="Export 형식" value={exportFormat} onChange={(event) => setExportFormat(event.target.value as "json" | "csv" | "pdf")}><option value="pdf">PDF</option><option value="csv">CSV</option><option value="json">JSON</option></select><button type="button" className="secondary" disabled={exporting} onClick={() => onExport(exportFormat)}><Download size={12} />{exporting ? "Exporting" : "Export"}</button></div>
@@ -417,6 +440,8 @@ export function DashboardShell({
             <div className="command-group"><span>Dashboard actions</span>
               <button type="button" onClick={() => runCommand(() => { openWorkspace("dashboard"); onModeChange("edit"); })}><b><Blocks size={14} /></b><div><strong>Edit canvas</strong><small>Board 이동, 복제, 크기 조정</small></div></button>
               <button type="button" onClick={() => runCommand(() => { openWorkspace("dashboard"); onOpenCatalog(); })}><b><Plus size={14} /></b><div><strong>Add board</strong><small>Board Catalog 열기</small></div></button>
+              <button type="button" disabled={!canUndo} onClick={() => runCommand(onUndo)}><b><Undo2 size={14} /></b><div><strong>Undo edit</strong><small>이전 Dashboard draft 복원</small></div><kbd>⌘Z</kbd></button>
+              <button type="button" disabled={!canRedo} onClick={() => runCommand(onRedo)}><b><Redo2 size={14} /></b><div><strong>Redo edit</strong><small>취소한 Dashboard draft 재적용</small></div><kbd>⌘⇧Z</kbd></button>
               <button type="button" disabled={!dirty || saving} onClick={() => runCommand(onSave)}><b><Save size={14} /></b><div><strong>Save preferences</strong><small>현재 개인 revision 저장</small></div><kbd>⌘S</kbd></button>
               <button type="button" onClick={() => runCommand(onShare)}><b><Share2 size={14} /></b><div><strong>Create shared view</strong><small>Scope를 유지한 링크 생성</small></div></button>
               <button type="button" onClick={() => runCommand(() => setDensity((current) => current === "compact" ? "comfortable" : "compact"))}><b><Maximize2 size={14} /></b><div><strong>Toggle density</strong><small>{density === "compact" ? "Comfortable spacing" : "Compact spacing"}</small></div></button>

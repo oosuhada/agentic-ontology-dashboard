@@ -1,13 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ontology-dashboard.local/schemas/input-event.schema.json",
-  "title": "Ontology Dashboard Manufacturing Gold Input Event",
+  "title": "Ontology Dashboard Project Showcase Input Event",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "scenario_id", "event_id", "equipment", "observation", "history", "runtime", "expected"],
   "properties": {
     "schema_version": {"const": "1.0"},
-    "scenario_id": {"type": "string", "pattern": "^GS-[0-9]{3}$"},
+    "project_id": {"type": "string", "minLength": 1},
+    "workspace_id": {"type": "string", "minLength": 1},
+    "dataset_version": {"type": "string", "minLength": 1},
+    "scenario_id": {"type": "string", "pattern": "^(GS|AZ|MPT)-[0-9]{3}$"},
     "event_id": {"type": "string", "minLength": 1},
     "equipment": {
       "type": "object",
@@ -60,7 +63,7 @@
       "required": ["timestamp", "product_type", "air_temperature_k", "process_temperature_k", "rotational_speed_rpm", "torque_nm", "tool_wear_min"],
       "properties": {
         "timestamp": {"type": "string", "format": "date-time"},
-        "product_type": {"enum": ["L", "M", "H"]},
+        "product_type": {"type": "string", "minLength": 1, "maxLength": 80},
         "air_temperature_k": {"$ref": "#/$defs/nullableNumber"},
         "process_temperature_k": {"$ref": "#/$defs/nullableNumber"},
         "rotational_speed_rpm": {"$ref": "#/$defs/nullableNumber"},

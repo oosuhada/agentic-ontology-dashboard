@@ -1166,6 +1166,13 @@ th { color: #667085; background: #f9fafb; }
 [data-theme="dark"] .dataset-catalog-header, [data-theme="dark"] .dataset-catalog-grid, [data-theme="dark"] .dataset-detail-section, [data-theme="dark"] .dataset-catalog-list > button { border-color: #374151; color: #e5e7eb; background: #1f2937; }
 [data-theme="dark"] .dataset-catalog-list-pane, [data-theme="dark"] .dataset-catalog-detail-pane { border-color: #374151; background: #111827; }
 
+.project-tombstone-page { display: grid; min-height: 100vh; place-items: center; padding: 24px; color: var(--od-text); background: var(--od-canvas); }
+.project-tombstone-card { display: flex; width: min(620px,100%); flex-direction: column; gap: 12px; border: 1px solid var(--od-border); border-radius: var(--od-radius-panel); padding: 28px !important; background: var(--od-surface); box-shadow: var(--od-shadow-lg); }
+.project-tombstone-card h1 { margin: 0; font-size: 24px; letter-spacing: -.035em; }
+.project-tombstone-card > p { margin: 0; color: var(--od-text-secondary); line-height: 1.65; }
+.project-tombstone-card code { border-radius: 4px; padding: 2px 5px; color: var(--od-accent-strong); background: var(--od-accent-soft); }
+.project-tombstone-icon { display: grid; width: 52px; height: 52px; place-items: center; border-radius: 12px; color: var(--od-warning); background: color-mix(in srgb,var(--od-warning) 12%,var(--od-surface)); }
+
 /* Stage 54 shared Workbench token migration. */
 .ontology-workbench-loading,
 .governance-workbench-loading,

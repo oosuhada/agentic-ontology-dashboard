@@ -105,7 +105,7 @@ export function AgentQueryBoard({
         <span className="eyebrow">RUN INSPECTOR</span>
         <h2>Open a persisted run</h2>
         <p>감사나 handoff에 전달받은 run ID를 같은 Project scope 안에서 다시 조회합니다.</p>
-        <InputGroup value={runId} placeholder="agent-..." onChange={(event) => setRunId(event.currentTarget.value)} />
+        <InputGroup aria-label="Agent run ID" value={runId} placeholder="agent-..." onChange={(event) => setRunId(event.currentTarget.value)} />
         <Button fill icon="history" loading={loadingRun} disabled={!runId.trim()} onClick={() => void onLoadRun(runId.trim())}>
           Load run
         </Button>

@@ -39,12 +39,13 @@
 | 53 | DONE | canonical WorkOrder object/link/action alignment with deprecated Inspection compatibility alias |
 | 54 | DONE | shared visual tokens, Project Home/role context, 300 KiB initial budget and all deferred chunks below 500 KiB |
 | 55 | DONE/PARTIAL | live service integration, backup/restore tests, release gate and E2E complete; Docker compose drill unavailable on current host |
+| 56 | DONE/PARTIAL | Dataset default navigation, Project tombstone, Dashboard undo/recovery, Azure/MetroPT showcase Events, repository isolation matrix, canonical composition root and Workbench accessibility; external production environment remains blocked |
 
 ## NEXT 1 — Project Layer
 
 ### Status
 
-`PARTIAL` — persistence/API/selector foundation과 Manufacturing Demo migration 완료. Operational repository 전체의 project predicate와 다중 Project E2E는 남아 있다.
+`DONE/PARTIAL` — Project membership/roles, active session, project-aware operational records, multi-Project switch, Azure/MetroPT showcase and isolation E2E are complete. Managed-store failover/load evidence remains external.
 
 ### Goal
 
@@ -66,19 +67,16 @@
 
 ### Remaining Deliverables
 
-- Project membership와 project-level role assignment의 독립 관리 UI/API
-- active project session persistence와 명시적 role context
-- Dashboard Template, preference, saved view, share key에 `project_id` 추가
-- SQLite/PostgreSQL Ontology object/link/action/workflow/export repository write와 query에 project predicate 적용
-- Project selector의 두 번째 Project 실제 switch 검증
-- 두 번째 Project를 이용한 end-to-end resource isolation 검증
+- complete public Azure and MetroPT dataset ingestion with provenance artifacts
+- managed PostgreSQL/Redis/Neo4j project-isolation and failover evidence
+- remaining physical legacy module relocation before deleting the namespace path extension
 
 ### Acceptance Criteria
 
 - 로그인 사용자는 접근 가능한 Project 목록만 본다. **완료**
 - tenant A가 tenant B Project를 조회할 수 없다. **완료**
-- Project를 변경하면 workspace가 함께 변경된다. **foundation 완료**
-- board catalog, object query, saved view도 명시적 project scope를 사용한다. **미완료**
+- Project를 변경하면 workspace가 함께 변경된다. **완료**
+- board catalog, object query, saved view도 명시적 project scope를 사용한다. **완료**
 - 기존 Gold E2E는 migrated demo Project에서 유지된다. **완료**
 
 ## NEXT 2 — Dataset Adapter and Prediction Contract
@@ -106,6 +104,10 @@ Prediction과 Dashboard를 분리하고 dataset-specific 입력을 공통 contra
 
 ## NEXT 3 — Azure Fleet Maintenance Project
 
+### Status
+
+`ACTIVE SHOWCASE / FULL DATA PENDING` — project-scoped AZ-001/AZ-002 Events, Evidence lineage, server Dashboard and E2E are complete. The approved complete five-file dataset is not present in this checkout.
+
 ### Goal
 
 Azure Predictive Maintenance dataset을 대표 showcase Project로 구현한다.
@@ -130,6 +132,10 @@ Azure Predictive Maintenance dataset을 대표 showcase Project로 구현한다.
 
 추천: MetroPT-3 Compressor Monitoring.
 
+### Status
+
+`ACTIVE SHOWCASE / FULL DATA PENDING` — MPT-001 uses the common Project/Event/Evidence/Dashboard runtime without Azure-specific logic. Complete high-density ingestion and anomaly interval replay remain pending source approval.
+
 ### Goal
 
 Azure와 구조가 다른 단일 설비·고밀도 시계열 Project로 플랫폼 추상화를 검증한다.
@@ -148,6 +154,10 @@ Azure와 구조가 다른 단일 설비·고밀도 시계열 Project로 플랫�
 - Core Ontology와 Dashboard runtime이 재사용된다.
 
 ## NEXT 5 — PostgreSQL Runtime Completion
+
+### Status
+
+`IMPLEMENTED / MANAGED OPERATIONS PENDING` — the active repository graph and ephemeral runtime check cover Identity, Project, Dashboard, Audit, Action, Workflow, Export, Adapter and Prediction Result. Managed backup/failover and long-duration load evidence remain external.
 
 ### Goal
 
@@ -193,6 +203,10 @@ legacy handler container 역할을 하는 `main.py`를 제거하고 feature modu
 - `api/factory_signal_board` 물리 디렉터리가 제거된다.
 
 ## NEXT 7 — Frontend Resource Routing and UX
+
+### Status
+
+`DONE/PARTIAL` — project/resource routes, role selector, deep-link restore, tombstone, editor recovery and primary Workbench accessibility are implemented. Cross-platform CI pixel diff remains.
 
 ### Deliverables
 

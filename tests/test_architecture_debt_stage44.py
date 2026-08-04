@@ -21,4 +21,5 @@ def test_remaining_legacy_debt_is_explicitly_owned_by_stage55() -> None:
     items = collect_architecture_debt(ROOT)
     accepted = {item.id: item.stage for item in items if item.state == "accepted"}
     assert accepted.get("legacy_namespace_path_extension") == 55
-    assert accepted.get("legacy_composition_root") == 55
+    assert "legacy_composition_root" not in accepted
+    assert next(item for item in items if item.id == "legacy_composition_root").state == "resolved"

@@ -43,11 +43,23 @@ class ManufacturingPredictiveMaintenanceService:
         repository: AuditRepository | None = None,
     ) -> None:
         self.root = Path(root)
-        self.fixtures = {
+        fixture_root = self.root / "data" / "fixtures"
+        fixture_paths = sorted(
+            path
+            for pattern in ("GS-*.json", "AZ-*.json", "MPT-*.json")
+            for path in fixture_root.glob(pattern)
+        )
+        self.project_fixtures = {
             payload["event_id"]: payload
-            for payload in (
-                load_fixture(path) for path in sorted((self.root / "data" / "fixtures").glob("GS-*.json"))
-            )
+            for payload in (load_fixture(path) for path in fixture_paths)
+        }
+        # Historical Gold regression and manufacturing Ontology projection must
+        # remain exactly GS-001..GS-008. Showcase Project fixtures are available
+        # through project_fixtures and project-scoped APIs, never this alias.
+        self.fixtures = {
+            event_id: fixture
+            for event_id, fixture in self.project_fixtures.items()
+            if self._fixture_project_id(fixture) == "manufacturing-demo-project"
         }
         database = database_path or database_location(self.root)
         if repository is None:
@@ -61,7 +73,7 @@ class ManufacturingPredictiveMaintenanceService:
 
     def _fixture(self, event_id: str) -> dict[str, Any]:
         try:
-            return self.fixtures[event_id]
+            return self.project_fixtures[event_id]
         except KeyError as exc:
             raise EventNotFound(event_id) from exc
 
@@ -70,18 +82,31 @@ class ManufacturingPredictiveMaintenanceService:
             return ResilientContextProvider()
         return FixtureContextProvider()
 
+    @staticmethod
+    def _fixture_project_id(fixture: dict[str, Any]) -> str:
+        return str(fixture.get("project_id") or "manufacturing-demo-project")
+
+    def project_id_for_event(self, event_id: str) -> str:
+        return self._fixture_project_id(self._fixture(event_id))
+
     def evidence_snapshot(self, event_id: str) -> dict[str, Any]:
         fixture = self._fixture(event_id)
-        return build_evidence_package(fixture, context_provider=self._context_provider(fixture))
+        package = build_evidence_package(fixture, context_provider=self._context_provider(fixture))
+        package["lineage"]["project_id"] = self._fixture_project_id(fixture)
+        if fixture.get("dataset_version"):
+            package["lineage"]["dataset_version"] = str(fixture["dataset_version"])
+        return package
 
     def evidence(self, event_id: str) -> dict[str, Any]:
         package = self.evidence_snapshot(event_id)
         self._audit(event_id, "evidence.generated", package["model"]["model_version"], {"evidence_id": package["evidence_id"]})
         return package
 
-    def list_events(self) -> list[dict[str, Any]]:
+    def list_events(self, project_id: str = "manufacturing-demo-project") -> list[dict[str, Any]]:
         rows = []
-        for event_id, fixture in self.fixtures.items():
+        for event_id, fixture in self.project_fixtures.items():
+            if self._fixture_project_id(fixture) != project_id:
+                continue
             evidence = build_evidence_package(fixture, context_provider=self._context_provider(fixture))
             rows.append(
                 {
@@ -97,17 +122,19 @@ class ManufacturingPredictiveMaintenanceService:
             )
         return sorted(rows, key=lambda row: (RISK_PRIORITY[row["status"]], -(row["failure_probability"] or 0.0)))
 
-    def list_equipment(self) -> list[dict[str, Any]]:
+    def list_equipment(self, project_id: str = "manufacturing-demo-project") -> list[dict[str, Any]]:
         unique: dict[str, dict[str, Any]] = {}
-        for fixture in self.fixtures.values():
+        for fixture in self.project_fixtures.values():
+            if self._fixture_project_id(fixture) != project_id:
+                continue
             equipment = fixture["equipment"]
             unique[equipment["equipment_id"]] = equipment
         return sorted(unique.values(), key=lambda item: item["equipment_id"])
 
-    def equipment(self, equipment_id: str) -> dict[str, Any]:
-        for item in self.list_equipment():
+    def equipment(self, equipment_id: str, project_id: str = "manufacturing-demo-project") -> dict[str, Any]:
+        for item in self.list_equipment(project_id):
             if item["equipment_id"] == equipment_id:
-                events = [event for event in self.list_events() if event["equipment"]["equipment_id"] == equipment_id]
+                events = [event for event in self.list_events(project_id) if event["equipment"]["equipment_id"] == equipment_id]
                 return {**item, "events": events}
         raise EventNotFound(equipment_id)
 
@@ -115,6 +142,7 @@ class ManufacturingPredictiveMaintenanceService:
         fixture = self._fixture(event_id)
         return {
             "event_id": event_id,
+            "project_id": self._fixture_project_id(fixture),
             "scenario_id": fixture["scenario_id"],
             "equipment": fixture["equipment"],
             "observation": fixture["observation"],

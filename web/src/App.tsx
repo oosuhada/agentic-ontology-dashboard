@@ -5,11 +5,12 @@ import {
   matchDatasetCatalogPath,
   matchGovernancePath,
   matchOntologyPath,
+  matchProjectDashboardPath,
   matchProjectHomePath,
   navigate,
   usePathname,
 } from "./routing";
-import { getProjectWorkspaces } from "./api";
+import { ApiError, getProject, getProjectWorkspaces } from "./api";
 import { AuthProvider, useAuth } from "./features/auth/AuthContext";
 import { LoginPage } from "./features/auth/LoginPage";
 import { PendingPage } from "./features/auth/PendingPage";
@@ -24,6 +25,9 @@ const ManufacturingApp = lazy(() =>
 const ProjectHomePage = lazy(() =>
   import("./features/projects/ProjectHomePage").then((module) => ({ default: module.ProjectHomePage })),
 );
+const ProjectTombstonePage = lazy(() =>
+  import("./features/projects/ProjectTombstonePage").then((module) => ({ default: module.ProjectTombstonePage })),
+);
 const AgentWorkbenchPage = lazy(() =>
   import("./features/agent/AgentWorkbenchPage").then((module) => ({ default: module.AgentWorkbenchPage })),
 );
@@ -37,45 +41,75 @@ const GovernanceWorkbenchPage = lazy(() =>
   import("./features/governance/GovernanceWorkbenchPage").then((module) => ({ default: module.GovernanceWorkbenchPage })),
 );
 
+const LAST_VALID_PROJECT_KEY = "ontology-dashboard:last-valid-project";
+
 function Redirect({ to }: { to: string }) {
   useEffect(() => navigate(to, { replace: true }), [to]);
   return <div className="route-loading">화면을 이동하고 있습니다.</div>;
 }
 
-function ScopedWorkbenchRoute({
+function ProjectRouteBoundary({
   projectId,
   workspaceId,
   requiredPermission,
   children,
 }: {
   projectId: string;
-  workspaceId: string;
-  requiredPermission: string;
+  workspaceId?: string;
+  requiredPermission?: string;
   children: ReactNode;
 }) {
   const { user } = useAuth();
-  const [allowed, setAllowed] = useState<boolean | null>(null);
-  const fallback = `/app/projects/${encodeURIComponent(user?.active_project_id ?? user?.project_scopes[0] ?? "")}`;
+  const [state, setState] = useState<"allowed" | "denied" | "tombstone" | null>(null);
+  const lastValidProjectId = window.sessionStorage.getItem(LAST_VALID_PROJECT_KEY);
+  const fallbackProjectId = lastValidProjectId && user?.project_scopes.includes(lastValidProjectId)
+    ? lastValidProjectId
+    : user?.active_project_id !== projectId
+      ? user?.active_project_id
+      : user?.project_scopes.find((item) => item !== projectId);
+  const fallback = fallbackProjectId
+    ? `/app/projects/${encodeURIComponent(fallbackProjectId)}`
+    : "/app";
 
   useEffect(() => {
     let cancelled = false;
-    if (!user || !user.project_scopes.includes(projectId) || !user.workspace_scopes.includes(workspaceId) || !user.permissions.includes(requiredPermission)) {
-      setAllowed(false);
+    const lacksScope = !user || (!user.is_admin && !user.project_scopes.includes(projectId));
+    const lacksPermission = Boolean(requiredPermission && !user?.permissions.includes(requiredPermission));
+    const lacksWorkspaceScope = Boolean(
+      workspaceId && !user?.is_admin && !user?.workspace_scopes.includes(workspaceId),
+    );
+    if (lacksScope || lacksPermission || lacksWorkspaceScope) {
+      setState("denied");
       return () => { cancelled = true; };
     }
-    setAllowed(null);
-    getProjectWorkspaces(projectId)
-      .then((items) => {
-        if (!cancelled) setAllowed(items.some((item) => item.id === workspaceId));
+
+    setState(null);
+    Promise.all([
+      getProject(projectId),
+      workspaceId ? getProjectWorkspaces(projectId) : Promise.resolve([]),
+    ])
+      .then(([, workspaces]) => {
+        if (cancelled) return;
+        if (workspaceId && !workspaces.some((item) => item.id === workspaceId)) {
+          setState("denied");
+          return;
+        }
+        window.sessionStorage.setItem(LAST_VALID_PROJECT_KEY, projectId);
+        setState("allowed");
       })
-      .catch(() => {
-        if (!cancelled) setAllowed(false);
+      .catch((reason: unknown) => {
+        if (cancelled) return;
+        if (reason instanceof ApiError && reason.code === "project_not_found") setState("tombstone");
+        else setState("denied");
       });
     return () => { cancelled = true; };
   }, [projectId, requiredPermission, user, workspaceId]);
 
-  if (allowed === null) return <div className="route-loading"><div className="spinner" /><p>Project scope를 검증하고 있습니다.</p></div>;
-  if (!allowed) return <Redirect to={fallback} />;
+  if (state === null) {
+    return <div className="route-loading"><div className="spinner" /><p>Project scope를 검증하고 있습니다.</p></div>;
+  }
+  if (state === "tombstone") return <ProjectTombstonePage projectId={projectId} />;
+  if (state === "denied") return <Redirect to={fallback} />;
   return <>{children}</>;
 }
 
@@ -117,34 +151,36 @@ function AppRouter() {
   }
 
   if (pathname === "/admin") return user.is_admin ? <AdminApp /> : <ForbiddenPage />;
+
   const analysisId = matchAnalysisPath(pathname);
   if (analysisId) return <ManufacturingApp initialWorkspaceView="analysis" analysisId={analysisId} />;
+
   const projectHomeRoute = matchProjectHomePath(pathname);
   if (projectHomeRoute) {
-    if (!user.project_scopes.includes(projectHomeRoute.projectId)) {
-      return <Redirect to={`/app/projects/${encodeURIComponent(user.active_project_id ?? user.project_scopes[0] ?? "")}`} />;
-    }
     return (
-      <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Project Home을 불러오고 있습니다.</p></div>}>
-        <ProjectHomePage projectId={projectHomeRoute.projectId} />
-      </Suspense>
+      <ProjectRouteBoundary projectId={projectHomeRoute.projectId}>
+        <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Project Home을 불러오고 있습니다.</p></div>}>
+          <ProjectHomePage projectId={projectHomeRoute.projectId} />
+        </Suspense>
+      </ProjectRouteBoundary>
     );
   }
+
   const datasetRoute = matchDatasetCatalogPath(pathname);
   if (datasetRoute) {
-    if (!user.project_scopes.includes(datasetRoute.projectId) || !user.permissions.includes("datasets.read")) {
-      return <Redirect to={`/app/projects/${encodeURIComponent(user.active_project_id ?? user.project_scopes[0] ?? "")}`} />;
-    }
     return (
-      <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Dataset Catalog를 불러오고 있습니다.</p></div>}>
-        <DatasetCatalogPage projectId={datasetRoute.projectId} />
-      </Suspense>
+      <ProjectRouteBoundary projectId={datasetRoute.projectId} requiredPermission="datasets.read">
+        <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Dataset Catalog를 불러오고 있습니다.</p></div>}>
+          <DatasetCatalogPage projectId={datasetRoute.projectId} />
+        </Suspense>
+      </ProjectRouteBoundary>
     );
   }
+
   const agentRoute = matchAgentPath(pathname);
   if (agentRoute) {
     return (
-      <ScopedWorkbenchRoute
+      <ProjectRouteBoundary
         projectId={agentRoute.projectId}
         workspaceId={agentRoute.workspaceId}
         requiredPermission="planner.object_query"
@@ -152,13 +188,14 @@ function AppRouter() {
         <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Agent Evidence Workbench를 불러오고 있습니다.</p></div>}>
           <AgentWorkbenchPage projectId={agentRoute.projectId} workspaceId={agentRoute.workspaceId} />
         </Suspense>
-      </ScopedWorkbenchRoute>
+      </ProjectRouteBoundary>
     );
   }
+
   const governanceRoute = matchGovernancePath(pathname);
   if (governanceRoute) {
     return (
-      <ScopedWorkbenchRoute
+      <ProjectRouteBoundary
         projectId={governanceRoute.projectId}
         workspaceId={governanceRoute.workspaceId}
         requiredPermission="governance.read"
@@ -166,13 +203,14 @@ function AppRouter() {
         <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Governance Workbench를 불러오고 있습니다.</p></div>}>
           <GovernanceWorkbenchPage projectId={governanceRoute.projectId} workspaceId={governanceRoute.workspaceId} />
         </Suspense>
-      </ScopedWorkbenchRoute>
+      </ProjectRouteBoundary>
     );
   }
+
   const ontologyRoute = matchOntologyPath(pathname);
   if (ontologyRoute) {
     return (
-      <ScopedWorkbenchRoute
+      <ProjectRouteBoundary
         projectId={ontologyRoute.projectId}
         workspaceId={ontologyRoute.workspaceId}
         requiredPermission="ontology.objects.read"
@@ -180,9 +218,19 @@ function AppRouter() {
         <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Ontology Workbench를 불러오고 있습니다.</p></div>}>
           <OntologyPreviewPage projectId={ontologyRoute.projectId} workspaceId={ontologyRoute.workspaceId} />
         </Suspense>
-      </ScopedWorkbenchRoute>
+      </ProjectRouteBoundary>
     );
   }
+
+  const projectDashboardRoute = matchProjectDashboardPath(pathname);
+  if (projectDashboardRoute) {
+    return (
+      <ProjectRouteBoundary projectId={projectDashboardRoute.projectId}>
+        <ManufacturingApp />
+      </ProjectRouteBoundary>
+    );
+  }
+
   if (pathname === "/app" || pathname.startsWith("/app/")) return <ManufacturingApp />;
   if (pathname === "/login" || pathname === "/register" || pathname === "/pending" || pathname === "/") {
     return <Redirect to={user.default_path} />;

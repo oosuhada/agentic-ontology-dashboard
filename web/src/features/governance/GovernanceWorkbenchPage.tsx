@@ -228,7 +228,7 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
           <aside className="governance-agent-rail">
             <div className="governance-panel-heading"><div><small>AGENT RUNS</small><strong>{runPage.total} persisted runs</strong></div>{runListLoading ? <Spinner size={16} /> : null}</div>
             <div className="governance-run-filters">
-              <InputGroup leftIcon="search" placeholder="Question filter" value={runSearch} onChange={(event) => setRunSearch(event.currentTarget.value)} />
+              <InputGroup aria-label="Governance agent question filter" leftIcon="search" placeholder="Question filter" value={runSearch} onChange={(event) => setRunSearch(event.currentTarget.value)} />
               <div>
                 <HTMLSelect fill value={runStatus} onChange={(event) => setRunStatus(event.currentTarget.value)}>
                   <option value="">All status</option><option value="succeeded">Succeeded</option><option value="failed">Failed</option><option value="running">Running</option>

@@ -123,7 +123,14 @@ def test_active_project_is_persisted_in_session_and_scopes_project_events(
 
     azure_events = client.get("/api/projects/azure-fleet-maintenance-project/events")
     assert azure_events.status_code == 200
-    assert azure_events.json() == {"items": []}
+    assert [item["event_id"] for item in azure_events.json()["items"]] == [
+        "EVT-AZ-002",
+        "EVT-AZ-001",
+    ]
+    azure_evidence = client.get("/api/events/EVT-AZ-002/evidence")
+    assert azure_evidence.status_code == 200, azure_evidence.text
+    assert azure_evidence.json()["lineage"]["project_id"] == "azure-fleet-maintenance-project"
+    assert azure_evidence.json()["lineage"]["dataset_version"] == "azure-showcase-v1"
 
     inactive_events = client.get("/api/projects/manufacturing-demo-project/events")
     assert inactive_events.status_code == 409
@@ -132,6 +139,28 @@ def test_active_project_is_persisted_in_session_and_scopes_project_events(
     refreshed = client.post("/api/auth/refresh", headers=csrf)
     assert refreshed.status_code == 200, refreshed.text
     assert refreshed.json()["user"]["active_project_id"] == "azure-fleet-maintenance-project"
+
+
+def test_metropt_showcase_event_is_project_scoped_and_evidence_backed(
+    client: TestClient,
+) -> None:
+    csrf = login(client, "manager@ontology.local", "Manager!2026")
+    activated = client.patch(
+        "/api/auth/active-project",
+        headers=csrf,
+        json={"project_id": "metropt-compressor-project"},
+    )
+    assert activated.status_code == 200, activated.text
+
+    events = client.get("/api/projects/metropt-compressor-project/events")
+    assert events.status_code == 200, events.text
+    assert [item["event_id"] for item in events.json()["items"]] == ["EVT-MPT-001"]
+    assert events.json()["items"][0]["status"] == "warning"
+
+    evidence = client.get("/api/events/EVT-MPT-001/evidence")
+    assert evidence.status_code == 200, evidence.text
+    assert evidence.json()["lineage"]["project_id"] == "metropt-compressor-project"
+    assert evidence.json()["lineage"]["dataset_version"] == "metropt-showcase-v1"
 
 
 def test_archived_project_is_removed_from_routes_and_cannot_be_activated(

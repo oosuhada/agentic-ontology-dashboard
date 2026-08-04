@@ -307,6 +307,7 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
         </div>
         <div className="ontology-agent-input-row">
           <TextArea
+            aria-label="Multi-store ontology question"
             fill
             rows={2}
             value={agentQuestion}
@@ -353,6 +354,7 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
             {objectTypes.map((item: ObjectTypeDefinition) => <option key={item.id} value={item.id}>{item.display_name}</option>)}
           </HTMLSelect>
           <InputGroup
+            aria-label="Ontology object property search"
             leftIcon="search"
             placeholder="Search object properties"
             value={search}

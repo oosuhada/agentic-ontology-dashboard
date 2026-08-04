@@ -18,6 +18,7 @@ from ..dependencies import (
     get_identity_service,
     get_ontology_service,
     get_role_workflow_service,
+    get_service,
     require_csrf,
     require_permission,
 )
@@ -26,6 +27,7 @@ from ..ontology_adapter import risk_event_object_id
 from ..ontology_service import OntologyService
 from ..role_workflow_models import TemplatePublishRequestCreate
 from ..role_workflow_service import RoleWorkflowService
+from ..service import ManufacturingPredictiveMaintenanceService
 
 router = APIRouter(tags=["dashboards"])
 
@@ -168,6 +170,7 @@ def query_dashboard_board(
     identity: IdentityService = Depends(get_identity_service),
     dashboards: DashboardService = Depends(get_dashboard_service),
     ontology: OntologyService = Depends(get_ontology_service),
+    service: ManufacturingPredictiveMaintenanceService = Depends(get_service),
 ):
     identity.require_workspace(principal, request.workspace_id)
     return dashboards.query_board(
@@ -176,6 +179,7 @@ def query_dashboard_board(
         board_id=board_id,
         request=request,
         ontology=ontology,
+        event_rows=service.list_events(principal.active_project_id or "manufacturing-demo-project"),
     )
 
 

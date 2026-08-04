@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "project_id": "azure-fleet-maintenance-project",
+  "dataset_version": "azure-showcase-v1",
+  "scenario_id": "AZ-001",
+  "event_id": "EVT-AZ-001",
+  "equipment": {
+    "equipment_id": "AZ-MACHINE-001",
+    "display_name": "Fleet Machine 001",
+    "line": "Model 1 · North Fleet",
+    "criticality": "high",
+    "assigned_engineer": "Fleet Reliability Team",
+    "last_maintenance_date": "2026-07-18",
+    "estimated_downtime_minutes": 180,
+    "spare_part_available": true
+  },
+  "observation": {
+    "timestamp": "2026-08-01T08:00:00+00:00",
+    "product_type": "model-1",
+    "air_temperature_k": 299.1,
+    "process_temperature_k": 309.4,
+    "rotational_speed_rpm": 1442,
+    "torque_nm": 52.0,
+    "tool_wear_min": 218
+  },
+  "history": [
+    {"timestamp": "2026-08-01T05:00:00+00:00", "product_type": "model-1", "air_temperature_k": 298.8, "process_temperature_k": 309.0, "rotational_speed_rpm": 1472, "torque_nm": 47.0, "tool_wear_min": 184},
+    {"timestamp": "2026-08-01T06:00:00+00:00", "product_type": "model-1", "air_temperature_k": 298.9, "process_temperature_k": 309.1, "rotational_speed_rpm": 1461, "torque_nm": 49.0, "tool_wear_min": 196},
+    {"timestamp": "2026-08-01T07:00:00+00:00", "product_type": "model-1", "air_temperature_k": 299.0, "process_temperature_k": 309.3, "rotational_speed_rpm": 1450, "torque_nm": 51.0, "tool_wear_min": 207},
+    {"timestamp": "2026-08-01T08:00:00+00:00", "product_type": "model-1", "air_temperature_k": 299.1, "process_temperature_k": 309.4, "rotational_speed_rpm": 1442, "torque_nm": 52.0, "tool_wear_min": 218}
+  ],
+  "runtime": {"llm_available": true, "planner_available": true, "context_provider": "fixture"},
+  "expected": {"risk_band": "warning", "recommended_decision": "request_inspection", "confidence": "high", "predicted_failure_type": "tool_wear_failure"}
+}

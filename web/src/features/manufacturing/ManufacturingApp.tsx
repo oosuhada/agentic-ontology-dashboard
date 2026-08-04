@@ -74,7 +74,33 @@ interface PendingOntologyGraphBoard {
   title: string;
 }
 
+interface DashboardDraftRecovery {
+  saved_at: string;
+  base_revision: number;
+  template_version: number;
+  dashboard: ResolvedDashboard;
+}
+
 const PENDING_ONTOLOGY_GRAPH_BOARD = "ontology-dashboard:add-graph-board";
+const DASHBOARD_DRAFT_RECOVERY_PREFIX = "ontology-dashboard:dashboard-draft";
+const DASHBOARD_HISTORY_LIMIT = 50;
+
+function dashboardDraftStorageKey(userId: string, workspaceId: string, role: AppRole) {
+  return `${DASHBOARD_DRAFT_RECOVERY_PREFIX}:${userId}:${workspaceId}:${role}`;
+}
+
+function sameDashboardDraft(left: ResolvedDashboard | null, right: ResolvedDashboard | null) {
+  if (!left || !right) return left === right;
+  return JSON.stringify({
+    active_tab_id: left.active_tab_id,
+    tabs: left.tabs,
+    parameter_state: left.parameter_state,
+  }) === JSON.stringify({
+    active_tab_id: right.active_tab_id,
+    tabs: right.tabs,
+    parameter_state: right.parameter_state,
+  });
+}
 
 export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisId = "risk-event-portfolio" }: ManufacturingAppProps = {}) {
   const { user, logout, setActiveProject } = useAuth();
@@ -99,8 +125,8 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
   }, [authenticatedUser.active_project_id, authenticatedUser.active_project_roles.join("|")]);
   const roleConfig = ROLE_LANDING[appRole];
   const role = roleConfig.legacyRole;
-  const canRecordDecision = authenticatedUser.permissions.includes("events.decision");
-  const canRecordNote = authenticatedUser.permissions.includes("events.note");
+  const hasDecisionPermission = authenticatedUser.permissions.includes("events.decision");
+  const hasNotePermission = authenticatedUser.permissions.includes("events.note");
   const canManageTemplates = authenticatedUser.permissions.includes("dashboards.templates.manage");
 
   const [intent, setIntent] = useState<Intent>(roleConfig.defaultIntent);
@@ -137,6 +163,9 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     activateProject,
     setError,
   );
+  const projectActionsConfigured = selectedProjectId === "manufacturing-demo-project";
+  const canRecordDecision = hasDecisionPermission && projectActionsConfigured;
+  const canRecordNote = hasNotePermission && projectActionsConfigured;
   const {
     evidence,
     report,
@@ -167,6 +196,9 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
   const [selectedSavedViewId, setSelectedSavedViewId] = useState("");
   const [mode, setMode] = useState<DashboardMode>("view");
   const [dirty, setDirty] = useState(false);
+  const [undoStack, setUndoStack] = useState<ResolvedDashboard[]>([]);
+  const [redoStack, setRedoStack] = useState<ResolvedDashboard[]>([]);
+  const [recoveryCandidate, setRecoveryCandidate] = useState<DashboardDraftRecovery | null>(null);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -214,8 +246,35 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
         setNotice("공유 링크의 tab과 parameter 상태를 현재 세션에 복원했습니다.");
       }
 
+      let nextRecovery: DashboardDraftRecovery | null = null;
+      if (!shareToken) {
+        const recoveryKey = dashboardDraftStorageKey(authenticatedUser.user_id, workspaceId, appRole);
+        const rawRecovery = window.localStorage.getItem(recoveryKey);
+        if (rawRecovery) {
+          try {
+            const parsed = JSON.parse(rawRecovery) as DashboardDraftRecovery;
+            if (
+              parsed.dashboard?.dashboard_id === resolved.dashboard_id
+              && parsed.dashboard.workspace_id === resolved.workspace_id
+              && parsed.dashboard.role_code === resolved.role_code
+              && parsed.template_version === resolved.template_version
+              && parsed.base_revision === resolved.preference_revision
+            ) {
+              nextRecovery = parsed;
+            } else {
+              window.localStorage.removeItem(recoveryKey);
+            }
+          } catch {
+            window.localStorage.removeItem(recoveryKey);
+          }
+        }
+      }
+
       setPersistedDashboard(resolved);
       setDraftDashboard(nextDraft);
+      setRecoveryCandidate(nextRecovery);
+      setUndoStack([]);
+      setRedoStack([]);
       setCatalogTargetTabId(nextDraft.active_tab_id);
       setTargetTemplateRole(appRole);
       setDirty(false);
@@ -234,7 +293,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     } finally {
       if (requestId === dashboardRequestSequence.current) setLoading(false);
     }
-  }, [appRole, shareToken]);
+  }, [appRole, authenticatedUser.user_id, shareToken]);
 
   useEffect(() => {
     if (!selectedProjectId) return;
@@ -251,6 +310,37 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
   useEffect(() => {
     void loadDashboardFoundation(selectedWorkspaceId);
   }, [selectedWorkspaceId, loadDashboardFoundation]);
+
+  const draftRecoveryKey = useMemo(
+    () => selectedWorkspaceId
+      ? dashboardDraftStorageKey(authenticatedUser.user_id, selectedWorkspaceId, appRole)
+      : "",
+    [appRole, authenticatedUser.user_id, selectedWorkspaceId],
+  );
+
+  useEffect(() => {
+    if (!dirty || !draftDashboard || !persistedDashboard || !draftRecoveryKey) return;
+    const timer = window.setTimeout(() => {
+      const recovery: DashboardDraftRecovery = {
+        saved_at: new Date().toISOString(),
+        base_revision: persistedDashboard.preference_revision,
+        template_version: draftDashboard.template_version,
+        dashboard: cloneDashboard(draftDashboard),
+      };
+      window.localStorage.setItem(draftRecoveryKey, JSON.stringify(recovery));
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [dirty, draftDashboard, draftRecoveryKey, persistedDashboard]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [dirty]);
 
   useEffect(() => {
     if (!draftDashboard || !events.length) return;
@@ -280,6 +370,10 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
   );
   const selectedDefinition = selectedBoard ? definitionById.get(selectedBoard.definition_id) ?? null : null;
   const selectedPack = domainPacks.find((pack) => pack.workspace_ids.includes(selectedWorkspaceId));
+  const pushDashboardHistory = useCallback((current: ResolvedDashboard) => {
+    setUndoStack((stack) => [...stack, cloneDashboard(current)].slice(-DASHBOARD_HISTORY_LIMIT));
+    setRedoStack([]);
+  }, []);
   const {
     updateDraft,
     handleActiveTab,
@@ -302,7 +396,52 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     setMode,
     setDirty,
     setError,
+    onBeforeChange: pushDashboardHistory,
   });
+
+  function handleUndo() {
+    const previous = undoStack.at(-1);
+    if (!previous || !draftDashboard) return;
+    const next = cloneDashboard(previous);
+    setUndoStack((stack) => stack.slice(0, -1));
+    setRedoStack((stack) => [...stack, cloneDashboard(draftDashboard)].slice(-DASHBOARD_HISTORY_LIMIT));
+    setDraftDashboard(next);
+    setSelectedBoardId(null);
+    setDirty(!sameDashboardDraft(next, persistedDashboard));
+  }
+
+  function handleRedo() {
+    const nextEntry = redoStack.at(-1);
+    if (!nextEntry || !draftDashboard) return;
+    const next = cloneDashboard(nextEntry);
+    setRedoStack((stack) => stack.slice(0, -1));
+    setUndoStack((stack) => [...stack, cloneDashboard(draftDashboard)].slice(-DASHBOARD_HISTORY_LIMIT));
+    setDraftDashboard(next);
+    setSelectedBoardId(null);
+    setDirty(!sameDashboardDraft(next, persistedDashboard));
+  }
+
+  function clearDraftRecovery() {
+    if (draftRecoveryKey) window.localStorage.removeItem(draftRecoveryKey);
+    setRecoveryCandidate(null);
+  }
+
+  function recoverDraft() {
+    if (!recoveryCandidate) return;
+    setUndoStack(draftDashboard ? [cloneDashboard(draftDashboard)] : []);
+    setRedoStack([]);
+    setDraftDashboard(cloneDashboard(recoveryCandidate.dashboard));
+    setCatalogTargetTabId(recoveryCandidate.dashboard.active_tab_id);
+    setRecoveryCandidate(null);
+    setMode("edit");
+    setDirty(true);
+    setNotice(`자동 저장 초안을 복구했습니다. ${new Date(recoveryCandidate.saved_at).toLocaleString()}`);
+  }
+
+  function discardDraftRecovery() {
+    clearDraftRecovery();
+    setNotice("자동 저장 초안을 폐기했습니다.");
+  }
 
   function showAffected(sourceBoardId: string, parameterId: string) {
     if (!draftDashboard) return;
@@ -584,6 +723,9 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       });
       setPersistedDashboard(saved);
       setDraftDashboard(cloneDashboard(saved));
+      clearDraftRecovery();
+      setUndoStack([]);
+      setRedoStack([]);
       setDirty(false);
       setNotice("개인 Dashboard 설정을 저장했습니다. 다음 로그인에서도 복원됩니다.");
     } catch (reason) {
@@ -605,6 +747,9 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
         ]);
         setDraftDashboard(preview);
         setCatalogItems(catalog);
+        clearDraftRecovery();
+        setUndoStack([]);
+        setRedoStack([]);
         setDirty(false);
         setNotice(`${targetTemplateRole} template preview를 다시 불러왔습니다.`);
         return;
@@ -612,6 +757,9 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       const restored = await restoreDashboardDefaults(selectedWorkspaceId);
       setPersistedDashboard(restored);
       setDraftDashboard(cloneDashboard(restored));
+      clearDraftRecovery();
+      setUndoStack([]);
+      setRedoStack([]);
       setDirty(false);
       setNotice("역할 기본 Dashboard로 복원했습니다.");
     } catch (reason) {
@@ -927,6 +1075,23 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     />
   ) : null;
 
+  function confirmDashboardNavigation() {
+    return !dirty || window.confirm("저장되지 않은 변경이 있습니다. 초안은 자동 저장되며 나중에 복구할 수 있습니다. 계속 이동할까요?");
+  }
+
+  const draftRecovery = recoveryCandidate ? (
+    <section className="dashboard-draft-recovery" role="status">
+      <div>
+        <strong>저장되지 않은 Dashboard 초안이 있습니다</strong>
+        <span>{new Date(recoveryCandidate.saved_at).toLocaleString()} · revision {recoveryCandidate.base_revision}</span>
+      </div>
+      <div className="button-row">
+        <button type="button" className="primary" onClick={recoverDraft}>초안 복구</button>
+        <button type="button" className="secondary" onClick={discardDraftRecovery}>폐기</button>
+      </div>
+    </section>
+  ) : null;
+
   return (
     <DashboardShell
       user={authenticatedUser}
@@ -959,6 +1124,9 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       boardCanvas={boardCanvas}
       inspector={inspector}
       catalog={catalog}
+      draftRecovery={draftRecovery}
+      canUndo={undoStack.length > 0}
+      canRedo={redoStack.length > 0}
       analysisWorkbench={(
         <Suspense fallback={<div className="loading-panel"><div className="spinner" /><p>Analysis Workbench를 불러오고 있습니다.</p></div>}>
           <AnalysisWorkbench
@@ -976,10 +1144,15 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       )}
       initialWorkspaceView={initialWorkspaceView}
       onWorkspaceViewChange={(view) => {
-        if (view === "analysis") navigate(analysisPath(analysisId));
-        else if (selectedProjectId) navigate(`/app/projects/${encodeURIComponent(selectedProjectId)}`);
+        const target = view === "analysis"
+          ? analysisPath(analysisId)
+          : selectedProjectId
+            ? `/app/projects/${encodeURIComponent(selectedProjectId)}`
+            : "/app";
+        if (window.location.pathname !== target) window.history.pushState({}, "", target);
       }}
       onProjectChange={(projectId) => {
+        if (!confirmDashboardNavigation()) return;
         setSelectedProjectId(projectId);
         setSelectedWorkspaceId("");
         setSelectedEventId("");
@@ -987,6 +1160,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
         navigate(`/app/projects/${encodeURIComponent(projectId)}`, { replace: true });
       }}
       onWorkspaceChange={(workspaceId) => {
+        if (!confirmDashboardNavigation()) return;
         setSelectedWorkspaceId(workspaceId);
         setSelectedEventId("");
         setDraftDashboard(null);
@@ -994,6 +1168,8 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       onActiveTabChange={handleActiveTab}
       onReorderTabs={handleReorderTabs}
       onModeChange={setMode}
+      onUndo={handleUndo}
+      onRedo={handleRedo}
       onOpenCatalog={() => {
         setCatalogTargetTabId(draftDashboard?.active_tab_id ?? "");
         setCatalogOpen(true);
@@ -1007,6 +1183,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       onPublishTemplate={() => void handlePublishTemplate()}
       onTargetTemplateRoleChange={(nextRole) => void handleTargetTemplateRoleChange(nextRole)}
       onActiveRoleChange={(nextRole) => {
+        if (!confirmDashboardNavigation()) return;
         window.localStorage.setItem(roleStorageKey, nextRole);
         setAppRole(nextRole);
         setTargetTemplateRole(nextRole);

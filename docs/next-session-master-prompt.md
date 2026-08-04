@@ -115,12 +115,12 @@ Dataset / Data Source
 2026-08-02 기준 baseline:
 
 ```text
-Backend        97%
-Frontend       96%
-Architecture   96%
-PostgreSQL     85%
-Project Layer  90%
-Adapter Layer  80%
+Backend        98%
+Frontend       98%
+Architecture   97%
+PostgreSQL     88%
+Project Layer  96%
+Adapter Layer  84%
 ```
 
 자동화 baseline:
@@ -128,14 +128,15 @@ Adapter Layer  80%
 ```text
 Canonical naming: PASS
 PostgreSQL organization/project migration/RLS/runtime: PASS
-Backend tests: 118 PASS
+Backend tests: 122 PASS
 Gold scenarios: 8/8 PASS
-Frontend unit tests: 3 PASS
+Frontend unit tests: 6 PASS
 TypeScript: PASS
 Production build: PASS
-Initial JavaScript: 213.87 KiB / 300 KiB
-Largest deferred JavaScript: 443.24 KiB
-Playwright E2E: 28 PASS
+Initial JavaScript: 214.48 KiB / 300 KiB
+Largest deferred JavaScript: 443.24 KiB / 500 KiB
+Playwright E2E: 34 PASS
+Visual baseline manifest: PASS
 Live Project 2→Project 3 evidence: PostgreSQL 1 + Neo4j 3 + Project 3 RAG 1 PASS
 ```
 
@@ -143,26 +144,26 @@ Live Project 2→Project 3 evidence: PostgreSQL 1 + Neo4j 3 + Project 3 RAG 1 PA
 
 ## 8. Current Priority
 
-Stage 44~54의 제품 구현은 완료됐다. Stage 55도 live integration, automated release gate, backup/restore test까지 완료됐으며 현재 host에 Docker CLI가 없어 compose cold-start/rollback drill만 환경 제약으로 남아 있다.
+Stage 44~55의 제품 수렴과 Stage 56의 product hardening은 완료됐다. Dataset navigation, Project tombstone, Dashboard undo/recovery, Azure/MetroPT showcase, repository isolation matrix, canonical composition root와 primary Workbench accessibility를 반복 구현하지 않는다.
 
-별도 사용자 지시가 없으면 새로운 기능을 확장하기보다 다음 운영·부채 순서로 진행한다.
+별도 사용자 지시가 없으면 다음 순서를 적용한다.
 
 ```text
-1. Docker 사용 가능한 host에서 PostgreSQL+pgvector+Redis+Neo4j cold-start/rollback drill
-2. managed PostgreSQL/Redis에서 pool, rate limiter, outbox worker 장기 부하 검증
-3. legacy factory_signal_board physical package의 ontology_dashboard namespace 이동
-4. Identity/Dashboard/Workflow/Export repository의 PostgreSQL 완전 전환
-5. production SSO/invitation/reset lifecycle
-6. REST/Kafka/MQTT/OPC-UA connector credentials, retry, backpressure 검증
-7. Dashboard editor undo/redo와 unsaved draft recovery
-8. Project Home/Dataset visual regression baseline 확대
+1. scripts/verify_production_environment.py로 현재 host capability를 판정
+2. Docker/managed-service host에서는 production-environment-completion-runbook.md 실행
+3. 현재 host에서는 남은 factory_signal_board physical modules를 작은 compatibility slice로 이동
+4. 승인된 complete Azure/MetroPT source가 있으면 provenance와 함께 full ingestion
+5. 첫 production connector를 REST부터 선택하고 credentials/retry/replay 검증
+6. 선택된 IdP의 OIDC, invitation/reset와 Project role mapping
+7. S3-compatible artifact storage와 OpenTelemetry 운영 증거
+8. cross-platform pixel-diff visual regression CI
 ```
 
 이미 완료된 Dataset Catalog, Agent/Governance pagination, WorkOrder, Analysis job lifecycle, bundle split 또는 Project 3 three-store 경로를 반복 구현하지 않는다.
 
 ## 9. Immediate Next Task Definition
 
-현재 기본 next action은 **production-environment completion과 canonical package debt 제거**다.
+현재 기본 next action은 **environment-aware production completion 또는 remaining physical namespace relocation**이다.
 
 검증된 현재 상태:
 
@@ -173,11 +174,18 @@ Stage 44~54의 제품 구현은 완료됐다. Stage 55도 live integration, auto
 - Project 2→Project 3 live HTTP gate에서 PostgreSQL, Neo4j, Project 3 RAG evidence가 한 persisted hybrid run으로 합쳐졌다.
 - Project 2 local pgvector는 projection schema boundary로 유지하며 runtime semantic retrieval은 `project3_rag` typed API를 사용한다.
 - 모든 initial/deferred JavaScript budget이 현재 목표 안에 있다.
+- Dataset Catalog는 기본 Product Navigation에 노출된다.
+- archived Project deep link는 tombstone을 렌더한다.
+- Dashboard editor는 undo/redo, autosave와 reload recovery를 제공한다.
+- Azure와 MetroPT는 Project-scoped showcase Event와 Evidence lineage를 제공한다.
+- executable composition root는 `ontology_dashboard.main`이며 legacy main은 compatibility shim이다.
 
 다음 세션은 먼저 작업 환경을 확인한다.
 
-- Docker가 있으면 compose cold-start/rollback drill과 live gate를 실행한다.
-- Docker가 없으면 canonical package relocation 또는 PostgreSQL repository 전환 중 실제 vertical slice 하나를 선택한다.
+- 먼저 `scripts/verify_production_environment.py`를 실행한다.
+- Docker와 managed credentials가 있으면 runbook의 cold-start/rollback/load gate를 실행한다.
+- Docker가 없으면 remaining physical package relocation slice를 선택한다. PostgreSQL repository graph는 이미 구현돼 있으므로 중복 작성하지 않는다.
+- Azure/MetroPT 전체 source 파일이 없으면 showcase fixture를 full-dataset 통계로 과장하지 않는다.
 - broad rewrite보다 migration, compatibility import, targeted tests, full release gate 순서로 진행한다.
 - 이미 완료된 사용자 route와 contract를 회귀시키지 않는다.
 

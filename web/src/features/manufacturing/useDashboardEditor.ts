@@ -22,6 +22,7 @@ interface DashboardEditorOptions {
   setMode: Dispatch<SetStateAction<DashboardMode>>;
   setDirty: Dispatch<SetStateAction<boolean>>;
   setError: Dispatch<SetStateAction<string>>;
+  onBeforeChange: (current: ResolvedDashboard) => void;
 }
 
 export function useDashboardEditor({
@@ -34,11 +35,13 @@ export function useDashboardEditor({
   setMode,
   setDirty,
   setError,
+  onBeforeChange,
 }: DashboardEditorOptions) {
   function updateDraft(
     updater: (current: ResolvedDashboard) => ResolvedDashboard,
     markDirty = true,
   ) {
+    if (markDirty && draftDashboard) onBeforeChange(draftDashboard);
     setDraftDashboard((current) => current ? updater(current) : current);
     if (markDirty) setDirty(true);
   }

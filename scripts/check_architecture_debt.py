@@ -30,7 +30,8 @@ def _contains(path: Path, text: str) -> bool:
 
 def collect_architecture_debt(root: Path) -> list[DebtItem]:
     canonical_init = root / "api" / "ontology_dashboard" / "__init__.py"
-    composition_root = root / "api" / "factory_signal_board" / "main.py"
+    canonical_composition_root = root / "api" / "ontology_dashboard" / "main.py"
+    legacy_composition_shim = root / "api" / "factory_signal_board" / "main.py"
     planner_router = root / "api" / "ontology_dashboard" / "routers" / "planner.py"
     dependencies = root / "api" / "ontology_dashboard" / "dependencies.py"
     feature_flags = root / "web" / "src" / "featureFlags.ts"
@@ -40,7 +41,11 @@ def collect_architecture_debt(root: Path) -> list[DebtItem]:
     project3_client = root / "api" / "ontology_dashboard" / "integrations" / "project3" / "client.py"
 
     legacy_path_extension = _contains(canonical_init, "__path__.append")
-    legacy_root_present = composition_root.exists()
+    canonical_root_present = canonical_composition_root.exists() and _contains(canonical_composition_root, "app = create_app()")
+    legacy_root_executable = any(
+        _contains(legacy_composition_shim, token)
+        for token in ("app = create_app()", "app.include_router", "@app.exception_handler")
+    )
     forbidden_planner_import = any(
         _contains(path, token)
         for path in (planner_router, dependencies)
@@ -108,10 +113,10 @@ def collect_architecture_debt(root: Path) -> list[DebtItem]:
         ),
         DebtItem(
             id="legacy_composition_root",
-            state="accepted" if legacy_root_present else "resolved",
+            state="resolved" if canonical_root_present and not legacy_root_executable else "regression",
             stage=55,
-            evidence="api/factory_signal_board/main.py",
-            action="Move the FastAPI composition root to ontology_dashboard.main and retain no executable legacy package.",
+            evidence="api/ontology_dashboard/main.py with a compatibility-only legacy shim",
+            action="Keep the executable FastAPI composition root in ontology_dashboard.main.",
         ),
     ]
 

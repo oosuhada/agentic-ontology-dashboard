@@ -303,3 +303,73 @@ Project 2와 Project 3은 회사의 하나의 실제 업무를 구현 과제상 
 - Dataset Catalog가 schema, profile, file, checksum, materialization, lineage와 projection readiness를 설명할 수 있다.
 - 취소된 run도 partial result와 audit metadata를 유지한다.
 - 동일 version/config/parameters/limit 조합은 cache hit로 재사용할 수 있다.
+
+## ADR-018 — Canonical Composition Root Precedes Physical Module Relocation
+
+### Decision
+
+- executable ASGI composition root는 `ontology_dashboard.main`이 소유한다.
+- `factory_signal_board.main`은 compatibility re-export만 허용하며 router registration이나 exception handler를 소유하지 않는다.
+- remaining physical module relocation은 service/repository slice별 compatibility import와 full gate를 유지하며 진행한다.
+- 모든 module 이동이 끝난 뒤에만 `ontology_dashboard.__path__` legacy extension을 제거한다.
+
+### Consequences
+
+- deployment entrypoint와 tests는 canonical namespace를 사용한다.
+- composition root debt와 physical module debt를 별개로 추적한다.
+- 대규모 일괄 이동으로 runtime singleton이나 import identity가 중복되는 위험을 피한다.
+
+## ADR-019 — Project Showcase Fixtures Do Not Expand the Manufacturing Gold Set
+
+### Decision
+
+- `self.fixtures`는 GS-001..GS-008 manufacturing Gold regression만 의미한다.
+- Azure와 MetroPT showcase fixture는 project-scoped fixture collection과 API를 통해 제공한다.
+- manufacturing Ontology projection, FDE diagnostics와 ML Gold regression은 Gold 8건을 유지한다.
+- showcase Evidence는 `project_id`와 `dataset_version` lineage를 포함한다.
+- complete public dataset 통계가 없는 showcase fixture를 full-dataset metric으로 표현하지 않는다.
+
+### Consequences
+
+- Project selector와 Dashboard abstraction은 실제 데이터로 시연 가능하다.
+- Gold regression 수치와 제조 workflow는 변하지 않는다.
+- 전체 Azure/MetroPT ingestion은 provenance와 source approval이 있는 별도 단계로 남는다.
+
+## ADR-020 — Project-Specific Actions Default to Read-Only
+
+### Decision
+
+Project-scoped Event와 Evidence가 존재하더라도 해당 Project의 Action mapping, permission policy와 audit contract가 게시되기 전까지 Decision/Note/WorkOrder mutation은 비활성화한다.
+
+### Consequences
+
+- Azure와 MetroPT showcase는 조회·분석·Dashboard에 사용할 수 있다.
+- Manufacturing Action handler를 다른 Project에 암묵적으로 재사용하지 않는다.
+- UI는 조회 전용 상태를 명시하고 backend도 `project_action_not_configured`로 방어한다.
+
+## ADR-021 — Dashboard Draft Recovery Is Local, Scoped, and Revision-Bound
+
+### Decision
+
+- unsaved Dashboard draft는 user/workspace/role key로 local storage에 autosave한다.
+- recovery payload는 dashboard ID, template version과 base preference revision이 일치할 때만 제안한다.
+- undo/redo history는 browser session memory에 제한하고 최대 50개 snapshot을 유지한다.
+- persisted save, default restore 또는 incompatible template change는 recovery를 제거한다.
+
+### Consequences
+
+- accidental refresh와 navigation에서 개인 편집을 복구할 수 있다.
+- stale draft가 새 template revision을 덮어쓰지 않는다.
+- 서버의 optimistic preference revision contract는 그대로 authoritative하다.
+
+## ADR-022 — Environment-Dependent Completion Must Be Machine-Verifiable
+
+### Decision
+
+Docker, managed stores, IdP, production connector, object storage와 observability 항목은 `scripts/verify_production_environment.py`의 capability state와 실행 evidence가 있어야 완료로 표시한다.
+
+### Consequences
+
+- configuration이나 compose 파일 존재만으로 production 완료를 주장하지 않는다.
+- current host의 missing Docker/credentials는 `blocked`로 보고한다.
+- staging CI는 strict mode와 `docs/production-environment-completion-runbook.md`를 사용한다.
