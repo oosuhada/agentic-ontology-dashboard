@@ -166,10 +166,12 @@ LLM 또는 planner는 typed intent와 catalog 기반 결과만 생성한다.
 
 ### Consequences
 
-- arbitrary SQL/Cypher/React 실행 금지
+- 검증되지 않은 arbitrary SQL/Cypher/React 실행 금지
+- parameterized query compiler와 Project 3의 project-scoped read-only validation workflow를 통과한 Cypher는 실행 가능
+- generated query는 timeout, row/depth limit, statement hash, source version, audit trace를 가져야 함
 - recommendation과 draft 자동 persistence 금지
 - Evidence 없는 narrative claim 금지
-- provider failure 시 deterministic fallback
+- provider failure 시 deterministic fallback 또는 명시적 degraded mode
 
 ## ADR-011 — Documentation as Session Entry Point
 
@@ -198,3 +200,63 @@ PostgreSQL session context는 `app.organization_id`와 선택적 `app.project_id
 - Project 접근 목록과 Workspace 목록은 organization/project predicate를 사용한다.
 - Project membership은 현재 Workspace scope에서 backfill하지만, target은 독립적인 project-level role assignment다.
 - Dashboard·Ontology·Action repository가 project_id를 직접 저장하기 전까지 Project Layer 완료로 표시하지 않는다.
+
+## ADR-013 — Project 2 and Project 3 Form One Integrated Product
+
+### Context
+
+Project 2와 Project 3은 회사의 하나의 실제 업무를 구현 과제상 두 부분으로 나눈 것이다. Project 3에는 Neo4j graph ingestion, validated Text-to-Cypher LangGraph, graph exploration, LlamaIndex RAG가 구현돼 있다. Project 2는 이를 단순 checklist와 문자열 source reference로만 소비하고 있어 실제 제품 통합 수준에 도달하지 못했다.
+
+### Decision
+
+- Project 3은 graph/RAG knowledge capability를 소유한다.
+- Project 2는 Project 3을 typed service client와 query tool로 사용한다.
+- Project 2는 Project/Workspace/RBAC/Governance, Analysis, Dashboard, Ontology, Dataset, Action delivery를 소유한다.
+- 현재 runtime에서 Project 2의 Neo4j driver 사용은 connectivity health probe로 제한한다. deterministic graph board와 ontology explorer의 업무 조회도 우선 Project 3 typed graph API를 사용한다.
+- 향후 Project 2 direct read-only template port를 추가하더라도 등록된 query ID와 typed parameter만 허용하며 자연어 Text-to-Cypher는 Project 3의 검증 workflow를 재사용한다.
+- 동일 agent, ETL, RAG 구현을 두 저장소에 복제하지 않는다.
+- Project 3 장애 시 relational 운영 화면은 degraded mode로 유지한다.
+
+### Consequences
+
+- `project3-adapter-contract.md`의 flat context contract는 compatibility contract가 된다.
+- Project 2에 Project 3 health/query/RAG/graph client가 필요하다.
+- 두 저장소의 project identity, schema version, source reference contract를 맞춰야 한다.
+- 통합 contract test와 degraded-mode E2E가 release gate에 추가된다.
+
+## ADR-014 — Polyglot Persistence with PostgreSQL, Neo4j, and Vector Retrieval
+
+### Context
+
+표·거버넌스·운영 트랜잭션, 관계 경로, 문서 유사도 검색은 서로 다른 query 특성을 가진다. 한 저장소로 모든 문제를 해결하거나 동일 데이터를 무분별하게 복제하면 모델과 운영 복잡도가 커진다.
+
+### Decision
+
+- PostgreSQL은 operational source of truth다.
+- Neo4j는 relationship, lineage, impact, root-cause path projection이다.
+- PostgreSQL `pgvector` schema와 projection target을 local vector infrastructure로 준비한다. 현재 runtime semantic retrieval은 Project 3 RAG typed API를 사용하며, Project 2 local pgvector retrieval은 writer·role/project-filtered search port가 구현되기 전까지 완료 기능으로 간주하지 않는다.
+- raw file과 materialized dataset은 filesystem/Parquet에서 시작해 S3-compatible object storage로 확장한다.
+- PostgreSQL transaction과 outbox가 Neo4j/vector/object storage projection을 구동한다.
+- 모든 projection은 `organization_id`, `project_id`, `dataset_id`, `dataset_version`, `object_id`, `source_sha256`를 공유한다.
+- 세 저장소의 결과를 합치는 작업은 Project 2의 typed checkpointed multi-store orchestrator가 담당한다. 현재 직접 구현한 state/checkpoint/trace가 요구사항을 충족하므로 LangGraph 라이브러리는 필수 dependency가 아니다.
+
+### Consequences
+
+- eventual consistency와 projection status를 UI에 표시해야 한다.
+- Dataset Catalog와 Governance Workbench가 store readiness/failure를 노출해야 한다.
+- graph/vector query에도 tenant/project/role filtering이 적용돼야 한다.
+- health endpoint는 local pgvector infrastructure와 Project 3 semantic retrieval을 별도 capability로 표시해야 한다.
+- query run은 사용한 store, source version, elapsed, rows/nodes/chunks, cache, warning을 audit해야 한다.
+
+## ADR-015 — User-Visible Vertical Slice Is the Unit of Progress
+
+### Decision
+
+아키텍처 또는 backend 작업은 실제 route, panel, badge, interaction 중 하나로 끝나야 한다. `Ontology`, `Datasets`, `Governance` Workbench가 완성되기 전에는 새로운 비핵심 역할 보드 확장을 후순위로 둔다.
+
+### Consequences
+
+- architecture-only stage는 한 단계를 넘기지 않는다.
+- frontend maturity는 화면별 acceptance와 screenshot baseline을 포함한다.
+- feature flag 뒤의 구현은 완료율에 포함하지 않는다.
+- 각 Stage는 사용자에게 시연 가능한 URL을 completion report에 포함한다.

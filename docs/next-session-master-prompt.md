@@ -36,6 +36,9 @@ Git commit, push, remote 변경은 수행하지 않는다. 사용자가 별도�
 8. `docs/07-implementation-status.md`
 9. `docs/08-devspace-workflow.md`
 10. `docs/09-architecture-decisions.md`
+11. `docs/10-product-convergence-polyglot-agentic-roadmap.md`
+
+`docs/10-product-convergence-polyglot-agentic-roadmap.md`는 2026-08-02 이후의 제품 수렴, Project 2/3 통합, polyglot data, LangGraph, SOON Workbench 우선순위를 정의하는 최신 실행 기준이다. 기존 roadmap과 충돌하면 이 문서를 우선한다.
 
 필요하면 다음 구현 요약도 읽는다.
 
@@ -48,18 +51,22 @@ Git commit, push, remote 변경은 수행하지 않는다. 사용자가 별도�
 
 ## 4. Mission
 
-Ontology Dashboard는 예측 모델 자체를 만드는 시스템이 아니다.
-
-Prediction Module 또는 외부 자동 분석 시스템이 생성한 결과를 공통 Prediction Result Contract로 받아, 역할별 Dashboard·Report·Evidence·Action으로 전달하는 Decision Support Platform이다.
+Ontology Dashboard는 예측 모델 자체만 만드는 시스템이 아니다. Project 2와 Project 3을 하나의 실제 업무 제품으로 연결해, 관계형 운영 데이터·Neo4j graph·semantic retrieval을 역할별 Analysis·Dashboard·Ontology·Dataset·Governance·Action으로 전달하는 governed decision-support platform이다.
 
 ```text
-Source Data / External System
-→ Prediction Module
-→ Prediction Result Contract
-→ Ontology Dashboard
-→ Role Dashboard / Report / Action
+Source Data / Documents / External Systems
+→ Dataset Version and Ontology Mapping
+→ PostgreSQL operational records
+→ Neo4j relationship projection
+→ Vector Store semantic projection
+→ Project 3 graph/RAG capabilities
+→ Project 2 multi-store orchestration
+→ Analysis / Dashboard / Ontology / Dataset / Governance
+→ Evidence / Action / Approval / Audit
 → User
 ```
+
+Project 3은 graph ingestion, validated read-only Text-to-Cypher, LangGraph correction/validation, document RAG를 담당한다. Project 2는 이를 typed client와 query tools로 사용하고, project/workspace/RBAC/governance 및 사용자 delivery 화면을 담당한다. 동일 기능을 두 저장소에 중복 구현하지 않는다.
 
 ## 5. Canonical Architecture
 
@@ -97,7 +104,7 @@ Dataset / Data Source
 5. 새로운 dataset은 Project scope 없이 global workspace에 추가하지 않는다.
 6. Role-based Dashboard를 유지한다.
 7. Evidence 없는 narrative나 Action을 자동 확정하지 않는다.
-8. arbitrary SQL, Cypher, Python, React code를 LLM 출력으로 실행하지 않는다.
+8. 검증되지 않은 arbitrary SQL, Cypher, Python, React code를 LLM 출력으로 실행하지 않는다. Parameterized query compiler와 Project 3의 project-scoped read-only validation workflow를 통과한 Cypher는 audit·timeout·row limit 조건으로 허용한다.
 9. tenant와 project isolation을 repository/API/UI에서 함께 검증한다.
 10. 코드 변경 시 tests와 문서를 함께 업데이트한다.
 11. release gate 실패를 숨기지 않는다.
@@ -134,45 +141,43 @@ Release gate: 12/12 PASS
 
 ## 8. Current Priority
 
-별도 사용자 지시가 없다면 다음 순서로 진행한다.
+별도 사용자 지시가 없다면 `docs/10-product-convergence-polyglot-agentic-roadmap.md` 순서를 따른다.
 
 ```text
-1. Project Layer phase 2 — operational repository와 Dashboard key의 project scope
-2. 다중 Project switch E2E, deleted route handling, active project persistence
-3. Prediction Result JSON Schema
-4. Dataset Manifest와 File Adapter
-5. Azure Fleet Maintenance Project ingestion
-6. MetroPT Project로 abstraction 검증
-7. PostgreSQL repository runtime 완료
-8. 남은 handler와 physical legacy source 이동
-9. Production operations hardening
+1. Stage 44 — 문서·ADR·우선순위 rebaseline
+2. Stage 45 — planner canonical migration + Project 3 typed client + Ontology preview
+3. Stage 46 — PostgreSQL + pgvector + Neo4j local stack
+4. Stage 47 — Dataset Version과 multi-store projection
+5. Stage 48 — Ontology Workbench 완성
+6. Stage 49 — LangGraph multi-store query orchestration
+7. Stage 50 — Dataset Catalog와 materialization
+8. Stage 51 — Governance Workbench
+9. Stage 52 — server-scale Analysis/Dashboard
+10. Stage 53~55 — WorkOrder ontology, visual convergence, production release gate
 ```
+
+Project Layer와 PostgreSQL 작업은 폐기하지 않는다. 새 Stage에서 multi-store identity, project isolation, Workbench delivery와 함께 완성한다.
 
 ## 9. Immediate Next Task Definition
 
-현재 가장 우선인 작업은 **Project Layer phase 2**다.
+현재 가장 우선인 작업은 **Stage 45 vertical slice — Planner Canonical Migration + Project 3 Typed Client + Ontology Workbench Preview**다.
 
-완료된 foundation:
+검증된 현재 상태:
 
-- projects persistence schema/migration
-- Project model/repository/service와 list/detail/admin API
-- organization-scoped Project access와 negative tests
-- `workspaces.project_id`
-- current Manufacturing Demo Project seed/migration
-- principal `project_scopes`와 초기 `active_project_id`
-- Project selector와 `/app/projects/:projectId` route foundation
-- PostgreSQL organization/project RLS 검증
-- 기존 Gold/E2E 회귀 유지
+- canonical planner는 `api/ontology_dashboard/planner/`에 있고 legacy planner 파일은 compatibility re-export 경계다.
+- Project 3에는 Neo4j, Text-to-Cypher LangGraph, graph schema/search/subgraph, LlamaIndex RAG가 있으며 Project 2는 typed `Project3Client`로만 접근한다.
+- Ontology, Governance, Agent Evidence Workbench는 실제 project/workspace route, permission guard, degraded mode와 Playwright E2E가 연결됐다.
+- Dataset Version/projection/mapping/materialization backend와 초기 Dataset Catalog route가 있다.
+- Project 2 local pgvector는 health/schema/projection contract만 있으며 runtime semantic retrieval은 현재 Project 3 RAG를 사용한다.
+- `api/ontology_dashboard/__init__.py`의 legacy path extension과 물리 `factory_signal_board` package 제거는 Stage 55 canonical debt로 남아 있다.
 
 다음 최소 구현 목표:
 
-- Dashboard Template/preference/saved view/share key에 project scope 추가
-- Ontology object/link/action/workflow/export repository에 project_id write/query 적용
-- active project session persistence 또는 명시적 context contract
-- 두 번째 fixture Project를 이용한 switch/isolation E2E
-- deleted Project route handling과 active project persistence
-
-작업 규모가 크면 안전한 하위 단계로 나누되, 단순 계획만 작성하고 멈추지 말고 검증 가능한 코드까지 구현한다.
+- `docs/autonomous-implementation-progress.md`의 Next Exact Action과 첫 미완료 Stage를 기준으로 시작한다.
+- 현재 우선순위는 Stage 50 Dataset Catalog completion, Stage 52 server-scale Analysis/Dashboard, Stage 53 WorkOrder, Stage 54 bundle/visual convergence다.
+- architecture-only 작업으로 끝내지 않고 실제 route, permission, user journey, screenshot artifact까지 함께 전달한다.
+- organization/project/workspace/role scope와 arbitrary SQL/Cypher 금지 경계를 유지한다.
+- Dashboard/Analysis/Ontology/Agent/Governance 기존 회귀를 유지한다.
 
 ## 10. Required Work Procedure
 
@@ -215,6 +220,7 @@ PYTHONPATH=api:ml/src .venv/bin/python scripts/release_gate.py --with-e2e
 - `docs/07-implementation-status.md`
 - 변경과 직접 관련된 architecture/domain/dataset/catalog 문서
 - 이 master prompt의 priority 또는 baseline이 바뀌면 본 문서
+- 사용자 화면이 바뀌면 route, 역할/permission, Playwright flow, screenshot artifact, degraded/error 상태를 문서에 먼저 기록
 
 ## 11. Dataset Strategy
 
@@ -243,14 +249,14 @@ Azure PdM의 발표 지표는 문서의 고정 숫자를 그대로 믿지 말고
 
 작업을 마치면 채팅에 다음을 보고한다.
 
-1. 수행한 작업
-2. 주요 변경 파일
-3. 아키텍처와 데이터 모델 영향
-4. 테스트와 release gate 결과
-5. 구현률 변화
-6. 업데이트한 문서
-7. 남은 제약과 위험
-8. 다음 추천 작업
+1. 실제 route와 사용자 역할/permission
+2. 수행한 작업과 사용자 흐름
+3. 주요 변경 파일
+4. Playwright flow와 screenshot artifact
+5. 아키텍처와 데이터 모델 영향
+6. 테스트와 release gate 결과
+7. 구현률 변화와 업데이트한 문서
+8. degraded mode, 환경 제약, 남은 위험과 다음 추천 작업
 
 구현하지 못한 항목이나 환경 제약은 명확히 구분한다.
 
@@ -265,7 +271,7 @@ Azure PdM의 발표 지표는 문서의 고정 숫자를 그대로 믿지 말고
 
 /Users/gabrieljang/Documents/Macbook air personal/비스텔리전스 파이널 프로젝트/mvp-프로젝트2
 
-가장 먼저 docs/next-session-master-prompt.md를 읽고, 그 문서에 명시된 필수 문서들을 순서대로 모두 검토해줘. 문서 내용과 현재 코드·테스트·migration·frontend 구조를 비교해서 차이를 파악한 뒤, 별도 지시가 없으면 Roadmap의 최우선 작업인 Project Layer 구현을 이어서 진행해줘.
+가장 먼저 docs/next-session-master-prompt.md, docs/autonomous-implementation-progress.md와 docs/10-product-convergence-polyglot-agentic-roadmap.md를 읽고, 필수 문서들을 순서대로 검토해줘. 문서 내용과 현재 코드·테스트·migration·frontend route, 그리고 Project 3의 Neo4j/LangGraph/RAG 구조를 비교해 차이를 파악한 뒤 progress 문서의 Next Exact Action과 첫 미완료 Stage부터 이어서 구현해줘.
 
 반드시 다음 원칙을 지켜줘.
 
@@ -274,6 +280,10 @@ Azure PdM의 발표 지표는 문서의 고정 숫자를 그대로 믿지 말고
 - Organization → Project → Workspace → Role Dashboard 구조 유지
 - Project는 Dataset과 동일시하지 않기
 - Prediction과 Dashboard를 Prediction Result Contract로 분리
+- PostgreSQL operational data, Neo4j relationship graph, pgvector/LlamaIndex semantic retrieval을 동일 Project identity로 연결
+- Project 3의 Text-to-Cypher/LangGraph/RAG를 중복 구현하지 않고 typed client로 재사용
+- 검증되지 않은 arbitrary SQL/Cypher 실행 금지
+- architecture-only 작업으로 끝내지 않고 실제 Ontology Workbench route까지 구현
 - tenant/project scope를 API·repository·UI에서 검증
 - 기존 release gate와 Gold/E2E 회귀 유지
 - Git commit·push 등 Git write는 수행하지 않기

@@ -1,7 +1,8 @@
 # Ontology Dashboard Implementation Status
 
-- Last updated: 2026-08-01
-- Baseline: release gate 12/12 PASS
+- Last updated: 2026-08-02
+- Baseline: release gate 13/13 PASS with isolated Playwright E2E
+- Current execution plan: `docs/10-product-convergence-polyglot-agentic-roadmap.md`
 
 ## Current Maturity
 
@@ -14,7 +15,23 @@ Project Layer  60%
 Adapter Layer  10%
 ```
 
-이 비율은 단순 파일 개수가 아니라 현재 목표 아키텍처 대비 구현·검증·운영 준비도를 함께 반영한 추정치다.
+이 비율은 단순 파일 개수가 아니라 2026-08-01 목표 아키텍처 대비 구현·검증·운영 준비도를 반영한 역사적 추정치다. Palantir 수준의 전체 시각 완성도나 모든 메뉴의 운영 준비도를 의미하지 않는다. `Ontology`와 `Governance` 전용 Workbench는 실제 route와 E2E까지 연결되었고, `Datasets`는 Stage 47 foundation 위에서 Catalog 완성 작업이 남아 있다.
+
+## User-Visible Product Surface
+
+```text
+Dashboards   CONNECTED
+Analysis     CONNECTED
+Agent        CONNECTED EVIDENCE WORKBENCH
+Ontology     CONNECTED WORKBENCH / DEGRADED GRAPH SAFE
+Datasets     PARTIAL CATALOG / MATERIALIZATION FOUNDATION
+Governance   CONNECTED PROJECT WORKBENCH
+```
+
+- Agent Evidence Workbench는 scoped query, persisted run restore, claim→evidence navigation, store/version/object trace와 orchestration lineage를 제공한다.
+- Ontology Workbench는 exact project/workspace route, object search, graph/inspector, Add Graph Board, multi-store Ask, route restore와 isolation E2E를 제공한다.
+- Dataset Version·projection·mapping·materialization backend와 초기 Catalog route는 있으나 profile/quarantine와 재사용 가능한 Analysis materialization user journey가 남아 있다.
+- Governance Workbench는 project-scoped access, approvals, agent claims/evidence/traces/checkpoints, lineage, projection health와 permission-gated retry를 통합한다.
 
 ## Backend — 93%
 
@@ -41,6 +58,10 @@ Adapter Layer  10%
 - export and audit
 - transactional outbox foundation
 - migration runner
+- typed multi-store orchestrator와 persisted run/checkpoint/trace
+- Analysis create/update 시 Join whitelist와 DAG cycle validation
+- server-computed Analysis quality summary
+- polyglot health capability boundary
 
 ### Remaining
 
@@ -69,19 +90,26 @@ Adapter Layer  10%
 - mobile field E2E
 - Project selector와 `/app/projects/:projectId` route foundation
 - Project별 Workspace loading
+- `/app/projects/:projectId/workspaces/:workspaceId/agent` Evidence Workbench
+- `/app/projects/:projectId/workspaces/:workspaceId/ontology` Workbench
+- `/app/projects/:projectId/workspaces/:workspaceId/governance` Workbench
+- Agent/Ontology/Governance route restore, project/workspace isolation, screenshot artifact E2E
+- Agent claim→evidence drill-down과 persisted run reload
+- Governance agent trace·evidence·lineage·projection retry
+- Agent persisted run server pagination/status/route/search filter와 Governance 양방향 deep link
+- Admin/Manufacturing/Analysis/Board renderer route-level lazy boundary
+- build-time 300 KiB initial JavaScript budget gate (`212.25 KiB` verified)
+- first visual token/density slice and `docs/ui/palantir-visual-language.md`
 
 ### Remaining
 
+- `/app/projects/:projectId/workspaces/:workspaceId/datasets` Catalog 완성
+- 전체 제품 visual language와 three-workbench screenshot review
 - Project Home
-- 다중 Project switch E2E와 invalid route 처리
-- workspace 하위 resource-aware routes
-- resource deep link
 - active role selector
-- route restore
 - additional editor hook separation
-- accessibility automated gate
 - undo/redo and draft recovery
-- route-level code splitting
+- 725 KiB lazy `DataTableRenderer` chunk의 renderer/vendor 단위 최적화
 
 ## Architecture — 95%
 
@@ -138,7 +166,7 @@ Adapter Layer  10%
 - backup/restore drill
 - production startup enablement
 
-Production은 아직 PostgreSQL runtime 완료로 표시하면 안 된다.
+Ephemeral PostgreSQL migration, RLS와 runtime repository gate는 통과했다. 다만 production connection, backup/restore와 Docker-backed pgvector/Neo4j 통합이 남아 있으므로 Production 전체 완료로 표시하면 안 된다.
 
 ## Project Layer — 60%
 
@@ -209,6 +237,11 @@ Release gate: 12/12 PASS
 
 ### High Priority
 
+- `ontology_dashboard.__init__`의 legacy path extension과 `api/factory_signal_board` physical source 잔존
+- planner logic이 단일 legacy `ontology_planner_service.py`에 집중
+- Project 3의 Neo4j/LangGraph/RAG capability가 flat context adapter로 축소돼 연결됨
+- Project 2에 Neo4j GraphQueryPort, vector retrieval, multi-store LangGraph orchestration 없음
+- Ontology/Datasets/Governance 전용 Workbench 없음
 - Project entity foundation은 구현되었으나 operational repository의 project_id 전환 미완료
 - active PostgreSQL runtime 미완료
 - Project scope가 persistence record에 없음
@@ -225,7 +258,6 @@ Release gate: 12/12 PASS
 
 ### Low Priority / Deferred
 
-- graph database
 - real-time collaborative editing
 - domain pack marketplace
 - complete protocol adapter set
@@ -249,14 +281,16 @@ Release gate: 12/12 PASS
 
 ## Immediate Next Work
 
+`docs/10-product-convergence-polyglot-agentic-roadmap.md`의 Stage 44~45를 우선한다.
+
 ```text
-1. Dashboard·Ontology·Action·Workflow·Export repository에 project_id 저장·조회 적용
-2. Dashboard Template/preference/saved view/share의 project key migration
-3. 다중 Project switch E2E, deleted route handling, active project persistence
-4. Prediction Result Contract schema
-5. Dataset Manifest and File Adapter
-6. Azure PdM ingestion and metrics
-7. PostgreSQL repository completion
+1. product/architecture rebaseline와 ADR 갱신
+2. planner canonical physical migration
+3. Project 3 typed health/query/RAG/graph client
+4. read-only Ontology Workbench vertical slice
+5. PostgreSQL + pgvector + Neo4j local integration foundation
+6. Dataset Version과 multi-store projection
+7. 기존 Project scope/PostgreSQL repository 작업을 새 vertical slice에 통합
 ```
 
 ## Status Update Rule

@@ -1,8 +1,11 @@
 # Ontology Dashboard Project Roadmap
 
-- Last updated: 2026-08-01
+- Last updated: 2026-08-02
 - Roadmap owner: project team
 - Canonical entrypoint: `docs/next-session-master-prompt.md`
+- Product convergence override: `docs/10-product-convergence-polyglot-agentic-roadmap.md`
+
+> 2026-08-02 이후의 실행 순서는 `docs/10-product-convergence-polyglot-agentic-roadmap.md`를 우선한다. 아래 NEXT 1~7은 폐기된 작업이 아니라 새 Stage 44~55 안에 Project scope, polyglot persistence, Workbench delivery와 함께 재배치된다.
 
 ## Status Legend
 
@@ -24,6 +27,18 @@
 | 38 | PARTIAL | frontend orchestration 분리, resource route·project selector 잔여 |
 | 39 | PARTIAL | production fail-fast, session·CSRF·RBAC 기반; identity lifecycle 잔여 |
 | 40 | PARTIAL | PostgreSQL 실서버 migration·RLS check, handler 이동·frontend editor 분리 |
+| 44 | DONE | Roadmap rebaseline, Project 3 boundary, executable architecture debt inventory |
+| 45 | DONE | canonical planner, typed Project 3 client, Ontology preview vertical |
+| 46 | PARTIAL | PostgreSQL+pgvector+Neo4j profile implemented; live Docker verification unavailable |
+| 47 | PARTIAL | Dataset Version/projection identity pipeline tested; live stores unavailable |
+| 48 | DONE | Ontology Workbench route, isolation, restore and visual artifact E2E |
+| 49 | PARTIAL | checkpointed orchestrator and Agent Evidence Workbench verified; live three-store query remains |
+| 50 | NEXT | Dataset Catalog completion and reusable materialization flow |
+| 51 | DONE | Governance Workbench, trace, evidence, lineage and projection retry |
+| 52 | PARTIAL | server Analysis/Dashboard foundation plus save-time DAG/Join and quality validation |
+| 53 | NEXT | canonical WorkOrder object/link/action alignment |
+| 54 | DONE/PARTIAL | visual token first slice와 300 KiB initial JS budget gate 완료; Governance/Ontology token 확대와 large lazy table chunk 최적화 잔여 |
+| 55 | NEXT | production-like live integration, rollback and release gate |
 
 ## NEXT 1 — Project Layer
 
@@ -210,16 +225,21 @@ legacy handler container 역할을 하는 `main.py`를 제거하고 feature modu
 
 ## Priority Rule
 
-다음 우선순위는 원칙적으로 유지한다.
+2026-08-02 이후에는 다음 순서를 적용한다.
 
 ```text
-Project Layer
-→ Prediction Contract
-→ File Adapter
-→ Azure Project
-→ Second Project
-→ PostgreSQL Runtime Completion
-→ Production Operations
+Rebaseline and ADR
+→ Planner canonical migration + Project 3 typed client
+→ PostgreSQL + pgvector + Neo4j local stack
+→ Dataset Version and multi-store projection
+→ Ontology Workbench
+→ LangGraph multi-store orchestration
+→ Dataset Catalog and materialization
+→ Governance Workbench
+→ Server-scale Analysis/Dashboard
+→ WorkOrder ontology
+→ Visual convergence
+→ Production integration gate
 ```
 
-새로운 시각 기능은 Project scope와 contract 기반이 마련된 이후에 추가한다.
+Project Layer, Prediction Contract, Adapter, Azure/MetroPT, PostgreSQL runtime 작업은 이 흐름 안에서 계속 수행한다. 새로운 기반 작업은 실제 Workbench route와 함께 전달하며 architecture-only stage를 연속 수행하지 않는다.

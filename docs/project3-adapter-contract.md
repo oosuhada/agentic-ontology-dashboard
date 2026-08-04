@@ -2,7 +2,11 @@
 
 ## 1. 목적
 
-프로젝트 2는 프로젝트 3 없이도 완전히 실행되어야 한다. 프로젝트 3은 설비·부품 관계, 정비 이력, 매뉴얼과 유사 사례를 보강하는 선택적 Context Provider이며, 모델 예측·위험 정책·Evidence·Report·UI 계약을 소유하지 않는다.
+> 2026-08-02 architecture update: 이 문서의 flat maintenance-context 계약은 local demo와 backward compatibility를 위한 최소 계약이다. Integrated production target은 `docs/10-product-convergence-polyglot-agentic-roadmap.md`와 ADR-013을 따른다.
+
+프로젝트 2는 프로젝트 3 장애 시 relational 운영 화면과 이미 materialized된 결과를 degraded mode로 제공해야 한다. 그러나 Project 2와 Project 3은 하나의 실제 업무 제품을 두 구현 과제로 나눈 것이며, integrated mode에서 프로젝트 3은 설비·부품 관계, 정비 이력, graph query, LangGraph Text-to-Cypher, 매뉴얼과 유사 사례 RAG를 제공하는 정식 capability provider다.
+
+프로젝트 2는 모델 예측·위험 정책·Dashboard·Ontology/Dataset/Governance Workbench·Evidence·Action·Report·UI 계약을 소유하고, Project 3 capability를 typed client와 multi-store query tool로 사용한다.
 
 ## 2. Provider 인터페이스
 
@@ -18,11 +22,23 @@ class MaintenanceContextProvider:
         ...
 ```
 
-현재 구현:
+현재 compatibility 구현:
 
 - `FixtureContextProvider`: 로컬 합성 SOP context
-- `Project3HttpContextProvider`: 프로젝트 3 HTTP API
+- `Project3HttpContextProvider`: 프로젝트 3 flat maintenance context API
 - `ResilientContextProvider`: 프로젝트 3 실패 시 fixture fallback
+
+Target integrated client:
+
+- health/readiness
+- `/api/v1/query`
+- `/api/v1/rag/search`와 `/api/v1/rag/query`
+- `/api/v1/graph/schema`
+- `/api/v1/graph/search`
+- `/api/v1/graph/subgraph`
+- agent run inspect/resume
+
+새 기능은 flat context payload를 확장하는 대신 versioned typed contract로 추가한다.
 
 ## 3. HTTP 요청 계약
 
