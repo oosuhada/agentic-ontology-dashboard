@@ -23,5 +23,13 @@ python3 scripts/clean_local_artifacts.py --dry-run
 python3 scripts/clean_local_artifacts.py
 ```
 
-이 명령은 `.venv`, `node_modules`, Dataset fixture와 문서 캡처를 삭제하지 않는다.
+이 명령은 `.venv`, `node_modules`, 실행 중인 Vite dependency cache, Dataset fixture와 문서 캡처를 삭제하지 않는다.
+
+Vite dependency cache까지 초기화해야 할 때만 프론트 서버를 먼저 종료하고 다음 명령을 사용한다.
+
+```bash
+python3 scripts/clean_local_artifacts.py --include-runtime-caches
+```
+
+이 옵션을 사용한 뒤에는 프론트 서버를 반드시 재시작한다. 실행 중인 Vite cache를 삭제하면 `504 Outdated Optimize Dep`로 흰 화면이 발생할 수 있다.
 

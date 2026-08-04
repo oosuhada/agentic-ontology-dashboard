@@ -16,7 +16,6 @@ DIRECTORY_NAMES = {
     ".pytest_cache",
     ".mypy_cache",
     ".ruff_cache",
-    ".vite",
 }
 
 EXPLICIT_DIRECTORIES = {
@@ -24,16 +23,23 @@ EXPLICIT_DIRECTORIES = {
     ROOT / "web" / "test-results",
     ROOT / "web" / "playwright-report",
     ROOT / "web" / "coverage",
-    ROOT / "web" / "node_modules" / ".vite",
     ROOT / "htmlcov",
+}
+
+
+RUNTIME_CACHE_DIRECTORIES = {
+    ROOT / "web" / ".vite",
+    ROOT / "web" / "node_modules" / ".vite",
 }
 
 FILE_NAMES = {".DS_Store", ".coverage", "coverage.xml", "junit.xml"}
 FILE_SUFFIXES = {".pyc", ".pyo"}
 
 
-def candidates() -> list[Path]:
+def candidates(*, include_runtime_caches: bool = False) -> list[Path]:
     paths: set[Path] = set(EXPLICIT_DIRECTORIES)
+    if include_runtime_caches:
+        paths.update(RUNTIME_CACHE_DIRECTORIES)
     for current, directory_names, file_names in os.walk(ROOT):
         current_path = Path(current)
         directory_names[:] = [
@@ -55,10 +61,15 @@ def candidates() -> list[Path]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true", help="Print targets without deleting them.")
+    parser.add_argument(
+        "--include-runtime-caches",
+        action="store_true",
+        help="Also remove Vite dependency caches. Stop and restart the frontend server after using this option.",
+    )
     args = parser.parse_args()
 
     removed = 0
-    for path in candidates():
+    for path in candidates(include_runtime_caches=args.include_runtime_caches):
         if not path.exists():
             continue
         print(path.relative_to(ROOT))
@@ -72,6 +83,8 @@ def main() -> int:
 
     action = "would remove" if args.dry_run else "removed"
     print(f"{action} {removed} local artifact(s)")
+    if args.include_runtime_caches:
+        print("Vite runtime caches were included; restart the frontend server before opening the app.")
     return 0
 
 
