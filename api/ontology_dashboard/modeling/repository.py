@@ -230,6 +230,47 @@ class ModelingRepository:
                 raise ValueError("concurrent transition conflict")
         return payload
 
+    def update(
+        self,
+        kind: Literal["manifest_draft", "mapping_set", "recipe_set", "experiment"],
+        identity: str,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        expected_revision: int,
+        updated_payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        table, identity_column, status_column = TABLES[kind]
+        with self._connection() as connection:
+            row = connection.execute(
+                f"SELECT {status_column},revision,payload_json FROM {table} WHERE {identity_column}=? AND organization_id=? AND project_id=? AND workspace_id=?",
+                (identity, organization_id, project_id, workspace_id),
+            ).fetchone()
+            if row is None:
+                raise KeyError(identity)
+            if int(row["revision"]) != expected_revision:
+                raise ValueError("optimistic revision conflict")
+            payload = json.loads(row["payload_json"])
+            if str(row[status_column]) != "draft" and kind in {"manifest_draft", "mapping_set", "recipe_set"}:
+                raise ValueError(f"{kind} is immutable after review decision")
+            payload.update(updated_payload)
+            payload["revision"] = expected_revision + 1
+            rendered = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str)
+            result = connection.execute(
+                f"UPDATE {table} SET revision=?,payload_json=?,updated_at=? WHERE {identity_column}=? AND revision=?",
+                (
+                    expected_revision + 1,
+                    rendered,
+                    datetime.now(timezone.utc).isoformat(),
+                    identity,
+                    expected_revision,
+                ),
+            )
+            if result.rowcount != 1:
+                raise ValueError("concurrent update conflict")
+        return payload
+
     def record_audit(
         self,
         *,

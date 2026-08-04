@@ -284,9 +284,18 @@ def get_modeling_service() -> ModelingService:
     target = database_target()
     if is_postgresql(target):
         raise RuntimeError("PostgreSQL adaptive modeling repository is not configured")
+    configured_roots = [
+        Path(item).expanduser().resolve()
+        for item in os.getenv(
+            "ONTOLOGY_DASHBOARD_DATASET_ROOTS",
+            str((ROOT / "data").resolve()),
+        ).split(os.pathsep)
+        if item.strip()
+    ]
     return ModelingService.configured(
         target,
         os.getenv("ONTOLOGY_DASHBOARD_MODELING_ARTIFACT_ROOT"),
+        intake_roots=configured_roots,
     )
 
 

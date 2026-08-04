@@ -159,6 +159,41 @@ class DatasetIntakeProfile(ScopedIdentity):
         return self
 
 
+class IntakeProfileRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    source_path: str
+    sheet: str | None = None
+    use_llm: bool = False
+    idempotency_key: str
+
+
+class ManifestDraftCreateRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    profile_id: str
+    idempotency_key: str
+
+
+class ManifestDraftUpdateRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    expected_revision: int = Field(ge=1)
+    field_suggestions: list[ManifestFieldSuggestion] | None = None
+    quality_rules: list[dict[str, Any]] | None = None
+    encoding: str | None = None
+    delimiter: str | None = None
+    sheet: str | None = None
+
+
+class ManifestDraftDecisionRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    expected_revision: int = Field(ge=1)
+    decision: Literal["approve", "reject", "supersede"]
+    rationale: str = Field(min_length=2, max_length=1000)
+
+
 class ManifestFieldSuggestion(StrictModel):
     source_field: str
     canonical_field: str | None = None
