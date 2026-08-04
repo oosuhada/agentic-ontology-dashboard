@@ -19,7 +19,9 @@ class DatasetSource(BaseModel):
 class DatasetSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    format: Literal["csv", "json", "jsonl", "parquet"]
+    format: Literal["csv", "xlsx", "json", "jsonl", "parquet"]
+    delimiter: str | None = Field(default=None, max_length=8)
+    sheet: str | None = Field(default=None, max_length=256)
     required_fields: list[str] = Field(default_factory=list)
     field_aliases: dict[str, list[str]] = Field(default_factory=dict)
     primary_key: list[str] = Field(default_factory=list)

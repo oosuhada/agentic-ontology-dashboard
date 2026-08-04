@@ -44,10 +44,12 @@ class AdapterRegistry:
 
 def default_adapter_registry() -> AdapterRegistry:
     from .azure_fleet import AzureFleetMaintenanceAdapter
+    from .governed_tabular import GovernedTabularAdapter
     from .metropt import MetroPTCompressorAdapter
     from .predictive_maintenance_v2 import PredictiveMaintenanceCanonicalV2Adapter
 
     registry = AdapterRegistry()
+    registry.register(GovernedTabularAdapter())
     registry.register(AzureFleetMaintenanceAdapter())
     registry.register(MetroPTCompressorAdapter())
     registry.register_bundle(PredictiveMaintenanceCanonicalV2Adapter())

@@ -194,6 +194,15 @@ class ManifestDraftDecisionRequest(StrictModel):
     rationale: str = Field(min_length=2, max_length=1000)
 
 
+class ManifestIngestRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    dataset_name: str = Field(min_length=2, max_length=256)
+    dataset_version: str = Field(min_length=1, max_length=128)
+    license: str | None = Field(default=None, max_length=256)
+    provenance_url: str | None = None
+
+
 class ManifestFieldSuggestion(StrictModel):
     source_field: str
     canonical_field: str | None = None
@@ -397,6 +406,32 @@ class FeatureRecipeSet(ScopedIdentity):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class FeatureRecipeSetCreateRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    dataset_version_id: str
+    mapping_set_id: str
+    recipes: list[FeatureRecipe]
+    label_policy: LabelPolicy
+    idempotency_key: str
+
+
+class FeatureRecipeSetDecisionRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    expected_revision: int = Field(ge=1)
+    decision: Literal["approve", "reject", "supersede"]
+    rationale: str = Field(min_length=2, max_length=1000)
+
+
+class FeatureMaterializationRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    profile_id: str
+    recipe_set_id: str
+    idempotency_key: str
+
+
 class FeatureDatasetVersion(ScopedIdentity):
     feature_dataset_version_id: str
     dataset_version_id: str
@@ -476,6 +511,9 @@ class ExperimentRun(ScopedIdentity):
     status: RunStatus
     split_policy: SplitPolicy
     random_seed: int
+    recall_target: float = Field(default=0.8, ge=0, le=1)
+    false_negative_cost: float = Field(default=10.0, gt=0)
+    false_positive_cost: float = Field(default=1.0, gt=0)
     progress: float = Field(default=0, ge=0, le=1)
     candidates: list[CandidateResult] = Field(default_factory=list)
     selected_candidate_id: str | None = None
@@ -486,6 +524,49 @@ class ExperimentRun(ScopedIdentity):
     revision: int = Field(default=1, ge=1)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ExperimentCreateRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    feature_dataset_version_id: str
+    split_policy: SplitPolicy
+    algorithms: list[
+        Literal["dummy_prior", "logistic_regression", "random_forest", "lightgbm", "xgboost"]
+    ] = Field(
+        default_factory=lambda: [
+            "dummy_prior",
+            "logistic_regression",
+            "random_forest",
+            "lightgbm",
+            "xgboost",
+        ]
+    )
+    random_seed: int = 42
+    recall_target: float = Field(default=0.8, ge=0, le=1)
+    false_negative_cost: float = Field(default=10.0, gt=0)
+    false_positive_cost: float = Field(default=1.0, gt=0)
+    idempotency_key: str
+
+
+class ExperimentRetryRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    expected_revision: int = Field(ge=1)
+
+
+class ExperimentCancelRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    expected_revision: int = Field(ge=1)
+    reason: str = Field(min_length=2, max_length=1000)
+
+
+class ExperimentRecoverRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    expected_revision: int = Field(ge=1)
+    stale_after_minutes: int = Field(default=30, ge=1, le=1440)
 
 
 class ThresholdPolicy(StrictModel):
@@ -505,6 +586,8 @@ class ModelVersion(ScopedIdentity):
     model_version_id: str
     experiment_id: str
     candidate_id: str
+    algorithm: Literal["logistic_regression", "random_forest", "lightgbm", "xgboost"]
+    prediction_task: Literal["binary_failure_within_horizon"] = "binary_failure_within_horizon"
     dataset_version_id: str
     mapping_set_id: str
     recipe_set_id: str
@@ -512,18 +595,91 @@ class ModelVersion(ScopedIdentity):
     label_policy_id: str
     status: ModelStatus
     artifact: ArtifactReference
+    input_features: list[str]
     input_schema_checksum_sha256: str = Field(pattern=SHA256_PATTERN)
     runtime_versions: dict[str, str] = Field(default_factory=dict)
     calibration_method: str | None = None
     calibration_artifact: ArtifactReference | None = None
+    confidence_status: Literal["calibrated", "unavailable_uncalibrated"] = "unavailable_uncalibrated"
     threshold_policy: ThresholdPolicy
     explanation_provider: str
     explanation_provider_version: str
     limitations: list[str] = Field(default_factory=list)
+    promotion_gate: dict[str, Any] = Field(default_factory=dict)
     revision: int = Field(default=1, ge=1)
     activated_at: datetime | None = None
     retired_at: datetime | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ModelVersionCreateRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    experiment_id: str
+    idempotency_key: str
+
+
+class ModelReleaseRequestRecord(ScopedIdentity):
+    release_request_id: str
+    model_version_id: str
+    status: Literal["pending", "approved", "rejected"] = "pending"
+    requested_by: str
+    request_rationale: str
+    decided_by: str | None = None
+    decision_rationale: str | None = None
+    revision: int = Field(default=1, ge=1)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    decided_at: datetime | None = None
+
+
+class ModelReleaseRequestCreate(StrictModel):
+    project_id: str
+    workspace_id: str
+    rationale: str = Field(min_length=2, max_length=2000)
+
+
+class ModelReleaseDecisionRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    expected_revision: int = Field(ge=1)
+    decision: Literal["approve", "reject"]
+    rationale: str = Field(min_length=2, max_length=2000)
+
+
+class ModelActivateRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    expected_revision: int = Field(ge=1)
+
+
+class ModelRollbackRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    target_model_version_id: str
+
+
+class ModelScoreRequest(StrictModel):
+    project_id: str
+    workspace_id: str
+    observation_id: str
+    observed_at: datetime
+    features: dict[str, Any]
+    expected_input_schema_checksum_sha256: str = Field(pattern=SHA256_PATTERN)
+
+
+class ModelScoreResult(StrictModel):
+    prediction_result_id: str
+    model_version_id: str
+    prediction_task: Literal["binary_failure_within_horizon"]
+    failure_probability: float = Field(ge=0, le=1)
+    decision_threshold: float = Field(ge=0, le=1)
+    predicted_label: Literal["failure_risk", "no_significant_risk"]
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    confidence_status: Literal["calibrated", "unavailable_uncalibrated"]
+    observation_id: str
+    observed_at: datetime
+    input_schema_checksum_sha256: str = Field(pattern=SHA256_PATTERN)
+    explanation_id: str | None = None
 
 
 class ExplanationFactor(StrictModel):

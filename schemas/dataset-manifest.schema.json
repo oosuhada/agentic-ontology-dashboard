@@ -45,7 +45,9 @@
       "additionalProperties": false,
       "required": ["format", "required_fields"],
       "properties": {
-        "format": { "type": "string", "enum": ["csv", "json", "jsonl", "parquet"] },
+        "format": { "type": "string", "enum": ["csv", "xlsx", "json", "jsonl", "parquet"] },
+        "delimiter": { "type": ["string", "null"], "maxLength": 8 },
+        "sheet": { "type": ["string", "null"], "maxLength": 256 },
         "required_fields": {
           "type": "array",
           "items": { "type": "string", "minLength": 1, "maxLength": 256 },

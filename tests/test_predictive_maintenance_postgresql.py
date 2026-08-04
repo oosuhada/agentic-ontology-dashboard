@@ -15,6 +15,8 @@ from ontology_dashboard.adapters import (
     compute_bundle_checksum,
 )
 from ontology_dashboard.migrations import migrate
+from ontology_dashboard.modeling.models import DatasetIntakeProfile, canonical_checksum
+from ontology_dashboard.modeling.repository import ModelingRepository
 from tests.test_predictive_maintenance_bundle_adapter import (
     build_manifest,
     create_small_package,
@@ -54,7 +56,7 @@ def postgresql_database():
     dsn = _dsn_for_database(database)
     try:
         applied = migrate(dsn)
-        assert applied[-1] == "0016_adaptive_modeling_foundation"
+        assert applied[-1] == "0017_adaptive_model_registry"
         assert migrate(dsn) == []
         import psycopg
 
@@ -239,6 +241,112 @@ def test_postgresql_copy_idempotency_rls_and_atomic_rollback(
             scoped.execute("SELECT set_config('app.project_id','project-other',false)")
             hidden = int(scoped.execute("SELECT COUNT(*) AS count FROM pm_assets").fetchone()["count"])
         assert visible == expected["asset_master"] * 2
+        assert hidden == 0
+    finally:
+        with psycopg.connect(postgresql_database, autocommit=True) as admin:
+            admin.execute(sql.SQL("DROP OWNED BY {}").format(sql.Identifier(role)))
+            admin.execute(sql.SQL("DROP ROLE IF EXISTS {}").format(sql.Identifier(role)))
+
+
+def test_postgresql_adaptive_modeling_repository_jsonb_idempotency_and_rls(
+    postgresql_database: str,
+) -> None:
+    import psycopg
+    from psycopg import sql
+    from psycopg.rows import dict_row
+
+    repository = ModelingRepository(postgresql_database)
+    source_checksum = "a" * 64
+    profile = DatasetIntakeProfile(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        profile_id="profile-postgresql-runtime",
+        source_uri="file:///tmp/governed-source.csv",
+        source_checksum_sha256=source_checksum,
+        parser_version="dataset-intake-v1",
+        cache_key=canonical_checksum(
+            {
+                "source_checksum_sha256": source_checksum,
+                "parser_version": "dataset-intake-v1",
+            }
+        ),
+        byte_size=128,
+        media_type="text/csv",
+        status="ready_for_review",
+        structure_type="tabular_column_as_attribute",
+        row_count=2,
+        idempotency_key="profile-postgresql-runtime",
+    )
+    first = repository.put(
+        "intake_profile",
+        profile.model_dump(mode="json"),
+        idempotency_key=profile.idempotency_key,
+    )
+    repeated = repository.put(
+        "intake_profile",
+        profile.model_dump(mode="json"),
+        idempotency_key=profile.idempotency_key,
+    )
+    assert repeated == first
+    assert repository.get(
+        "intake_profile",
+        profile.profile_id,
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+    )["source_checksum_sha256"] == source_checksum
+    with pytest.raises(KeyError):
+        repository.get(
+            "intake_profile",
+            profile.profile_id,
+            organization_id="org-test",
+            project_id="project-other",
+            workspace_id="workspace-other",
+        )
+    repository.record_audit(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        actor_id="user-test",
+        action="modeling.profile.verified",
+        aggregate_type="DatasetIntakeProfile",
+        aggregate_id=profile.profile_id,
+        payload={"checksum": source_checksum},
+    )
+    assert repository.list_audit(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+    )[0]["payload"]["checksum"] == source_checksum
+
+    role = f"modeling_rls_test_{uuid.uuid4().hex[:10]}"
+    try:
+        with psycopg.connect(postgresql_database, autocommit=True) as admin:
+            admin.execute(sql.SQL("CREATE ROLE {} LOGIN").format(sql.Identifier(role)))
+            admin.execute(sql.SQL("GRANT USAGE ON SCHEMA public TO {}").format(sql.Identifier(role)))
+            admin.execute(
+                sql.SQL("GRANT SELECT ON modeling_intake_profiles TO {}").format(
+                    sql.Identifier(role)
+                )
+            )
+        with psycopg.connect(
+            _dsn_for_user(postgresql_database, role), row_factory=dict_row
+        ) as scoped:
+            scoped.execute("SELECT set_config('app.organization_id','org-test',false)")
+            scoped.execute("SELECT set_config('app.project_id','project-test',false)")
+            visible = int(
+                scoped.execute(
+                    "SELECT COUNT(*) AS count FROM modeling_intake_profiles"
+                ).fetchone()["count"]
+            )
+            scoped.execute("SELECT set_config('app.project_id','project-other',false)")
+            hidden = int(
+                scoped.execute(
+                    "SELECT COUNT(*) AS count FROM modeling_intake_profiles"
+                ).fetchone()["count"]
+            )
+        assert visible == 1
         assert hidden == 0
     finally:
         with psycopg.connect(postgresql_database, autocommit=True) as admin:

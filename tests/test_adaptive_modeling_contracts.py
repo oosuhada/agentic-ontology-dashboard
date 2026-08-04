@@ -19,6 +19,7 @@ from ontology_dashboard.modeling.models import (
     ensure_transition,
 )
 from ontology_dashboard.modeling.repository import ModelingRepository
+from ontology_dashboard.modeling.schema import adaptive_modeling_schema
 from ontology_dashboard.modeling.service import ModelingService
 
 
@@ -75,6 +76,7 @@ def draft_payload() -> dict:
 def test_draft_2020_12_schema_and_pydantic_examples_match() -> None:
     schema = json.loads(Path("schemas/adaptive-modeling.schema.json").read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(schema)
+    assert schema == adaptive_modeling_schema()
     validator = Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
     assert list(validator.iter_errors(profile_payload())) == []
     assert list(validator.iter_errors(draft_payload())) == []

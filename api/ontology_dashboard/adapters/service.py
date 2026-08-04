@@ -39,7 +39,12 @@ class AdapterService:
         prediction_repository: PredictionResultRepository | None = None,
         dataset_catalog: DatasetCatalogService | None = None,
     ) -> None:
-        self.path = Path(database_path)
+        self.database = str(database_path)
+        self.path = (
+            self.database
+            if self.database.startswith(("postgresql://", "postgresql+psycopg://"))
+            else Path(self.database)
+        )
         self.root = Path(root)
         self.registry = registry or default_adapter_registry()
         configured = os.getenv("ONTOLOGY_DASHBOARD_DATA_ROOTS", "")
@@ -48,9 +53,11 @@ class AdapterService:
             roots = [self.root / "data" / "raw", self.root / "data" / "fixtures"]
         self.repository = repository or AdapterRepository(self.path)
         self.predictions = prediction_repository or PredictionResultRepository(self.path)
-        self.dataset_catalog = dataset_catalog or DatasetCatalogService(DatasetRepository(self.path))
+        self.dataset_catalog = dataset_catalog or DatasetCatalogService(
+            DatasetRepository(self.database)
+        )
         self.file_adapter = FileAdapter(
-            self.path,
+            self.database,
             allowed_roots=roots,
             registry=self.registry,
             repository=self.repository,

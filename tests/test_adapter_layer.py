@@ -5,7 +5,9 @@ import json
 from pathlib import Path
 
 import pytest
+from openpyxl import Workbook
 from pydantic import ValidationError
+from jsonschema import Draft202012Validator
 
 from ontology_dashboard.adapters.file_adapter import FileAdapter
 from ontology_dashboard.adapters.models import DatasetManifest, PredictionResult
@@ -250,3 +252,124 @@ def test_file_adapter_rejects_sources_outside_allowlisted_roots(
     )
     with pytest.raises(ValueError, match="outside the configured ingestion roots"):
         FileAdapter(adapter_database, allowed_roots=[allowed]).ingest(manifest)
+
+
+def test_governed_tabular_adapter_honors_approved_csv_delimiter(
+    adapter_database: Path,
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "governed-semicolon.csv"
+    source.write_text(
+        "machine_id;timestamp;voltage\n"
+        "M-1;2026-01-01T00:00:00Z;220.5\n"
+        "M-2;2026-01-01T00:01:00Z;221.0\n",
+        encoding="utf-8",
+    )
+    manifest = DatasetManifest.model_validate(
+        {
+            "manifest_id": "manifest-governed-semicolon",
+            "organization_id": "org-ontology-demo",
+            "project_id": "manufacturing-demo-project",
+            "workspace_id": "manufacturing-demo",
+            "adapter_code": "governed-tabular",
+            "dataset_name": "Governed semicolon CSV",
+            "dataset_version": "v1",
+            "source": {
+                "uri": str(source),
+                "media_type": "text/csv",
+                "checksum_sha256": sha256(source),
+                "size_bytes": source.stat().st_size,
+                "encoding": "utf-8",
+            },
+            "schema": {
+                "format": "csv",
+                "delimiter": ";",
+                "required_fields": ["equipment_id", "observed_at"],
+                "field_aliases": {
+                    "equipment_id": ["machine_id"],
+                    "observed_at": ["timestamp"],
+                    "voltage_v": ["voltage"],
+                },
+                "primary_key": ["equipment_id", "observed_at"],
+                "timestamp_field": "observed_at",
+                "timezone": "UTC",
+            },
+            "quality_rules": [
+                {"code": "required-equipment", "field": "equipment_id", "rule": "required"},
+                {"code": "timestamp", "field": "observed_at", "rule": "datetime"},
+                {"code": "voltage", "field": "voltage_v", "rule": "number"},
+            ],
+        }
+    )
+    result = FileAdapter(adapter_database, allowed_roots=[tmp_path]).ingest(manifest)
+    assert result.status == "completed"
+    assert result.accepted_record_count == 2
+    assert result.accepted_records[0]["equipment_id"] == "M-1"
+    assert result.accepted_records[0]["voltage_v"] == "220.5"
+    assert result.metrics["semantic_inference_performed"] is False
+
+
+def test_governed_tabular_adapter_ingests_selected_xlsx_sheet(
+    adapter_database: Path,
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "governed.xlsx"
+    workbook = Workbook()
+    ignored = workbook.active
+    ignored.title = "README"
+    ignored.append(["note"])
+    ignored.append(["not data"])
+    data = workbook.create_sheet("Telemetry")
+    data.append(["machine_id", "timestamp", "voltage"])
+    data.append(["M-1", "2026-01-01T00:00:00Z", 220.5])
+    data.append(["M-2", "2026-01-01T00:01:00Z", 221.0])
+    workbook.save(source)
+    manifest = DatasetManifest.model_validate(
+        {
+            "manifest_id": "manifest-governed-xlsx",
+            "organization_id": "org-ontology-demo",
+            "project_id": "manufacturing-demo-project",
+            "workspace_id": "manufacturing-demo",
+            "adapter_code": "governed-tabular",
+            "dataset_name": "Governed XLSX",
+            "dataset_version": "v1",
+            "source": {
+                "uri": str(source),
+                "media_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "checksum_sha256": sha256(source),
+                "size_bytes": source.stat().st_size,
+                "encoding": "utf-8",
+            },
+            "schema": {
+                "format": "xlsx",
+                "sheet": "Telemetry",
+                "required_fields": ["equipment_id", "observed_at"],
+                "field_aliases": {
+                    "equipment_id": ["machine_id"],
+                    "observed_at": ["timestamp"],
+                    "voltage_v": ["voltage"],
+                },
+                "primary_key": ["equipment_id", "observed_at"],
+                "timestamp_field": "observed_at",
+                "timezone": "UTC",
+            },
+            "quality_rules": [
+                {"code": "required-equipment", "field": "equipment_id", "rule": "required"},
+                {"code": "timestamp", "field": "observed_at", "rule": "datetime"},
+                {"code": "voltage", "field": "voltage_v", "rule": "number"},
+            ],
+        }
+    )
+    result = FileAdapter(adapter_database, allowed_roots=[tmp_path]).ingest(manifest)
+    assert result.status == "completed"
+    assert result.accepted_record_count == 2
+    assert result.accepted_records[1]["equipment_id"] == "M-2"
+    assert result.accepted_records[1]["voltage_v"] == "221"
+    schema = json.loads(
+        (ROOT / "schemas" / "dataset-manifest.schema.json").read_text(encoding="utf-8")
+    )
+    validator = Draft202012Validator(
+        schema,
+        format_checker=Draft202012Validator.FORMAT_CHECKER,
+    )
+    assert list(validator.iter_errors(manifest.model_dump(mode="json", by_alias=True))) == []

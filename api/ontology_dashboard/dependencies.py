@@ -14,6 +14,7 @@ from argon2 import PasswordHasher
 from fastapi import Depends, Request, Response
 
 from .adapters.service import AdapterService
+from .adapters.prediction_repository import PredictionResultRepository
 from .analysis_service import AnalysisService
 from .dashboard_service import DashboardService
 from .datasets import (
@@ -282,8 +283,6 @@ def get_predictive_maintenance_runtime_service() -> PredictiveMaintenanceRuntime
 def get_modeling_service() -> ModelingService:
     ensure_database_migrations()
     target = database_target()
-    if is_postgresql(target):
-        raise RuntimeError("PostgreSQL adaptive modeling repository is not configured")
     configured_roots = [
         Path(item).expanduser().resolve()
         for item in os.getenv(
@@ -292,10 +291,20 @@ def get_modeling_service() -> ModelingService:
         ).split(os.pathsep)
         if item.strip()
     ]
+    artifact_root = os.getenv(
+        "ONTOLOGY_DASHBOARD_MODELING_ARTIFACT_ROOT",
+        str((ROOT / "data" / "modeling-artifacts").resolve()),
+    )
+    prediction_repository = (
+        PostgreSQLPredictionResultRepository(target)
+        if is_postgresql(target)
+        else PredictionResultRepository(target)
+    )
     return ModelingService.configured(
         target,
-        os.getenv("ONTOLOGY_DASHBOARD_MODELING_ARTIFACT_ROOT"),
+        artifact_root,
         intake_roots=configured_roots,
+        prediction_repository=prediction_repository,
     )
 
 

@@ -1,100 +1,2299 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://ontology-dashboard.local/schemas/adaptive-modeling.schema.json",
-  "title": "Adaptive Modeling Contracts",
-  "oneOf": [
-    {"$ref": "#/$defs/DatasetIntakeProfile"},
-    {"$ref": "#/$defs/ManifestDraft"},
-    {"$ref": "#/$defs/MappingSet"},
-    {"$ref": "#/$defs/FeatureRecipeSet"},
-    {"$ref": "#/$defs/FeatureDatasetVersion"},
-    {"$ref": "#/$defs/ExperimentRun"},
-    {"$ref": "#/$defs/ModelVersion"},
-    {"$ref": "#/$defs/ExplanationArtifact"}
-  ],
   "$defs": {
-    "Scope": {
-      "type": "object",
-      "required": ["schema_version", "organization_id", "project_id", "workspace_id"],
-      "properties": {
-        "schema_version": {"const": "adaptive-modeling-v1"},
-        "organization_id": {"type": "string", "minLength": 1},
-        "project_id": {"type": "string", "minLength": 1},
-        "workspace_id": {"type": "string", "minLength": 1}
-      }
-    },
-    "Checksum": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "ArtifactReference": {
-      "type": "object",
       "additionalProperties": false,
-      "required": ["uri", "checksum_sha256", "media_type", "size_bytes", "created_at", "store_capability"],
       "properties": {
-        "uri": {"type": "string", "pattern": "^(artifact|s3|gs|az|file)://"},
-        "checksum_sha256": {"$ref": "#/$defs/Checksum"},
-        "media_type": {"type": "string"},
-        "size_bytes": {"type": "integer", "minimum": 0},
-        "created_at": {"type": "string", "format": "date-time"},
-        "store_capability": {"enum": ["ready", "blocked"]}
-      }
+        "uri": {
+          "pattern": "^(artifact|s3|gs|az|file)://",
+          "title": "Uri",
+          "type": "string"
+        },
+        "checksum_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Checksum Sha256",
+          "type": "string"
+        },
+        "media_type": {
+          "maxLength": 160,
+          "minLength": 3,
+          "title": "Media Type",
+          "type": "string"
+        },
+        "size_bytes": {
+          "minimum": 0,
+          "title": "Size Bytes",
+          "type": "integer"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "store_capability": {
+          "default": "ready",
+          "enum": [
+            "ready",
+            "blocked"
+          ],
+          "title": "Store Capability",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "checksum_sha256",
+        "media_type",
+        "size_bytes"
+      ],
+      "title": "ArtifactReference",
+      "type": "object"
+    },
+    "CandidateResult": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_id": {
+          "title": "Candidate Id",
+          "type": "string"
+        },
+        "algorithm": {
+          "enum": [
+            "dummy_prior",
+            "logistic_regression",
+            "random_forest",
+            "lightgbm",
+            "xgboost"
+          ],
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "succeeded",
+            "failed",
+            "blocked_dependency",
+            "rejected"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "hyperparameters": {
+          "additionalProperties": true,
+          "title": "Hyperparameters",
+          "type": "object"
+        },
+        "dependency_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dependency Version"
+        },
+        "validation_metrics": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MetricSet"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "held_out_test_metrics": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MetricSet"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "selected": {
+          "default": false,
+          "title": "Selected",
+          "type": "boolean"
+        },
+        "selection_rationale": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selection Rationale"
+        },
+        "artifact": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Reason"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "algorithm",
+        "status"
+      ],
+      "title": "CandidateResult",
+      "type": "object"
     },
     "DatasetIntakeProfile": {
-      "allOf": [
-        {"$ref": "#/$defs/Scope"},
-        {
-          "type": "object",
-          "required": ["profile_id", "source_uri", "source_checksum_sha256", "parser_version", "cache_key", "byte_size", "media_type", "status", "structure_type", "field_profiles", "preview_rows", "retryable", "idempotency_key", "revision", "created_at"],
-          "properties": {
-            "profile_id": {"type": "string"},
-            "dataset_id": {"type": ["string", "null"]},
-            "source_uri": {"type": "string"},
-            "source_checksum_sha256": {"$ref": "#/$defs/Checksum"},
-            "parser_version": {"type": "string"},
-            "cache_key": {"$ref": "#/$defs/Checksum"},
-            "byte_size": {"type": "integer", "minimum": 0},
-            "media_type": {"type": "string"},
-            "status": {"enum": ["profiling", "ready_for_review", "unsupported", "failed"]},
-            "structure_type": {"enum": ["tabular_column_as_attribute", "tabular_row_as_attribute", "wide_pivot", "key_value", "multi_header", "unsupported"]},
-            "field_profiles": {"type": "array"},
-            "preview_rows": {"type": "array"},
-            "row_count": {"type": ["integer", "null"], "minimum": 0},
-            "retryable": {"type": "boolean"},
-            "failure_reason": {"type": ["string", "null"]},
-            "idempotency_key": {"type": "string"},
-            "revision": {"type": "integer", "minimum": 1},
-            "created_at": {"type": "string", "format": "date-time"}
-          }
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "adaptive-modeling-v1",
+          "default": "adaptive-modeling-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "organization_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Project Id",
+          "type": "string"
+        },
+        "workspace_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        },
+        "profile_id": {
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "dataset_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dataset Id"
+        },
+        "source_uri": {
+          "title": "Source Uri",
+          "type": "string"
+        },
+        "source_checksum_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Source Checksum Sha256",
+          "type": "string"
+        },
+        "parser_version": {
+          "title": "Parser Version",
+          "type": "string"
+        },
+        "cache_key": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Cache Key",
+          "type": "string"
+        },
+        "byte_size": {
+          "minimum": 0,
+          "title": "Byte Size",
+          "type": "integer"
+        },
+        "media_type": {
+          "title": "Media Type",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "profiling",
+            "ready_for_review",
+            "unsupported",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "structure_type": {
+          "enum": [
+            "tabular_column_as_attribute",
+            "tabular_row_as_attribute",
+            "wide_pivot",
+            "key_value",
+            "multi_header",
+            "unsupported"
+          ],
+          "title": "Structure Type",
+          "type": "string"
+        },
+        "field_profiles": {
+          "items": {
+            "$ref": "#/$defs/FieldProfile"
+          },
+          "title": "Field Profiles",
+          "type": "array"
+        },
+        "preview_rows": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Preview Rows",
+          "type": "array"
+        },
+        "row_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Row Count"
+        },
+        "retryable": {
+          "default": false,
+          "title": "Retryable",
+          "type": "boolean"
+        },
+        "failure_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failure Reason"
+        },
+        "idempotency_key": {
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "revision": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
         }
+      },
+      "required": [
+        "organization_id",
+        "project_id",
+        "workspace_id",
+        "profile_id",
+        "source_uri",
+        "source_checksum_sha256",
+        "parser_version",
+        "cache_key",
+        "byte_size",
+        "media_type",
+        "status",
+        "structure_type",
+        "idempotency_key"
       ],
-      "unevaluatedProperties": false
+      "title": "DatasetIntakeProfile",
+      "type": "object"
+    },
+    "ExperimentRun": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "adaptive-modeling-v1",
+          "default": "adaptive-modeling-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "organization_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Project Id",
+          "type": "string"
+        },
+        "workspace_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        },
+        "experiment_id": {
+          "title": "Experiment Id",
+          "type": "string"
+        },
+        "dataset_version_id": {
+          "title": "Dataset Version Id",
+          "type": "string"
+        },
+        "mapping_set_id": {
+          "title": "Mapping Set Id",
+          "type": "string"
+        },
+        "recipe_set_id": {
+          "title": "Recipe Set Id",
+          "type": "string"
+        },
+        "feature_dataset_version_id": {
+          "title": "Feature Dataset Version Id",
+          "type": "string"
+        },
+        "label_policy_id": {
+          "title": "Label Policy Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        },
+        "split_policy": {
+          "$ref": "#/$defs/SplitPolicy"
+        },
+        "random_seed": {
+          "title": "Random Seed",
+          "type": "integer"
+        },
+        "recall_target": {
+          "default": 0.8,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Recall Target",
+          "type": "number"
+        },
+        "false_negative_cost": {
+          "default": 10.0,
+          "exclusiveMinimum": 0,
+          "title": "False Negative Cost",
+          "type": "number"
+        },
+        "false_positive_cost": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "title": "False Positive Cost",
+          "type": "number"
+        },
+        "progress": {
+          "default": 0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Progress",
+          "type": "number"
+        },
+        "candidates": {
+          "items": {
+            "$ref": "#/$defs/CandidateResult"
+          },
+          "title": "Candidates",
+          "type": "array"
+        },
+        "selected_candidate_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selected Candidate Id"
+        },
+        "threshold_policy_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold Policy Id"
+        },
+        "artifact": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "idempotency_key": {
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "retry_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Retry Count",
+          "type": "integer"
+        },
+        "revision": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "organization_id",
+        "project_id",
+        "workspace_id",
+        "experiment_id",
+        "dataset_version_id",
+        "mapping_set_id",
+        "recipe_set_id",
+        "feature_dataset_version_id",
+        "label_policy_id",
+        "status",
+        "split_policy",
+        "random_seed",
+        "idempotency_key"
+      ],
+      "title": "ExperimentRun",
+      "type": "object"
+    },
+    "ExplanationArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "adaptive-modeling-v1",
+          "default": "adaptive-modeling-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "organization_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Project Id",
+          "type": "string"
+        },
+        "workspace_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        },
+        "explanation_id": {
+          "title": "Explanation Id",
+          "type": "string"
+        },
+        "prediction_result_id": {
+          "title": "Prediction Result Id",
+          "type": "string"
+        },
+        "observation_id": {
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "model_version_id": {
+          "title": "Model Version Id",
+          "type": "string"
+        },
+        "recipe_set_id": {
+          "title": "Recipe Set Id",
+          "type": "string"
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string"
+        },
+        "provider_version": {
+          "title": "Provider Version",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "available",
+            "unavailable",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "top_factors": {
+          "items": {
+            "$ref": "#/$defs/ExplanationFactor"
+          },
+          "title": "Top Factors",
+          "type": "array"
+        },
+        "input_schema_checksum_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Input Schema Checksum Sha256",
+          "type": "string"
+        },
+        "checksum_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Checksum Sha256",
+          "type": "string"
+        },
+        "unavailable_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unavailable Reason"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "causal_proof": {
+          "const": false,
+          "default": false,
+          "title": "Causal Proof",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "organization_id",
+        "project_id",
+        "workspace_id",
+        "explanation_id",
+        "prediction_result_id",
+        "observation_id",
+        "observed_at",
+        "model_version_id",
+        "recipe_set_id",
+        "provider",
+        "provider_version",
+        "status",
+        "input_schema_checksum_sha256",
+        "checksum_sha256"
+      ],
+      "title": "ExplanationArtifact",
+      "type": "object"
+    },
+    "ExplanationFactor": {
+      "additionalProperties": false,
+      "properties": {
+        "rank": {
+          "minimum": 1,
+          "title": "Rank",
+          "type": "integer"
+        },
+        "feature": {
+          "title": "Feature",
+          "type": "string"
+        },
+        "observed_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Value"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "reference_range": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reference Range"
+        },
+        "direction": {
+          "enum": [
+            "risk_up",
+            "risk_down",
+            "neutral"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "contribution": {
+          "title": "Contribution",
+          "type": "number"
+        },
+        "contribution_kind": {
+          "const": "local_contribution",
+          "default": "local_contribution",
+          "title": "Contribution Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rank",
+        "feature",
+        "direction",
+        "contribution"
+      ],
+      "title": "ExplanationFactor",
+      "type": "object"
+    },
+    "FeatureDatasetVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "adaptive-modeling-v1",
+          "default": "adaptive-modeling-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "organization_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Project Id",
+          "type": "string"
+        },
+        "workspace_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        },
+        "feature_dataset_version_id": {
+          "title": "Feature Dataset Version Id",
+          "type": "string"
+        },
+        "dataset_version_id": {
+          "title": "Dataset Version Id",
+          "type": "string"
+        },
+        "mapping_set_id": {
+          "title": "Mapping Set Id",
+          "type": "string"
+        },
+        "recipe_set_id": {
+          "title": "Recipe Set Id",
+          "type": "string"
+        },
+        "label_policy_id": {
+          "title": "Label Policy Id",
+          "type": "string"
+        },
+        "materialization_checksum_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Materialization Checksum Sha256",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        },
+        "row_count": {
+          "minimum": 0,
+          "title": "Row Count",
+          "type": "integer"
+        },
+        "feature_count": {
+          "minimum": 0,
+          "title": "Feature Count",
+          "type": "integer"
+        },
+        "equipment_count": {
+          "minimum": 0,
+          "title": "Equipment Count",
+          "type": "integer"
+        },
+        "time_start": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Time Start"
+        },
+        "time_end": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Time End"
+        },
+        "artifact": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "schema_metadata": {
+          "additionalProperties": true,
+          "title": "Schema Metadata",
+          "type": "object"
+        },
+        "idempotency_key": {
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "revision": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "organization_id",
+        "project_id",
+        "workspace_id",
+        "feature_dataset_version_id",
+        "dataset_version_id",
+        "mapping_set_id",
+        "recipe_set_id",
+        "label_policy_id",
+        "materialization_checksum_sha256",
+        "status",
+        "row_count",
+        "feature_count",
+        "equipment_count",
+        "idempotency_key"
+      ],
+      "title": "FeatureDatasetVersion",
+      "type": "object"
+    },
+    "FeatureRecipe": {
+      "additionalProperties": false,
+      "properties": {
+        "recipe_id": {
+          "title": "Recipe Id",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        },
+        "checksum_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Checksum Sha256",
+          "type": "string"
+        },
+        "ontology_property": {
+          "title": "Ontology Property",
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "identity",
+            "rolling_mean",
+            "rolling_std",
+            "lag",
+            "diff",
+            "gradient",
+            "ema",
+            "moving_average",
+            "power_w",
+            "temperature_gap_k",
+            "overstrain_load"
+          ],
+          "title": "Operation",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": true,
+          "title": "Parameters",
+          "type": "object"
+        },
+        "group_by": {
+          "title": "Group By",
+          "type": "string"
+        },
+        "order_by": {
+          "title": "Order By",
+          "type": "string"
+        },
+        "minimum_history": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Minimum History",
+          "type": "integer"
+        },
+        "null_policy": {
+          "default": "preserve",
+          "enum": [
+            "drop",
+            "preserve",
+            "fill_zero"
+          ],
+          "title": "Null Policy",
+          "type": "string"
+        },
+        "boundary_policy": {
+          "const": "reset_per_group",
+          "default": "reset_per_group",
+          "title": "Boundary Policy",
+          "type": "string"
+        },
+        "source_grain": {
+          "title": "Source Grain",
+          "type": "string"
+        },
+        "output_datatype": {
+          "enum": [
+            "number",
+            "integer",
+            "boolean",
+            "string"
+          ],
+          "title": "Output Datatype",
+          "type": "string"
+        },
+        "output_unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output Unit"
+        },
+        "leakage_policy": {
+          "const": "past_and_present_only",
+          "default": "past_and_present_only",
+          "title": "Leakage Policy",
+          "type": "string"
+        },
+        "status": {
+          "default": "enabled",
+          "enum": [
+            "enabled",
+            "deprecated"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "recipe_id",
+        "version",
+        "checksum_sha256",
+        "ontology_property",
+        "operation",
+        "group_by",
+        "order_by",
+        "source_grain",
+        "output_datatype"
+      ],
+      "title": "FeatureRecipe",
+      "type": "object"
+    },
+    "FeatureRecipeSet": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "adaptive-modeling-v1",
+          "default": "adaptive-modeling-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "organization_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Project Id",
+          "type": "string"
+        },
+        "workspace_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        },
+        "recipe_set_id": {
+          "title": "Recipe Set Id",
+          "type": "string"
+        },
+        "dataset_version_id": {
+          "title": "Dataset Version Id",
+          "type": "string"
+        },
+        "mapping_set_id": {
+          "title": "Mapping Set Id",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        },
+        "checksum_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Checksum Sha256",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ReviewStatus",
+          "default": "draft"
+        },
+        "recipes": {
+          "items": {
+            "$ref": "#/$defs/FeatureRecipe"
+          },
+          "title": "Recipes",
+          "type": "array"
+        },
+        "label_policy": {
+          "$ref": "#/$defs/LabelPolicy"
+        },
+        "validation_report": {
+          "additionalProperties": true,
+          "title": "Validation Report",
+          "type": "object"
+        },
+        "revision": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "organization_id",
+        "project_id",
+        "workspace_id",
+        "recipe_set_id",
+        "dataset_version_id",
+        "mapping_set_id",
+        "version",
+        "checksum_sha256",
+        "recipes",
+        "label_policy",
+        "idempotency_key"
+      ],
+      "title": "FeatureRecipeSet",
+      "type": "object"
+    },
+    "FieldProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "inferred_datatype": {
+          "enum": [
+            "integer",
+            "number",
+            "boolean",
+            "datetime",
+            "string",
+            "unknown"
+          ],
+          "title": "Inferred Datatype",
+          "type": "string"
+        },
+        "null_ratio": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Null Ratio",
+          "type": "number"
+        },
+        "distinct_estimate": {
+          "minimum": 0,
+          "title": "Distinct Estimate",
+          "type": "integer"
+        },
+        "semantic_candidates": {
+          "items": {
+            "enum": [
+              "identifier",
+              "timestamp",
+              "group_key",
+              "measure",
+              "dimension",
+              "text"
+            ],
+            "type": "string"
+          },
+          "title": "Semantic Candidates",
+          "type": "array"
+        },
+        "potential_sensitive": {
+          "default": false,
+          "title": "Potential Sensitive",
+          "type": "boolean"
+        },
+        "essential_key_candidate": {
+          "default": false,
+          "title": "Essential Key Candidate",
+          "type": "boolean"
+        },
+        "summary": {
+          "additionalProperties": true,
+          "title": "Summary",
+          "type": "object"
+        }
+      },
+      "required": [
+        "name",
+        "inferred_datatype",
+        "null_ratio",
+        "distinct_estimate"
+      ],
+      "title": "FieldProfile",
+      "type": "object"
+    },
+    "LabelPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "label_policy_id": {
+          "title": "Label Policy Id",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        },
+        "task": {
+          "const": "binary_failure_within_horizon",
+          "default": "binary_failure_within_horizon",
+          "title": "Task",
+          "type": "string"
+        },
+        "horizon_hours": {
+          "exclusiveMinimum": 0,
+          "title": "Horizon Hours",
+          "type": "number"
+        },
+        "lookback_hours": {
+          "minimum": 0,
+          "title": "Lookback Hours",
+          "type": "number"
+        },
+        "embargo_hours": {
+          "minimum": 0,
+          "title": "Embargo Hours",
+          "type": "number"
+        },
+        "event_time_field": {
+          "title": "Event Time Field",
+          "type": "string"
+        },
+        "observation_time_field": {
+          "title": "Observation Time Field",
+          "type": "string"
+        },
+        "target_source": {
+          "title": "Target Source",
+          "type": "string"
+        },
+        "overlapping_window_policy": {
+          "enum": [
+            "earliest_event",
+            "nearest_event",
+            "allow_overlap"
+          ],
+          "title": "Overlapping Window Policy",
+          "type": "string"
+        },
+        "forbidden_sources": {
+          "items": {
+            "enum": [
+              "evaluation_truth",
+              "hidden_truth"
+            ],
+            "type": "string"
+          },
+          "title": "Forbidden Sources",
+          "type": "array"
+        }
+      },
+      "required": [
+        "label_policy_id",
+        "version",
+        "horizon_hours",
+        "lookback_hours",
+        "embargo_hours",
+        "event_time_field",
+        "observation_time_field",
+        "target_source",
+        "overlapping_window_policy"
+      ],
+      "title": "LabelPolicy",
+      "type": "object"
     },
     "ManifestDraft": {
-      "allOf": [
-        {"$ref": "#/$defs/Scope"},
-        {
-          "type": "object",
-          "required": ["draft_id", "profile_id", "source_checksum_sha256", "revision", "status", "format", "field_suggestions", "quality_rules", "missing_prerequisites", "idempotency_key", "created_at"],
-          "properties": {
-            "draft_id": {"type": "string"}, "profile_id": {"type": "string"},
-            "dataset_id": {"type": ["string", "null"]},
-            "source_checksum_sha256": {"$ref": "#/$defs/Checksum"},
-            "revision": {"type": "integer", "minimum": 1},
-            "status": {"enum": ["draft", "approved", "rejected", "superseded"]},
-            "format": {"enum": ["csv", "xlsx"]},
-            "encoding": {"type": ["string", "null"]}, "delimiter": {"type": ["string", "null"]},
-            "sheet": {"type": ["string", "null"]}, "field_suggestions": {"type": "array"},
-            "quality_rules": {"type": "array"}, "missing_prerequisites": {"type": "array"},
-            "approved_by": {"type": ["string", "null"]}, "decision_rationale": {"type": ["string", "null"]},
-            "idempotency_key": {"type": "string"}, "created_at": {"type": "string", "format": "date-time"}
-          }
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "adaptive-modeling-v1",
+          "default": "adaptive-modeling-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "organization_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Project Id",
+          "type": "string"
+        },
+        "workspace_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        },
+        "draft_id": {
+          "title": "Draft Id",
+          "type": "string"
+        },
+        "profile_id": {
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "dataset_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dataset Id"
+        },
+        "source_checksum_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Source Checksum Sha256",
+          "type": "string"
+        },
+        "revision": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/ReviewStatus",
+          "default": "draft"
+        },
+        "format": {
+          "enum": [
+            "csv",
+            "xlsx"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "encoding": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Encoding"
+        },
+        "delimiter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delimiter"
+        },
+        "sheet": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sheet"
+        },
+        "field_suggestions": {
+          "items": {
+            "$ref": "#/$defs/ManifestFieldSuggestion"
+          },
+          "title": "Field Suggestions",
+          "type": "array"
+        },
+        "quality_rules": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Quality Rules",
+          "type": "array"
+        },
+        "missing_prerequisites": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing Prerequisites",
+          "type": "array"
+        },
+        "approved_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approved By"
+        },
+        "decision_rationale": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decision Rationale"
+        },
+        "idempotency_key": {
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
         }
+      },
+      "required": [
+        "organization_id",
+        "project_id",
+        "workspace_id",
+        "draft_id",
+        "profile_id",
+        "source_checksum_sha256",
+        "format",
+        "field_suggestions",
+        "idempotency_key"
       ],
-      "unevaluatedProperties": false
+      "title": "ManifestDraft",
+      "type": "object"
     },
-    "MappingSet": {"allOf": [{"$ref": "#/$defs/Scope"}, {"type": "object", "required": ["mapping_set_id", "dataset_version_id", "version", "checksum_sha256", "status", "candidates", "revision", "idempotency_key", "created_at"], "properties": {"mapping_set_id": {"type": "string"}, "dataset_version_id": {"type": "string"}, "version": {"type": "integer", "minimum": 1}, "checksum_sha256": {"$ref": "#/$defs/Checksum"}, "status": {"enum": ["draft", "approved", "rejected", "superseded"]}, "candidates": {"type": "array"}, "approved_by": {"type": ["string", "null"]}, "revision": {"type": "integer"}, "idempotency_key": {"type": "string"}, "created_at": {"type": "string", "format": "date-time"}}}], "unevaluatedProperties": false},
-    "FeatureRecipeSet": {"allOf": [{"$ref": "#/$defs/Scope"}, {"type": "object", "required": ["recipe_set_id", "dataset_version_id", "mapping_set_id", "version", "checksum_sha256", "status", "recipes", "label_policy", "validation_report", "revision", "idempotency_key", "created_at"], "properties": {"recipe_set_id": {"type": "string"}, "dataset_version_id": {"type": "string"}, "mapping_set_id": {"type": "string"}, "version": {"type": "integer"}, "checksum_sha256": {"$ref": "#/$defs/Checksum"}, "status": {"enum": ["draft", "approved", "rejected", "superseded"]}, "recipes": {"type": "array"}, "label_policy": {"type": "object"}, "validation_report": {"type": "object"}, "revision": {"type": "integer"}, "idempotency_key": {"type": "string"}, "created_at": {"type": "string", "format": "date-time"}}}], "unevaluatedProperties": false},
-    "FeatureDatasetVersion": {"allOf": [{"$ref": "#/$defs/Scope"}, {"type": "object", "required": ["feature_dataset_version_id", "dataset_version_id", "mapping_set_id", "recipe_set_id", "label_policy_id", "materialization_checksum_sha256", "status", "row_count", "feature_count", "equipment_count", "schema_metadata", "idempotency_key", "revision", "created_at"], "properties": {"feature_dataset_version_id": {"type": "string"}, "dataset_version_id": {"type": "string"}, "mapping_set_id": {"type": "string"}, "recipe_set_id": {"type": "string"}, "label_policy_id": {"type": "string"}, "materialization_checksum_sha256": {"$ref": "#/$defs/Checksum"}, "status": {"enum": ["queued", "running", "succeeded", "failed", "cancelled"]}, "row_count": {"type": "integer"}, "feature_count": {"type": "integer"}, "equipment_count": {"type": "integer"}, "time_start": {"type": ["string", "null"], "format": "date-time"}, "time_end": {"type": ["string", "null"], "format": "date-time"}, "artifact": {"anyOf": [{"$ref": "#/$defs/ArtifactReference"}, {"type": "null"}]}, "schema_metadata": {"type": "object"}, "idempotency_key": {"type": "string"}, "revision": {"type": "integer"}, "created_at": {"type": "string", "format": "date-time"}}}], "unevaluatedProperties": false},
-    "ExperimentRun": {"allOf": [{"$ref": "#/$defs/Scope"}, {"type": "object", "required": ["experiment_id", "dataset_version_id", "mapping_set_id", "recipe_set_id", "feature_dataset_version_id", "label_policy_id", "status", "split_policy", "random_seed", "progress", "candidates", "idempotency_key", "retry_count", "revision", "created_at", "updated_at"], "properties": {"experiment_id": {"type": "string"}, "dataset_version_id": {"type": "string"}, "mapping_set_id": {"type": "string"}, "recipe_set_id": {"type": "string"}, "feature_dataset_version_id": {"type": "string"}, "label_policy_id": {"type": "string"}, "status": {"enum": ["queued", "running", "succeeded", "failed", "cancelled"]}, "split_policy": {"type": "object"}, "random_seed": {"type": "integer"}, "progress": {"type": "number"}, "candidates": {"type": "array"}, "selected_candidate_id": {"type": ["string", "null"]}, "threshold_policy_id": {"type": ["string", "null"]}, "artifact": {"anyOf": [{"$ref": "#/$defs/ArtifactReference"}, {"type": "null"}]}, "idempotency_key": {"type": "string"}, "retry_count": {"type": "integer"}, "revision": {"type": "integer"}, "created_at": {"type": "string", "format": "date-time"}, "updated_at": {"type": "string", "format": "date-time"}}}], "unevaluatedProperties": false},
-    "ModelVersion": {"allOf": [{"$ref": "#/$defs/Scope"}, {"type": "object", "required": ["model_version_id", "experiment_id", "candidate_id", "dataset_version_id", "mapping_set_id", "recipe_set_id", "feature_dataset_version_id", "label_policy_id", "status", "artifact", "input_schema_checksum_sha256", "runtime_versions", "threshold_policy", "explanation_provider", "explanation_provider_version", "limitations", "revision", "created_at"], "properties": {"model_version_id": {"type": "string"}, "experiment_id": {"type": "string"}, "candidate_id": {"type": "string"}, "dataset_version_id": {"type": "string"}, "mapping_set_id": {"type": "string"}, "recipe_set_id": {"type": "string"}, "feature_dataset_version_id": {"type": "string"}, "label_policy_id": {"type": "string"}, "status": {"enum": ["candidate", "approved", "active", "retired", "rejected"]}, "artifact": {"$ref": "#/$defs/ArtifactReference"}, "input_schema_checksum_sha256": {"$ref": "#/$defs/Checksum"}, "runtime_versions": {"type": "object"}, "calibration_method": {"type": ["string", "null"]}, "calibration_artifact": {"anyOf": [{"$ref": "#/$defs/ArtifactReference"}, {"type": "null"}]}, "threshold_policy": {"type": "object"}, "explanation_provider": {"type": "string"}, "explanation_provider_version": {"type": "string"}, "limitations": {"type": "array"}, "revision": {"type": "integer"}, "activated_at": {"type": ["string", "null"], "format": "date-time"}, "retired_at": {"type": ["string", "null"], "format": "date-time"}, "created_at": {"type": "string", "format": "date-time"}}}], "unevaluatedProperties": false},
-    "ExplanationArtifact": {"allOf": [{"$ref": "#/$defs/Scope"}, {"type": "object", "required": ["explanation_id", "prediction_result_id", "observation_id", "observed_at", "model_version_id", "recipe_set_id", "provider", "provider_version", "status", "top_factors", "input_schema_checksum_sha256", "checksum_sha256", "generated_at", "causal_proof"], "properties": {"explanation_id": {"type": "string"}, "prediction_result_id": {"type": "string"}, "observation_id": {"type": "string"}, "observed_at": {"type": "string", "format": "date-time"}, "model_version_id": {"type": "string"}, "recipe_set_id": {"type": "string"}, "provider": {"type": "string"}, "provider_version": {"type": "string"}, "status": {"enum": ["available", "unavailable", "failed"]}, "top_factors": {"type": "array"}, "input_schema_checksum_sha256": {"$ref": "#/$defs/Checksum"}, "checksum_sha256": {"$ref": "#/$defs/Checksum"}, "unavailable_reason": {"type": ["string", "null"]}, "generated_at": {"type": "string", "format": "date-time"}, "causal_proof": {"const": false}}}], "unevaluatedProperties": false}
-  }
+    "ManifestFieldSuggestion": {
+      "additionalProperties": false,
+      "properties": {
+        "source_field": {
+          "title": "Source Field",
+          "type": "string"
+        },
+        "canonical_field": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Canonical Field"
+        },
+        "selected": {
+          "default": true,
+          "title": "Selected",
+          "type": "boolean"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "essential_key": {
+          "default": false,
+          "title": "Essential Key",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "source_field",
+        "rationale",
+        "confidence"
+      ],
+      "title": "ManifestFieldSuggestion",
+      "type": "object"
+    },
+    "MappingEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "enum": [
+            "rule",
+            "manifest_metadata",
+            "unit_metadata",
+            "llm_suggestion",
+            "user_confirmation"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "score": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Score",
+          "type": "number"
+        }
+      },
+      "required": [
+        "source",
+        "detail",
+        "score"
+      ],
+      "title": "MappingEvidence",
+      "type": "object"
+    },
+    "MappingSet": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "adaptive-modeling-v1",
+          "default": "adaptive-modeling-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "organization_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Project Id",
+          "type": "string"
+        },
+        "workspace_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        },
+        "mapping_set_id": {
+          "title": "Mapping Set Id",
+          "type": "string"
+        },
+        "dataset_version_id": {
+          "title": "Dataset Version Id",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        },
+        "checksum_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Checksum Sha256",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ReviewStatus",
+          "default": "draft"
+        },
+        "candidates": {
+          "items": {
+            "$ref": "#/$defs/OntologyMappingCandidate"
+          },
+          "title": "Candidates",
+          "type": "array"
+        },
+        "approved_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approved By"
+        },
+        "revision": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "organization_id",
+        "project_id",
+        "workspace_id",
+        "mapping_set_id",
+        "dataset_version_id",
+        "version",
+        "checksum_sha256",
+        "candidates",
+        "idempotency_key"
+      ],
+      "title": "MappingSet",
+      "type": "object"
+    },
+    "MetricSet": {
+      "additionalProperties": false,
+      "properties": {
+        "average_precision": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Average Precision"
+        },
+        "roc_auc": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Roc Auc"
+        },
+        "precision": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Precision"
+        },
+        "recall": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recall"
+        },
+        "f1": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "F1"
+        },
+        "brier_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Brier Score"
+        },
+        "positive_prediction_rate": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Positive Prediction Rate"
+        },
+        "confusion_matrix": {
+          "anyOf": [
+            {
+              "items": {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confusion Matrix"
+        },
+        "sample_count": {
+          "minimum": 0,
+          "title": "Sample Count",
+          "type": "integer"
+        },
+        "positive_count": {
+          "minimum": 0,
+          "title": "Positive Count",
+          "type": "integer"
+        },
+        "positive_rate": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Positive Rate",
+          "type": "number"
+        },
+        "unavailable_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unavailable Reason"
+        }
+      },
+      "required": [
+        "sample_count",
+        "positive_count",
+        "positive_rate"
+      ],
+      "title": "MetricSet",
+      "type": "object"
+    },
+    "ModelStatus": {
+      "enum": [
+        "candidate",
+        "approved",
+        "active",
+        "retired",
+        "rejected"
+      ],
+      "title": "ModelStatus",
+      "type": "string"
+    },
+    "ModelVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "adaptive-modeling-v1",
+          "default": "adaptive-modeling-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "organization_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Project Id",
+          "type": "string"
+        },
+        "workspace_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        },
+        "model_version_id": {
+          "title": "Model Version Id",
+          "type": "string"
+        },
+        "experiment_id": {
+          "title": "Experiment Id",
+          "type": "string"
+        },
+        "candidate_id": {
+          "title": "Candidate Id",
+          "type": "string"
+        },
+        "algorithm": {
+          "enum": [
+            "logistic_regression",
+            "random_forest",
+            "lightgbm",
+            "xgboost"
+          ],
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "prediction_task": {
+          "const": "binary_failure_within_horizon",
+          "default": "binary_failure_within_horizon",
+          "title": "Prediction Task",
+          "type": "string"
+        },
+        "dataset_version_id": {
+          "title": "Dataset Version Id",
+          "type": "string"
+        },
+        "mapping_set_id": {
+          "title": "Mapping Set Id",
+          "type": "string"
+        },
+        "recipe_set_id": {
+          "title": "Recipe Set Id",
+          "type": "string"
+        },
+        "feature_dataset_version_id": {
+          "title": "Feature Dataset Version Id",
+          "type": "string"
+        },
+        "label_policy_id": {
+          "title": "Label Policy Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ModelStatus"
+        },
+        "artifact": {
+          "$ref": "#/$defs/ArtifactReference"
+        },
+        "input_features": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Input Features",
+          "type": "array"
+        },
+        "input_schema_checksum_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Input Schema Checksum Sha256",
+          "type": "string"
+        },
+        "runtime_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Runtime Versions",
+          "type": "object"
+        },
+        "calibration_method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calibration Method"
+        },
+        "calibration_artifact": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "confidence_status": {
+          "default": "unavailable_uncalibrated",
+          "enum": [
+            "calibrated",
+            "unavailable_uncalibrated"
+          ],
+          "title": "Confidence Status",
+          "type": "string"
+        },
+        "threshold_policy": {
+          "$ref": "#/$defs/ThresholdPolicy"
+        },
+        "explanation_provider": {
+          "title": "Explanation Provider",
+          "type": "string"
+        },
+        "explanation_provider_version": {
+          "title": "Explanation Provider Version",
+          "type": "string"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "promotion_gate": {
+          "additionalProperties": true,
+          "title": "Promotion Gate",
+          "type": "object"
+        },
+        "revision": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "activated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Activated At"
+        },
+        "retired_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retired At"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "organization_id",
+        "project_id",
+        "workspace_id",
+        "model_version_id",
+        "experiment_id",
+        "candidate_id",
+        "algorithm",
+        "dataset_version_id",
+        "mapping_set_id",
+        "recipe_set_id",
+        "feature_dataset_version_id",
+        "label_policy_id",
+        "status",
+        "artifact",
+        "input_features",
+        "input_schema_checksum_sha256",
+        "threshold_policy",
+        "explanation_provider",
+        "explanation_provider_version"
+      ],
+      "title": "ModelVersion",
+      "type": "object"
+    },
+    "OntologyMappingCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_id": {
+          "title": "Candidate Id",
+          "type": "string"
+        },
+        "source_field": {
+          "title": "Source Field",
+          "type": "string"
+        },
+        "target_object_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Object Type"
+        },
+        "target_property": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Property"
+        },
+        "datatype": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Datatype"
+        },
+        "physical_unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Physical Unit"
+        },
+        "grain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Grain"
+        },
+        "semantic_role": {
+          "enum": [
+            "identifier",
+            "timestamp",
+            "dimension",
+            "measure",
+            "status",
+            "text",
+            "unresolved"
+          ],
+          "title": "Semantic Role",
+          "type": "string"
+        },
+        "group_key": {
+          "default": false,
+          "title": "Group Key",
+          "type": "boolean"
+        },
+        "join_key": {
+          "default": false,
+          "title": "Join Key",
+          "type": "boolean"
+        },
+        "critical_field": {
+          "default": false,
+          "title": "Critical Field",
+          "type": "boolean"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "evidences": {
+          "items": {
+            "$ref": "#/$defs/MappingEvidence"
+          },
+          "title": "Evidences",
+          "type": "array"
+        },
+        "status": {
+          "default": "proposed",
+          "enum": [
+            "proposed",
+            "approved",
+            "rejected",
+            "unresolved"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "source_field",
+        "semantic_role",
+        "confidence"
+      ],
+      "title": "OntologyMappingCandidate",
+      "type": "object"
+    },
+    "ReviewStatus": {
+      "enum": [
+        "draft",
+        "approved",
+        "rejected",
+        "superseded"
+      ],
+      "title": "ReviewStatus",
+      "type": "string"
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled"
+      ],
+      "title": "RunStatus",
+      "type": "string"
+    },
+    "SplitPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "default": "group_chronological",
+          "enum": [
+            "group_chronological",
+            "group_holdout",
+            "benchmark_random"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "group_field": {
+          "title": "Group Field",
+          "type": "string"
+        },
+        "time_field": {
+          "title": "Time Field",
+          "type": "string"
+        },
+        "train_fraction": {
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Train Fraction",
+          "type": "number"
+        },
+        "validation_fraction": {
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Validation Fraction",
+          "type": "number"
+        },
+        "test_fraction": {
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Test Fraction",
+          "type": "number"
+        },
+        "embargo_hours": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Embargo Hours",
+          "type": "number"
+        }
+      },
+      "required": [
+        "group_field",
+        "time_field",
+        "train_fraction",
+        "validation_fraction",
+        "test_fraction"
+      ],
+      "title": "SplitPolicy",
+      "type": "object"
+    },
+    "ThresholdPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "threshold_policy_id": {
+          "title": "Threshold Policy Id",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        },
+        "recall_target": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Recall Target",
+          "type": "number"
+        },
+        "recall_constrained_threshold": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Recall Constrained Threshold",
+          "type": "number"
+        },
+        "cost_minimizing_threshold": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Cost Minimizing Threshold",
+          "type": "number"
+        },
+        "false_negative_cost": {
+          "exclusiveMinimum": 0,
+          "title": "False Negative Cost",
+          "type": "number"
+        },
+        "false_positive_cost": {
+          "exclusiveMinimum": 0,
+          "title": "False Positive Cost",
+          "type": "number"
+        },
+        "selected_operational_threshold": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Selected Operational Threshold",
+          "type": "number"
+        },
+        "validation_only_selection": {
+          "const": true,
+          "default": true,
+          "title": "Validation Only Selection",
+          "type": "boolean"
+        },
+        "artifact": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "threshold_policy_id",
+        "version",
+        "recall_target",
+        "recall_constrained_threshold",
+        "cost_minimizing_threshold",
+        "false_negative_cost",
+        "false_positive_cost",
+        "selected_operational_threshold"
+      ],
+      "title": "ThresholdPolicy",
+      "type": "object"
+    }
+  },
+  "anyOf": [
+    {
+      "$ref": "#/$defs/DatasetIntakeProfile"
+    },
+    {
+      "$ref": "#/$defs/ManifestDraft"
+    },
+    {
+      "$ref": "#/$defs/MappingSet"
+    },
+    {
+      "$ref": "#/$defs/FeatureRecipeSet"
+    },
+    {
+      "$ref": "#/$defs/FeatureDatasetVersion"
+    },
+    {
+      "$ref": "#/$defs/ExperimentRun"
+    },
+    {
+      "$ref": "#/$defs/ModelVersion"
+    },
+    {
+      "$ref": "#/$defs/ExplanationArtifact"
+    }
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/adaptive-modeling.schema.json",
+  "title": "Adaptive Modeling Contracts"
 }

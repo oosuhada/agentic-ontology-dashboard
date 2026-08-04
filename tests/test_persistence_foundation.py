@@ -27,9 +27,11 @@ def test_migrations_are_idempotent_and_create_outbox(tmp_path: Path) -> None:
         "0006_outbox_worker",
         "0007_analysis_engine",
         "0008_dataset_projection_pipeline",
-        "0009_agent_orchestration",
-        "0010_analysis_run_lifecycle",
-    ]
+            "0009_agent_orchestration",
+            "0010_analysis_run_lifecycle",
+            "0011_adaptive_modeling_foundation",
+            "0012_adaptive_model_registry",
+        ]
     assert second == []
 
     with sqlite3.connect(database) as connection:
