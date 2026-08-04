@@ -5,6 +5,7 @@ import {
   matchDatasetCatalogPath,
   matchGovernancePath,
   matchOntologyPath,
+  matchProjectHomePath,
   navigate,
   usePathname,
 } from "./routing";
@@ -19,6 +20,9 @@ const AdminApp = lazy(() =>
 );
 const ManufacturingApp = lazy(() =>
   import("./features/manufacturing/ManufacturingApp").then((module) => ({ default: module.ManufacturingApp })),
+);
+const ProjectHomePage = lazy(() =>
+  import("./features/projects/ProjectHomePage").then((module) => ({ default: module.ProjectHomePage })),
 );
 const AgentWorkbenchPage = lazy(() =>
   import("./features/agent/AgentWorkbenchPage").then((module) => ({ default: module.AgentWorkbenchPage })),
@@ -115,6 +119,17 @@ function AppRouter() {
   if (pathname === "/admin") return user.is_admin ? <AdminApp /> : <ForbiddenPage />;
   const analysisId = matchAnalysisPath(pathname);
   if (analysisId) return <ManufacturingApp initialWorkspaceView="analysis" analysisId={analysisId} />;
+  const projectHomeRoute = matchProjectHomePath(pathname);
+  if (projectHomeRoute) {
+    if (!user.project_scopes.includes(projectHomeRoute.projectId)) {
+      return <Redirect to={`/app/projects/${encodeURIComponent(user.active_project_id ?? user.project_scopes[0] ?? "")}`} />;
+    }
+    return (
+      <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Project Home을 불러오고 있습니다.</p></div>}>
+        <ProjectHomePage projectId={projectHomeRoute.projectId} />
+      </Suspense>
+    );
+  }
   const datasetRoute = matchDatasetCatalogPath(pathname);
   if (datasetRoute) {
     if (!user.project_scopes.includes(datasetRoute.projectId) || !user.permissions.includes("datasets.read")) {

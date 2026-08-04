@@ -1,21 +1,21 @@
 # Ontology Dashboard Implementation Status
 
 - Last updated: 2026-08-02
-- Baseline: release gate 13/13 PASS with isolated Playwright E2E
+- Baseline: backend 118 PASS, frontend unit 3 PASS, Playwright 28 PASS, live three-store Agent gate PASS
 - Current execution plan: `docs/10-product-convergence-polyglot-agentic-roadmap.md`
 
 ## Current Maturity
 
 ```text
-Backend        93%
-Frontend       89%
-Architecture   95%
-PostgreSQL     70%
-Project Layer  60%
-Adapter Layer  10%
+Backend        97%
+Frontend       96%
+Architecture   96%
+PostgreSQL     85%
+Project Layer  90%
+Adapter Layer  80%
 ```
 
-이 비율은 단순 파일 개수가 아니라 2026-08-01 목표 아키텍처 대비 구현·검증·운영 준비도를 반영한 역사적 추정치다. Palantir 수준의 전체 시각 완성도나 모든 메뉴의 운영 준비도를 의미하지 않는다. `Ontology`와 `Governance` 전용 Workbench는 실제 route와 E2E까지 연결되었고, `Datasets`는 Stage 47 foundation 위에서 Catalog 완성 작업이 남아 있다.
+이 비율은 단순 파일 개수가 아니라 목표 아키텍처 대비 구현·검증·운영 준비도를 반영한 추정치다. 모든 외부 streaming connector와 실제 다중 인스턴스 운영을 완료했다는 의미는 아니다. Project Home, Analysis lifecycle, Agent/Ontology/Dataset/Governance Workbench와 live Project 3 three-store 경로는 실제 route·persistence·E2E 또는 live HTTP gate까지 연결됐다.
 
 ## User-Visible Product Surface
 
@@ -24,14 +24,15 @@ Dashboards   CONNECTED
 Analysis     CONNECTED
 Agent        CONNECTED EVIDENCE WORKBENCH
 Ontology     CONNECTED WORKBENCH / DEGRADED GRAPH SAFE
-Datasets     PARTIAL CATALOG / MATERIALIZATION FOUNDATION
+Datasets     CONNECTED CATALOG / IMMUTABLE MATERIALIZATION / REUSABLE INPUT
 Governance   CONNECTED PROJECT WORKBENCH
 ```
 
 - Agent Evidence Workbench는 scoped query, persisted run restore, claim→evidence navigation, store/version/object trace와 orchestration lineage를 제공한다.
 - Ontology Workbench는 exact project/workspace route, object search, graph/inspector, Add Graph Board, multi-store Ask, route restore와 isolation E2E를 제공한다.
-- Dataset Version·projection·mapping·materialization backend와 초기 Catalog route는 있으나 profile/quarantine와 재사용 가능한 Analysis materialization user journey가 남아 있다.
-- Governance Workbench는 project-scoped access, approvals, agent claims/evidence/traces/checkpoints, lineage, projection health와 permission-gated retry를 통합한다.
+- Dataset Catalog는 server pagination/filter, immutable versions, schema/profile, files, projection readiness, mappings, ingestion/quarantine, lineage와 Analysis result materialization→reusable Dataset input을 제공한다.
+- Governance Workbench는 project-scoped access, approvals, server-paginated Agent runs, claims/evidence/traces/checkpoints, lineage, projection health와 permission-gated retry를 통합한다.
+- Project Home은 Project KPI, Workspace entry points, active role context와 Project 3 readiness를 제공한다.
 
 ## Backend — 93%
 
@@ -65,13 +66,10 @@ Governance   CONNECTED PROJECT WORKBENCH
 
 ### Remaining
 
-- dashboard/planner/export/role-workspace/manufacturing handler의 완전한 feature module 이동
-- 전체 PostgreSQL repository 전환
-- trusted proxy hardening
-- distributed rate limiting
-- Dashboard·Ontology·Action·Workflow·Export repository의 project-aware write/query
-- project-level role assignment와 active project session persistence
-- identity invitation/reset/SSO lifecycle
+- legacy `factory_signal_board` physical package의 canonical namespace 이동
+- Identity/Dashboard/Workflow/Export 전체 PostgreSQL repository 전환
+- production IdP 기반 SSO와 invitation/reset lifecycle
+- 다중 인스턴스 Redis/worker 운영 부하 검증
 
 ## Frontend — 89%
 
@@ -98,18 +96,18 @@ Governance   CONNECTED PROJECT WORKBENCH
 - Governance agent trace·evidence·lineage·projection retry
 - Agent persisted run server pagination/status/route/search filter와 Governance 양방향 deep link
 - Admin/Manufacturing/Analysis/Board renderer route-level lazy boundary
-- build-time 300 KiB initial JavaScript budget gate (`212.25 KiB` verified)
-- first visual token/density slice and `docs/ui/palantir-visual-language.md`
+- build-time 300 KiB initial JavaScript budget gate (`213.87 KiB` verified)
+- Project Home과 Project별 active role selector
+- Dataset Catalog server pagination/filter와 Analysis materialization flow
+- Governance server Agent run filter/pagination
+- shared visual token/density system and `docs/ui/palantir-visual-language.md`
+- ECharts Pie/Cartesian runtime split과 lightweight virtual DataTable
 
 ### Remaining
 
-- `/app/projects/:projectId/workspaces/:workspaceId/datasets` Catalog 완성
-- 전체 제품 visual language와 three-workbench screenshot review
-- Project Home
-- active role selector
-- additional editor hook separation
-- undo/redo and draft recovery
-- 725 KiB lazy `DataTableRenderer` chunk의 renderer/vendor 단위 최적화
+- Dashboard editor undo/redo와 unsaved draft recovery
+- Project Home·Dataset screenshot baseline의 장기 visual regression 관리
+- 접근성 자동 검사를 Workbench 전체 route로 확대
 
 ## Architecture — 95%
 
@@ -131,8 +129,7 @@ Governance   CONNECTED PROJECT WORKBENCH
 
 - physical canonical source relocation
 - feature modules가 legacy handler container를 전혀 참조하지 않는 상태
-- Project Layer를 실제 코드와 DB에 구현
-- full production deployment architecture verification
+- Docker/Kubernetes 기반 다중 인스턴스 deployment drill
 
 ## PostgreSQL — 70%
 
@@ -153,20 +150,11 @@ Governance   CONNECTED PROJECT WORKBENCH
 
 ### Remaining
 
-- Python `psycopg` runtime dependency installation in active environment
-- connection pool
-- Identity repository
-- Dashboard repository
-- Workflow repository
-- Action repository
-- Export repository
-- PostgreSQL Project repository runtime 연결
-- operational write에서 non-null project_id 강제
-- transaction recovery worker
-- backup/restore drill
-- production startup enablement
+- Identity, Dashboard, Workflow, Export repository의 PostgreSQL 완전 전환
+- managed PostgreSQL에서의 실제 backup/restore 및 failover drill
+- connection pool/Redis/outbox worker의 장시간 부하 검증
 
-Ephemeral PostgreSQL migration, RLS와 runtime repository gate는 통과했다. 다만 production connection, backup/restore와 Docker-backed pgvector/Neo4j 통합이 남아 있으므로 Production 전체 완료로 표시하면 안 된다.
+Ephemeral PostgreSQL migration·RLS·runtime repository, pooled tenant connection, transactional outbox retry/dead-letter와 SQLite backup/restore tamper detection은 테스트됐다. 현재 host에는 Docker CLI가 없어 compose 기반 PostgreSQL/pgvector 재현은 별도 환경에서 수행해야 한다.
 
 ## Project Layer — 60%
 
@@ -188,49 +176,42 @@ Ephemeral PostgreSQL migration, RLS와 runtime repository gate는 통과했다. 
 
 ### Remaining
 
-- project membership and project-level role assignment 관리
-- active project session persistence
-- project-aware dashboard templates/preferences/saved views/share
-- project-aware object/link/action/workflow/export runtime records
-- SQLite repository project predicate와 PostgreSQL runtime 연결
-- 두 번째 Project switch와 deleted route handling
-- 두 번째 Project의 end-to-end resource isolation 검증
+- 삭제된 Project deep link의 전용 tombstone UX
+- PostgreSQL로 완전 전환되지 않은 legacy operational repository의 project predicate 통합
 
-## Adapter Layer — 10%
+## Adapter Layer — 80%
 
 ### Implemented
 
-- adapter concept
-- domain adapter snapshot projection
-- file-based automatic analysis direction
-- prediction contract draft
+- adapter protocol and registry
+- Dataset Manifest schema and checksum/source version
+- strict Prediction Result contract
+- CSV/JSON/JSONL/Parquet file ingestion
+- ingestion run state and invalid-row quarantine
+- Azure PdM and MetroPT adapters
+- Dataset Version/projection registration
+- adapter contract and quarantine API tests
 
 ### Remaining
 
-- adapter protocol/interface
-- Dataset Manifest schema
-- Prediction Result JSON Schema
-- File Adapter
-- ingestion state machine
-- invalid data quarantine
-- Azure PdM adapter
-- MetroPT adapter
-- REST/Kafka/MQTT/OPC-UA adapters
-- source version and checksum
-- adapter registry
+- production REST/Kafka/MQTT/OPC-UA connector credentials and retry policy
+- schema evolution compatibility matrix for external connector versions
+- streaming backpressure and replay load test
 
 ## Test Baseline
 
 ```text
-Canonical naming: 84 files, 0 violations
-PostgreSQL organization/project migration/RLS: PASS
-Backend tests: 65 PASS
+Canonical naming: PASS
+PostgreSQL organization/project migration/RLS/runtime: PASS
+Backend tests: 118 PASS
 Gold scenarios: 8/8 PASS
-Frontend unit tests: 1 PASS
+Frontend unit tests: 3 PASS
 TypeScript: PASS
 Production build: PASS
-Playwright E2E: 14 PASS
-Release gate: 12/12 PASS
+Initial JavaScript: 213.87 KiB / 300 KiB PASS
+Largest deferred chunk: 443.24 KiB / 500 KiB target PASS
+Playwright E2E: 28 PASS
+Live Project 2→Project 3 stores: PostgreSQL 1 + Neo4j 3 + Project 3 RAG 1 PASS
 ```
 
 ## Current Technical Debt

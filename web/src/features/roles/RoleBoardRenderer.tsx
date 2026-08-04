@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { StatusBadge } from "../../components";
+import { StatusBadge } from "../../components/StatusBadge";
 import type {
   AuditReconstruction,
   ExecutiveOverview,

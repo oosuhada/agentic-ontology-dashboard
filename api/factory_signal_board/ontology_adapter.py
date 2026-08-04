@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Iterable
 
 from .ontology import LinkRecord, ObjectRecord
+from .role_workflow_repository import RoleWorkflowRepository
 from .service import FactorySignalService
 
 MANUFACTURING_DOMAIN_PACK = "manufacturing-predictive-maintenance"
@@ -22,7 +23,12 @@ def evidence_object_id(evidence_id: str) -> str:
     return f"evidence_package:{evidence_id}"
 
 
+def work_order_object_id(event_id: str) -> str:
+    return f"work_order:{event_id}"
+
+
 def inspection_object_id(event_id: str) -> str:
+    """Deprecated compatibility alias for callers that have not migrated to WorkOrder."""
     return f"inspection:{event_id}"
 
 
@@ -49,8 +55,13 @@ class ManufacturingOntologyAdapter:
     domain_pack = MANUFACTURING_DOMAIN_PACK
     workspace_id = MANUFACTURING_WORKSPACE
 
-    def __init__(self, legacy_service: FactorySignalService) -> None:
+    def __init__(
+        self,
+        legacy_service: FactorySignalService,
+        role_workflow_repository: RoleWorkflowRepository | None = None,
+    ) -> None:
         self.legacy_service = legacy_service
+        self.role_workflow_repository = role_workflow_repository
 
     def supports_workspace(self, workspace_id: str) -> bool:
         return workspace_id == self.workspace_id
@@ -145,39 +156,80 @@ class ManufacturingOntologyAdapter:
             )
 
             activity = self.legacy_service.repository.event_activity(event_id)
+            activity["field_actions"] = (
+                self.role_workflow_repository.list_field_actions(
+                    workspace_id=self.workspace_id,
+                    event_id=event_id,
+                )
+                if self.role_workflow_repository is not None
+                else []
+            )
             inspection_required = evidence["recommended_decision"] in {
                 "request_inspection",
                 "review_shutdown",
             }
-            if inspection_required or activity["notes"]:
+            if inspection_required or activity["notes"] or activity["field_actions"]:
+                work_order_oid = work_order_object_id(event_id)
                 inspection_oid = inspection_object_id(event_id)
-                inspection_status = "in_progress" if activity["notes"] else "requested"
-                objects.append(
-                    ObjectRecord(
-                        id=inspection_oid,
-                        object_type="inspection",
-                        workspace_id=self.workspace_id,
-                        properties={
-                            "status": inspection_status,
-                            "assignee": equipment.get("assigned_engineer"),
-                            "due_at": None,
-                            "event_id": event_id,
-                            "checklist": evidence["maintenance_context"]["checklist"],
-                        },
-                        source_refs=[f"event:{event_id}", f"evidence:{evidence['evidence_id']}"],
-                    )
+                work_order_status = "in_progress" if activity["notes"] else "requested"
+                common_properties = {
+                    "status": work_order_status,
+                    "assignee": equipment.get("assigned_engineer"),
+                    "due_at": None,
+                    "event_id": event_id,
+                    "work_type": "inspection",
+                    "equipment_id": equipment_id,
+                    "checklist": evidence["maintenance_context"]["checklist"],
+                }
+                objects.extend(
+                    [
+                        ObjectRecord(
+                            id=work_order_oid,
+                            object_type="work_order",
+                            workspace_id=self.workspace_id,
+                            properties=common_properties,
+                            source_refs=[f"event:{event_id}", f"evidence:{evidence['evidence_id']}"],
+                        ),
+                        ObjectRecord(
+                            id=inspection_oid,
+                            object_type="inspection",
+                            workspace_id=self.workspace_id,
+                            properties={
+                                **common_properties,
+                                "canonical_work_order_id": work_order_oid,
+                            },
+                            source_refs=[f"work_order:{event_id}", "deprecated:inspection-alias"],
+                        ),
+                    ]
                 )
-                links.append(
-                    LinkRecord(
-                        id=f"risk_event_requires_inspection:{event_id}",
-                        link_type="risk_event_requires_inspection",
-                        source_object_id=event_oid,
-                        target_object_id=inspection_oid,
-                        workspace_id=self.workspace_id,
-                    )
+                links.extend(
+                    [
+                        LinkRecord(
+                            id=f"equipment_has_work_order:{equipment_id}:{event_id}",
+                            link_type="equipment_has_work_order",
+                            source_object_id=equipment_oid,
+                            target_object_id=work_order_oid,
+                            workspace_id=self.workspace_id,
+                        ),
+                        LinkRecord(
+                            id=f"risk_event_requires_work_order:{event_id}",
+                            link_type="risk_event_requires_work_order",
+                            source_object_id=event_oid,
+                            target_object_id=work_order_oid,
+                            workspace_id=self.workspace_id,
+                        ),
+                        LinkRecord(
+                            id=f"risk_event_requires_inspection:{event_id}",
+                            link_type="risk_event_requires_inspection",
+                            source_object_id=event_oid,
+                            target_object_id=inspection_oid,
+                            workspace_id=self.workspace_id,
+                        ),
+                    ]
                 )
                 self._append_activity_objects(
                     event_id=event_id,
+                    work_order_oid=work_order_oid,
                     inspection_oid=inspection_oid,
                     activity=activity,
                     objects=objects,
@@ -186,6 +238,7 @@ class ManufacturingOntologyAdapter:
             else:
                 self._append_activity_objects(
                     event_id=event_id,
+                    work_order_oid=None,
                     inspection_oid=None,
                     activity=activity,
                     objects=objects,
@@ -198,6 +251,7 @@ class ManufacturingOntologyAdapter:
         self,
         *,
         event_id: str,
+        work_order_oid: str | None,
         inspection_oid: str | None,
         activity: dict[str, list[dict]],
         objects: list[ObjectRecord],
@@ -238,10 +292,64 @@ class ManufacturingOntologyAdapter:
                     source_refs=[f"note:{note['id']}", f"event:{event_id}"],
                 )
             )
+            if work_order_oid is not None:
+                links.append(
+                    LinkRecord(
+                        id=f"work_order_records_action:{event_id}:{note['id']}",
+                        link_type="work_order_records_action",
+                        source_object_id=work_order_oid,
+                        target_object_id=action_oid,
+                        workspace_id=self.workspace_id,
+                    )
+                )
             if inspection_oid is not None:
                 links.append(
                     LinkRecord(
                         id=f"inspection_records_action:{event_id}:{note['id']}",
+                        link_type="inspection_records_action",
+                        source_object_id=inspection_oid,
+                        target_object_id=action_oid,
+                        workspace_id=self.workspace_id,
+                    )
+                )
+
+        for field_action in activity.get("field_actions", []):
+            action_oid = maintenance_action_object_id(field_action["id"])
+            payload = field_action.get("payload") if isinstance(field_action.get("payload"), dict) else {}
+            objects.append(
+                ObjectRecord(
+                    id=action_oid,
+                    object_type="maintenance_action",
+                    workspace_id=self.workspace_id,
+                    properties={
+                        "action": field_action.get("action"),
+                        "status": field_action.get("status"),
+                        "actor": field_action.get("actor_display_name"),
+                        "created_at": field_action.get("created_at"),
+                        "event_id": event_id,
+                        "note": payload.get("note"),
+                        "location": payload.get("location"),
+                        "measurements": payload.get("measurements", {}),
+                        "photo_metadata": payload.get("photo_metadata", []),
+                        "checklist": payload.get("checklist", []),
+                    },
+                    source_refs=[f"field_action:{field_action['id']}", f"event:{event_id}"],
+                )
+            )
+            if work_order_oid is not None:
+                links.append(
+                    LinkRecord(
+                        id=f"work_order_records_action:{event_id}:{field_action['id']}",
+                        link_type="work_order_records_action",
+                        source_object_id=work_order_oid,
+                        target_object_id=action_oid,
+                        workspace_id=self.workspace_id,
+                    )
+                )
+            if inspection_oid is not None:
+                links.append(
+                    LinkRecord(
+                        id=f"inspection_records_action:{event_id}:{field_action['id']}",
                         link_type="inspection_records_action",
                         source_object_id=inspection_oid,
                         target_object_id=action_oid,

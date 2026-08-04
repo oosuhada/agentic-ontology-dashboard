@@ -96,6 +96,7 @@ export interface AnalysisNodeExecutionResult {
   cache_hit: boolean;
   generated_at: string;
   source_freshness_at: string | null;
+  source_metadata: Record<string, unknown>;
   timezone: string;
   warnings: string[];
 }
@@ -108,12 +109,29 @@ export interface AnalysisRunResponse {
   project_id: string;
   workspace_id: string;
   requested_by: string;
-  status: "queued" | "running" | "succeeded" | "failed";
+  status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
   parameters: Record<string, unknown>;
   node_results: Record<string, AnalysisNodeExecutionResult>;
   started_at: string;
   finished_at: string | null;
   error: { code: string; message: string } | null;
+  progress_percent: number;
+  current_node_id: string | null;
+  cancel_requested: boolean;
+  cache_key: string | null;
+  cache_hit: boolean;
+  rows_scanned: number;
+  updated_at: string | null;
+}
+
+export interface AnalysisNodeRowsPage {
+  run_id: string;
+  node_id: string;
+  rows: Array<Record<string, unknown>>;
+  cursor: string | null;
+  next_cursor: string | null;
+  limit: number;
+  total: number;
 }
 
 export interface AnalysisNodeResultResponse {

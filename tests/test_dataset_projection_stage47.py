@@ -249,6 +249,107 @@ def login(client: TestClient, email: str, password: str) -> dict[str, str]:
     return {"X-CSRF-Token": token}
 
 
+def test_analysis_materialization_becomes_reusable_dataset_input(api_client: TestClient) -> None:
+    csrf = login(api_client, "fde@ontology.local", "FDE!2026")
+    analysis = api_client.post(
+        "/api/analyses",
+        headers=csrf,
+        json={
+            "id": "analysis-materialization-source",
+            "workspace_id": "manufacturing-demo",
+            "display_name": "Materialization source",
+            "nodes": [
+                {
+                    "id": "input:0",
+                    "type": "analysisNode",
+                    "data": {
+                        "kind": "input",
+                        "title": "Risk Events",
+                        "config": {"source": "risk_event"},
+                    },
+                    "position": {"x": 0, "y": 0},
+                }
+            ],
+            "edges": [],
+            "publish": True,
+        },
+    )
+    assert analysis.status_code == 200, analysis.text
+    materialized = api_client.post(
+        "/api/analyses/analysis-materialization-source/materializations",
+        headers=csrf,
+        json={
+            "project_id": "manufacturing-demo-project",
+            "workspace_id": "manufacturing-demo",
+            "node_id": "input:0",
+            "version_policy": "pinned",
+            "version": 1,
+            "dataset_id": "ds-analysis-materialized",
+            "dataset_slug": "analysis-materialized",
+            "dataset_name": "Analysis Materialized",
+            "preview_limit": 100,
+            "full_limit": 1000,
+        },
+    )
+    assert materialized.status_code == 201, materialized.text
+    payload = materialized.json()
+    assert payload["dataset"]["id"] == "ds-analysis-materialized"
+    assert payload["materialized_row_count"] > 0
+    assert payload["materialization"]["status"] == "ready"
+    assert payload["artifact_uri"].startswith("file://")
+
+    detail = api_client.get(
+        "/api/projects/manufacturing-demo-project/dataset-catalog/ds-analysis-materialized"
+    )
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["materializations"][0]["source_kind"] == "analysis_result"
+    lineage = detail.json()["lineage_references"]
+    source_reference = next(item for item in lineage if item.startswith("analysis:"))
+    assert source_reference.startswith("analysis:analysis-materialization-source:v1:run:")
+    assert source_reference.endswith(":node:input:0")
+    assert payload["version"]["id"] in lineage
+
+    consumer = api_client.post(
+        "/api/analyses",
+        headers=csrf,
+        json={
+            "id": "analysis-materialization-consumer",
+            "workspace_id": "manufacturing-demo",
+            "display_name": "Materialization consumer",
+            "nodes": [
+                {
+                    "id": "input:dataset",
+                    "type": "analysisNode",
+                    "data": {
+                        "kind": "input",
+                        "title": "Reusable Dataset",
+                        "config": {"source": "dataset:ds-analysis-materialized"},
+                    },
+                    "position": {"x": 0, "y": 0},
+                }
+            ],
+            "edges": [],
+            "publish": True,
+        },
+    )
+    assert consumer.status_code == 200, consumer.text
+    run = api_client.post(
+        "/api/analyses/analysis-materialization-consumer/run",
+        headers=csrf,
+        json={
+            "workspace_id": "manufacturing-demo",
+            "version_policy": "pinned",
+            "version": 1,
+            "preview_limit": 100,
+        },
+    )
+    assert run.status_code == 200, run.text
+    result = run.json()["node_results"]["input:dataset"]
+    assert result["row_count"] == payload["materialized_row_count"]
+    assert result["source_metadata"]["dataset_id"] == "ds-analysis-materialized"
+    assert result["source_metadata"]["materialization_id"] == payload["materialization"]["id"]
+
+
 def test_dataset_api_is_project_scoped_and_permission_guarded(api_client: TestClient) -> None:
     csrf = login(api_client, "fde@ontology.local", "FDE!2026")
     created = api_client.post(

@@ -29,16 +29,16 @@
 | 40 | PARTIAL | PostgreSQL 실서버 migration·RLS check, handler 이동·frontend editor 분리 |
 | 44 | DONE | Roadmap rebaseline, Project 3 boundary, executable architecture debt inventory |
 | 45 | DONE | canonical planner, typed Project 3 client, Ontology preview vertical |
-| 46 | PARTIAL | PostgreSQL+pgvector+Neo4j profile implemented; live Docker verification unavailable |
-| 47 | PARTIAL | Dataset Version/projection identity pipeline tested; live stores unavailable |
+| 46 | DONE/PARTIAL | PostgreSQL+local pgvector projection schema+Neo4j profile verified; Docker CLI 기반 compose 재현만 환경 제약으로 잔여 |
+| 47 | DONE | immutable Dataset Version, files, projection health, ingestion/quarantine, Analysis materialization and reusable Dataset input verified |
 | 48 | DONE | Ontology Workbench route, isolation, restore and visual artifact E2E |
-| 49 | PARTIAL | checkpointed orchestrator and Agent Evidence Workbench verified; live three-store query remains |
-| 50 | NEXT | Dataset Catalog completion and reusable materialization flow |
-| 51 | DONE | Governance Workbench, trace, evidence, lineage and projection retry |
-| 52 | PARTIAL | server Analysis/Dashboard foundation plus save-time DAG/Join and quality validation |
-| 53 | NEXT | canonical WorkOrder object/link/action alignment |
-| 54 | DONE/PARTIAL | visual token first slice와 300 KiB initial JS budget gate 완료; Governance/Ontology token 확대와 large lazy table chunk 최적화 잔여 |
-| 55 | NEXT | production-like live integration, rollback and release gate |
+| 49 | DONE | checkpointed orchestrator, Agent Evidence Workbench and live PostgreSQL+Neo4j+Project 3 RAG three-store run verified |
+| 50 | DONE | Dataset Catalog server pagination/filter, schema/profile, quarantine, lineage and reusable materialization flow |
+| 51 | DONE | Governance Workbench, server Agent run filters/pagination, trace, evidence, lineage and projection retry |
+| 52 | DONE | server Analysis lifecycle, progress/cancel/cache/cursor, save-time DAG/Join and quality validation |
+| 53 | DONE | canonical WorkOrder object/link/action alignment with deprecated Inspection compatibility alias |
+| 54 | DONE | shared visual tokens, Project Home/role context, 300 KiB initial budget and all deferred chunks below 500 KiB |
+| 55 | DONE/PARTIAL | live service integration, backup/restore tests, release gate and E2E complete; Docker compose drill unavailable on current host |
 
 ## NEXT 1 — Project Layer
 

@@ -11,9 +11,13 @@ import {
 } from "@xyflow/react";
 import {
   ApiError,
+  cancelAnalysisRun,
   createAnalysis,
   getAnalysis,
-  runAnalysis,
+  getAnalysisRun,
+  getDatasetCatalog,
+  materializeAnalysisResult,
+  queueAnalysisRun,
   updateAnalysis,
 } from "../../api";
 import type { Evidence, EventSummary } from "../../types";
@@ -35,12 +39,18 @@ import type {
 
 export interface AnalysisPageProps {
   analysisId: string;
+  projectId: string;
+  canMaterialize?: boolean;
   events: EventSummary[];
   selectedEventId: string;
   evidence: Evidence | null;
   workspaceId: string;
   onSelectEvent: (eventId: string) => void;
   onAddToDashboard?: (request: AddAnalysisBoardRequest) => void;
+}
+
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
 
 function risk(event: EventSummary) {
@@ -163,6 +173,8 @@ function evaluate(events: EventSummary[], nodes: AnalysisFlowNode[]): AnalysisRe
 
 function AnalysisPageInner({
   analysisId,
+  projectId,
+  canMaterialize = false,
   events,
   selectedEventId,
   evidence,
@@ -176,12 +188,34 @@ function AnalysisPageInner({
   const [revision, setRevision] = useState(1);
   const [serverSnapshot, setServerSnapshot] = useState<AnalysisServerSnapshot | null>(null);
   const [serverResults, setServerResults] = useState<Record<string, AnalysisNodeExecutionResult>>({});
+  const [datasetSources, setDatasetSources] = useState<Array<{ value: string; label: string }>>([]);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [runProgress, setRunProgress] = useState(0);
   const [notice, setNotice] = useState("Analysis definition을 서버에서 불러오는 중입니다.");
   const [showInspector, setShowInspector] = useState(true);
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? nodes[0];
   const result = useMemo(() => evaluate(events, nodes), [events, nodes]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getDatasetCatalog(projectId)
+      .then((datasets) => {
+        if (!cancelled) {
+          setDatasetSources(datasets
+            .filter((dataset) => dataset.latest_version_id && dataset.status === "active")
+            .map((dataset) => ({
+              value: `dataset:${dataset.id}`,
+              label: `Dataset · ${dataset.display_name} · ${dataset.latest_version_label ?? "latest"}`,
+            })));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setDatasetSources([]);
+      });
+    return () => { cancelled = true; };
+  }, [projectId]);
 
   useEffect(() => {
     let active = true;
@@ -362,50 +396,97 @@ function AnalysisPageInner({
 
   async function run() {
     setBusy(true);
-    setNotice(`Server run 준비 · ${nodes.length} nodes`);
+    setRunProgress(0);
+    setNotice(`Queued server run 준비 · ${nodes.length} nodes`);
     setNodes((current) => current.map((node) => ({ ...node, data: { ...node.data, status: "running" } })));
     try {
       const saved = await ensureSaved(false);
-      const response = await runAnalysis(analysisId, {
+      let response = await queueAnalysisRun(analysisId, {
         workspace_id: workspaceId,
         version_policy: "pinned",
         version: saved.current_version,
         preview_limit: 500,
       });
-      if (response.status !== "succeeded") throw new Error(response.error?.message ?? "Analysis run failed");
-      applyRunResults(response.node_results);
-      setNotice(`Run ${response.id} succeeded · Analysis v${response.analysis_version} · server execution`);
+      setActiveRunId(response.id);
+      for (let attempt = 0; attempt < 480 && ["queued", "running"].includes(response.status); attempt += 1) {
+        setRunProgress(response.progress_percent);
+        if (Object.keys(response.node_results).length) applyRunResults(response.node_results);
+        setNotice(
+          `Run ${response.id} · ${response.status} · ${response.progress_percent}%${response.current_node_id ? ` · ${response.current_node_id}` : ""} · ${response.rows_scanned.toLocaleString()} rows scanned`,
+        );
+        await sleep(250);
+        response = await getAnalysisRun(response.id, workspaceId);
+      }
+      setRunProgress(response.progress_percent);
+      if (response.status === "succeeded") {
+        applyRunResults(response.node_results);
+        setNotice(
+          `Run ${response.id} succeeded · Analysis v${response.analysis_version} · ${response.cache_hit ? "cache HIT" : "cache MISS"} · ${response.rows_scanned.toLocaleString()} rows scanned`,
+        );
+      } else if (response.status === "cancelled") {
+        applyRunResults(response.node_results);
+        setNotice(`Run ${response.id} cancelled · ${response.progress_percent}% · partial results retained`);
+      } else if (response.status === "failed") {
+        throw new Error(response.error?.message ?? "Analysis run failed");
+      } else {
+        throw new Error("Analysis run polling timed out before a terminal state.");
+      }
     } catch (error) {
-      setNodes((current) => current.map((node, index) => ({
+      setNodes((current) => current.map((node) => ({
         ...node,
         data: {
           ...node.data,
-          status: "success",
-          rows: node.data.kind === "input" ? events.length : result.rows.length,
-          elapsedMs: 14 + index * 11,
+          status: node.data.status === "success" ? "success" : "error",
         },
       })));
-      setNotice(`서버 실행 실패 · client fallback 적용: ${error instanceof Error ? error.message : String(error)}`);
+      setNotice(`서버 실행 실패: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setBusy(false);
+      setActiveRunId(null);
+    }
+  }
+
+  async function cancelRun() {
+    if (!activeRunId) return;
+    try {
+      const response = await cancelAnalysisRun(activeRunId, workspaceId);
+      setNotice(`Cancel requested · ${response.id} · current progress ${response.progress_percent}%`);
+    } catch (error) {
+      setNotice(`Cancel 요청 실패: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
   async function saveDataset() {
+    if (!selectedNode) {
+      setNotice("Dataset으로 저장할 Analysis node를 선택하세요.");
+      return;
+    }
     setBusy(true);
     try {
       const saved = await ensureSaved(true);
-      const response = await runAnalysis(analysisId, {
+      const response = await materializeAnalysisResult(analysisId, {
+        project_id: projectId,
         workspace_id: workspaceId,
+        node_id: selectedNode.id,
         version_policy: "pinned",
         version: saved.current_version,
-        preview_limit: 1000,
+        dataset_name: `${selectedNode.data.title} · ${analysisId}`,
+        preview_limit: 500,
+        full_limit: 5000,
       });
-      if (response.status !== "succeeded") throw new Error(response.error?.message ?? "Analysis materialization failed");
-      applyRunResults(response.node_results);
-      setNotice(`Analysis v${saved.current_version} published · server dataset snapshot ${response.id}`);
+      setDatasetSources((current) => {
+        const value = `dataset:${response.dataset.id}`;
+        const next = {
+          value,
+          label: `Dataset · ${response.dataset.display_name} · ${response.version.version_label}`,
+        };
+        return [next, ...current.filter((item) => item.value !== value)];
+      });
+      setNotice(
+        `${response.dataset.display_name} ${response.version.version_label} 생성 · ${response.materialized_row_count.toLocaleString()} rows · ${response.checksum_sha256.slice(0, 12)}`,
+      );
     } catch (error) {
-      setNotice(`서버 저장 실패: ${error instanceof Error ? error.message : String(error)}`);
+      setNotice(`Dataset materialization 실패: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setBusy(false);
     }
@@ -430,7 +511,11 @@ function AnalysisPageInner({
       notice={busy ? `Working · ${notice}` : notice}
       showInspector={showInspector}
       canAddToDashboard={Boolean(selectedNode && onAddToDashboard)}
+      canSaveDataset={canMaterialize && Boolean(selectedNode)}
+      running={Boolean(activeRunId)}
+      runProgress={runProgress}
       onRun={run}
+      onCancelRun={cancelRun}
       onSaveDataset={saveDataset}
       onAddToDashboard={addToDashboard}
       onToggleInspector={() => setShowInspector((current) => !current)}
@@ -450,12 +535,15 @@ function AnalysisPageInner({
       inspector={(
         <AnalysisResultInspector
           node={selectedNode}
+          nodes={nodes}
+          edges={edges}
           result={result}
           serverResult={selectedNode ? serverResults[selectedNode.id] : undefined}
           workspaceId={workspaceId}
           selectedEventId={selectedEventId}
           evidence={evidence}
           revision={revision}
+          sourceOptions={datasetSources}
           onConfigChange={updateConfig}
           onDeleteNode={deleteNode}
           onSelectEvent={onSelectEvent}

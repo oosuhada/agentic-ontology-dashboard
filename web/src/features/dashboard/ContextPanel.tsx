@@ -1,5 +1,5 @@
 import type { EventSummary } from "../../types";
-import { StatusBadge } from "../../components";
+import { StatusBadge } from "../../components/StatusBadge";
 import type { DashboardParameterDefinition, SavedView } from "./types";
 
 interface ContextPanelProps {

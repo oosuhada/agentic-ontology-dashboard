@@ -112,72 +112,74 @@ Dataset / Data Source
 
 ## 7. Current Implementation Maturity
 
-2026-08-01 기준 baseline:
+2026-08-02 기준 baseline:
 
 ```text
-Backend        93%
-Frontend       89%
-Architecture   95%
-PostgreSQL     70%
-Project Layer  60%
-Adapter Layer  10%
+Backend        97%
+Frontend       96%
+Architecture   96%
+PostgreSQL     85%
+Project Layer  90%
+Adapter Layer  80%
 ```
 
 자동화 baseline:
 
 ```text
-Canonical naming: 84 files, 0 violations
-PostgreSQL organization/project migration/RLS: PASS
-Backend tests: 65 PASS
+Canonical naming: PASS
+PostgreSQL organization/project migration/RLS/runtime: PASS
+Backend tests: 118 PASS
 Gold scenarios: 8/8 PASS
-Frontend unit tests: 1 PASS
+Frontend unit tests: 3 PASS
 TypeScript: PASS
 Production build: PASS
-Playwright E2E: 14 PASS
-Release gate: 12/12 PASS
+Initial JavaScript: 213.87 KiB / 300 KiB
+Largest deferred JavaScript: 443.24 KiB
+Playwright E2E: 28 PASS
+Live Project 2→Project 3 evidence: PostgreSQL 1 + Neo4j 3 + Project 3 RAG 1 PASS
 ```
 
-작업 시작 전에 현재 실행 결과가 이 baseline과 일치하는지 필요한 범위에서 검증한다.
+작업 시작 전에 현재 실행 결과가 이 baseline과 일치하는지 필요한 범위에서 검증한다. Docker CLI가 없는 현재 host에서는 compose cold-start를 완료했다고 주장하지 않는다.
 
 ## 8. Current Priority
 
-별도 사용자 지시가 없다면 `docs/10-product-convergence-polyglot-agentic-roadmap.md` 순서를 따른다.
+Stage 44~54의 제품 구현은 완료됐다. Stage 55도 live integration, automated release gate, backup/restore test까지 완료됐으며 현재 host에 Docker CLI가 없어 compose cold-start/rollback drill만 환경 제약으로 남아 있다.
+
+별도 사용자 지시가 없으면 새로운 기능을 확장하기보다 다음 운영·부채 순서로 진행한다.
 
 ```text
-1. Stage 44 — 문서·ADR·우선순위 rebaseline
-2. Stage 45 — planner canonical migration + Project 3 typed client + Ontology preview
-3. Stage 46 — PostgreSQL + pgvector + Neo4j local stack
-4. Stage 47 — Dataset Version과 multi-store projection
-5. Stage 48 — Ontology Workbench 완성
-6. Stage 49 — LangGraph multi-store query orchestration
-7. Stage 50 — Dataset Catalog와 materialization
-8. Stage 51 — Governance Workbench
-9. Stage 52 — server-scale Analysis/Dashboard
-10. Stage 53~55 — WorkOrder ontology, visual convergence, production release gate
+1. Docker 사용 가능한 host에서 PostgreSQL+pgvector+Redis+Neo4j cold-start/rollback drill
+2. managed PostgreSQL/Redis에서 pool, rate limiter, outbox worker 장기 부하 검증
+3. legacy factory_signal_board physical package의 ontology_dashboard namespace 이동
+4. Identity/Dashboard/Workflow/Export repository의 PostgreSQL 완전 전환
+5. production SSO/invitation/reset lifecycle
+6. REST/Kafka/MQTT/OPC-UA connector credentials, retry, backpressure 검증
+7. Dashboard editor undo/redo와 unsaved draft recovery
+8. Project Home/Dataset visual regression baseline 확대
 ```
 
-Project Layer와 PostgreSQL 작업은 폐기하지 않는다. 새 Stage에서 multi-store identity, project isolation, Workbench delivery와 함께 완성한다.
+이미 완료된 Dataset Catalog, Agent/Governance pagination, WorkOrder, Analysis job lifecycle, bundle split 또는 Project 3 three-store 경로를 반복 구현하지 않는다.
 
 ## 9. Immediate Next Task Definition
 
-현재 가장 우선인 작업은 **Stage 45 vertical slice — Planner Canonical Migration + Project 3 Typed Client + Ontology Workbench Preview**다.
+현재 기본 next action은 **production-environment completion과 canonical package debt 제거**다.
 
 검증된 현재 상태:
 
-- canonical planner는 `api/ontology_dashboard/planner/`에 있고 legacy planner 파일은 compatibility re-export 경계다.
-- Project 3에는 Neo4j, Text-to-Cypher LangGraph, graph schema/search/subgraph, LlamaIndex RAG가 있으며 Project 2는 typed `Project3Client`로만 접근한다.
-- Ontology, Governance, Agent Evidence Workbench는 실제 project/workspace route, permission guard, degraded mode와 Playwright E2E가 연결됐다.
-- Dataset Version/projection/mapping/materialization backend와 초기 Dataset Catalog route가 있다.
-- Project 2 local pgvector는 health/schema/projection contract만 있으며 runtime semantic retrieval은 현재 Project 3 RAG를 사용한다.
-- `api/ontology_dashboard/__init__.py`의 legacy path extension과 물리 `factory_signal_board` package 제거는 Stage 55 canonical debt로 남아 있다.
+- Project Home, Role Dashboard, Analysis, Agent, Ontology, Dataset Catalog와 Governance route가 실제 permission/scope/E2E까지 연결됐다.
+- Analysis는 queued/running/progress/cancel/cache/cursor lifecycle을 저장하며 선택 node를 immutable Dataset Version으로 materialize한다.
+- materialized Dataset은 등록된 artifact만 다른 Analysis input으로 재사용한다.
+- canonical task identity는 WorkOrder이며 Inspection은 deprecated compatibility alias다.
+- Project 2→Project 3 live HTTP gate에서 PostgreSQL, Neo4j, Project 3 RAG evidence가 한 persisted hybrid run으로 합쳐졌다.
+- Project 2 local pgvector는 projection schema boundary로 유지하며 runtime semantic retrieval은 `project3_rag` typed API를 사용한다.
+- 모든 initial/deferred JavaScript budget이 현재 목표 안에 있다.
 
-다음 최소 구현 목표:
+다음 세션은 먼저 작업 환경을 확인한다.
 
-- `docs/autonomous-implementation-progress.md`의 Next Exact Action과 첫 미완료 Stage를 기준으로 시작한다.
-- 현재 우선순위는 Stage 50 Dataset Catalog completion, Stage 52 server-scale Analysis/Dashboard, Stage 53 WorkOrder, Stage 54 bundle/visual convergence다.
-- architecture-only 작업으로 끝내지 않고 실제 route, permission, user journey, screenshot artifact까지 함께 전달한다.
-- organization/project/workspace/role scope와 arbitrary SQL/Cypher 금지 경계를 유지한다.
-- Dashboard/Analysis/Ontology/Agent/Governance 기존 회귀를 유지한다.
+- Docker가 있으면 compose cold-start/rollback drill과 live gate를 실행한다.
+- Docker가 없으면 canonical package relocation 또는 PostgreSQL repository 전환 중 실제 vertical slice 하나를 선택한다.
+- broad rewrite보다 migration, compatibility import, targeted tests, full release gate 순서로 진행한다.
+- 이미 완료된 사용자 route와 contract를 회귀시키지 않는다.
 
 ## 10. Required Work Procedure
 
@@ -271,7 +273,7 @@ Azure PdM의 발표 지표는 문서의 고정 숫자를 그대로 믿지 말고
 
 /Users/gabrieljang/Documents/Macbook air personal/비스텔리전스 파이널 프로젝트/mvp-프로젝트2
 
-가장 먼저 docs/next-session-master-prompt.md, docs/autonomous-implementation-progress.md와 docs/10-product-convergence-polyglot-agentic-roadmap.md를 읽고, 필수 문서들을 순서대로 검토해줘. 문서 내용과 현재 코드·테스트·migration·frontend route, 그리고 Project 3의 Neo4j/LangGraph/RAG 구조를 비교해 차이를 파악한 뒤 progress 문서의 Next Exact Action과 첫 미완료 Stage부터 이어서 구현해줘.
+가장 먼저 docs/next-session-master-prompt.md, docs/autonomous-implementation-progress.md, docs/03-project-roadmap.md와 docs/07-implementation-status.md를 읽고, 필수 문서들을 순서대로 검토해줘. 문서 내용과 현재 코드·테스트·migration·frontend route, Project 3의 Neo4j/LangGraph/RAG 구조, 그리고 현재 host의 Docker/managed service 가용성을 비교해줘. 완료된 Stage 44~54를 반복하지 말고 master prompt의 Current Priority에서 실행 가능한 첫 운영·부채 항목부터 진행해줘.
 
 반드시 다음 원칙을 지켜줘.
 
@@ -280,14 +282,15 @@ Azure PdM의 발표 지표는 문서의 고정 숫자를 그대로 믿지 말고
 - Organization → Project → Workspace → Role Dashboard 구조 유지
 - Project는 Dataset과 동일시하지 않기
 - Prediction과 Dashboard를 Prediction Result Contract로 분리
-- PostgreSQL operational data, Neo4j relationship graph, pgvector/LlamaIndex semantic retrieval을 동일 Project identity로 연결
+- PostgreSQL operational data, Neo4j relationship graph, Project 3 RAG retrieval을 동일 Project identity로 연결
+- Project 2 local pgvector는 projection schema boundary로 유지하고 runtime RAG로 과장하지 않기
 - Project 3의 Text-to-Cypher/LangGraph/RAG를 중복 구현하지 않고 typed client로 재사용
 - 검증되지 않은 arbitrary SQL/Cypher 실행 금지
-- architecture-only 작업으로 끝내지 않고 실제 Ontology Workbench route까지 구현
+- architecture-only 작업으로 끝내지 않고 migration·runtime·test·운영 증거까지 전달
 - tenant/project scope를 API·repository·UI에서 검증
 - 기존 release gate와 Gold/E2E 회귀 유지
 - Git commit·push 등 Git write는 수행하지 않기
 - 코드 변경과 함께 관련 docs를 업데이트하기
 
-작업 완료 후 수행 내용, 주요 파일, 테스트 결과, 구현률 변화, 남은 위험과 다음 추천 작업을 정리해줘.
+작업 완료 후 수행 내용, 주요 파일, 테스트와 release/live gate 결과, 구현률 변화, 환경 제약과 다음 운영 과제를 정리해줘.
 ```

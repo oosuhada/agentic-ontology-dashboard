@@ -71,6 +71,13 @@ class MaterializationCreateRequest(StrictModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class DatasetPage(StrictModel):
+    items: list["DatasetRecord"]
+    offset: int
+    limit: int
+    total: int
+
+
 class DatasetRecord(StrictModel):
     id: str
     organization_id: str
@@ -89,6 +96,20 @@ class DatasetRecord(StrictModel):
     latest_source_version: str | None = None
     record_count: int = 0
     projection_health: dict[StoreKind, ProjectionHealth] = Field(default_factory=dict)
+
+
+class DatasetFileRecord(StrictModel):
+    id: str
+    organization_id: str
+    project_id: str
+    workspace_id: str
+    dataset_id: str
+    dataset_version_id: str
+    uri: str
+    media_type: str
+    checksum_sha256: str
+    size_bytes: int | None = None
+    created_at: datetime
 
 
 class DatasetVersionRecord(StrictModel):
@@ -167,12 +188,55 @@ class MaterializationRecord(StrictModel):
     created_at: datetime
 
 
+class AdapterIngestionRunRecord(StrictModel):
+    id: str
+    organization_id: str
+    project_id: str
+    workspace_id: str
+    manifest_id: str
+    adapter_code: str
+    status: str
+    source_record_count: int
+    accepted_record_count: int
+    quarantined_record_count: int
+    error_message: str | None = None
+    started_at: datetime
+    completed_at: datetime | None = None
+
+
+class QuarantineRecord(StrictModel):
+    id: str
+    organization_id: str
+    project_id: str
+    workspace_id: str
+    ingestion_run_id: str
+    source_row_number: int | None = None
+    error_code: str
+    error_message: str
+    record: dict[str, Any]
+    created_at: datetime
+
+
+class DocumentIndexReadiness(StrictModel):
+    status: Literal["ready", "indexing", "pending", "failed", "missing", "not_configured"]
+    projection_id: str | None = None
+    dataset_version_id: str | None = None
+    content_fields: list[str] = Field(default_factory=list)
+    indexed_record_count: int = 0
+    last_error: str | None = None
+
+
 class DatasetDetail(StrictModel):
     dataset: DatasetRecord
     versions: list[DatasetVersionRecord]
+    files: list[DatasetFileRecord] = Field(default_factory=list)
     projections: list[ProjectionRecord]
     mappings: list[OntologyMappingRecord]
     materializations: list[MaterializationRecord]
+    ingestion_runs: list[AdapterIngestionRunRecord] = Field(default_factory=list)
+    quarantine_records: list[QuarantineRecord] = Field(default_factory=list)
+    lineage_references: list[str] = Field(default_factory=list)
+    document_index_readiness: DocumentIndexReadiness
 
 
 class CanonicalObjectEnvelope(StrictModel):

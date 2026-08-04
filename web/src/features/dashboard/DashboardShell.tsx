@@ -9,6 +9,7 @@ import {
   Download,
   Eye,
   GitBranch,
+  Home,
   LayoutDashboard,
   LogOut,
   Maximize2,
@@ -31,7 +32,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { featureFlags } from "../../featureFlags";
-import { agentPath, datasetCatalogPath, governancePath, navigate, ontologyPath } from "../../routing";
+import { agentPath, datasetCatalogPath, governancePath, navigate, ontologyPath, projectHomePath } from "../../routing";
 import type { AppRole, AuthUser, DomainPack, Project, Workspace } from "../../types";
 import type { DashboardMode, DashboardTab } from "./types";
 
@@ -62,6 +63,8 @@ interface DashboardShellProps {
   canManageTemplates: boolean;
   templateActionLabel: string;
   targetTemplateRole: AppRole;
+  availableRoles: AppRole[];
+  activeRole: AppRole;
   contextPanel: ReactNode;
   boardCanvas: ReactNode;
   inspector: ReactNode;
@@ -83,11 +86,23 @@ interface DashboardShellProps {
   onExport: (format: "json" | "csv" | "pdf") => void;
   onPublishTemplate: () => void;
   onTargetTemplateRoleChange: (role: AppRole) => void;
+  onActiveRoleChange: (role: AppRole) => void;
   onDismissNotice: () => void;
   onRetry: () => void;
   onAdmin: () => void;
   onLogout: () => void;
 }
+
+const ROLE_LABELS: Record<AppRole, string> = {
+  tenant_admin: "조직 관리자",
+  executive_viewer: "임원 Viewer",
+  process_manager: "운영 매니저",
+  process_engineer: "도메인 엔지니어",
+  maintenance_technician: "현장 작업자",
+  quality_auditor: "품질·감사 Viewer",
+  ml_validator: "데이터 사이언티스트",
+  fde: "Forward Deployed Engineer",
+};
 
 const TEMPLATE_ROLES: AppRole[] = [
   "tenant_admin",
@@ -101,6 +116,7 @@ const TEMPLATE_ROLES: AppRole[] = [
 ];
 
 const NAV_ITEMS = [
+  { id: "home", label: "Project Home", icon: Home, enabled: true },
   { id: "dashboard", label: "Dashboards", icon: LayoutDashboard, enabled: true },
   { id: "analysis", label: "Analysis", icon: Workflow, enabled: true },
   { id: "agent", label: "Agent", icon: Bot, enabled: true },
@@ -140,6 +156,8 @@ export function DashboardShell({
   canManageTemplates,
   templateActionLabel,
   targetTemplateRole,
+  availableRoles,
+  activeRole,
   contextPanel,
   boardCanvas,
   inspector,
@@ -161,6 +179,7 @@ export function DashboardShell({
   onExport,
   onPublishTemplate,
   onTargetTemplateRoleChange,
+  onActiveRoleChange,
   onDismissNotice,
   onRetry,
   onAdmin,
@@ -214,6 +233,10 @@ export function DashboardShell({
   }
 
   function openProductView(itemId: (typeof NAV_ITEMS)[number]["id"]) {
+    if (itemId === "home") {
+      navigate(projectHomePath(selectedProjectId));
+      return;
+    }
     if (itemId === "dashboard" || itemId === "analysis") {
       openWorkspace(itemId);
       return;
@@ -306,6 +329,7 @@ export function DashboardShell({
           <div className="od-context-controls">
             <label>Project<select value={selectedProjectId} onChange={(event) => onProjectChange(event.target.value)}>{projects.map((project) => <option key={project.id} value={project.id}>{project.display_name}</option>)}</select></label>
             <label>Workspace<select value={selectedWorkspaceId} onChange={(event) => onWorkspaceChange(event.target.value)}>{workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.display_name}</option>)}</select></label>
+            <label>Role<select value={activeRole} onChange={(event) => onActiveRoleChange(event.target.value as AppRole)}>{availableRoles.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}</select></label>
             <div className="workbench-switcher" role="group" aria-label="Workbench mode">
               <button type="button" className={workspaceView === "dashboard" ? "active" : ""} onClick={() => openWorkspace("dashboard")}><LayoutDashboard size={13} /> Dashboard</button>
               <button type="button" className={workspaceView === "analysis" ? "active" : ""} onClick={() => openWorkspace("analysis")}><Workflow size={13} /> Analysis</button>

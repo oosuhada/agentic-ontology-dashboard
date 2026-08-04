@@ -149,12 +149,19 @@ class RoleWorkflowService:
             ReportRequest(role="manager", use_llm=False),
         )
         activity = self.legacy_service.repository.event_activity(event_id)
-        ontology_actions = self.ontology.action_repository.list_for_object(
-            workspace_id=workspace_id,
-            object_id=f"risk_event:{event_id}",
-        ) + self.ontology.action_repository.list_for_object(
-            workspace_id=workspace_id,
-            object_id=f"inspection:{event_id}",
+        ontology_actions = (
+            self.ontology.action_repository.list_for_object(
+                workspace_id=workspace_id,
+                object_id=f"risk_event:{event_id}",
+            )
+            + self.ontology.action_repository.list_for_object(
+                workspace_id=workspace_id,
+                object_id=f"work_order:{event_id}",
+            )
+            + self.ontology.action_repository.list_for_object(
+                workspace_id=workspace_id,
+                object_id=f"inspection:{event_id}",
+            )
         )
         field_actions = self.repository.list_field_actions(
             workspace_id=workspace_id,
@@ -274,7 +281,7 @@ class RoleWorkflowService:
             latest_action = latest.get(event["event_id"])
             tasks.append(
                 {
-                    "task_id": f"inspection:{event['event_id']}",
+                    "task_id": f"work_order:{event['event_id']}",
                     "event_id": event["event_id"],
                     "equipment": event["equipment"],
                     "risk_status": event["status"],

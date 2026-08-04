@@ -16,7 +16,12 @@ from fastapi import Depends, Request, Response
 from .adapters.service import AdapterService
 from .analysis_service import AnalysisService
 from .dashboard_service import DashboardService
-from .datasets import DatasetCatalogService, DatasetRepository
+from .datasets import (
+    AnalysisDatasetMaterializer,
+    DatasetCatalogService,
+    DatasetMaterializationSource,
+    DatasetRepository,
+)
 from .export_service import ExportService
 from .governance import GovernanceService
 from .identity import CSRF_COOKIE, SESSION_COOKIE, AuthError, IdentityService, Principal
@@ -151,7 +156,9 @@ def get_ontology_service(
 def get_analysis_service(
     service: ManufacturingPredictiveMaintenanceService = Depends(get_service),
 ) -> AnalysisService:
-    return AnalysisService(str(service.repository.path))
+    target = str(service.repository.path)
+    dataset_source = DatasetMaterializationSource(DatasetRepository(target))
+    return AnalysisService(target, dataset_loader=dataset_source.load)
 
 
 def get_dashboard_service(
@@ -203,6 +210,19 @@ def get_dataset_catalog_service() -> DatasetCatalogService:
     target = database_target()
     migrate(target)
     return DatasetCatalogService(DatasetRepository(target))
+
+
+def get_analysis_materializer(
+    analyses: AnalysisService = Depends(get_analysis_service),
+    ontology: OntologyService = Depends(get_ontology_service),
+    datasets: DatasetCatalogService = Depends(get_dataset_catalog_service),
+) -> AnalysisDatasetMaterializer:
+    return AnalysisDatasetMaterializer(
+        analysis=analyses,
+        ontology=ontology,
+        datasets=datasets,
+        artifact_root=ROOT / "data" / "materializations",
+    )
 
 
 def get_governance_service(

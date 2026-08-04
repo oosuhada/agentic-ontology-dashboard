@@ -5,7 +5,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 AnalysisStatus = Literal["draft", "published", "archived"]
-AnalysisRunStatus = Literal["queued", "running", "succeeded", "failed"]
+AnalysisRunStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
 VersionPolicy = Literal["pinned", "latest_published"]
 
 
@@ -98,6 +98,23 @@ class AnalysisRunResult(StrictModel):
     started_at: str
     finished_at: str | None = None
     error: dict[str, Any] | None = None
+    progress_percent: int = Field(default=0, ge=0, le=100)
+    current_node_id: str | None = None
+    cancel_requested: bool = False
+    cache_key: str | None = None
+    cache_hit: bool = False
+    rows_scanned: int = Field(default=0, ge=0)
+    updated_at: str | None = None
+
+
+class AnalysisNodeRowsPage(StrictModel):
+    run_id: str
+    node_id: str
+    rows: list[dict[str, Any]]
+    cursor: str | None = None
+    next_cursor: str | None = None
+    limit: int
+    total: int
 
 
 class AnalysisNodeResultResponse(StrictModel):

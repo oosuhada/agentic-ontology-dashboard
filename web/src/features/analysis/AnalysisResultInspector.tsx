@@ -1,8 +1,10 @@
 import { AlertTriangle, Clock3, Trash2 } from "lucide-react";
 import type { Evidence } from "../../types";
 import { AnalysisInspector } from "./AnalysisInspector";
+import { AnalysisLineageMiniGraph } from "./AnalysisLineageMiniGraph";
 import { InputObjectSetPreview } from "./boards/InputObjectSetPreview";
 import type {
+  AnalysisFlowEdge,
   AnalysisFlowNode,
   AnalysisNodeExecutionResult,
   AnalysisResult,
@@ -10,12 +12,15 @@ import type {
 
 interface AnalysisResultInspectorProps {
   node: AnalysisFlowNode | undefined;
+  nodes: AnalysisFlowNode[];
+  edges: AnalysisFlowEdge[];
   result: AnalysisResult;
   serverResult?: AnalysisNodeExecutionResult;
   workspaceId: string;
   selectedEventId: string;
   evidence: Evidence | null;
   revision: number;
+  sourceOptions?: Array<{ value: string; label: string }>;
   onConfigChange: (key: string, value: string) => void;
   onDeleteNode: () => void;
   onSelectEvent: (eventId: string) => void;
@@ -46,12 +51,15 @@ function clientWarnings(node: AnalysisFlowNode) {
 
 export function AnalysisResultInspector({
   node,
+  nodes,
+  edges,
   result,
   serverResult,
   workspaceId,
   selectedEventId,
   evidence,
   revision,
+  sourceOptions = [],
   onConfigChange,
   onDeleteNode,
   onSelectEvent,
@@ -85,8 +93,8 @@ export function AnalysisResultInspector({
           {warnings.map((warning) => <p key={warning}><AlertTriangle size={12} /> {warning}</p>)}
         </section>
       ) : null}
-      <AnalysisInspector node={node} onConfigChange={onConfigChange} />
-      {node.data.kind === "input" ? (
+      <AnalysisInspector node={node} sourceOptions={sourceOptions} onConfigChange={onConfigChange} />
+      {node.data.kind === "input" && !node.data.config.source?.startsWith("dataset:") ? (
         <InputObjectSetPreview
           workspaceId={workspaceId}
           objectType={node.data.config.source === "events" ? "risk_event" : node.data.config.source || "risk_event"}
@@ -106,6 +114,8 @@ export function AnalysisResultInspector({
           <dt>Elapsed</dt><dd>{serverResult?.elapsed_ms ?? node.data.elapsedMs}ms</dd>
           <dt>Cache</dt><dd>{serverResult?.cache_hit ? "HIT" : "MISS"}</dd>
           <dt>Generated</dt><dd>{serverResult?.generated_at ? new Date(serverResult.generated_at).toLocaleString() : "preview"}</dd>
+          <dt>Source</dt><dd>{String(serverResult?.source_metadata.dataset_id ?? serverResult?.source_metadata.object_type ?? node.data.config.source ?? "unknown")}</dd>
+          {serverResult?.source_metadata.dataset_version_id ? <><dt>Dataset version</dt><dd>{String(serverResult.source_metadata.dataset_version_id)}</dd></> : null}
         </dl>
       </section>
       <section>
@@ -130,15 +140,13 @@ export function AnalysisResultInspector({
           })}
         </div>
       </section>
-      <section className="analysis-lineage-mini">
-        <h3>Lineage</h3>
-        <ol>
-          <li>workspace-scoped risk_event Object Set</li>
-          <li>server Analysis execution path</li>
-          <li>{evidence?.model.model_version ?? "model pending"}</li>
-          <li>Analysis version v{revision}</li>
-        </ol>
-      </section>
+      <AnalysisLineageMiniGraph
+        nodes={nodes}
+        edges={edges}
+        selectedNodeId={node.id}
+        modelVersion={evidence?.model.model_version ?? "model pending"}
+        revision={revision}
+      />
     </aside>
   );
 }

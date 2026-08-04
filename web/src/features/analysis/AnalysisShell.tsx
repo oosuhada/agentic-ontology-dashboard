@@ -1,4 +1,4 @@
-import { Download, LayoutDashboard, Play } from "lucide-react";
+import { Download, LayoutDashboard, Play, Square } from "lucide-react";
 import type { ReactNode } from "react";
 
 interface AnalysisShellProps {
@@ -10,7 +10,11 @@ interface AnalysisShellProps {
   canvas: ReactNode;
   inspector: ReactNode;
   canAddToDashboard: boolean;
+  canSaveDataset: boolean;
+  running: boolean;
+  runProgress: number;
   onRun: () => void;
+  onCancelRun: () => void;
   onSaveDataset: () => void;
   onAddToDashboard: () => void;
   onToggleInspector: () => void;
@@ -25,7 +29,11 @@ export function AnalysisShell({
   canvas,
   inspector,
   canAddToDashboard,
+  canSaveDataset,
+  running,
+  runProgress,
   onRun,
+  onCancelRun,
   onSaveDataset,
   onAddToDashboard,
   onToggleInspector,
@@ -37,9 +45,13 @@ export function AnalysisShell({
         <div className="analysis-run-actions">
           <span className="od-tag intent-primary">Draft · Revision {revision}</span>
           <button type="button" className="secondary" onClick={onToggleInspector}>{showInspector ? "Hide inspector" : "Show inspector"}</button>
-          <button type="button" className="secondary" onClick={onSaveDataset}><Download size={13} /> Save dataset</button>
+          <button type="button" className="secondary" disabled={!canSaveDataset} title={canSaveDataset ? "Save immutable Dataset Version" : "datasets.ingest permission required"} onClick={onSaveDataset}><Download size={13} /> Save dataset</button>
           <button type="button" className="secondary" disabled={!canAddToDashboard} onClick={onAddToDashboard}><LayoutDashboard size={13} /> Add to Dashboard</button>
-          <button type="button" className="primary" onClick={onRun}><Play size={13} /> Run path</button>
+          {running ? (
+            <button type="button" className="secondary" onClick={onCancelRun}><Square size={13} /> Cancel · {runProgress}%</button>
+          ) : (
+            <button type="button" className="primary" onClick={onRun}><Play size={13} /> Run path</button>
+          )}
         </div>
       </header>
       <div className="analysis-notice">{notice}</div>

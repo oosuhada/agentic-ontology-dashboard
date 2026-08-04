@@ -41,12 +41,15 @@ class OntologyService:
         role_workflow_repository: RoleWorkflowRepository | None = None,
     ) -> None:
         self.legacy_service = legacy_service
-        self.adapter = ManufacturingOntologyAdapter(legacy_service)
         repository_location = legacy_service.repository.path
         self.action_repository = action_repository or OntologyActionRepository(repository_location)
         self.instance_repository = instance_repository or OntologyInstanceRepository(repository_location)
         self.role_workflow_repository = role_workflow_repository or RoleWorkflowRepository(
             repository_location
+        )
+        self.adapter = ManufacturingOntologyAdapter(
+            legacy_service,
+            role_workflow_repository=self.role_workflow_repository,
         )
 
     def _require_workspace(self, workspace_id: str) -> None:
@@ -383,20 +386,31 @@ class OntologyService:
                 object_id=invocation.object_id,
             ).object_type
         except EventNotFound:
+            work_order_actions = {
+                "record_work_order_note",
+                "complete_work_order",
+                "report_work_order_issue",
+                "mark_work_order_blocked",
+            }
             inspection_actions = {
                 "record_inspection_note",
                 "complete_inspection",
                 "report_inspection_issue",
                 "mark_inspection_blocked",
             }
-            if invocation.action_type not in inspection_actions:
+            if invocation.action_type in work_order_actions:
+                event_id = source_identifier(invocation.object_id, "work_order")
+                object_type = "work_order"
+            elif invocation.action_type in inspection_actions:
+                event_id = source_identifier(invocation.object_id, "inspection")
+                object_type = "inspection"
+            else:
                 raise
-            event_id = source_identifier(invocation.object_id, "inspection")
             self.get_object(
                 workspace_id=invocation.workspace_id,
                 object_id=f"risk_event:{event_id}",
             )
-            return "inspection"
+            return object_type
 
     def _execute(
         self,
@@ -415,8 +429,12 @@ class OntologyService:
             )
             return event_id, result
 
-        if invocation.action_type == "record_inspection_note":
-            event_id = source_identifier(invocation.object_id, "inspection")
+        note_action_types = {
+            "record_work_order_note": "work_order",
+            "record_inspection_note": "inspection",
+        }
+        if invocation.action_type in note_action_types:
+            event_id = source_identifier(invocation.object_id, note_action_types[invocation.action_type])
             result = self.legacy_service.note(
                 event_id,
                 NoteRequest(
@@ -427,14 +445,17 @@ class OntologyService:
             return event_id, result
 
         field_action_by_type = {
-            "complete_inspection": "complete",
-            "report_inspection_issue": "issue_found",
-            "mark_inspection_blocked": "blocked",
+            "complete_work_order": ("complete", "work_order"),
+            "report_work_order_issue": ("issue_found", "work_order"),
+            "mark_work_order_blocked": ("blocked", "work_order"),
+            "complete_inspection": ("complete", "inspection"),
+            "report_inspection_issue": ("issue_found", "inspection"),
+            "mark_inspection_blocked": ("blocked", "inspection"),
         }
         if invocation.action_type in field_action_by_type:
-            event_id = source_identifier(invocation.object_id, "inspection")
+            action, object_type = field_action_by_type[invocation.action_type]
+            event_id = source_identifier(invocation.object_id, object_type)
             self.legacy_service._fixture(event_id)
-            action = field_action_by_type[invocation.action_type]
             checklist = invocation.parameters.get("checklist", [])
             note = invocation.parameters.get("note", "")
             if action == "complete" and not checklist:

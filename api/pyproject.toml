@@ -25,22 +25,16 @@ postgres = ["psycopg[binary]>=3.2", "psycopg_pool>=3.2"]
 polyglot = [
   "psycopg[binary]>=3.2",
   "psycopg_pool>=3.2",
-  "pgvector>=0.3",
   "neo4j>=5",
   "redis>=5.0",
-  "langgraph>=0.2",
-  "langgraph-checkpoint-postgres>=2",
-  "llama-index-vector-stores-postgres>=0.3"
+  "pyarrow>=17"
 ]
 production = [
   "psycopg[binary]>=3.2",
   "psycopg_pool>=3.2",
-  "pgvector>=0.3",
   "neo4j>=5",
   "redis>=5.0",
-  "langgraph>=0.2",
-  "langgraph-checkpoint-postgres>=2",
-  "llama-index-vector-stores-postgres>=0.3"
+  "pyarrow>=17"
 ]
 
 [tool.setuptools.packages.find]

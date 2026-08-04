@@ -6,18 +6,23 @@ from urllib.parse import quote
 
 from ..identity import AuthError, Principal
 from .models import (
+    AdapterIngestionRunRecord,
     CanonicalObjectEnvelope,
     DatasetCreateRequest,
     DatasetDetail,
+    DatasetFileRecord,
+    DatasetPage,
     DatasetRecord,
     DatasetVersionCreateRequest,
     DatasetVersionRecord,
+    DocumentIndexReadiness,
     MaterializationCreateRequest,
     MaterializationRecord,
     OntologyMappingCreateRequest,
     OntologyMappingRecord,
     ProjectionBatch,
     ProjectionRecord,
+    QuarantineRecord,
 )
 from .repository import DatasetRepository
 
@@ -55,14 +60,44 @@ class DatasetCatalogService:
         )
 
     def list_datasets(self, *, principal: Principal, project_id: str) -> list[DatasetRecord]:
+        return self.list_dataset_page(
+            principal=principal,
+            project_id=project_id,
+            offset=0,
+            limit=10_000,
+        ).items
+
+    def list_dataset_page(
+        self,
+        *,
+        principal: Principal,
+        project_id: str,
+        offset: int = 0,
+        limit: int = 50,
+        search: str | None = None,
+        workspace_id: str | None = None,
+        status: str | None = None,
+        source_type: str | None = None,
+    ) -> DatasetPage:
         self._require_project(principal, project_id)
-        return [
-            DatasetRecord.model_validate(item)
-            for item in self.repository.list_datasets(
-                organization_id=principal.organization_id,
-                project_id=project_id,
-            )
-        ]
+        if workspace_id is not None:
+            self._require_workspace(principal, workspace_id)
+        payload = self.repository.list_dataset_page(
+            organization_id=principal.organization_id,
+            project_id=project_id,
+            offset=offset,
+            limit=limit,
+            search=search,
+            workspace_id=workspace_id,
+            status=status,
+            source_type=source_type,
+        )
+        return DatasetPage(
+            items=[DatasetRecord.model_validate(item) for item in payload["items"]],
+            offset=payload["offset"],
+            limit=payload["limit"],
+            total=payload["total"],
+        )
 
     def detail(
         self,
@@ -79,40 +114,117 @@ class DatasetCatalogService:
                 dataset_id=dataset_id,
             )
         )
+        versions = [
+            DatasetVersionRecord.model_validate(item)
+            for item in self.repository.list_versions(
+                organization_id=principal.organization_id,
+                project_id=project_id,
+                dataset_id=dataset_id,
+            )
+        ]
+        files = [
+            DatasetFileRecord.model_validate(item)
+            for item in self.repository.list_files(
+                organization_id=principal.organization_id,
+                project_id=project_id,
+                dataset_id=dataset_id,
+            )
+        ]
+        projections = [
+            ProjectionRecord.model_validate(item)
+            for item in self.repository.list_projections(
+                organization_id=principal.organization_id,
+                project_id=project_id,
+                dataset_id=dataset_id,
+            )
+        ]
+        mappings = [
+            OntologyMappingRecord.model_validate(item)
+            for item in self.repository.list_mappings(
+                organization_id=principal.organization_id,
+                project_id=project_id,
+                dataset_id=dataset_id,
+            )
+        ]
+        materializations = [
+            MaterializationRecord.model_validate(item)
+            for item in self.repository.list_materializations(
+                organization_id=principal.organization_id,
+                project_id=project_id,
+                dataset_id=dataset_id,
+            )
+        ]
+        manifest_ids = list(dict.fromkeys(item.manifest_id for item in versions if item.manifest_id))
+        ingestion_runs = [
+            AdapterIngestionRunRecord.model_validate(item)
+            for item in self.repository.list_ingestion_runs(
+                organization_id=principal.organization_id,
+                project_id=project_id,
+                manifest_ids=manifest_ids,
+            )
+        ]
+        quarantine_records = [
+            QuarantineRecord.model_validate(item)
+            for item in self.repository.list_quarantine_records(
+                organization_id=principal.organization_id,
+                project_id=project_id,
+                ingestion_run_ids=[item.id for item in ingestion_runs],
+            )
+        ]
+        latest_version_id = dataset.latest_version_id
+        vector_projection = next(
+            (
+                item
+                for item in projections
+                if item.store_kind == "vector" and item.dataset_version_id == latest_version_id
+            ),
+            None,
+        )
+        latest_mapping = next(
+            (item for item in mappings if item.dataset_version_id == latest_version_id),
+            None,
+        )
+        content_fields = latest_mapping.content_fields if latest_mapping is not None else []
+        if vector_projection is None:
+            document_readiness = DocumentIndexReadiness(status="missing")
+        elif not content_fields:
+            document_readiness = DocumentIndexReadiness(
+                status="not_configured",
+                projection_id=vector_projection.id,
+                dataset_version_id=vector_projection.dataset_version_id,
+                indexed_record_count=vector_projection.record_count,
+                last_error=vector_projection.last_error,
+            )
+        else:
+            document_readiness = DocumentIndexReadiness(
+                status=vector_projection.status,
+                projection_id=vector_projection.id,
+                dataset_version_id=vector_projection.dataset_version_id,
+                content_fields=content_fields,
+                indexed_record_count=vector_projection.record_count,
+                last_error=vector_projection.last_error,
+            )
+        lineage_references = list(
+            dict.fromkeys(
+                [item.source_reference for item in materializations]
+                + [
+                    str(item.metadata.get("downstream_dataset_version_id"))
+                    for item in materializations
+                    if item.metadata.get("downstream_dataset_version_id")
+                ]
+            )
+        )
         return DatasetDetail(
             dataset=dataset,
-            versions=[
-                DatasetVersionRecord.model_validate(item)
-                for item in self.repository.list_versions(
-                    organization_id=principal.organization_id,
-                    project_id=project_id,
-                    dataset_id=dataset_id,
-                )
-            ],
-            projections=[
-                ProjectionRecord.model_validate(item)
-                for item in self.repository.list_projections(
-                    organization_id=principal.organization_id,
-                    project_id=project_id,
-                    dataset_id=dataset_id,
-                )
-            ],
-            mappings=[
-                OntologyMappingRecord.model_validate(item)
-                for item in self.repository.list_mappings(
-                    organization_id=principal.organization_id,
-                    project_id=project_id,
-                    dataset_id=dataset_id,
-                )
-            ],
-            materializations=[
-                MaterializationRecord.model_validate(item)
-                for item in self.repository.list_materializations(
-                    organization_id=principal.organization_id,
-                    project_id=project_id,
-                    dataset_id=dataset_id,
-                )
-            ],
+            versions=versions,
+            files=files,
+            projections=projections,
+            mappings=mappings,
+            materializations=materializations,
+            ingestion_runs=ingestion_runs,
+            quarantine_records=quarantine_records,
+            lineage_references=lineage_references,
+            document_index_readiness=document_readiness,
         )
 
     def create_version(

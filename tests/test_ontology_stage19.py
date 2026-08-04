@@ -79,10 +79,13 @@ def test_object_query_and_two_hop_relation_traversal(client: TestClient) -> None
     edge_types = {item["link_type"] for item in payload["edges"]}
     assert "risk_event:EVT-GS-002" in node_ids
     assert "evidence_package:EVD-EVT-GS-002" in node_ids
+    assert "work_order:EVT-GS-002" in node_ids
     assert "inspection:EVT-GS-002" in node_ids
     assert edge_types >= {
         "equipment_has_risk_event",
         "risk_event_has_evidence",
+        "equipment_has_work_order",
+        "risk_event_requires_work_order",
         "risk_event_requires_inspection",
     }
 
@@ -147,6 +150,47 @@ def test_action_is_idempotent_and_persists_explicit_audit(
     audit_payload = json.loads(rows[0][1])
     assert audit_payload["actor_display_name"] == "김현우"
     assert audit_payload["invocation_id"] == first_payload["invocation_id"]
+
+
+def test_canonical_work_order_action_and_links_are_persisted(client: TestClient) -> None:
+    login(client, "technician@ontology.local", "Technician!2026")
+    work_order = client.get(
+        "/api/ontology/objects/work_order:EVT-GS-002",
+        params={"workspace_id": WORKSPACE},
+    )
+    assert work_order.status_code == 200, work_order.text
+    assert work_order.json()["object_type"] == "work_order"
+    assert work_order.json()["properties"]["event_id"] == "EVT-GS-002"
+
+    action = client.post(
+        "/api/ontology/actions/invoke",
+        headers=csrf_headers(client),
+        json={
+            "action_type": "complete_work_order",
+            "object_id": "work_order:EVT-GS-002",
+            "workspace_id": WORKSPACE,
+            "parameters": {
+                "checklist": ["bearing", "pressure"],
+                "measurements": {"pressure_bar": 5.7},
+                "photo_metadata": [{"name": "pressure-gauge.jpg"}],
+                "note": "canonical work order completed",
+                "location": "Line A",
+            },
+            "idempotency_key": "stage53-work-order-complete-001",
+        },
+    )
+    assert action.status_code == 200, action.text
+    assert action.json()["state"] == "succeeded"
+
+    traversal = client.get(
+        "/api/ontology/objects/work_order:EVT-GS-002/links",
+        params={"workspace_id": WORKSPACE, "direction": "outgoing", "depth": 1},
+    )
+    assert traversal.status_code == 200, traversal.text
+    edge_types = {item["link_type"] for item in traversal.json()["edges"]}
+    node_ids = {item["id"] for item in traversal.json()["nodes"]}
+    assert "work_order_records_action" in edge_types
+    assert any(item.startswith("maintenance_action:") for item in node_ids)
 
 
 def test_inspection_note_action_materializes_virtual_inspection(client: TestClient) -> None:

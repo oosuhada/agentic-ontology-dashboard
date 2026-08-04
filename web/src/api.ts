@@ -16,8 +16,10 @@ import type {
   WorkflowRequest,
 } from "./features/roles/types";
 import type {
+  AnalysisMaterializationResult,
   DatasetCatalogDetail,
   DatasetCatalogItem,
+  DatasetCatalogPage,
 } from "./features/datasets/types";
 import type {
   GovernanceAgentRunDetail,
@@ -38,6 +40,7 @@ import type {
   AnalysisFlowEdge,
   AnalysisFlowNode,
   AnalysisNodeResultResponse,
+  AnalysisNodeRowsPage,
   AnalysisRunResponse,
   AnalysisServerSnapshot,
 } from "./features/analysis/types";
@@ -231,9 +234,29 @@ export async function updateProjectMembership(
 }
 
 export async function getDatasetCatalog(projectId: string): Promise<DatasetCatalogItem[]> {
-  return (await request<{ items: DatasetCatalogItem[] }>(
-    `/api/projects/${encodeURIComponent(projectId)}/dataset-catalog`,
-  )).items;
+  return (await getDatasetCatalogPage({ project_id: projectId, offset: 0, limit: 200 })).items;
+}
+
+export function getDatasetCatalogPage(input: {
+  project_id: string;
+  offset?: number;
+  limit?: number;
+  search?: string;
+  workspace_id?: string;
+  status?: string;
+  source_type?: string;
+}): Promise<DatasetCatalogPage> {
+  const params = new URLSearchParams({
+    offset: String(input.offset ?? 0),
+    limit: String(input.limit ?? 50),
+  });
+  if (input.search) params.set("search", input.search);
+  if (input.workspace_id) params.set("workspace_id", input.workspace_id);
+  if (input.status) params.set("status", input.status);
+  if (input.source_type) params.set("source_type", input.source_type);
+  return request<DatasetCatalogPage>(
+    `/api/projects/${encodeURIComponent(input.project_id)}/dataset-catalog?${params.toString()}`,
+  );
 }
 
 export function getDatasetCatalogDetail(
@@ -449,6 +472,51 @@ export function updateAnalysis(
   });
 }
 
+export function queueAnalysisRun(
+  analysisId: string,
+  input: {
+    workspace_id: string;
+    version_policy: "pinned" | "latest_published";
+    version?: number | null;
+    parameters?: Record<string, unknown>;
+    preview_limit?: number;
+  },
+): Promise<AnalysisRunResponse> {
+  return request<AnalysisRunResponse>(`/api/analyses/${encodeURIComponent(analysisId)}/jobs`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function getAnalysisRun(runId: string, workspaceId: string): Promise<AnalysisRunResponse> {
+  const params = new URLSearchParams({ workspace_id: workspaceId });
+  return request<AnalysisRunResponse>(`/api/analysis-runs/${encodeURIComponent(runId)}?${params.toString()}`);
+}
+
+export function cancelAnalysisRun(runId: string, workspaceId: string): Promise<AnalysisRunResponse> {
+  const params = new URLSearchParams({ workspace_id: workspaceId });
+  return request<AnalysisRunResponse>(`/api/analysis-runs/${encodeURIComponent(runId)}/cancel?${params.toString()}`, {
+    method: "POST",
+  });
+}
+
+export function getAnalysisNodeRows(input: {
+  run_id: string;
+  node_id: string;
+  workspace_id: string;
+  cursor?: string;
+  limit?: number;
+}): Promise<AnalysisNodeRowsPage> {
+  const params = new URLSearchParams({
+    workspace_id: input.workspace_id,
+    limit: String(input.limit ?? 100),
+  });
+  if (input.cursor) params.set("cursor", input.cursor);
+  return request<AnalysisNodeRowsPage>(
+    `/api/analysis-runs/${encodeURIComponent(input.run_id)}/nodes/${encodeURIComponent(input.node_id)}/rows?${params.toString()}`,
+  );
+}
+
 export function runAnalysis(
   analysisId: string,
   input: {
@@ -463,6 +531,30 @@ export function runAnalysis(
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+export function materializeAnalysisResult(
+  analysisId: string,
+  input: {
+    project_id: string;
+    workspace_id: string;
+    node_id: string;
+    version_policy: "pinned" | "latest_published";
+    version?: number | null;
+    dataset_id?: string;
+    dataset_slug?: string;
+    dataset_name?: string;
+    preview_limit?: number;
+    full_limit?: number;
+  },
+): Promise<AnalysisMaterializationResult> {
+  return request<AnalysisMaterializationResult>(
+    `/api/analyses/${encodeURIComponent(analysisId)}/materializations`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
 }
 
 export function getAnalysisNodeResult(input: {

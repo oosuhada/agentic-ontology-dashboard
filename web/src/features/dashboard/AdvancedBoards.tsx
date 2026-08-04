@@ -249,6 +249,7 @@ function traversalGraph(traversal: OntologyTraversal | null): { nodes: Node[]; e
     equipment: 0,
     risk_event: 1,
     evidence_package: 2,
+    work_order: 2,
     inspection: 2,
     maintenance_action: 3,
   };

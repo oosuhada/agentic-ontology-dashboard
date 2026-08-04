@@ -130,7 +130,7 @@ class Project3GraphPort:
 
 
 class Project3VectorPort:
-    store_name = "pgvector"
+    store_name = "project3_rag"
 
     def __init__(self, client: Project3Client) -> None:
         self.client = client
@@ -145,7 +145,8 @@ class Project3VectorPort:
         evidence: list[EvidenceItem] = []
         for index, row in enumerate(result.results[:top_k]):
             reference = str(
-                row.get("reference")
+                row.get("citation_id")
+                or row.get("reference")
                 or row.get("chunk_id")
                 or row.get("id")
                 or f"project3-rag:{index}"
@@ -156,14 +157,22 @@ class Project3VectorPort:
                 or row.get("snippet")
                 or row
             )
-            metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+            nested_metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+            metadata = {
+                **nested_metadata,
+                **{
+                    key: value
+                    for key, value in row.items()
+                    if key not in {"text", "content", "snippet", "metadata", "score"}
+                },
+            }
             dataset_version_id = metadata.get("dataset_version_id")
             object_id = metadata.get("object_id")
             score = row.get("score")
             evidence.append(
                 EvidenceItem(
                     evidence_id=evidence_id(self.store_name, reference),
-                    store="pgvector",
+                    store="project3_rag",
                     reference=reference,
                     project_id=state.project_id,
                     workspace_id=state.workspace_id,

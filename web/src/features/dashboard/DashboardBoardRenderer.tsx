@@ -1,4 +1,5 @@
-import { BlockRenderer, StatusBadge } from "../../components";
+import { lazy, Suspense } from "react";
+import { StatusBadge } from "../../components/StatusBadge";
 import { agentPath, navigate } from "../../routing";
 import type {
   AppRole,
@@ -11,20 +12,32 @@ import type {
   Role,
   UIBlock,
 } from "../../types";
-import { PlannerAssistantBoard } from "../planner/PlannerAssistantBoard";
 import type { DashboardDraftResponse } from "../planner/types";
 import type { RoleWorkspaceData } from "../roles/types";
-import { isRoleBoardRenderer, RoleBoardRenderer } from "../roles/RoleBoardRenderer";
-import {
-  ActivityStreamBoard,
-  EventDataGridBoard,
-  OntologyRelationshipBoard,
-  OperationsKpiBoard,
-  RiskTrendWorkbench,
-} from "./AdvancedBoards";
-import { AnalysisReferenceBoard } from "./AnalysisReferenceBoard";
-import { CatalogDataBoard } from "./CatalogDataBoard";
 import type { BoardCatalogDefinition, DashboardBoard, SelectionFilter } from "./types";
+
+const BlockRenderer = lazy(() => import("../../components").then((module) => ({ default: module.BlockRenderer })));
+const PlannerAssistantBoard = lazy(() => import("../planner/PlannerAssistantBoard").then((module) => ({ default: module.PlannerAssistantBoard })));
+const RoleBoardRenderer = lazy(() => import("../roles/RoleBoardRenderer").then((module) => ({ default: module.RoleBoardRenderer })));
+const OperationsKpiBoard = lazy(() => import("./AdvancedBoards").then((module) => ({ default: module.OperationsKpiBoard })));
+const RiskTrendWorkbench = lazy(() => import("./AdvancedBoards").then((module) => ({ default: module.RiskTrendWorkbench })));
+const EventDataGridBoard = lazy(() => import("./AdvancedBoards").then((module) => ({ default: module.EventDataGridBoard })));
+const OntologyRelationshipBoard = lazy(() => import("./AdvancedBoards").then((module) => ({ default: module.OntologyRelationshipBoard })));
+const ActivityStreamBoard = lazy(() => import("./AdvancedBoards").then((module) => ({ default: module.ActivityStreamBoard })));
+const AnalysisReferenceBoard = lazy(() => import("./AnalysisReferenceBoard").then((module) => ({ default: module.AnalysisReferenceBoard })));
+const CatalogDataBoard = lazy(() => import("./CatalogDataBoard").then((module) => ({ default: module.CatalogDataBoard })));
+
+const ROLE_RENDERERS = new Set([
+  "ExecutivePortfolio", "ExecutiveRiskTrend", "ExecutiveUnresolved", "ExecutiveBusinessImpact",
+  "AuditReconstruction", "AuditVersionSnapshot", "AuditEvidenceTrace", "AuditActionHistory", "AuditExportCheckpoint",
+  "FieldTask", "FieldSafetyLocation", "FieldMeasurements", "FieldTaskActions",
+  "FDEWorkspaceOverview", "FDEOntologyRegistry", "FDEDeploymentChecklist", "FDEDiagnosticEvents", "FDEApprovalQueue",
+  "MLVersionMatrix", "MLThresholdCost", "MLSliceError", "MLDriftSchema", "MLGoldRegression", "MLReleaseCandidate",
+]);
+
+function LazyBoard({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<div className="loading-panel"><div className="spinner" /><p>Board module을 불러오고 있습니다.</p></div>}>{children}</Suspense>;
+}
 
 const LEGACY_RENDERERS = new Set<BlockType>([
   "StatusSummary",
@@ -123,18 +136,18 @@ export function DashboardBoardRenderer({
 }: DashboardBoardRendererProps) {
   if (definition.renderer === "PlannerAssistant") {
     return (
-      <PlannerAssistantBoard
+      <LazyBoard><PlannerAssistantBoard
         workspaceId={workspaceId}
         selectedEventId={selectedEventId}
         appRole={appRole}
         onApplyDraft={onApplyPlannerDraft}
-      />
+      /></LazyBoard>
     );
   }
 
-  if (isRoleBoardRenderer(definition.renderer)) {
+  if (ROLE_RENDERERS.has(definition.renderer)) {
     return (
-      <RoleBoardRenderer
+      <LazyBoard><RoleBoardRenderer
         renderer={definition.renderer}
         data={roleWorkspaceData}
         selectedEventId={selectedEventId}
@@ -142,7 +155,7 @@ export function DashboardBoardRenderer({
         onAuditCheckpoint={onAuditCheckpoint}
         onFieldAction={onFieldAction}
         onModelRelease={onModelRelease}
-      />
+      /></LazyBoard>
     );
   }
 
@@ -160,7 +173,7 @@ export function DashboardBoardRenderer({
           collapsed: false,
         };
     return (
-      <BlockRenderer
+      <LazyBoard><BlockRenderer
         block={block}
         evidence={evidence}
         report={report}
@@ -174,13 +187,13 @@ export function DashboardBoardRenderer({
         onNote={onNote}
         onAsk={onAsk}
         lastFollowUp={lastFollowUp}
-      />
+      /></LazyBoard>
     );
   }
 
   if (definition.renderer === "GenericDataBoard" && definition.default_data_binding && definition.default_render_spec) {
     return (
-      <CatalogDataBoard
+      <LazyBoard><CatalogDataBoard
         boardId={board.id}
         dashboardId={dashboardId}
         workspaceId={workspaceId}
@@ -188,27 +201,27 @@ export function DashboardBoardRenderer({
         parameterState={parameterState}
         selectionFilters={selectionFilters}
         onSelectionFilter={onSelectionFilter}
-      />
+      /></LazyBoard>
     );
   }
 
   switch (definition.renderer) {
     case "OperationsKpi":
-      return <OperationsKpiBoard events={events} parameterState={parameterState} />;
+      return <LazyBoard><OperationsKpiBoard events={events} parameterState={parameterState} /></LazyBoard>;
     case "RiskTrendWorkbench":
       return (
-        <RiskTrendWorkbench
+        <LazyBoard><RiskTrendWorkbench
           boardId={board.id}
           events={events}
           selectedEventId={selectedEventId}
           parameterState={parameterState}
           onSelectEvent={(eventId) => onSelectEvent(board.id, eventId)}
           onSelectionFilter={onSelectionFilter}
-        />
+        /></LazyBoard>
       );
     case "EventDataGrid":
       return (
-        <EventDataGridBoard
+        <LazyBoard><EventDataGridBoard
           boardId={board.id}
           dashboardId={dashboardId}
           workspaceId={workspaceId}
@@ -218,36 +231,36 @@ export function DashboardBoardRenderer({
           selectionFilters={selectionFilters}
           onSelectEvent={(eventId) => onSelectEvent(board.id, eventId)}
           onSelectionFilter={onSelectionFilter}
-        />
+        /></LazyBoard>
       );
     case "AnalysisReference":
       return (
-        <AnalysisReferenceBoard
+        <LazyBoard><AnalysisReferenceBoard
           boardId={board.id}
           title={board.title}
           source={board.source}
           workspaceId={workspaceId}
           onSelectionFilter={onSelectionFilter}
-        />
+        /></LazyBoard>
       );
     case "OntologyRelationship":
       return (
-        <OntologyRelationshipBoard
+        <LazyBoard><OntologyRelationshipBoard
           workspaceId={workspaceId}
           events={events}
           selectedEventId={selectedEventId}
           onSelectEvent={(eventId) => onSelectEvent(board.id, eventId)}
-        />
+        /></LazyBoard>
       );
     case "ActivityStream":
       return (
-        <ActivityStreamBoard
+        <LazyBoard><ActivityStreamBoard
           events={events}
           selectedEventId={selectedEventId}
           evidence={evidence}
           report={report}
           onSelectEvent={(eventId) => onSelectEvent(board.id, eventId)}
-        />
+        /></LazyBoard>
       );
     case "ObjectContext": {
       const selected = events.find((event) => event.event_id === selectedEventId);

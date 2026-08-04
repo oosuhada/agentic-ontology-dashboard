@@ -332,7 +332,7 @@ BOARD_CATALOG: tuple[BoardCatalogDefinition, ...] = (
         category="act",
         renderer="EngineerChecklist",
         allowed_roles=["tenant_admin", "process_engineer", "maintenance_technician", "fde"],
-        object_types=["inspection"],
+        object_types=["work_order"],
         accepts=["selected_event_id"],
         default_width=6,
     ),
@@ -571,7 +571,7 @@ BOARD_CATALOG: tuple[BoardCatalogDefinition, ...] = (
         category="suggested",
         renderer="PlannerAssistant",
         allowed_roles=ALL_ROLES,
-        object_types=["equipment", "risk_event", "evidence_package", "inspection", "maintenance_action"],
+        object_types=["equipment", "risk_event", "evidence_package", "work_order", "maintenance_action"],
         accepts=["selected_event_id", "selected_equipment_id"],
         default_width=12,
     ),
@@ -805,10 +805,10 @@ def _template_tabs(role: str) -> list[DashboardTab]:
                 _board(role, "evidence", "ontology-relationship", "Ontology Relationship", 8, width=6),
                 _board(role, "evidence", "activity-stream", "Evidence Activity", 9, width=6),
             ]),
-            _tab(role, "inspection", "점검 Workflow", 1, [
-                _board(role, "inspection", "engineer-checklist", "점검 체크리스트", 0, mandatory=True),
-                _board(role, "inspection", "recommended-actions", "권장 조치", 1),
-                _board(role, "inspection", "conversation-thread", "후속 질문", 2, width=12),
+            _tab(role, "work-order", "Work Order Workflow", 1, [
+                _board(role, "work-order", "engineer-checklist", "Work Order 체크리스트", 0, mandatory=True),
+                _board(role, "work-order", "recommended-actions", "권장 조치", 1),
+                _board(role, "work-order", "conversation-thread", "후속 질문", 2, width=12),
             ]),
         ]
     if role == "maintenance_technician":
