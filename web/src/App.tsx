@@ -52,6 +52,7 @@ const TeamShareStory = lazy(() =>
 );
 
 const LAST_VALID_PROJECT_KEY = "ontology-dashboard:last-valid-project";
+const IS_PUBLIC_STORY = import.meta.env.VITE_PUBLIC_STORY === "1";
 
 function RouteLoading({ operation, detail }: { operation: string; detail?: string }) {
   return (
@@ -272,9 +273,15 @@ function AppRouter() {
 export default function App() {
   return (
     <I18nProvider>
-      <AuthProvider>
-        <DisplayScopedRouter />
-      </AuthProvider>
+      {IS_PUBLIC_STORY ? (
+        <Suspense fallback={<RouteLoading operation="Loading Team Share" />}>
+          <TeamShareStory />
+        </Suspense>
+      ) : (
+        <AuthProvider>
+          <DisplayScopedRouter />
+        </AuthProvider>
+      )}
     </I18nProvider>
   );
 }

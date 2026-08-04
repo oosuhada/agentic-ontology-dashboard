@@ -1,8 +1,29 @@
 import { useEffect, useState } from "react";
 
+const basePath = import.meta.env.BASE_URL === "/"
+  ? ""
+  : import.meta.env.BASE_URL.replace(/\/$/, "");
+
+function normalizePathname(pathname: string) {
+  const withoutBase = !basePath
+    ? pathname
+    : pathname === basePath
+      ? "/"
+      : pathname.startsWith(`${basePath}/`)
+        ? pathname.slice(basePath.length) || "/"
+        : pathname;
+  return withoutBase.length > 1 ? withoutBase.replace(/\/+$/, "") : withoutBase;
+}
+
+function withBasePath(path: string) {
+  if (!basePath || !path.startsWith("/")) return path;
+  return `${basePath}${path}`;
+}
+
 export function navigate(path: string, options?: { replace?: boolean }) {
-  if (options?.replace) window.history.replaceState({}, "", path);
-  else window.history.pushState({}, "", path);
+  const target = withBasePath(path);
+  if (options?.replace) window.history.replaceState({}, "", target);
+  else window.history.pushState({}, "", target);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
@@ -86,10 +107,10 @@ export function matchGovernancePath(pathname: string): { projectId: string; work
 }
 
 export function usePathname() {
-  const [pathname, setPathname] = useState(() => window.location.pathname);
+  const [pathname, setPathname] = useState(() => normalizePathname(window.location.pathname));
 
   useEffect(() => {
-    const update = () => setPathname(window.location.pathname);
+    const update = () => setPathname(normalizePathname(window.location.pathname));
     window.addEventListener("popstate", update);
     return () => window.removeEventListener("popstate", update);
   }, []);

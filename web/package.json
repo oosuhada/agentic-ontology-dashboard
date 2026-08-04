@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 3100 --strictPort",
     "build": "tsc -b && vite build && node scripts/check-initial-bundle.mjs",
+    "build:pages": "GITHUB_PAGES=1 VITE_PUBLIC_STORY=1 tsc -b && GITHUB_PAGES=1 VITE_PUBLIC_STORY=1 vite build && node scripts/prepare-github-pages.mjs",
     "preview": "vite preview --host 127.0.0.1 --port 3100 --strictPort",
     "test": "vitest run",
     "test:e2e": "playwright test",

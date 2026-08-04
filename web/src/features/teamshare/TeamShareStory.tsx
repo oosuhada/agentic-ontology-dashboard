@@ -46,6 +46,9 @@ type DatasetId = "factory" | "fleet" | "compressor";
 type SectionId = "overview" | "user-flow" | "roles" | "adaptive" | "workbenches" | "capabilities" | "review";
 
 const VERIFIED_TAG = "team-share-capture-integrity-20260804";
+const IS_PUBLIC_STORY = import.meta.env.VITE_PUBLIC_STORY === "1";
+const REPOSITORY_URL = "https://github.com/oosuhada/agentic-ontology-dashboard/tree/prototype/ontology-dashboard-prebuild";
+const FEATURE_DOCUMENT_URL = "https://github.com/oosuhada/agentic-ontology-dashboard/blob/prototype/ontology-dashboard-prebuild/docs/00-team-onboarding/02-feature-tour.md";
 const REVIEW_TEMPLATE = `채택해야 하는 기능:
 수정이 필요한 기능:
 후속으로 미룰 기능:
@@ -345,6 +348,10 @@ export function TeamShareStory() {
     window.setTimeout(() => setCopied(false), 1800);
   }
 
+  function openPublicResource(url: string) {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <main className="team-share-story-page">
       <header className="team-share-story-header">
@@ -354,7 +361,9 @@ export function TeamShareStory() {
         </nav>
         <div className="team-share-header-actions">
           <button type="button" onClick={() => window.print()}><Printer size={13} /> Print</button>
-          <button type="button" className="primary" onClick={() => navigate("/login")}>Open application <ArrowRight size={13} /></button>
+          <button type="button" className="primary" onClick={() => IS_PUBLIC_STORY ? openPublicResource(REPOSITORY_URL) : navigate("/login")}>
+            {IS_PUBLIC_STORY ? "GitHub source" : "Open application"} <ArrowRight size={13} />
+          </button>
         </div>
       </header>
 
@@ -365,7 +374,9 @@ export function TeamShareStory() {
           <p>프로젝트 시작 전에 사용자 흐름과 제품 경계를 실제 동작으로 검증한 선행 프로토타입입니다. 역할, Dataset, 개인 설정이 화면의 모양과 첫 업무를 결정합니다.</p>
           <div className="team-share-hero-actions">
             <a href="#user-flow">전체 사용자 흐름 보기 <ArrowDown size={13} /></a>
-            <button type="button" onClick={() => navigate("/reference")}>Analysis UI reference</button>
+            <button type="button" onClick={() => IS_PUBLIC_STORY ? openPublicResource(FEATURE_DOCUMENT_URL) : navigate("/reference")}>
+              {IS_PUBLIC_STORY ? "Feature document" : "Analysis UI reference"}
+            </button>
           </div>
           <div className="team-share-metrics">
             <span><strong>8</strong><small>업무 역할</small></span>
@@ -503,7 +514,7 @@ export function TeamShareStory() {
           <li><b>03</b><span><strong>초기 MVP Workbench</strong><small>Dashboard, Reports, Analysis, Ontology 중 초기 릴리스 범위</small></span></li>
           <li><b>04</b><span><strong>Ownership</strong><small>Frontend, Backend, Data, Ontology mapping과 검증 책임</small></span></li>
         </ol>
-        <div className="team-share-review-actions"><button type="button" className="primary" onClick={() => navigate("/login")}>실제 앱 열기 <ArrowRight size={13} /></button><button type="button" onClick={() => navigate("/reference")}>Analysis reference</button><button type="button" onClick={() => void copyReviewTemplate()}><ClipboardCopy size={13} />{copied ? "복사 완료" : "리뷰 양식 복사"}</button></div>
+        <div className="team-share-review-actions"><button type="button" className="primary" onClick={() => IS_PUBLIC_STORY ? openPublicResource(REPOSITORY_URL) : navigate("/login")}>{IS_PUBLIC_STORY ? "GitHub에서 코드 보기" : "실제 앱 열기"} <ArrowRight size={13} /></button><button type="button" onClick={() => IS_PUBLIC_STORY ? openPublicResource(FEATURE_DOCUMENT_URL) : navigate("/reference")}>{IS_PUBLIC_STORY ? "Feature 문서 보기" : "Analysis reference"}</button><button type="button" onClick={() => void copyReviewTemplate()}><ClipboardCopy size={13} />{copied ? "복사 완료" : "리뷰 양식 복사"}</button></div>
       </section>
 
       <footer className="team-share-footer">

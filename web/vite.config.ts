@@ -1,7 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+const githubPagesBase = process.env.GITHUB_PAGES === "1"
+  ? "/agentic-ontology-dashboard/"
+  : "/";
+
 export default defineConfig({
+  base: githubPagesBase,
   plugins: [react()],
   server: { host: "127.0.0.1", port: 3100, strictPort: true },
   preview: { host: "127.0.0.1", port: 3100, strictPort: true },
