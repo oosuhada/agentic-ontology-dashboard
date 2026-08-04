@@ -15,6 +15,8 @@ from ontology_dashboard.datasets import (
 from ontology_dashboard.identity import AuthError, IdentityService, Principal
 
 from .file_adapter import FileAdapter
+from .bundle_file_adapter import BundleFileAdapter
+from .bundle_models import BundleValidationResult, DatasetBundleManifestV2
 from .models import DatasetManifest, IngestionResult, PredictionResult
 from .prediction_repository import PredictionResultRepository
 from .registry import AdapterRegistry, default_adapter_registry
@@ -47,6 +49,10 @@ class AdapterService:
             allowed_roots=roots,
             registry=self.registry,
             repository=self.repository,
+        )
+        self.bundle_file_adapter = BundleFileAdapter(
+            allowed_roots=roots,
+            registry=self.registry,
         )
 
     @staticmethod
@@ -94,6 +100,27 @@ class AdapterService:
         result = self.file_adapter.ingest(manifest)
         self._sync_dataset_catalog(principal, manifest, result)
         return result
+
+    def validate_bundle(
+        self,
+        principal: Principal,
+        project_id: str,
+        manifest: DatasetBundleManifestV2,
+    ) -> BundleValidationResult:
+        """Validate a bundle before the Phase 2 PostgreSQL ingestion transaction."""
+
+        self._require_permission(principal, "datasets.ingest")
+        self._require_active_project(principal, project_id)
+        self._require_workspace(principal, manifest.workspace_id)
+        if manifest.organization_id != principal.organization_id:
+            raise AuthError(403, "tenant_scope_denied", "다른 조직의 Dataset은 수집할 수 없습니다.")
+        if manifest.project_id != project_id:
+            raise AuthError(
+                422,
+                "project_context_mismatch",
+                "Bundle Manifest의 Project가 요청 경로와 일치하지 않습니다.",
+            )
+        return self.bundle_file_adapter.validate(manifest)
 
     def _sync_dataset_catalog(
         self,
@@ -195,4 +222,11 @@ class AdapterService:
         )
 
 
-__all__ = ["AdapterService", "DatasetManifest", "IngestionResult", "PredictionResult"]
+__all__ = [
+    "AdapterService",
+    "BundleValidationResult",
+    "DatasetBundleManifestV2",
+    "DatasetManifest",
+    "IngestionResult",
+    "PredictionResult",
+]

@@ -192,6 +192,89 @@ class DatasetBundleManifestV2(StrictBundleModel):
         return self
 
 
+class BundleValidationIssue(StrictBundleModel):
+    """A bounded, serializable sample of a bundle validation failure."""
+
+    role: str = Field(min_length=1, max_length=128)
+    code: str = Field(min_length=1, max_length=128)
+    message: str = Field(min_length=1, max_length=2000)
+    row_number: int | None = Field(default=None, ge=1)
+    record_identity: str | None = Field(default=None, max_length=512)
+
+
+class BundleRoleValidationSummary(StrictBundleModel):
+    role: str = Field(min_length=1, max_length=128)
+    uri: str = Field(min_length=1, max_length=2048)
+    format: Literal["csv", "json", "jsonl", "parquet"]
+    media_type: str = Field(min_length=1, max_length=128)
+    status: Literal["pending", "passed", "failed"] = "pending"
+    expected_checksum_sha256: str = Field(pattern=SHA256_PATTERN)
+    actual_checksum_sha256: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    checksum_valid: bool = False
+    schema_valid: bool = False
+    required_fields: list[str] = Field(default_factory=list)
+    observed_fields: list[str] = Field(default_factory=list)
+    source_record_count: int = Field(default=0, ge=0)
+    accepted_record_count: int = Field(default=0, ge=0)
+    quarantined_record_count: int = Field(default=0, ge=0)
+    issue_counts: dict[str, int] = Field(default_factory=dict)
+    earliest_timestamp: datetime | None = None
+    latest_timestamp: datetime | None = None
+
+    @model_validator(mode="after")
+    def counts_are_consistent(self) -> "BundleRoleValidationSummary":
+        if self.accepted_record_count + self.quarantined_record_count != self.source_record_count:
+            raise ValueError("role accepted and quarantined counts must equal source count")
+        return self
+
+
+class BundleValidationResult(StrictBundleModel):
+    """Streaming validation artifact for one immutable Dataset Bundle.
+
+    The result intentionally carries summaries rather than accepted source rows.
+    It can be stored as an ingestion artifact and handed to the Phase 2
+    PostgreSQL ingestion port without retaining large CSV/JSONL payloads in
+    application memory.
+    """
+
+    contract_version: Literal["1.0"] = "1.0"
+    artifact_kind: Literal["dataset_bundle_validation"] = "dataset_bundle_validation"
+    ingestion_run_id: str = Field(min_length=1, max_length=160)
+    idempotency_key: str = Field(min_length=1, max_length=512)
+    validation_checksum_sha256: str = Field(pattern=SHA256_PATTERN)
+    manifest_id: str = Field(pattern=IDENTITY_PATTERN)
+    organization_id: str = Field(pattern=IDENTITY_PATTERN)
+    project_id: str = Field(pattern=IDENTITY_PATTERN)
+    workspace_id: str = Field(pattern=IDENTITY_PATTERN)
+    adapter_code: str = Field(pattern=IDENTITY_PATTERN)
+    dataset_version: str = Field(min_length=1, max_length=160)
+    bundle_checksum_sha256: str = Field(pattern=SHA256_PATTERN)
+    status: Literal["completed", "failed"]
+    source_record_count: int = Field(ge=0)
+    validated_record_count: int = Field(ge=0)
+    accepted_record_count: int = Field(ge=0)
+    quarantined_record_count: int = Field(ge=0)
+    materialized_record_count: Literal[0] = 0
+    roles: list[BundleRoleValidationSummary]
+    issues: list[BundleValidationIssue] = Field(default_factory=list)
+    issue_sample_truncated: bool = False
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    validated_at: datetime
+
+    @model_validator(mode="after")
+    def bundle_counts_are_consistent(self) -> "BundleValidationResult":
+        if self.validated_record_count + self.quarantined_record_count != self.source_record_count:
+            raise ValueError("bundle validated and quarantined counts must equal source count")
+        if self.status == "completed":
+            if self.issues or self.quarantined_record_count:
+                raise ValueError("completed bundle validation cannot contain failures")
+            if self.accepted_record_count != self.source_record_count:
+                raise ValueError("completed bundle validation must accept every source row")
+        elif self.accepted_record_count != 0:
+            raise ValueError("failed bundle validation cannot atomically accept source rows")
+        return self
+
+
 class DatasetVersionIdentity(StrictBundleModel):
     organization_id: str = Field(pattern=IDENTITY_PATTERN)
     project_id: str = Field(pattern=IDENTITY_PATTERN)
