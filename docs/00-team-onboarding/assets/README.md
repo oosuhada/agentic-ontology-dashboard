@@ -7,6 +7,9 @@
 
 - 캡처 생성: `cd web && CAPTURE_TEAM_SHARE=1 npx playwright test e2e/team-share-captures.spec.ts`
 - Story 캡처 생성: `cd web && npm run capture:team-share-story`
+- 최신 V3.1·Adaptive Modeling 캡처: `cd web && npm run capture:team-share-adaptive`
+- 최신 Story 데스크톱·모바일: `cd web && npm run capture:team-share-adaptive-story`
+- 최신 화면 설명 문서: [`../10-adaptive-modeling-release-tour.md`](../10-adaptive-modeling-release-tour.md)
 - V3.1 + Adaptive Modeling 비교 캡처와 Story 생성: `cd web && npm run capture:team-share-adaptive`
 - 화면 크기: 1440 × 1000, light theme
 - 데이터: Playwright 격리 SQLite 데이터베이스와 demo seed

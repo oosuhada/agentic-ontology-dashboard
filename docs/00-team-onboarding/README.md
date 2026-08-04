@@ -14,6 +14,15 @@ http://127.0.0.1:3100/team-share
 
 ![Team share story](./assets/screenshots/00-team-share-story.png)
 
+Predictive Maintenance V3.1과 Adaptive Modeling까지 포함한 최신 비교 자료는 기존 Story를 덮어쓰지 않고 별도 route로 제공한다.
+
+```text
+http://127.0.0.1:3100/team-share-adaptive
+https://dashboard.oosu.dev/team-share-adaptive
+```
+
+상세 화면 설명: [`10-adaptive-modeling-release-tour.md`](./10-adaptive-modeling-release-tour.md)
+
 ## 프로젝트 한 문장
 
 Ontology Dashboard는 **Dataset → Ontology Object → Analysis → Report/Dashboard → Evidence → Governance → Action**을 조직·Project·Workspace·역할·사용자 권한에 따라 연결하는 운영 의사결정 플랫폼 프로토타입이다.
@@ -27,6 +36,7 @@ Ontology Dashboard는 **Dataset → Ontology Object → Analysis → Report/Dash
 3. [`03-user-flow.md`](./03-user-flow.md) — 가입부터 역할별 업무와 개인화까지
 4. [`06-implementation-status.md`](./06-implementation-status.md) — API·DB 연결과 프로토타입 경계
 5. [`09-verification-report.md`](./09-verification-report.md) — Story·문서 구조 재검증 결과
+6. [`10-adaptive-modeling-release-tour.md`](./10-adaptive-modeling-release-tour.md) — V3.1 runtime, replay, ML Validator와 release governance
 
 ## 직접 실행할 때
 
