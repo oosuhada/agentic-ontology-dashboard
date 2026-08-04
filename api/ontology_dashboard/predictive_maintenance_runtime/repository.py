@@ -67,10 +67,24 @@ class PredictiveMaintenanceRuntimeRepository:
                    COALESCE(g.record_count,0) AS graph_record_count,
                    g.last_error AS graph_last_error,
                    g.provider_run_id AS graph_provider_run_id,
+                   COALESCE(g.attempt_count,0) AS graph_attempt_count,
+                   g.updated_at AS graph_updated_at,
                    (SELECT COUNT(*) FROM pm_result_artifacts r
                     WHERE r.dataset_version_id=v.id) AS result_artifact_count,
                    (SELECT COUNT(*) FROM pm_prediction_timeline t
-                    WHERE t.dataset_version_id=v.id) AS prediction_timeline_count
+                    WHERE t.dataset_version_id=v.id) AS prediction_timeline_count,
+                   COALESCE(
+                     (SELECT r.model_version FROM pm_result_artifacts r
+                      WHERE r.dataset_version_id=v.id ORDER BY r.observed_at DESC LIMIT 1),
+                     (SELECT s.model_version FROM pm_prediction_snapshots s
+                      WHERE s.dataset_version_id=v.id ORDER BY s.observed_at DESC LIMIT 1)
+                   ) AS runtime_model_version,
+                   (SELECT r.schema_version FROM pm_result_artifacts r
+                    WHERE r.dataset_version_id=v.id ORDER BY r.observed_at DESC LIMIT 1)
+                     AS result_artifact_schema_version,
+                   (SELECT r.prediction_task FROM pm_result_artifacts r
+                    WHERE r.dataset_version_id=v.id ORDER BY r.observed_at DESC LIMIT 1)
+                     AS runtime_prediction_task
             FROM dataset_versions v
             JOIN datasets d ON d.id=v.dataset_id
             LEFT JOIN store_projections g
@@ -84,6 +98,56 @@ class PredictiveMaintenanceRuntimeRepository:
         if row is None:
             raise KeyError(dataset_version_id or "latest predictive-maintenance Dataset Version")
         return dict(row)
+
+    def list_versions(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+    ) -> list[dict[str, Any]]:
+        query = """
+            SELECT v.*,d.display_name AS dataset_name,d.source_type,
+                   COALESCE(g.status,'unavailable') AS graph_status,
+                   COALESCE(g.record_count,0) AS graph_record_count,
+                   g.last_error AS graph_last_error,
+                   g.provider_run_id AS graph_provider_run_id,
+                   COALESCE(g.attempt_count,0) AS graph_attempt_count,
+                   g.updated_at AS graph_updated_at,
+                   (SELECT COUNT(*) FROM pm_result_artifacts r
+                    WHERE r.dataset_version_id=v.id) AS result_artifact_count,
+                   (SELECT COUNT(*) FROM pm_prediction_timeline t
+                    WHERE t.dataset_version_id=v.id) AS prediction_timeline_count,
+                   COALESCE(
+                     (SELECT r.model_version FROM pm_result_artifacts r
+                      WHERE r.dataset_version_id=v.id ORDER BY r.observed_at DESC LIMIT 1),
+                     (SELECT s.model_version FROM pm_prediction_snapshots s
+                      WHERE s.dataset_version_id=v.id ORDER BY s.observed_at DESC LIMIT 1)
+                   ) AS runtime_model_version,
+                   (SELECT r.schema_version FROM pm_result_artifacts r
+                    WHERE r.dataset_version_id=v.id ORDER BY r.observed_at DESC LIMIT 1)
+                     AS result_artifact_schema_version,
+                   (SELECT r.prediction_task FROM pm_result_artifacts r
+                    WHERE r.dataset_version_id=v.id ORDER BY r.observed_at DESC LIMIT 1)
+                     AS runtime_prediction_task
+            FROM dataset_versions v
+            JOIN datasets d ON d.id=v.dataset_id
+            LEFT JOIN store_projections g
+              ON g.dataset_version_id=v.id AND g.store_kind='graph'
+            WHERE v.organization_id=%s
+              AND v.project_id=%s
+              AND v.workspace_id=%s
+              AND EXISTS (
+                SELECT 1 FROM pm_assets a WHERE a.dataset_version_id=v.id
+              )
+            ORDER BY v.version_number DESC,v.created_at DESC
+        """
+        with self._connection(organization_id, project_id) as connection:
+            rows = connection.execute(
+                query,
+                (organization_id, project_id, workspace_id),
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     def role_checksums(
         self,

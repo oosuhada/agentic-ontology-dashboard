@@ -1106,6 +1106,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       <PredictiveMaintenanceReplayPanel
         projectId={selectedProjectId}
         workspaceId={selectedWorkspaceId}
+        appRole={appRole}
       />
       {detailLoading || roleWorkspaceLoading ? <div className="loading-panel"><WorkbenchState kind="refreshing" title={detailLoading ? "Refreshing object evidence" : "Refreshing role workspace"} /></div> : null}
       <BoardCanvas

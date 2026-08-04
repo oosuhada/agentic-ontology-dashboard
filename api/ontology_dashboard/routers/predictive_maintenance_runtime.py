@@ -68,6 +68,57 @@ def runtime_context(
         raise HTTPException(status_code=404, detail=f"Dataset Version not found: {error.args[0]}") from error
 
 
+@router.get("/versions")
+def runtime_versions(
+    project_id: str,
+    workspace_id: str,
+    principal: Principal = Depends(require_permission("datasets.read")),
+    identity: IdentityService = Depends(get_identity_service),
+    service: PredictiveMaintenanceRuntimeService = Depends(
+        get_predictive_maintenance_runtime_service
+    ),
+):
+    require_scope(
+        principal=principal,
+        identity=identity,
+        project_id=project_id,
+        workspace_id=workspace_id,
+    )
+    return service.versions(
+        organization_id=principal.organization_id,
+        project_id=project_id,
+        workspace_id=workspace_id,
+    ).model_dump(mode="json")
+
+
+@router.get("/release")
+def release_overview(
+    project_id: str,
+    workspace_id: str,
+    dataset_version_id: str | None = Query(default=None, max_length=160),
+    principal: Principal = Depends(require_permission("governance.read")),
+    identity: IdentityService = Depends(get_identity_service),
+    service: PredictiveMaintenanceRuntimeService = Depends(
+        get_predictive_maintenance_runtime_service
+    ),
+):
+    require_scope(
+        principal=principal,
+        identity=identity,
+        project_id=project_id,
+        workspace_id=workspace_id,
+    )
+    try:
+        return service.release_overview(
+            organization_id=principal.organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            dataset_version_id=dataset_version_id,
+        ).model_dump(mode="json")
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail=f"Dataset Version not found: {error.args[0]}") from error
+
+
 @router.get("/results/latest")
 def latest_product_results(
     project_id: str,

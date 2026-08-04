@@ -65,7 +65,7 @@ class RuntimeIdentity:
             display_name="Runtime User",
             status="active",
             roles=["process_engineer"],
-            permissions=["datasets.read"],
+            permissions=["datasets.read", "governance.read"],
             workspace_scopes=["workspace-test"],
             project_scopes=["project-test"],
             project_roles={"project-test": ["process_engineer"]},
@@ -526,6 +526,61 @@ def test_v2_latest_product_result_uses_snapshot_factor_compatibility(
     )
 
 
+def test_v2_v3_runtime_versions_and_release_overview_are_immutable(
+    tmp_path: Path,
+    postgresql_database: str,
+) -> None:
+    v2_root = create_small_package(tmp_path / "versions-v2")
+    refresh_contracts(v2_root)
+    _, v2_ingestion = _ingest(
+        postgresql_database,
+        v2_root,
+        manifest_id="pm-runtime-versions-v2",
+    )
+    v3_root = create_small_v3_package(tmp_path / "versions-v3")
+    _, v3_ingestion = _ingest(
+        postgresql_database,
+        v3_root,
+        manifest_id="pm-runtime-versions-v3",
+    )
+    service = _runtime(postgresql_database)
+
+    versions = service.versions(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+    )
+    assert versions.rollback_supported is True
+    assert versions.immutable_versioning is True
+    assert {item.dataset_version_id for item in versions.items} == {
+        v2_ingestion.dataset_version_id,
+        v3_ingestion.dataset_version_id,
+    }
+    v3 = next(item for item in versions.items if item.dataset_version_id == v3_ingestion.dataset_version_id)
+    assert v3.is_v3_1 is True
+    assert v3.result_artifact_count == 2
+    assert v3.model_version == "independent-logreg-v3.1"
+    assert v3.result_artifact_schema_version == "result-artifact-v1.0"
+    assert v3.prediction_task == "binary_failure_within_horizon"
+    assert v3.release_ready is True
+
+    overview = service.release_overview(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        dataset_version_id=v3_ingestion.dataset_version_id,
+    )
+    assert overview.immutable_upgrade_verified is True
+    assert overview.result_artifact_coverage == 2
+    assert overview.hidden_truth_exposed is False
+    assert overview.evaluation_truth_exposed is False
+    assert overview.active.prediction_task == "binary_failure_within_horizon"
+    assert overview.active.semantic_catalog_version == "predictive-maintenance-semantic-v3.1"
+    rendered = json.dumps(overview.model_dump(mode="json")).lower()
+    assert "event_condition_details" not in rendered
+    assert "condition_variant" not in rendered
+
+
 def test_result_replay_http_and_sse_contracts_are_scoped(
     tmp_path: Path,
     postgresql_database: str,
@@ -557,6 +612,19 @@ def test_result_replay_http_and_sse_contracts_are_scoped(
             )
             assert context.status_code == 200, context.text
             assert context.json()["dataset_version_id"] == ingestion.dataset_version_id
+
+            versions = client.get(f"{base}/versions")
+            assert versions.status_code == 200, versions.text
+            assert versions.json()["default_dataset_version_id"] == ingestion.dataset_version_id
+            assert versions.json()["items"][0]["release_ready"] is True
+
+            release = client.get(
+                f"{base}/release",
+                params={"dataset_version_id": ingestion.dataset_version_id},
+            )
+            assert release.status_code == 200, release.text
+            assert release.json()["hidden_truth_exposed"] is False
+            assert release.json()["evaluation_truth_exposed"] is False
 
             latest = client.get(
                 f"{base}/results/latest",

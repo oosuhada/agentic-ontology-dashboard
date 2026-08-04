@@ -52,6 +52,9 @@ import type {
   AnalysisServerSnapshot,
 } from "./features/analysis/types";
 import type {
+  PredictiveMaintenanceDatasetVersions,
+  PredictiveMaintenanceObservationResponse,
+  PredictiveMaintenanceReleaseOverview,
   PredictiveMaintenanceRuntimeContext,
   ProductResultPage,
   ReplaySessionSnapshot,
@@ -386,9 +389,39 @@ export function getPredictiveMaintenanceRuntimeContext(
   projectId: string,
   workspaceId: string,
   signal?: AbortSignal,
+  datasetVersionId?: string,
 ): Promise<PredictiveMaintenanceRuntimeContext> {
+  const params = new URLSearchParams();
+  if (datasetVersionId) params.set("dataset_version_id", datasetVersionId);
+  const query = params.size ? `?${params.toString()}` : "";
   return request<PredictiveMaintenanceRuntimeContext>(
-    `${predictiveMaintenanceBase(projectId, workspaceId)}/context`,
+    `${predictiveMaintenanceBase(projectId, workspaceId)}/context${query}`,
+    { signal },
+  );
+}
+
+export function getPredictiveMaintenanceVersions(
+  projectId: string,
+  workspaceId: string,
+  signal?: AbortSignal,
+): Promise<PredictiveMaintenanceDatasetVersions> {
+  return request<PredictiveMaintenanceDatasetVersions>(
+    `${predictiveMaintenanceBase(projectId, workspaceId)}/versions`,
+    { signal },
+  );
+}
+
+export function getPredictiveMaintenanceReleaseOverview(
+  projectId: string,
+  workspaceId: string,
+  datasetVersionId?: string,
+  signal?: AbortSignal,
+): Promise<PredictiveMaintenanceReleaseOverview> {
+  const params = new URLSearchParams();
+  if (datasetVersionId) params.set("dataset_version_id", datasetVersionId);
+  const query = params.size ? `?${params.toString()}` : "";
+  return request<PredictiveMaintenanceReleaseOverview>(
+    `${predictiveMaintenanceBase(projectId, workspaceId)}/release${query}`,
     { signal },
   );
 }
@@ -398,10 +431,41 @@ export function getPredictiveMaintenanceLatestResults(
   workspaceId: string,
   limit = 100,
   signal?: AbortSignal,
+  datasetVersionId?: string,
 ): Promise<ProductResultPage> {
   const params = new URLSearchParams({ limit: String(limit) });
+  if (datasetVersionId) params.set("dataset_version_id", datasetVersionId);
   return request<ProductResultPage>(
     `${predictiveMaintenanceBase(projectId, workspaceId)}/results/latest?${params.toString()}`,
+    { signal },
+  );
+}
+
+export function getPredictiveMaintenanceObservations(
+  projectId: string,
+  workspaceId: string,
+  input: {
+    dataset_version_id?: string;
+    asset_id?: string;
+    start: string;
+    end: string;
+    grain?: "raw" | "10m" | "1h";
+    derived_measures?: Array<"power_w" | "temperature_gap_k" | "overstrain_load">;
+    limit?: number;
+  },
+  signal?: AbortSignal,
+): Promise<PredictiveMaintenanceObservationResponse> {
+  const params = new URLSearchParams({
+    start: input.start,
+    end: input.end,
+    grain: input.grain ?? "10m",
+    limit: String(input.limit ?? 200),
+  });
+  if (input.dataset_version_id) params.set("dataset_version_id", input.dataset_version_id);
+  if (input.asset_id) params.set("asset_id", input.asset_id);
+  for (const measure of input.derived_measures ?? []) params.append("derived_measure", measure);
+  return request<PredictiveMaintenanceObservationResponse>(
+    `${predictiveMaintenanceBase(projectId, workspaceId)}/observations?${params.toString()}`,
     { signal },
   );
 }

@@ -20,6 +20,8 @@ class GraphReadiness(StrictModel):
     record_count: int = Field(default=0, ge=0)
     provider_run_id: str | None = None
     last_error: str | None = None
+    attempt_count: int = Field(default=0, ge=0)
+    updated_at: datetime | None = None
     required_for_runtime: Literal[False] = False
 
 
@@ -69,9 +71,59 @@ class DatasetVersionRuntimeContext(StrictModel):
     dataset_status: str
     row_counts: dict[str, int] = Field(default_factory=dict)
     source_contract: dict[str, Any] = Field(default_factory=dict)
+    model_version: str | None = None
+    result_artifact_schema_version: str | None = None
+    prediction_task: Literal["binary_failure_within_horizon"] | None = None
+    semantic_catalog_version: str = "predictive-maintenance-semantic-compat-v1"
     governance: GovernanceProvenance
     graph: GraphReadiness
     semantic_query: SemanticQueryCapability
+
+
+class DatasetVersionOption(StrictModel):
+    dataset_id: str
+    dataset_name: str
+    dataset_version_id: str
+    version_number: int = Field(ge=1)
+    source_version: str
+    bundle_checksum_sha256: str = Field(pattern=SHA256_PATTERN)
+    dataset_status: str
+    record_count: int = Field(ge=0)
+    row_counts: dict[str, int] = Field(default_factory=dict)
+    result_artifact_count: int = Field(default=0, ge=0)
+    prediction_timeline_count: int = Field(default=0, ge=0)
+    model_version: str | None = None
+    result_artifact_schema_version: str | None = None
+    prediction_task: Literal["binary_failure_within_horizon"] | None = None
+    graph: GraphReadiness
+    release_ready: bool
+    is_latest: bool
+    is_v3_1: bool
+
+
+class DatasetVersionOptions(StrictModel):
+    organization_id: str
+    project_id: str
+    workspace_id: str
+    items: list[DatasetVersionOption]
+    default_dataset_version_id: str | None = None
+    immutable_versioning: Literal[True] = True
+    rollback_supported: bool
+
+
+class PredictiveMaintenanceReleaseOverview(StrictModel):
+    active: DatasetVersionRuntimeContext
+    versions: DatasetVersionOptions
+    phase_contract: Literal["predictive-maintenance-canonical-v3.1"] = (
+        "predictive-maintenance-canonical-v3.1"
+    )
+    immutable_upgrade_verified: bool
+    result_artifact_coverage: int = Field(ge=0)
+    projection_status: GraphReadiness
+    safe_release_gates: dict[str, Any] = Field(default_factory=dict)
+    limitations: list[str] = Field(default_factory=list)
+    hidden_truth_exposed: Literal[False] = False
+    evaluation_truth_exposed: Literal[False] = False
 
 
 class ProductFactor(StrictModel):
