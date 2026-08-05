@@ -8,7 +8,7 @@
 >
 > 최신 통합 인터랙티브 Story: `https://dashboard.oosu.dev/team-share-adaptive`
 > 독립 HTML 공유본: `https://dashboard.oosu.dev/team-share-adaptive.html`
-> 2026-08-04 이전 Story 기록: `http://127.0.0.1:3100/team-share`
+> 2026-08-04 이전 Story 기록: `https://dashboard.oosu.dev/team-share`
 >
 > 기본 `manufacturing-demo-project / manufacturing-demo` 데이터: **UCI AI4I 2020 Manufacturing Predictive Maintenance — Physics & Maintenance Canonical V3.1**
 >
