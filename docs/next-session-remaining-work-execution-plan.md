@@ -301,7 +301,7 @@ CI가 실행 가능한 상황에서 다음을 보존한다.
 
 ### 3. Threshold calibration
 
-현재 cross-platform structural ceiling은 `2.0%`다.
+첫 성공 Ubuntu 24.04 artifact에서 관측한 structural maximum은 `1.5436%`다. 계획의 `observed max × 1.5~2.0` 원칙에 따라 cross-platform structural ceiling은 `2.4%`로 보정됐다.
 
 실제 Ubuntu 최대값을 기준으로 다음 원칙을 적용한다.
 

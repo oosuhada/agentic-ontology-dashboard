@@ -401,12 +401,13 @@ Docker, managed stores, IdP, production connector, object storage와 observabili
 - 일반 Playwright 실행은 승인 파일을 수정하지 않고 `web/test-results/palantir-overhaul-candidate/`에 candidate 24장을 생성한다.
 - 승인 갱신은 `CAPTURE_PALANTIR_FINAL=1`을 명시한 실행에서만 허용하고 historical baseline은 별도 clean worktree에서만 재생성한다.
 - 승인 이미지와 동일 플랫폼에서는 raw mean pixel delta 0.15%, changed pixel ratio 0.75%, blurred structural delta 0.10%를 모두 적용한다.
-- 다른 운영체제에서는 시스템 font rasterization 차이로 raw pixel gate를 적용하지 않고, grayscale downsample과 Gaussian blur를 거친 structural delta 2.0%를 적용한다.
+- 다른 운영체제에서는 시스템 font rasterization 차이로 raw pixel gate를 적용하지 않고, grayscale downsample과 Gaussian blur를 거친 structural delta 2.4%를 적용한다.
 - GitHub Actions의 `release_gate.py --with-e2e`는 candidate capture가 끝난 뒤 48-image checker를 실행한다.
+- CI는 candidate 24장, runner/browser/font metadata와 per-image visual report를 artifact로 보존한다.
 
 ### Consequences
 
 - 승인 이미지가 일반 test run에 의해 조용히 덮어써지지 않는다.
 - 같은 플랫폼의 작은 spacing, color, text 또는 layout 회귀를 엄격하게 감지한다.
 - Ubuntu CI에서는 macOS font anti-aliasing 차이를 허용하면서 pane, hierarchy, density와 주요 구조 변화는 structural diff로 감지한다.
-- 첫 Ubuntu artifact의 실제 structural delta를 관찰한 뒤 현재 2.0% cross-platform ceiling을 더 낮출 수 있다.
+- Ubuntu 24.04의 실제 최대값 1.5436%에 1.5배 margin을 적용한 2.4% ceiling은 font fallback 줄바꿈을 허용하면서 더 큰 pane/hierarchy 회귀를 차단한다.

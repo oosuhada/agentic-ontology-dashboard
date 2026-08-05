@@ -108,14 +108,14 @@ The Azure and MetroPT fixtures prove multi-project abstraction and user flow. Th
 - 24 pre-overhaul screenshots restored from starting SHA, 24 UI-04 intermediate screenshots and 24 final UI-08 screenshots across 1440x1000, 1728x1117 and 720x500
 - dedicated 48-image baseline/final manifest with SHA-256 integrity, same-platform raw-pixel thresholds and cross-platform blurred structural thresholds
 - Playwright candidate capture and GitHub Actions release-gate integration for visual regression
+- Ubuntu candidate, runner/font metadata and release report upload with a 30-day CI artifact
+- Ubuntu 24.04 calibration at 1.5436% observed structural delta and a 2.4% cross-platform ceiling
 - opt-in baseline/final approval capture protection and updated comparison-sheet manifest
 - initial/deferred JavaScript budget gate
 - mobile field flow and primary Workbench accessibility/viewport gate
 
 ### Remaining
 
-- calibrate the cross-platform structural visual threshold with the first Ubuntu CI artifact and tighten it if the observed Linux delta is lower than the current 2.0% ceiling
-- production design review for the final 48-image comparison set
 - real customer connector setup screens after the first protocol is selected
 
 ## PostgreSQL and project isolation
@@ -200,23 +200,23 @@ Baseline capture guard                   3 SKIPPED BY DEFAULT
 Primary Workbench accessibility          PASS
 Legacy comparison manifest               PASS
 48-image committed visual manifest       PASS
-Candidate raw pixel max                  0.0618% / 0.15% PASS
-Candidate changed pixels max             0.2074% / 0.75% PASS
-Candidate structural delta max           0.0079% / 0.10% PASS
-Release gate                             13/13 PASS
+Latest macOS candidate raw pixel max     0.0877% / 0.15% PASS
+Latest macOS changed pixels max          0.2939% / 0.75% PASS
+Latest macOS structural delta max        0.0611% / 0.10% PASS
+Ubuntu structural delta max              1.5436% / 2.4% PASS
+Ubuntu release gate                      16/16 PASS
 Production environment verifier          BLOCKED EXTERNAL CAPABILITIES REPORTED
 ```
 
 ## Remaining priority order
 
 ```text
-1. Review the final 48-image UI set and calibrate the first Ubuntu structural-diff artifact.
-2. Run the production-environment runbook on a Docker/managed-service host.
-3. Relocate the remaining physical legacy modules and remove the namespace path extension.
-4. Ingest approved complete Azure and MetroPT datasets with provenance artifacts.
-5. Select and productionize one external connector, starting with REST.
-6. Implement the selected IdP integration and invitation/reset policy.
-7. Add S3-compatible artifact storage and OpenTelemetry-backed observability.
+1. Run the production-environment runbook on a Docker/managed-service host.
+2. On the current blocked host, relocate the remaining physical legacy modules and remove the namespace path extension.
+3. Ingest approved complete Azure and MetroPT datasets with provenance artifacts.
+4. Select and productionize one external connector, starting with REST.
+5. Implement the selected IdP integration and invitation/reset policy.
+6. Add S3-compatible artifact storage and OpenTelemetry-backed observability.
 ```
 
 Do not repeat already completed Workbench, pagination, Analysis lifecycle, WorkOrder, Dataset materialization, Project 3 typed boundary, Dashboard recovery or server-first cross-filter work.

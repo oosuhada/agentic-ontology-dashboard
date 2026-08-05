@@ -30,6 +30,7 @@ Viewports:
 - `final/`: approved final capture following UI-05 through UI-08.
 - `visual-manifest.json`: dimensions, bytes, SHA-256 values, pair deltas, and CI thresholds for `baseline/` + `final/`.
 - `scorecard.md`: before/final implementation and validation scorecard.
+- `ubuntu-calibration.md`: successful Ubuntu runner evidence, per-platform threshold rationale, and final product-design review.
 
 ## Reproduce
 
@@ -53,6 +54,7 @@ The visual gate enforces:
 - same-platform candidate-to-approved mean pixel delta no greater than 0.15%;
 - same-platform candidate changed-pixel ratio no greater than 0.75%;
 - same-platform blurred structural delta no greater than 0.10%;
-- cross-platform blurred structural delta no greater than 2.0%, with raw pixel checks disabled to avoid font rasterization false positives.
+- cross-platform blurred structural delta no greater than 2.4%, with raw pixel checks disabled to avoid font rasterization false positives.
 
 GitHub Actions already executes `scripts/release_gate.py --with-e2e`; the release gate now runs the committed-set check and then compares the Playwright candidate set to the approved final set.
+Every run uploads the 24 candidate PNGs, sanitized runner metadata, installed font inventory, release report, and per-image visual report as a 30-day artifact.
