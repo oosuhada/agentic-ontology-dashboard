@@ -5,6 +5,7 @@ export type CommercialSurfaceId =
   | "overview"
   | "identity"
   | "deployment"
+  | "runtime"
   | "objects"
   | "analysis"
   | "models"
@@ -69,6 +70,13 @@ const V4_SURFACES: readonly ApplicationSurfaceDefinition[] = [
     description: "Production topology, probes, ingress, migration and release readiness.",
     state: "ready",
     phase: 22,
+  },
+  {
+    id: "runtime",
+    label: "Distributed runtime",
+    description: "Redis coordination, durable workers, retry, cancellation and dead-letter operations.",
+    state: "ready",
+    phase: 23,
   },
   {
     id: "objects",

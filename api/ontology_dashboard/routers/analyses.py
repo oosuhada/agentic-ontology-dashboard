@@ -1,6 +1,6 @@
 """Versioned Analysis definitions, server execution and node-result APIs."""
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ..analysis_models import AnalysisCreateRequest, AnalysisRunRequest, AnalysisUpdateRequest
 from ..datasets import AnalysisDatasetMaterializer, AnalysisMaterializationRequest
@@ -9,6 +9,7 @@ from ..analysis_service import AnalysisNotFound, AnalysisService
 from ..dependencies import (
     get_analysis_materializer,
     get_analysis_service,
+    get_durable_job_repository,
     get_identity_service,
     get_ontology_service,
     require_csrf,
@@ -16,6 +17,7 @@ from ..dependencies import (
 )
 from ..identity import IdentityService, Principal
 from ..ontology_service import OntologyService
+from ..distributed_runtime import DurableJobRepository, QueueSaturated
 
 router = APIRouter(tags=["analyses"])
 
@@ -139,12 +141,11 @@ def materialize_analysis_result(
 def queue_analysis_run(
     analysis_id: str,
     request: AnalysisRunRequest,
-    background_tasks: BackgroundTasks,
     principal: Principal = Depends(require_permission("ontology.objects.read")),
     _: None = Depends(require_csrf),
     identity: IdentityService = Depends(get_identity_service),
     analyses: AnalysisService = Depends(get_analysis_service),
-    ontology: OntologyService = Depends(get_ontology_service),
+    jobs: DurableJobRepository = Depends(get_durable_job_repository),
 ):
     identity.require_workspace(principal, request.workspace_id)
     queued = analyses.queue_run(
@@ -152,13 +153,33 @@ def queue_analysis_run(
         request=request,
         principal=principal,
     )
-    background_tasks.add_task(
-        analyses.execute_queued_run,
-        run_id=queued.id,
-        request=request,
-        principal=principal,
-        ontology=ontology,
-    )
+    try:
+        jobs.enqueue(
+            organization_id=principal.organization_id,
+            project_id=principal.active_project_id or "",
+            workspace_id=request.workspace_id,
+            job_type="analysis",
+            idempotency_key=f"analysis-run:{queued.id}",
+            payload={
+                "run_id": queued.id,
+                "analysis_id": analysis_id,
+                "request": request.model_dump(mode="json"),
+                "principal": principal.model_dump(mode="json"),
+            },
+            created_by=principal.user_id,
+            priority=80,
+            max_attempts=5,
+        )
+    except QueueSaturated as error:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "code": "queue_saturated",
+                "message": str(error),
+                "depth": error.depth,
+                "limit": error.limit,
+            },
+        ) from error
     return queued.model_dump(mode="json")
 
 

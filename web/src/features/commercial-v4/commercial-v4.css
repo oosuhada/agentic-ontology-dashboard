@@ -122,6 +122,20 @@
 .commercial-v4-chip-list span { padding: 4px 7px; border: 1px solid var(--v4-border); border-radius: 999px; color: var(--v4-muted); font-size: 9px; }
 .commercial-v4-route-contract { display: grid; gap: 7px; }
 .commercial-v4-route-contract code { display: block; padding: 7px 9px; border-radius: 4px; background: #14212a; color: var(--v4-accent); font-size: 9px; overflow-wrap: anywhere; }
+.commercial-v4-runtime-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; margin-top: 12px; }
+.commercial-v4-runtime-metrics article { padding: 8px; background: var(--v4-panel-muted); border-radius: 4px; }
+.commercial-v4-runtime-metrics span, .commercial-v4-runtime-metrics strong { display: block; }
+.commercial-v4-runtime-metrics span { color: var(--v4-muted); font-size: 9px; text-transform: uppercase; }
+.commercial-v4-runtime-metrics strong { margin-top: 4px; font-size: 16px; }
+.commercial-v4-runtime-policy, .commercial-v4-runtime-jobs { display: grid; gap: 6px; }
+.commercial-v4-runtime-policy article, .commercial-v4-runtime-jobs > article { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 9px; background: var(--v4-panel-muted); border-radius: 4px; }
+.commercial-v4-runtime-policy strong, .commercial-v4-runtime-policy small, .commercial-v4-runtime-jobs strong, .commercial-v4-runtime-jobs small { display: block; }
+.commercial-v4-runtime-policy strong, .commercial-v4-runtime-jobs strong { font-size: 10px; }
+.commercial-v4-runtime-policy small, .commercial-v4-runtime-jobs small { margin-top: 3px; color: var(--v4-muted); font-size: 8px; overflow-wrap: anywhere; }
+.commercial-v4-runtime-policy em, .commercial-v4-runtime-jobs em { font-size: 8px; font-style: normal; text-transform: uppercase; }
+.commercial-v4-runtime-policy em.is-closed { color: var(--v4-blocked); }
+.commercial-v4-runtime-policy em.is-open { color: var(--v4-planned); }
+.commercial-v4-runtime-jobs button { min-height: 26px; padding: 0 8px; font-size: 9px; }
 
 .commercial-v4-feature-state { min-height: 320px; margin-top: 16px; display: grid; place-content: center; justify-items: center; gap: 9px; text-align: center; }
 .commercial-v4-feature-state > svg { width: 34px; height: 34px; color: var(--v4-accent); }

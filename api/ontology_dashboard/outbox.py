@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
+import random
+import socket
 import sqlite3
 import time
 import uuid
@@ -26,6 +29,8 @@ class OutboxMessage:
     event_type: str
     payload: dict[str, Any]
     attempt_count: int
+    lease_owner: str | None = None
+    lease_token: str | None = None
 
 
 OutboxHandler = Callable[[OutboxMessage], None]
@@ -63,17 +68,23 @@ class OutboxRepository:
         organization_id: str,
         project_id: str,
         max_attempts: int,
+        worker_id: str = "outbox-worker",
+        lease_seconds: int = 60,
     ) -> OutboxMessage | None:
         if self.postgresql:
             return self._claim_postgresql(
                 organization_id=organization_id,
                 project_id=project_id,
                 max_attempts=max_attempts,
+                worker_id=worker_id,
+                lease_seconds=lease_seconds,
             )
         return self._claim_sqlite(
             organization_id=organization_id,
             project_id=project_id,
             max_attempts=max_attempts,
+            worker_id=worker_id,
+            lease_seconds=lease_seconds,
         )
 
     def _claim_sqlite(
@@ -82,11 +93,27 @@ class OutboxRepository:
         organization_id: str,
         project_id: str,
         max_attempts: int,
+        worker_id: str,
+        lease_seconds: int,
     ) -> OutboxMessage | None:
-        now = self._now().isoformat()
+        current = self._now()
+        now = current.isoformat()
+        lease_token = uuid.uuid4().hex + uuid.uuid4().hex
+        lease_expires = (current + timedelta(seconds=max(5, lease_seconds))).isoformat()
         with sqlite3.connect(self.database) as connection:
             connection.row_factory = sqlite3.Row
             connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                """
+                UPDATE transactional_outbox
+                SET status='retry',available_at=?,lease_owner=NULL,lease_token=NULL,
+                    lease_expires_at=NULL,heartbeat_at=NULL,
+                    last_error=coalesce(last_error,'worker lease expired')
+                WHERE organization_id=? AND project_id=? AND status='processing'
+                  AND lease_expires_at IS NOT NULL AND lease_expires_at<=?
+                """,
+                (now, organization_id, project_id, now),
+            )
             row = connection.execute(
                 """
                 SELECT * FROM transactional_outbox
@@ -103,15 +130,18 @@ class OutboxRepository:
             cursor = connection.execute(
                 """
                 UPDATE transactional_outbox
-                SET status='processing',attempt_count=attempt_count+1,last_error=NULL
+                SET status='processing',attempt_count=attempt_count+1,last_error=NULL,
+                    lease_owner=?,lease_token=?,lease_expires_at=?,heartbeat_at=?
                 WHERE id=? AND status IN ('pending','retry')
                 """,
-                (row["id"],),
+                (worker_id, lease_token, lease_expires, now, row["id"]),
             )
             if cursor.rowcount != 1:
                 return None
             claimed = dict(row)
             claimed["attempt_count"] = int(row["attempt_count"]) + 1
+            claimed["lease_owner"] = worker_id
+            claimed["lease_token"] = lease_token
         return self._message(claimed)
 
     def _claim_postgresql(
@@ -120,12 +150,28 @@ class OutboxRepository:
         organization_id: str,
         project_id: str,
         max_attempts: int,
+        worker_id: str,
+        lease_seconds: int,
     ) -> OutboxMessage | None:
+        current = self._now()
+        lease_token = uuid.uuid4().hex + uuid.uuid4().hex
+        lease_expires = current + timedelta(seconds=max(5, lease_seconds))
         with postgres_repository_connection(
             self.database,
             organization_id=organization_id,
             project_id=project_id,
         ) as connection:
+            connection.execute(
+                """
+                UPDATE transactional_outbox
+                SET status='retry',available_at=least(available_at,now()),
+                    lease_owner=NULL,lease_token=NULL,lease_expires_at=NULL,heartbeat_at=NULL,
+                    last_error=coalesce(last_error,'worker lease expired')
+                WHERE organization_id=? AND project_id=? AND status='processing'
+                  AND lease_expires_at IS NOT NULL AND lease_expires_at<=now()
+                """,
+                (organization_id, project_id),
+            )
             row = connection.execute(
                 """
                 SELECT * FROM transactional_outbox
@@ -143,12 +189,21 @@ class OutboxRepository:
             connection.execute(
                 """
                 UPDATE transactional_outbox
-                SET status='processing',attempt_count=attempt_count+1,last_error=NULL
+                SET status='processing',attempt_count=attempt_count+1,last_error=NULL,
+                    lease_owner=?,lease_token=?,lease_expires_at=?,heartbeat_at=?
                 WHERE id=?
                 """,
-                (row["id"],),
+                (
+                    worker_id,
+                    lease_token,
+                    lease_expires.isoformat(),
+                    current.isoformat(),
+                    row["id"],
+                ),
             )
             row["attempt_count"] = int(row["attempt_count"]) + 1
+            row["lease_owner"] = worker_id
+            row["lease_token"] = lease_token
         return self._message(row)
 
     @staticmethod
@@ -168,6 +223,8 @@ class OutboxRepository:
             event_type=str(row["event_type"]),
             payload=payload,
             attempt_count=int(row["attempt_count"]),
+            lease_owner=row.get("lease_owner"),
+            lease_token=row.get("lease_token"),
         )
 
     def mark_delivered(self, message: OutboxMessage, *, handler_code: str) -> None:
@@ -202,10 +259,11 @@ class OutboxRepository:
                 connection.execute(
                     """
                     UPDATE transactional_outbox
-                    SET status='processed',processed_at=?,last_error=NULL
-                    WHERE id=? AND project_id=?
+                    SET status='processed',processed_at=?,last_error=NULL,
+                        lease_owner=NULL,lease_token=NULL,lease_expires_at=NULL,heartbeat_at=NULL
+                    WHERE id=? AND project_id=? AND lease_token=?
                     """,
-                    (delivered_at, message.id, message.project_id),
+                    (delivered_at, message.id, message.project_id, message.lease_token),
                 )
             return
         with sqlite3.connect(self.database) as connection:
@@ -232,10 +290,11 @@ class OutboxRepository:
             connection.execute(
                 """
                 UPDATE transactional_outbox
-                SET status='processed',processed_at=?,last_error=NULL
-                WHERE id=? AND project_id=?
+                SET status='processed',processed_at=?,last_error=NULL,
+                    lease_owner=NULL,lease_token=NULL,lease_expires_at=NULL,heartbeat_at=NULL
+                WHERE id=? AND project_id=? AND lease_token=?
                 """,
-                (delivered_at, message.id, message.project_id),
+                (delivered_at, message.id, message.project_id, message.lease_token),
             )
 
     def mark_failed(
@@ -255,11 +314,19 @@ class OutboxRepository:
         available_at = (
             self._now() + timedelta(seconds=max(1, retry_delay_seconds))
         ).isoformat()
-        values = (status, error[:4000], available_at, message.id, message.project_id)
+        values = (
+            status,
+            error[:4000],
+            available_at,
+            message.id,
+            message.project_id,
+            message.lease_token,
+        )
         query = """
             UPDATE transactional_outbox
-            SET status=?,last_error=?,available_at=?
-            WHERE id=? AND project_id=?
+            SET status=?,last_error=?,available_at=?,
+                lease_owner=NULL,lease_token=NULL,lease_expires_at=NULL,heartbeat_at=NULL
+            WHERE id=? AND project_id=? AND lease_token=?
         """
         if self.postgresql:
             with postgres_repository_connection(
@@ -272,6 +339,83 @@ class OutboxRepository:
         with sqlite3.connect(self.database) as connection:
             connection.execute(query, values)
 
+    def replay_dead_letter(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        event_id: str,
+    ) -> OutboxMessage:
+        now = self._now().isoformat()
+        query = """
+            UPDATE transactional_outbox SET
+                status='pending',attempt_count=0,available_at=?,processed_at=NULL,last_error=NULL,
+                lease_owner=NULL,lease_token=NULL,lease_expires_at=NULL,heartbeat_at=NULL
+            WHERE id=? AND organization_id=? AND project_id=? AND status='dead_letter'
+        """
+        if self.postgresql:
+            with postgres_repository_connection(
+                self.database,
+                organization_id=organization_id,
+                project_id=project_id,
+            ) as connection:
+                cursor = connection.execute(query, (now, event_id, organization_id, project_id))
+                if cursor.rowcount != 1:
+                    raise ValueError("only dead-letter outbox events can be replayed")
+                row = connection.execute(
+                    "SELECT * FROM transactional_outbox WHERE id=?",
+                    (event_id,),
+                ).fetchone()
+            return self._message(row)
+        with sqlite3.connect(self.database) as connection:
+            connection.row_factory = sqlite3.Row
+            cursor = connection.execute(query, (now, event_id, organization_id, project_id))
+            if cursor.rowcount != 1:
+                raise ValueError("only dead-letter outbox events can be replayed")
+            row = connection.execute(
+                "SELECT * FROM transactional_outbox WHERE id=?",
+                (event_id,),
+            ).fetchone()
+        return self._message(dict(row))
+
+    def metrics(self, *, organization_id: str, project_id: str) -> dict[str, int | float]:
+        query = """
+            SELECT status,count(*) AS count,min(created_at) AS oldest
+            FROM transactional_outbox
+            WHERE organization_id=? AND project_id=? GROUP BY status
+        """
+        if self.postgresql:
+            with postgres_repository_connection(
+                self.database,
+                organization_id=organization_id,
+                project_id=project_id,
+            ) as connection:
+                rows = connection.execute(query, (organization_id, project_id)).fetchall()
+        else:
+            with sqlite3.connect(self.database) as connection:
+                connection.row_factory = sqlite3.Row
+                rows = connection.execute(query, (organization_id, project_id)).fetchall()
+        result: dict[str, int | float] = {
+            "pending": 0,
+            "retry": 0,
+            "processing": 0,
+            "processed": 0,
+            "dead_letter": 0,
+            "oldest_pending_seconds": 0,
+        }
+        oldest = None
+        for row in rows:
+            result[str(row["status"])] = int(row["count"])
+            if row["status"] in {"pending", "retry"}:
+                parsed = datetime.fromisoformat(str(row["oldest"]).replace("Z", "+00:00"))
+                oldest = parsed if oldest is None else min(oldest, parsed)
+        if oldest is not None:
+            result["oldest_pending_seconds"] = max(
+                0,
+                (self._now() - oldest).total_seconds(),
+            )
+        return result
+
 
 class OutboxWorker:
     def __init__(
@@ -281,11 +425,15 @@ class OutboxWorker:
         handlers: Mapping[str, tuple[str, OutboxHandler]] | None = None,
         max_attempts: int = 5,
         retry_delay_seconds: int = 30,
+        worker_id: str | None = None,
+        lease_seconds: int = 60,
     ) -> None:
         self.repository = OutboxRepository(database)
         self.handlers = dict(handlers or {})
         self.max_attempts = max(1, max_attempts)
         self.retry_delay_seconds = max(1, retry_delay_seconds)
+        self.worker_id = worker_id or f"{socket.gethostname()}-{os.getpid()}-outbox"
+        self.lease_seconds = max(5, lease_seconds)
 
     def register(self, event_type: str, handler_code: str, handler: OutboxHandler) -> None:
         if event_type in self.handlers:
@@ -298,6 +446,8 @@ class OutboxWorker:
                 organization_id=organization_id,
                 project_id=project_id,
                 max_attempts=self.max_attempts,
+                worker_id=self.worker_id,
+                lease_seconds=self.lease_seconds,
             )
             if message is None:
                 continue
@@ -309,11 +459,24 @@ class OutboxWorker:
                 handler(message)
                 self.repository.mark_delivered(message, handler_code=handler_code)
             except Exception as exc:
+                digest = int(hashlib.sha256(message.id.encode()).hexdigest()[:8], 16)
+                jitter = random.Random(digest + message.attempt_count).uniform(0.8, 1.2)
+                retry_delay = min(
+                    3600,
+                    max(
+                        1,
+                        int(
+                            self.retry_delay_seconds
+                            * (2 ** max(0, message.attempt_count - 1))
+                            * jitter
+                        ),
+                    ),
+                )
                 self.repository.mark_failed(
                     message,
                     error=f"{type(exc).__name__}: {exc}",
                     max_attempts=self.max_attempts,
-                    retry_delay_seconds=self.retry_delay_seconds,
+                    retry_delay_seconds=retry_delay,
                     retryable=bool(getattr(exc, "retryable", True)),
                 )
             return True

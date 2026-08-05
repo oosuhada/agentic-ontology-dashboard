@@ -7,6 +7,8 @@ from fastapi.testclient import TestClient
 
 from ontology_dashboard.analysis_models import AnalysisRunRequest
 from ontology_dashboard.analysis_service import AnalysisService
+from ontology_dashboard.distributed_handlers import configured_handlers
+from ontology_dashboard.distributed_runtime import DurableJobRepository, DurableWorker
 from ontology_dashboard.identity import CSRF_COOKIE, IdentityService
 from ontology_dashboard.main import app, get_identity_service, get_service
 from ontology_dashboard.service import ManufacturingPredictiveMaintenanceService
@@ -46,6 +48,29 @@ def login(client: TestClient) -> None:
         json={"email": "fde@ontology.local", "password": "FDE!2026"},
     )
     assert response.status_code == 200, response.text
+
+
+def run_analysis_worker_once(service: ManufacturingPredictiveMaintenanceService) -> None:
+    database = str(service.repository.path)
+    repository = DurableJobRepository(database)
+    worker = DurableWorker(
+        repository,
+        worker_id="analysis-test-worker",
+        worker_version="test",
+        runtime_checksum="test-checksum",
+        job_types=("analysis",),
+        handlers=configured_handlers(database, ROOT),
+    )
+    completed = None
+    for organization_id, project_id in repository.project_scopes():
+        completed = worker.process_once(
+            organization_id=organization_id,
+            project_id=project_id,
+        )
+        if completed is not None:
+            break
+    assert completed is not None
+    assert completed.state == "succeeded"
 
 
 def csrf_headers(client: TestClient) -> dict[str, str]:
@@ -323,6 +348,7 @@ def test_analysis_job_lifecycle_cache_cursor_and_cancel(
     )
     assert queued.status_code == 202, queued.text
     first_run_id = queued.json()["id"]
+    run_analysis_worker_once(service)
     completed = client.get(
         f"/api/analysis-runs/{first_run_id}",
         params={"workspace_id": WORKSPACE},
@@ -353,6 +379,7 @@ def test_analysis_job_lifecycle_cache_cursor_and_cancel(
         },
     )
     assert cached.status_code == 202, cached.text
+    run_analysis_worker_once(service)
     cached_result = client.get(
         f"/api/analysis-runs/{cached.json()['id']}",
         params={"workspace_id": WORKSPACE},

@@ -46,6 +46,11 @@ from .domain_packs.models import (
 )
 from .enterprise_identity import EnterpriseIdentityReadiness
 from .deployment import DeploymentReadiness, ProcessProbe, ReadinessProbe, StartupProbe
+from .distributed_runtime import (
+    DistributedRuntimeSnapshot,
+    DurableJob,
+    DurableJobEventPage,
+)
 from .export_models import ExportCheckpoint
 from .governance.models import GovernanceAgentRunDetail, ProjectionRetryResult
 from .identity_models import DisplayPreferenceUpdateRequest, Principal
@@ -581,6 +586,10 @@ _EXPLICIT_MODELS: dict[str, Any] = {
     "ontology_dashboard.routers.platform.project_persistence_readiness": PersistenceReadiness,
     "ontology_dashboard.routers.platform.project_enterprise_identity": EnterpriseIdentityReadiness,
     "ontology_dashboard.routers.platform.project_deployment_readiness": DeploymentReadiness,
+    "ontology_dashboard.routers.platform.project_distributed_runtime": DistributedRuntimeSnapshot,
+    "ontology_dashboard.routers.platform.project_distributed_job_events": DurableJobEventPage,
+    "ontology_dashboard.routers.platform.cancel_distributed_job": DurableJob,
+    "ontology_dashboard.routers.platform.replay_distributed_job": DurableJob,
     "ontology_dashboard.routers.dashboards.get_report_draft": ReportDraftResponse,
     "ontology_dashboard.routers.dashboards.dashboard_template_versions": ItemsResponse[dict[str, Any]],
     "ontology_dashboard.routers.dashboards.request_dashboard_template_publish": WorkflowRequestResponse,

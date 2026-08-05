@@ -11,6 +11,7 @@ import {
   GitBranch,
   LockKeyhole,
   Settings2,
+  ServerCog,
   Users,
   Workflow,
 } from "lucide-react";
@@ -39,6 +40,9 @@ import {
   getPersistenceReadiness,
   getEnterpriseIdentityReadiness,
   getDeploymentReadiness,
+  getDistributedRuntime,
+  operateDistributedJob,
+  type DistributedRuntimeSnapshot,
   type DeploymentReadiness,
   type EnterpriseIdentityReadiness,
   type PersistenceReadiness,
@@ -50,6 +54,7 @@ const ICONS = {
   overview: Activity,
   identity: Users,
   deployment: Container,
+  runtime: ServerCog,
   objects: Boxes,
   analysis: Workflow,
   models: BrainCircuit,
@@ -68,6 +73,7 @@ interface CommercialContext {
   persistence: PersistenceReadiness;
   identity: EnterpriseIdentityReadiness;
   deployment: DeploymentReadiness;
+  distributed: DistributedRuntimeSnapshot;
 }
 
 function currentSurface(): CommercialSurfaceId {
@@ -115,6 +121,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
   const [error, setError] = useState<string>("");
   const [surface, setSurface] = useState<CommercialSurfaceId>(() => currentSurface());
   const [compactNavigation, setCompactNavigation] = useState(false);
+  const [operationMessage, setOperationMessage] = useState("");
   const workspace = context?.workspaces.find((item) => item.id === context.project.default_workspace_id)
     ?? context?.workspaces[0]
     ?? null;
@@ -146,8 +153,9 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       getPersistenceReadiness(projectId),
       getEnterpriseIdentityReadiness(projectId),
       getDeploymentReadiness(projectId),
+      getDistributedRuntime(projectId),
     ])
-      .then(([project, workspaces, datasets, application, persistence, identity, deployment]) => {
+      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed]) => {
         if (!controller.signal.aborted) setContext({
           project,
           workspaces,
@@ -156,6 +164,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
           persistence,
           identity,
           deployment,
+          distributed,
         });
       })
       .catch((reason: unknown) => {
@@ -191,6 +200,23 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       surface,
       compactNavigation: next,
     });
+  }
+
+  async function operateJob(jobId: string, action: "cancel" | "replay") {
+    setOperationMessage("");
+    try {
+      await operateDistributedJob(
+        projectId,
+        jobId,
+        action,
+        action === "cancel" ? "Cancelled from the Commercial V4 operator surface" : "Replayed from the Commercial V4 operator surface",
+      );
+      const distributed = await getDistributedRuntime(projectId);
+      setContext((current) => current ? { ...current, distributed } : current);
+      setOperationMessage(`Job ${action} completed.`);
+    } catch (reason) {
+      setOperationMessage(reason instanceof Error ? reason.message : `Job ${action} failed.`);
+    }
   }
 
   if (error) {
@@ -446,6 +472,55 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
                 {context.deployment.blockers.length ? context.deployment.blockers.map((blocker) => (
                   <p key={blocker} className="commercial-v4-policy-copy">{blocker}</p>
                 )) : <p className="commercial-v4-policy-copy">No deployment blockers reported.</p>}
+              </section>
+            </div>
+          ) : selected.id === "runtime" ? (
+            <div className="commercial-v4-grid">
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><ServerCog aria-hidden="true" /><span>Queue & coordination</span></div>
+                <dl>
+                  <div><dt>Queue backend</dt><dd>{context.distributed.readiness.queue_backend}</dd></div>
+                  <div><dt>Redis</dt><dd>{context.distributed.readiness.redis_state.replace("_", " ")}</dd></div>
+                  <div><dt>Delivery</dt><dd>{context.distributed.readiness.queue_delivery}</dd></div>
+                  <div><dt>Worker types</dt><dd>{context.distributed.readiness.worker_types.length}</dd></div>
+                </dl>
+                <span className={`commercial-v4-state-badge is-${context.distributed.readiness.state}`}>{context.distributed.readiness.state}</span>
+                {context.distributed.readiness.blockers.map((blocker) => <p key={blocker} className="commercial-v4-policy-copy">{blocker}</p>)}
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Activity aria-hidden="true" /><span>Queue metrics</span></div>
+                <div className="commercial-v4-runtime-metrics">
+                  {Object.entries(context.distributed.readiness.metrics).map(([name, value]) => (
+                    <article key={name}><span>{name.replaceAll("_", " ")}</span><strong>{Number(value).toLocaleString()}</strong></article>
+                  ))}
+                </div>
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><LockKeyhole aria-hidden="true" /><span>Distributed rate-limit policy</span></div>
+                <div className="commercial-v4-runtime-policy">
+                  {Object.entries(context.distributed.readiness.rate_limit_policies).map(([name, policy]) => (
+                    <article key={name}>
+                      <span><strong>{name}</strong><small>{policy.key_dimensions.join(" + ")}</small></span>
+                      <em className={`is-${policy.fail_mode}`}>{policy.limit}/{policy.window_seconds}s · fail {policy.fail_mode}</em>
+                    </article>
+                  ))}
+                </div>
+              </section>
+              <section className="commercial-v4-panel commercial-v4-runtime-jobs">
+                <div className="commercial-v4-panel-title"><Workflow aria-hidden="true" /><span>Recent durable jobs</span></div>
+                {operationMessage ? <p className="commercial-v4-policy-copy" role="status">{operationMessage}</p> : null}
+                {context.distributed.jobs.length ? context.distributed.jobs.map((job) => (
+                  <article key={job.id}>
+                    <span><strong>{job.job_type}</strong><small>{job.id} · attempt {job.attempt_count}/{job.max_attempts}</small></span>
+                    <em className={`is-${job.state}`}>{job.state.replace("_", " ")}</em>
+                    {user.permissions.includes("governance.projection.retry") && ["queued", "retry", "running", "cancel_requested"].includes(job.state) ? (
+                      <button type="button" onClick={() => void operateJob(job.id, "cancel")}>Cancel</button>
+                    ) : null}
+                    {user.permissions.includes("governance.projection.retry") && job.state === "dead_letter" ? (
+                      <button type="button" onClick={() => void operateJob(job.id, "replay")}>Replay</button>
+                    ) : null}
+                  </article>
+                )) : <p className="commercial-v4-empty">No durable jobs have been submitted for this Project.</p>}
               </section>
             </div>
           ) : selected.id === "settings" ? (

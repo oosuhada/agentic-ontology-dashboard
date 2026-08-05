@@ -17,6 +17,7 @@ from .adapters.service import AdapterService
 from .adapters.prediction_repository import PredictionResultRepository
 from .analysis_service import AnalysisService
 from .dashboard_service import DashboardService
+from .distributed_runtime import DurableJobRepository
 from .datasets import (
     AnalysisDatasetMaterializer,
     DatasetCatalogService,
@@ -189,6 +190,20 @@ def get_analysis_service(
     target = str(service.repository.path)
     dataset_source = DatasetMaterializationSource(DatasetRepository(target))
     return AnalysisService(target, dataset_loader=dataset_source.load)
+
+
+def get_durable_job_repository(
+    service: ManufacturingPredictiveMaintenanceService = Depends(get_service),
+) -> DurableJobRepository:
+    target = str(service.repository.path)
+    migrate(target)
+    return DurableJobRepository(
+        target,
+        max_queued_per_project=max(
+            1,
+            int(os.getenv("ONTOLOGY_DASHBOARD_MAX_QUEUED_JOBS_PER_PROJECT", "5000")),
+        ),
+    )
 
 
 def get_dashboard_service(

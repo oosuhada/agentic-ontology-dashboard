@@ -98,6 +98,61 @@ export interface DeploymentReadiness {
   blockers: string[];
 }
 
+export interface DurableJob {
+  id: string;
+  organization_id: string;
+  project_id: string;
+  workspace_id: string | null;
+  job_type: string;
+  idempotency_key: string;
+  payload: Record<string, unknown>;
+  state: "queued" | "running" | "retry" | "succeeded" | "failed" | "cancel_requested" | "cancelled" | "dead_letter";
+  priority: number;
+  attempt_count: number;
+  max_attempts: number;
+  available_at: string;
+  lease_owner: string | null;
+  lease_token: string | null;
+  lease_expires_at: string | null;
+  heartbeat_at: string | null;
+  worker_version: string | null;
+  runtime_checksum: string | null;
+  cancellation_reason: string | null;
+  failure_class: string | null;
+  last_error: string | null;
+  result: Record<string, unknown> | null;
+  created_by: string;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  updated_at: string;
+}
+
+export interface DistributedRuntimeSnapshot {
+  readiness: {
+    state: "ready" | "degraded" | "blocked";
+    queue_backend: "postgresql" | "sqlite";
+    queue_delivery: string;
+    redis_state: "ready" | "not_configured" | "unavailable";
+    redis_url_configured: boolean;
+    redis_tls: boolean;
+    rate_limit_policies: Record<string, {
+      limit: number;
+      window_seconds: number;
+      fail_mode: "open" | "closed";
+      key_dimensions: string[];
+    }>;
+    worker_types: string[];
+    retry: Record<string, unknown>;
+    event_transport: Record<string, unknown>;
+    quotas: Record<string, number>;
+    metrics: Record<string, number>;
+    blockers: string[];
+  };
+  jobs: DurableJob[];
+  dead_letters: DurableJob[];
+}
+
 export async function getProjectV4ApplicationDefinition(projectId: string): Promise<ProjectV4ApplicationDefinition> {
   const response = await fetch(
     `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/applications/v4`,
@@ -138,4 +193,39 @@ export async function getDeploymentReadiness(projectId: string): Promise<Deploym
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload?.error?.message ?? `Deployment readiness failed: ${response.status}`);
   return payload as DeploymentReadiness;
+}
+
+export async function getDistributedRuntime(projectId: string): Promise<DistributedRuntimeSnapshot> {
+  const response = await fetch(
+    `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/distributed-runtime`,
+    { credentials: "include" },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message ?? `Distributed runtime failed: ${response.status}`);
+  return payload as DistributedRuntimeSnapshot;
+}
+
+function csrfToken(): string {
+  const item = document.cookie.split("; ").find((value) => value.startsWith("ontology_csrf="));
+  return item ? decodeURIComponent(item.slice("ontology_csrf=".length)) : "";
+}
+
+export async function operateDistributedJob(
+  projectId: string,
+  jobId: string,
+  action: "cancel" | "replay",
+  reason: string,
+): Promise<DurableJob> {
+  const response = await fetch(
+    `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/distributed-jobs/${encodeURIComponent(jobId)}/${action}`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
+      body: JSON.stringify({ reason }),
+    },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message ?? payload?.detail ?? `Job ${action} failed: ${response.status}`);
+  return payload as DurableJob;
 }
