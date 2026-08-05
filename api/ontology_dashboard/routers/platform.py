@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ..dependencies import (
     database_target,
+    get_branching_lineage_repository,
     get_connector_repository,
     get_connector_service,
     get_durable_job_repository,
@@ -13,6 +14,14 @@ from ..dependencies import (
     get_project_service,
     require_csrf,
     require_permission,
+)
+from ..branching_lineage import (
+    BranchChangeRequest,
+    BranchDiff,
+    BranchingLineageRepository,
+    BranchingLineageSnapshot,
+    PolicyCheckRequest,
+    PolicyDecision,
 )
 from ..connectors import (
     ConnectorRepository,
@@ -218,6 +227,71 @@ def execute_project_function(
         raise HTTPException(status_code=404, detail=str(error)) from error
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@router.get("/projects/{project_id}/branching-lineage")
+def project_branching_lineage(
+    project_id: str,
+    principal: Principal = Depends(require_permission("governance.read")),
+    projects: ProjectService = Depends(get_project_service),
+    repository: BranchingLineageRepository = Depends(get_branching_lineage_repository),
+) -> BranchingLineageSnapshot:
+    projects.get_for_principal(principal, project_id)
+    repository.ensure_samples(principal.organization_id, project_id, principal.user_id)
+    return repository.snapshot(principal.organization_id, project_id)
+
+
+@router.post("/projects/{project_id}/branches/change")
+def create_project_branch_change(
+    project_id: str,
+    request: BranchChangeRequest,
+    principal: Principal = Depends(require_permission("governance.projection.retry")),
+    _: None = Depends(require_csrf),
+    projects: ProjectService = Depends(get_project_service),
+    repository: BranchingLineageRepository = Depends(get_branching_lineage_repository),
+) -> BranchDiff:
+    projects.get_for_principal(principal, project_id)
+    repository.ensure_samples(principal.organization_id, project_id, principal.user_id)
+    try:
+        return repository.create_change(
+            principal.organization_id, project_id, request, principal.user_id
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.post("/projects/{project_id}/branches/{branch_id}/merge")
+def merge_project_branch(
+    project_id: str,
+    branch_id: str,
+    principal: Principal = Depends(require_permission("governance.projection.retry")),
+    _: None = Depends(require_csrf),
+    projects: ProjectService = Depends(get_project_service),
+    repository: BranchingLineageRepository = Depends(get_branching_lineage_repository),
+) -> BranchDiff:
+    projects.get_for_principal(principal, project_id)
+    try:
+        return repository.merge(principal.organization_id, project_id, branch_id)
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.post("/projects/{project_id}/policy/check")
+def check_project_policy(
+    project_id: str,
+    request: PolicyCheckRequest,
+    principal: Principal = Depends(require_permission("app.access")),
+    _: None = Depends(require_csrf),
+    projects: ProjectService = Depends(get_project_service),
+    repository: BranchingLineageRepository = Depends(get_branching_lineage_repository),
+) -> PolicyDecision:
+    projects.get_for_principal(principal, project_id)
+    repository.ensure_samples(principal.organization_id, project_id, principal.user_id)
+    return repository.policy_check(
+        principal.organization_id, project_id, principal.user_id, request
+    )
 
 
 @router.get("/projects/{project_id}/distributed-job-events")

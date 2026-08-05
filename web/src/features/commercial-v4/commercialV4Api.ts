@@ -328,6 +328,34 @@ export interface OntologyPrimitiveSnapshot {
   guarantees: Record<string, string>;
 }
 
+export interface BranchingLineageSnapshot {
+  branches: Array<{
+    id: string;
+    name: string;
+    base_branch_id: string | null;
+    status: string;
+    owner_user_id: string;
+    head_revision: number;
+  }>;
+  lineage_edges: Array<{
+    id: string;
+    source_type: string;
+    source_id: string;
+    target_type: string;
+    target_id: string;
+    relation: string;
+  }>;
+  markings: Array<{
+    resource_type: string;
+    resource_id: string;
+    field_name: string | null;
+    marking: string;
+    inherited_from: string | null;
+  }>;
+  branchable_resources: string[];
+  merge_semantics: Record<string, string>;
+}
+
 export async function getProjectV4ApplicationDefinition(projectId: string): Promise<ProjectV4ApplicationDefinition> {
   const response = await fetch(
     `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/applications/v4`,
@@ -518,6 +546,51 @@ export function executeRiskFunction(projectId: string): Promise<{
     {
       function_id: "asset-risk-metric",
       inputs: { failure_probability: 0.81, criticality: 1.0 },
+    },
+  );
+}
+
+export async function getBranchingLineage(projectId: string): Promise<BranchingLineageSnapshot> {
+  const response = await fetch(
+    `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/branching-lineage`,
+    { credentials: "include" },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message ?? `Branching lineage failed: ${response.status}`);
+  return payload as BranchingLineageSnapshot;
+}
+
+export function createBranchPreview(projectId: string): Promise<{
+  branch: { id: string; name: string; status: string; head_revision: number };
+  changes: Array<Record<string, unknown>>;
+  mergeable: boolean;
+}> {
+  return artifactOperatorRequest(
+    `/api/platform/projects/${encodeURIComponent(projectId)}/branches/change`,
+    "Create governed Commercial V4 branch preview",
+    {
+      branch_name: `v4-review-${Date.now()}`,
+      resource_type: "application",
+      resource_id: "commercial-v4",
+      payload: { review_note: "Branch-scoped application change", external_side_effects: false },
+    },
+  );
+}
+
+export function checkRestrictedDatasetPolicy(projectId: string): Promise<{
+  decision: "allow" | "deny";
+  reason_code: string;
+  effective_markings: string[];
+  masked: boolean;
+}> {
+  return artifactOperatorRequest(
+    `/api/platform/projects/${encodeURIComponent(projectId)}/policy/check`,
+    "Check marked Dataset access from Commercial V4",
+    {
+      resource_type: "dataset",
+      resource_id: "canonical-v3.1",
+      purpose: "export",
+      eligible_markings: ["confidential", "export_restricted"],
     },
   );
 }

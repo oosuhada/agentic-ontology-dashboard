@@ -62,6 +62,14 @@ test("preserves V1 through V3 and exposes an independent Commercial V4 compositi
   await page.getByRole("button", { name: "Run function", exact: true }).click();
   await expect(page.getByText(/Function succeeded: risk/)).toBeVisible();
 
+  await page.getByRole("button", { name: /Lineage & evidence/ }).click();
+  await expect(page.getByText("Global branches", { exact: true })).toBeVisible();
+  await expect(page.getByText("End-to-end lineage", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Create review branch", exact: true }).click();
+  await expect(page.getByText(/Branch v4-review-/)).toBeVisible();
+  await page.getByRole("button", { name: "Check export policy", exact: true }).click();
+  await expect(page.getByText(/Policy deny:/)).toBeVisible();
+
   await page.goto("/app/projects/manufacturing-demo-project");
   await expect(page.getByRole("heading", { name: "운영 매니저 운영 브리핑" })).toBeVisible();
   await expect(page.locator('[data-application-version="v4"]')).toHaveCount(0);

@@ -16,6 +16,7 @@ from fastapi import Depends, HTTPException, Request, Response, status
 from .adapters.service import AdapterService
 from .adapters.prediction_repository import PredictionResultRepository
 from .analysis_service import AnalysisService
+from .branching_lineage import BranchingLineageRepository
 from .connectors import ConnectorRepository, ConnectorService, FixtureConnectorAdapter
 from .dashboard_service import DashboardService
 from .distributed_runtime import DurableJobRepository
@@ -229,6 +230,12 @@ def get_connector_service(
 def get_ontology_primitive_repository() -> OntologyPrimitiveRepository:
     ensure_database_migrations()
     return OntologyPrimitiveRepository(database_target())
+
+
+@lru_cache(maxsize=1)
+def get_branching_lineage_repository() -> BranchingLineageRepository:
+    ensure_database_migrations()
+    return BranchingLineageRepository(database_target())
 
 
 def get_dashboard_service(

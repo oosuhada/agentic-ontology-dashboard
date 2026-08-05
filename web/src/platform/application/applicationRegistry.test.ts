@@ -19,10 +19,10 @@ describe("versioned application registry", () => {
     expect(new Set(APPLICATION_REGISTRY.map((item) => item.collaborationNamespace)).size).toBe(4);
   });
 
-  it("does not advertise future V4 capabilities as ready", () => {
+  it("advertises completed V4 capabilities while preserving future states", () => {
     const states = Object.fromEntries(COMMERCIAL_V4_APPLICATION.surfaces.map((item) => [item.id, item.state]));
-    expect(states.lineage).toBe("planned");
-    expect(states.actions).toBe("planned");
+    expect(states.lineage).toBe("ready");
+    expect(states.actions).toBe("ready");
     expect(states.automation).toBe("planned");
     expect(states.overview).toBe("ready");
   });

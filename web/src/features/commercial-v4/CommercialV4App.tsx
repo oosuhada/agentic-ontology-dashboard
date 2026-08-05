@@ -46,6 +46,9 @@ import {
   getObservabilityReadiness,
   getConnectorSnapshot,
   getOntologyPrimitives,
+  getBranchingLineage,
+  createBranchPreview,
+  checkRestrictedDatasetPolicy,
   previewGovernedAction,
   executeRiskFunction,
   runConnector,
@@ -56,6 +59,7 @@ import {
   type ObservabilityReadiness,
   type ConnectorSnapshot,
   type OntologyPrimitiveSnapshot,
+  type BranchingLineageSnapshot,
   operateDistributedJob,
   type DistributedRuntimeSnapshot,
   type DeploymentReadiness,
@@ -96,6 +100,7 @@ interface CommercialContext {
   observability: ObservabilityReadiness;
   connectors: ConnectorSnapshot;
   primitives: OntologyPrimitiveSnapshot;
+  branching: BranchingLineageSnapshot;
 }
 
 function currentSurface(): CommercialSurfaceId {
@@ -180,8 +185,9 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       getObservabilityReadiness(projectId),
       getConnectorSnapshot(projectId),
       getOntologyPrimitives(projectId),
+      getBranchingLineage(projectId),
     ])
-      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts, observability, connectors, primitives]) => {
+      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts, observability, connectors, primitives, branching]) => {
         if (!controller.signal.aborted) setContext({
           project,
           workspaces,
@@ -195,6 +201,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
           observability,
           connectors,
           primitives,
+          branching,
         });
       })
       .catch((reason: unknown) => {
@@ -319,6 +326,28 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       setOperationMessage(`Function ${execution.state}: risk ${execution.output.risk_score} (${execution.output.band}).`);
     } catch (reason) {
       setOperationMessage(reason instanceof Error ? reason.message : "Function execution failed.");
+    }
+  }
+
+  async function createReviewBranch() {
+    setOperationMessage("");
+    try {
+      const result = await createBranchPreview(projectId);
+      setOperationMessage(`Branch ${result.branch.name} created at revision ${result.branch.head_revision} · mergeable: ${result.mergeable}.`);
+      const branching = await getBranchingLineage(projectId);
+      setContext((current) => current ? { ...current, branching } : current);
+    } catch (reason) {
+      setOperationMessage(reason instanceof Error ? reason.message : "Branch creation failed.");
+    }
+  }
+
+  async function checkMarkingPolicy() {
+    setOperationMessage("");
+    try {
+      const result = await checkRestrictedDatasetPolicy(projectId);
+      setOperationMessage(`Policy ${result.decision}: ${result.reason_code} · masked: ${result.masked}.`);
+    } catch (reason) {
+      setOperationMessage(reason instanceof Error ? reason.message : "Policy check failed.");
     }
   }
 
@@ -758,6 +787,39 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
                     <article key={provider}><span><strong>{provider}</strong><small>{status.credential_reference ? "secret reference configured" : "no credential reference"}</small></span><em className={`is-${status.state}`}>{status.state.replace("_", " ")}</em></article>
                   ))}
                 </div>
+              </section>
+            </div>
+          ) : selected.id === "lineage" ? (
+            <div className="commercial-v4-grid">
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><GitBranch aria-hidden="true" /><span>Global branches</span></div>
+                {context.branching.branches.map((branch) => (
+                  <article key={branch.id} className="commercial-v4-primitive-card">
+                    <strong>{branch.name}</strong>
+                    <small>{branch.status} · revision {branch.head_revision} · base {branch.base_branch_id ?? "none"}</small>
+                  </article>
+                ))}
+                <button type="button" onClick={() => void createReviewBranch()}>Create review branch</button>
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Workflow aria-hidden="true" /><span>End-to-end lineage</span></div>
+                <div className="commercial-v4-lineage-list">
+                  {context.branching.lineage_edges.map((edge) => (
+                    <article key={edge.id}><span>{edge.source_type}:{edge.source_id}</span><em>{edge.relation}</em><span>{edge.target_type}:{edge.target_id}</span></article>
+                  ))}
+                </div>
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><LockKeyhole aria-hidden="true" /><span>Markings & ABAC</span></div>
+                {context.branching.markings.map((marking) => (
+                  <p key={`${marking.marking}:${marking.field_name ?? "resource"}`} className="commercial-v4-policy-copy"><strong>{marking.marking}</strong> · {marking.resource_type}:{marking.resource_id}{marking.field_name ? ` · ${marking.field_name}` : ""}</p>
+                ))}
+                <button type="button" onClick={() => void checkMarkingPolicy()}>Check export policy</button>
+                {operationMessage ? <p role="status" className="commercial-v4-policy-copy">{operationMessage}</p> : null}
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><CircleAlert aria-hidden="true" /><span>Merge semantics</span></div>
+                {Object.entries(context.branching.merge_semantics).map(([name, value]) => <p key={name} className="commercial-v4-policy-copy"><strong>{name}</strong>: {value}</p>)}
               </section>
             </div>
           ) : selected.id === "actions" ? (

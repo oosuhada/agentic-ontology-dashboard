@@ -26,6 +26,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.responses import Response, StreamingResponse
 
 from .analysis_models import AnalysisRunResult
+from .branching_lineage import BranchDiff, BranchingLineageSnapshot, PolicyDecision
 from .contracts import GroundedReport, UILayout
 from .connectors import ConnectorSnapshot
 from .dashboard_models import (
@@ -600,6 +601,10 @@ _EXPLICIT_MODELS: dict[str, Any] = {
     "ontology_dashboard.routers.platform.project_ontology_primitives": PrimitiveSnapshot,
     "ontology_dashboard.routers.platform.preview_project_action": ActionPreview,
     "ontology_dashboard.routers.platform.execute_project_function": FunctionExecution,
+    "ontology_dashboard.routers.platform.project_branching_lineage": BranchingLineageSnapshot,
+    "ontology_dashboard.routers.platform.create_project_branch_change": BranchDiff,
+    "ontology_dashboard.routers.platform.merge_project_branch": BranchDiff,
+    "ontology_dashboard.routers.platform.check_project_policy": PolicyDecision,
     "ontology_dashboard.routers.platform.project_distributed_job_events": DurableJobEventPage,
     "ontology_dashboard.routers.platform.cancel_distributed_job": DurableJob,
     "ontology_dashboard.routers.platform.replay_distributed_job": DurableJob,

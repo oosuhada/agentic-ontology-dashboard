@@ -37,6 +37,7 @@ def test_migrations_are_idempotent_and_create_outbox(tmp_path: Path) -> None:
             "0022_object_storage_artifact_governance",
             "0023_production_connectors_ingestion",
             "0024_ontology_interfaces_actions_functions",
+            "0025_global_branching_lineage_markings",
         ]
     assert second == []
 

@@ -134,9 +134,10 @@ const V4_SURFACES: readonly ApplicationSurfaceDefinition[] = [
   {
     id: "lineage",
     label: "Lineage & evidence",
-    description: "Global branch-aware lineage and data markings are planned for Phase 28.",
-    state: "planned",
+    description: "Global product branches, end-to-end lineage, impact context and marking-aware access policy.",
+    state: "ready",
     phase: 28,
+    permission: "governance.read",
   },
   {
     id: "governance",
@@ -150,9 +151,10 @@ const V4_SURFACES: readonly ApplicationSurfaceDefinition[] = [
   {
     id: "actions",
     label: "Actions & functions",
-    description: "Ontology Interface, Action Registry and Function Runtime are planned for Phase 27.",
-    state: "planned",
+    description: "Versioned Ontology Interfaces, schema-driven Actions and deterministic governed Functions.",
+    state: "ready",
     phase: 27,
+    permission: "ontology.registry.read",
   },
   {
     id: "automation",
