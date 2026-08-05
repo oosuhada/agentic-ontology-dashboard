@@ -384,6 +384,19 @@ export interface ApplicationRuntimeSnapshot {
   safety: Record<string, string>;
 }
 
+export interface PipelinePlan {
+  valid: boolean;
+  pushdown_provider: string;
+  sql_preview: string;
+  estimated_rows: number;
+  estimated_bytes: number;
+  keyset_pagination: string;
+  cancellation: string;
+  issues: string[];
+  materialization: Record<string, unknown>;
+  nodes: Array<{ id: string; type: string; state: string }>;
+}
+
 export async function getProjectV4ApplicationDefinition(projectId: string): Promise<ProjectV4ApplicationDefinition> {
   const response = await fetch(
     `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/applications/v4`,
@@ -645,4 +658,11 @@ export function globalObjectSearch(projectId: string, query: string): Promise<{
       eligible_markings: ["confidential"],
     },
   );
+}
+
+export async function getSamplePipelinePlan(projectId: string): Promise<PipelinePlan> {
+  const response = await fetch(`${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/pipeline/sample-plan`, { credentials: "include" });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message ?? `Pipeline plan failed: ${response.status}`);
+  return payload as PipelinePlan;
 }

@@ -85,6 +85,7 @@ from .predictive_maintenance_runtime.models import (
     TimelinePrediction,
 )
 from .persistence_readiness import PersistenceReadiness
+from .pipeline_runtime import PipelinePlan
 from .projects.models import Project
 
 
@@ -612,6 +613,8 @@ _EXPLICIT_MODELS: dict[str, Any] = {
     "ontology_dashboard.routers.platform.check_project_policy": PolicyDecision,
     "ontology_dashboard.routers.platform.project_application_runtime": ApplicationRuntimeSnapshot,
     "ontology_dashboard.routers.platform.project_global_search": GlobalSearchResponse,
+    "ontology_dashboard.routers.platform.project_sample_pipeline_plan": PipelinePlan,
+    "ontology_dashboard.routers.platform.project_pipeline_plan": PipelinePlan,
     "ontology_dashboard.routers.platform.project_distributed_job_events": DurableJobEventPage,
     "ontology_dashboard.routers.platform.cancel_distributed_job": DurableJob,
     "ontology_dashboard.routers.platform.replay_distributed_job": DurableJob,

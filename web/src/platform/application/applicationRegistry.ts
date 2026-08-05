@@ -117,9 +117,9 @@ const V4_SURFACES: readonly ApplicationSurfaceDefinition[] = [
   {
     id: "analysis",
     label: "Analysis & Pipeline",
-    description: "Existing Analysis entry point; scalable visual pipeline runtime arrives in Phase 30.",
+    description: "Typed visual pipelines, PostgreSQL pushdown, keyset pagination and immutable materialization.",
     state: "ready",
-    phase: 18,
+    phase: 30,
     launchPath: (context) => `${projectRoute(context.projectId)}?view=analysis`,
   },
   {

@@ -48,6 +48,7 @@ import {
   getOntologyPrimitives,
   getBranchingLineage,
   getApplicationRuntime,
+  getSamplePipelinePlan,
   globalObjectSearch,
   createBranchPreview,
   checkRestrictedDatasetPolicy,
@@ -63,6 +64,7 @@ import {
   type OntologyPrimitiveSnapshot,
   type BranchingLineageSnapshot,
   type ApplicationRuntimeSnapshot,
+  type PipelinePlan,
   operateDistributedJob,
   type DistributedRuntimeSnapshot,
   type DeploymentReadiness,
@@ -105,6 +107,7 @@ interface CommercialContext {
   primitives: OntologyPrimitiveSnapshot;
   branching: BranchingLineageSnapshot;
   applicationRuntime: ApplicationRuntimeSnapshot;
+  pipeline: PipelinePlan;
 }
 
 function currentSurface(): CommercialSurfaceId {
@@ -193,8 +196,9 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       getOntologyPrimitives(projectId),
       getBranchingLineage(projectId),
       getApplicationRuntime(projectId),
+      getSamplePipelinePlan(projectId),
     ])
-      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts, observability, connectors, primitives, branching, applicationRuntime]) => {
+      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts, observability, connectors, primitives, branching, applicationRuntime, pipeline]) => {
         if (!controller.signal.aborted) setContext({
           project,
           workspaces,
@@ -210,6 +214,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
           primitives,
           branching,
           applicationRuntime,
+          pipeline,
         });
       })
       .catch((reason: unknown) => {
@@ -806,6 +811,28 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
                     <article key={provider}><span><strong>{provider}</strong><small>{status.credential_reference ? "secret reference configured" : "no credential reference"}</small></span><em className={`is-${status.state}`}>{status.state.replace("_", " ")}</em></article>
                   ))}
                 </div>
+              </section>
+            </div>
+          ) : selected.id === "analysis" ? (
+            <div className="commercial-v4-grid">
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Workflow aria-hidden="true" /><span>Visual Pipeline Builder</span></div>
+                <div className="commercial-v4-pipeline-nodes">{context.pipeline.nodes.map((node) => <article key={node.id}><strong>{node.id}</strong><small>{node.type}</small><em className={`is-${node.state}`}>{node.state}</em></article>)}</div>
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Database aria-hidden="true" /><span>Pushdown query plan</span></div>
+                <code className="commercial-v4-code">{context.pipeline.sql_preview}</code>
+                <dl><div><dt>Provider</dt><dd>{context.pipeline.pushdown_provider}</dd></div><div><dt>Estimated rows</dt><dd>{context.pipeline.estimated_rows.toLocaleString()}</dd></div><div><dt>Estimated bytes</dt><dd>{context.pipeline.estimated_bytes.toLocaleString()}</dd></div></dl>
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Activity aria-hidden="true" /><span>Scalable execution</span></div>
+                <p className="commercial-v4-policy-copy">{context.pipeline.keyset_pagination}</p>
+                <p className="commercial-v4-policy-copy">{context.pipeline.cancellation}</p>
+                {context.pipeline.issues.map((issue) => <p key={issue} className="commercial-v4-policy-copy">{issue}</p>)}
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Archive aria-hidden="true" /><span>Materialization contract</span></div>
+                {Object.entries(context.pipeline.materialization).map(([name, value]) => <p key={name} className="commercial-v4-policy-copy"><strong>{name}</strong>: {String(value)}</p>)}
               </section>
             </div>
           ) : selected.id === "objects" ? (

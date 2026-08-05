@@ -55,6 +55,7 @@ from ..ontology_primitives import (
     OntologyPrimitiveRepository,
     PrimitiveSnapshot,
 )
+from ..pipeline_runtime import PipelinePlan, PipelinePlanRequest, plan_pipeline, sample_pipeline
 from ..projects import ProjectService
 from ..persistence_readiness import persistence_readiness
 
@@ -330,6 +331,31 @@ def project_global_search(
             request,
         )
     }
+
+
+@router.get("/projects/{project_id}/pipeline/sample-plan")
+def project_sample_pipeline_plan(
+    project_id: str,
+    principal: Principal = Depends(require_permission("app.access")),
+    projects: ProjectService = Depends(get_project_service),
+) -> PipelinePlan:
+    projects.get_for_principal(principal, project_id)
+    return plan_pipeline(sample_pipeline())
+
+
+@router.post("/projects/{project_id}/pipeline/plan")
+def project_pipeline_plan(
+    project_id: str,
+    request: PipelinePlanRequest,
+    principal: Principal = Depends(require_permission("app.access")),
+    _: None = Depends(require_csrf),
+    projects: ProjectService = Depends(get_project_service),
+) -> PipelinePlan:
+    projects.get_for_principal(principal, project_id)
+    try:
+        return plan_pipeline(request)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @router.get("/projects/{project_id}/distributed-job-events")
