@@ -14,6 +14,7 @@ import {
   TextArea,
 } from "@blueprintjs/core";
 import {
+  ontologyPath,
   blueprintProjectPath,
   blueprintV2ProjectPath,
   projectDashboardPath,
@@ -35,6 +36,16 @@ interface PreviewVersion {
   intent: "none" | "primary" | "success";
   summary: string;
   characteristics: string[];
+}
+
+interface ComparisonScenario {
+  id: "overview" | "objects" | "analysis" | "operations";
+  eyebrow: string;
+  title: string;
+  description: string;
+  guidance: string;
+  paths: Record<VersionId, string>;
+  summaries: Record<VersionId, string>;
 }
 
 const VIEWPORTS = {
@@ -124,6 +135,80 @@ export function BlueprintComparisonPage({ projectId }: BlueprintComparisonPagePr
     },
   ], [projectId]);
 
+  const scenarios = useMemo<ComparisonScenario[]>(() => {
+    const workspaceId = "manufacturing-demo";
+    return [
+      {
+        id: "overview",
+        eyebrow: "PAGE 01 · OVERVIEW",
+        title: "첫 화면과 운영 개요 비교",
+        description: "로그인 직후 무엇을 가장 먼저 보여주는지 비교합니다. V2는 별도 Overview 카드 대신 Object 업무 화면을 첫 화면으로 사용합니다.",
+        guidance: "첫 질문, KPI 우선순위, 설명량과 다음 작업으로 이동하는 속도를 확인하세요.",
+        paths: {
+          original: `${projectDashboardPath(projectId)}?view=dashboard`,
+          v1: `${blueprintProjectPath(projectId)}?view=overview`,
+          v2: `${blueprintV2ProjectPath(projectId)}?view=objects`,
+        },
+        summaries: {
+          original: "현재 제품의 역할별 Dashboard와 운영 보고 Context",
+          v1: "KPI·위험 Portfolio·Decision Inbox 중심 Overview",
+          v2: "별도 Hero 없이 Object Table을 바로 여는 Object-first landing",
+        },
+      },
+      {
+        id: "objects",
+        eyebrow: "PAGE 02 · OBJECTS",
+        title: "Object Explorer 비교",
+        description: "설비 Object를 검색하고 선택한 뒤 Property와 Action에 도달하는 흐름을 비교합니다.",
+        guidance: "검색·필터의 위치, Table 밀도, 선택 행 표현과 Inspector 접근성을 확인하세요.",
+        paths: {
+          original: ontologyPath(projectId, workspaceId),
+          v1: `${blueprintProjectPath(projectId)}?view=objects`,
+          v2: `${blueprintV2ProjectPath(projectId)}?view=objects&inspector=properties`,
+        },
+        summaries: {
+          original: "기존 Foundry Shell 안의 Ontology Object Explorer",
+          v1: "가상화 Object Set과 동적 Inspector를 결합한 Explorer",
+          v2: "고정 Navigator·Dense Table·Properties Inspector의 3분할",
+        },
+      },
+      {
+        id: "analysis",
+        eyebrow: "PAGE 03 · ANALYSIS",
+        title: "Analysis Workbench 비교",
+        description: "동일 제조 위험 데이터를 어떤 분석 구조와 시각화 작업 흐름으로 제공하는지 비교합니다.",
+        guidance: "데이터 흐름의 가시성, Graph·Canvas 구분, Parameter와 결과의 연결을 확인하세요.",
+        paths: {
+          original: `${projectDashboardPath(projectId)}?view=analysis`,
+          v1: `${blueprintProjectPath(projectId)}?view=analysis&mode=graph`,
+          v2: `${blueprintV2ProjectPath(projectId)}?view=analysis`,
+        },
+        summaries: {
+          original: "기존 Risk Event 분석 경로와 Analysis Workbench",
+          v1: "React Flow Typed Card Graph와 별도 Canvas",
+          v2: "Transformation step 목록과 결과 Canvas를 한 화면에 결합",
+        },
+      },
+      {
+        id: "operations",
+        eyebrow: "PAGE 04 · OPERATIONS",
+        title: "운영 판단과 Action 비교",
+        description: "위험 Event를 읽고 검사 요청·정지 검토·담당자 배정으로 이어지는 운영 흐름을 비교합니다.",
+        guidance: "판단 근거와 실행 버튼의 거리, Activity·Audit 확인 가능성과 역할 맥락을 확인하세요.",
+        paths: {
+          original: `${projectDashboardPath(projectId)}?view=report`,
+          v1: `${blueprintProjectPath(projectId)}?view=operations`,
+          v2: `${blueprintV2ProjectPath(projectId)}?view=operations&inspector=actions`,
+        },
+        summaries: {
+          original: "서술형 운영 Briefing과 보고서 기반 판단",
+          v1: "Decision Inbox·상세 판단·Activity의 3개 Panel Workflow",
+          v2: "Dense Queue·Decision Detail·Action Inspector 중심 Workflow",
+        },
+      },
+    ];
+  }, [projectId]);
+
   const visibleVersions = LAYOUT_VERSIONS[layout]
     .map((id) => versions.find((version) => version.id === id))
     .filter((version): version is PreviewVersion => Boolean(version));
@@ -201,6 +286,56 @@ export function BlueprintComparisonPage({ projectId }: BlueprintComparisonPagePr
         ))}
       </section>
 
+      <section className="comparison-scenarios" aria-labelledby="scenario-comparison-title">
+        <div className="comparison-scenarios-header">
+          <div>
+            <span className="comparison-eyebrow">PAGE-BY-PAGE REVIEW</span>
+            <h2 id="scenario-comparison-title">아래에서 각 작업 화면을 따로 비교하세요</h2>
+            <p>첫 화면 한 장만 비교하지 않고, 실제 업무 흐름을 구성하는 네 페이지를 동일한 데이터와 가상 화면 크기로 나란히 표시합니다.</p>
+          </div>
+          <ButtonGroup className="comparison-scenario-jumps">
+            {scenarios.map((scenario) => (
+              <Button
+                key={scenario.id}
+                onClick={() => document.getElementById(`comparison-${scenario.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              >
+                {scenario.id === "overview" ? "Overview" : scenario.id === "objects" ? "Objects" : scenario.id === "analysis" ? "Analysis" : "Operations"}
+              </Button>
+            ))}
+          </ButtonGroup>
+        </div>
+
+        {scenarios.map((scenario, scenarioIndex) => (
+          <article key={scenario.id} id={`comparison-${scenario.id}`} className="comparison-scenario-section">
+            <div className="comparison-scenario-heading">
+              <div>
+                <span className="comparison-eyebrow">{scenario.eyebrow}</span>
+                <h3>{scenario.title}</h3>
+                <p>{scenario.description}</p>
+              </div>
+              <Callout compact icon="eye-open" title="이 화면에서 볼 것">{scenario.guidance}</Callout>
+            </div>
+            <div className="comparison-live-grid is-3 comparison-scenario-grid">
+              {versions.map((version) => (
+                <LivePreview
+                  key={`${scenario.id}-${version.id}-${reloadKey}-${viewportId}`}
+                  version={{
+                    ...version,
+                    path: scenario.paths[version.id],
+                    summary: scenario.summaries[version.id],
+                  }}
+                  viewport={viewport}
+                  selected={false}
+                  onSelect={() => setSelectedCandidate(version.id)}
+                  defer={scenarioIndex > 0}
+                  titlePrefix={scenario.title}
+                />
+              ))}
+            </div>
+          </article>
+        ))}
+      </section>
+
       <section className="comparison-analysis-section">
         <div className="comparison-section-heading">
           <div>
@@ -266,15 +401,20 @@ function LivePreview({
   viewport,
   selected,
   onSelect,
+  defer = false,
+  titlePrefix,
 }: {
   version: PreviewVersion;
   viewport: { width: number; height: number; label: string };
   selected: boolean;
   onSelect: () => void;
+  defer?: boolean;
+  titlePrefix?: string;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.4);
   const [loaded, setLoaded] = useState(false);
+  const [active, setActive] = useState(!defer);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -285,6 +425,20 @@ function LivePreview({
     observer.observe(stage);
     return () => observer.disconnect();
   }, [viewport.width]);
+
+  useEffect(() => {
+    if (!defer || active) return;
+    const stage = stageRef.current;
+    if (!stage) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setActive(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: "360px 0px" });
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, [active, defer]);
 
   return (
     <Card className={`comparison-preview-card ${selected ? "is-selected" : ""}`} elevation={selected ? 3 : 1}>
@@ -309,15 +463,18 @@ function LivePreview({
         className="comparison-frame-stage"
         style={{ height: Math.round(viewport.height * scale) }}
       >
-        {!loaded ? <div className="comparison-frame-loading"><Icon icon="refresh" /><span>실제 화면 불러오는 중</span></div> : null}
-        <iframe
-          title={`${version.label} live preview`}
-          src={version.path}
-          width={viewport.width}
-          height={viewport.height}
-          onLoad={() => setLoaded(true)}
-          style={{ transform: `scale(${scale})` }}
-        />
+        {!loaded ? <div className="comparison-frame-loading"><Icon icon={active ? "refresh" : "download"} /><span>{active ? "실제 화면 불러오는 중" : "아래로 이동하면 실제 화면 로드"}</span></div> : null}
+        {active ? (
+          <iframe
+            title={titlePrefix ? `${titlePrefix} · ${version.label} live preview` : `${version.label} live preview`}
+            src={version.path}
+            width={viewport.width}
+            height={viewport.height}
+            loading={defer ? "lazy" : "eager"}
+            onLoad={() => setLoaded(true)}
+            style={{ transform: `scale(${scale})` }}
+          />
+        ) : null}
       </div>
       <footer className="comparison-preview-footer">
         <span><Icon icon="desktop" /> {viewport.label}</span>

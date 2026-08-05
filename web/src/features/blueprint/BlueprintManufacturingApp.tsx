@@ -112,8 +112,21 @@ function roleDefaultView(role: string): BlueprintView {
   return "overview";
 }
 
+function readBlueprintPreviewQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const requestedView = params.get("view");
+  const requestedMode = params.get("mode");
+  return {
+    view: requestedView === "overview" || requestedView === "objects" || requestedView === "analysis" || requestedView === "operations"
+      ? requestedView as BlueprintView
+      : null,
+    mode: requestedMode === "graph" || requestedMode === "canvas" ? requestedMode as AnalysisMode : null,
+  };
+}
+
 export function BlueprintManufacturingApp({ projectId }: BlueprintManufacturingAppProps) {
   const { user } = useAuth();
+  const previewQuery = useMemo(readBlueprintPreviewQuery, []);
   const [project, setProject] = useState<Project | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspaceId, setWorkspaceId] = useState("");
@@ -126,8 +139,8 @@ export function BlueprintManufacturingApp({ projectId }: BlueprintManufacturingA
   const [riskOnly, setRiskOnly] = useState(false);
   const [selectedObjectId, setSelectedObjectId] = useState("");
   const [selectedEventId, setSelectedEventId] = useState("");
-  const [view, setView] = useState<BlueprintView>("overview");
-  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>("graph");
+  const [view, setView] = useState<BlueprintView>(previewQuery.view ?? "overview");
+  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>(previewQuery.mode ?? "graph");
   const [selectedAnalysisNode, setSelectedAnalysisNode] = useState("source");
   const [activeRole, setActiveRole] = useState<AppRole>(() => {
     const candidate = user?.active_project_roles[0] ?? user?.roles[0] ?? "process_manager";
@@ -205,13 +218,13 @@ export function BlueprintManufacturingApp({ projectId }: BlueprintManufacturingA
           ?? registryPayload.object_types[0]?.id
           ?? "equipment";
         setObjectType(preferred);
-        setView(roleDefaultView(activeRole));
+        if (!previewQuery.view) setView(roleDefaultView(activeRole));
         setError("");
       })
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Blueprint 화면 데이터를 불러오지 못했습니다."))
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
-  }, [projectId]);
+  }, [previewQuery.view, projectId]);
 
   useEffect(() => {
     if (!workspaceId || !objectType) return;

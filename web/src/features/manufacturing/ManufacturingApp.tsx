@@ -126,7 +126,7 @@ function sameDashboardDraft(left: ResolvedDashboard | null, right: ResolvedDashb
   });
 }
 
-export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisId = "risk-event-portfolio" }: ManufacturingAppProps = {}) {
+export function ManufacturingApp({ initialWorkspaceView, analysisId = "risk-event-portfolio" }: ManufacturingAppProps = {}) {
   const { user, logout, setActiveProject } = useAuth();
   const { locale, t } = useI18n();
   if (!user) throw new Error("ManufacturingApp requires an authenticated user");
@@ -291,9 +291,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     ),
     [adaptiveProfile, datasetItems, t],
   );
-  const effectiveInitialWorkspaceView: WorkspaceView = initialWorkspaceView === "analysis"
-    ? "analysis"
-    : roleConfig.defaultWorkspaceView;
+  const effectiveInitialWorkspaceView: WorkspaceView = initialWorkspaceView ?? roleConfig.defaultWorkspaceView;
 
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [fullscreenBoardId, setFullscreenBoardId] = useState<string | null>(null);

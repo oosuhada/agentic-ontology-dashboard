@@ -330,9 +330,13 @@ function AppRouter() {
 
   const projectDashboardRoute = matchProjectDashboardPath(pathname);
   if (projectDashboardRoute) {
+    const requestedView = new URLSearchParams(window.location.search).get("view");
+    const initialWorkspaceView = requestedView === "report" || requestedView === "dashboard" || requestedView === "analysis"
+      ? requestedView
+      : undefined;
     return (
       <ProjectRouteBoundary projectId={projectDashboardRoute.projectId}>
-        <ManufacturingApp />
+        <ManufacturingApp initialWorkspaceView={initialWorkspaceView} />
       </ProjectRouteBoundary>
     );
   }

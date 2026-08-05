@@ -13,10 +13,11 @@ test("renders three live project versions and supports pair comparison", async (
   await page.goto("/app/projects/manufacturing-demo-project/blueprint-compare");
 
   await expect(page.getByRole("heading", { name: "세 화면을 같은 조건에서 비교하세요" })).toBeVisible();
-  await expect(page.locator(".comparison-preview-card")).toHaveCount(3);
-  await expect(page.locator("iframe")).toHaveCount(3);
+  const primaryGrid = page.locator(".blueprint-comparison-page > .comparison-live-grid");
+  await expect(primaryGrid.locator(".comparison-preview-card")).toHaveCount(3);
+  await expect(primaryGrid.locator("iframe")).toHaveCount(3);
 
-  const titles = await page.locator("iframe").evaluateAll((frames) => frames.map((frame) => frame.getAttribute("title")));
+  const titles = await primaryGrid.locator("iframe").evaluateAll((frames) => frames.map((frame) => frame.getAttribute("title")));
   expect(titles).toEqual([
     "기존 Dashboard live preview",
     "Blueprint V1 live preview",
@@ -27,9 +28,20 @@ test("renders three live project versions and supports pair comparison", async (
   await expect(page.frameLocator('iframe[title="Blueprint V1 live preview"]').locator(".blueprint-preview")).toBeVisible();
   await expect(page.frameLocator('iframe[title="Blueprint V2 live preview"]').locator(".blueprint-v2")).toBeVisible();
 
+  await expect(page.locator(".comparison-scenario-section")).toHaveCount(4);
+  await expect(page.getByRole("heading", { name: "첫 화면과 운영 개요 비교" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Object Explorer 비교" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Analysis Workbench 비교" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "운영 판단과 Action 비교" })).toBeVisible();
+
+  await page.getByRole("heading", { name: "Object Explorer 비교" }).scrollIntoViewIfNeeded();
+  await expect(page.locator('iframe[title="Object Explorer 비교 · 기존 Dashboard live preview"]')).toBeVisible();
+  await expect(page.locator('iframe[title="Object Explorer 비교 · Blueprint V1 live preview"]')).toBeVisible();
+  await expect(page.locator('iframe[title="Object Explorer 비교 · Blueprint V2 live preview"]')).toBeVisible();
+
   await page.getByRole("button", { name: "Original ↔ V2" }).click();
-  await expect(page.locator(".comparison-preview-card")).toHaveCount(2);
-  await expect(page.locator('iframe[title="Blueprint V1 live preview"]')).toHaveCount(0);
+  await expect(primaryGrid.locator(".comparison-preview-card")).toHaveCount(2);
+  await expect(primaryGrid.locator('iframe[title="Blueprint V1 live preview"]')).toHaveCount(0);
 
   await page.getByRole("button", { name: "Blueprint V2", exact: true }).last().click();
   await expect(page.getByText("Blueprint V2 선택됨")).toBeVisible();

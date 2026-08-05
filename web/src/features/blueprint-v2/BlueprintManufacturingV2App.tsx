@@ -117,8 +117,23 @@ function objectStatus(item: ObjectRecord) {
   return status || "normal";
 }
 
+function readBlueprintV2PreviewQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const requestedView = params.get("view");
+  const requestedInspector = params.get("inspector");
+  return {
+    view: requestedView === "objects" || requestedView === "analysis" || requestedView === "operations"
+      ? requestedView as WorkbenchTab
+      : null,
+    inspector: requestedInspector === "properties" || requestedInspector === "actions" || requestedInspector === "history"
+      ? requestedInspector as InspectorTab
+      : null,
+  };
+}
+
 export function BlueprintManufacturingV2App({ projectId }: BlueprintManufacturingV2AppProps) {
   const { user } = useAuth();
+  const previewQuery = useMemo(readBlueprintV2PreviewQuery, []);
   const [project, setProject] = useState<Project | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspaceId, setWorkspaceId] = useState("");
@@ -134,8 +149,8 @@ export function BlueprintManufacturingV2App({ projectId }: BlueprintManufacturin
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [selectedObjectId, setSelectedObjectId] = useState("");
   const [selectedEventId, setSelectedEventId] = useState("");
-  const [activeTab, setActiveTab] = useState<WorkbenchTab>("objects");
-  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("properties");
+  const [activeTab, setActiveTab] = useState<WorkbenchTab>(previewQuery.view ?? "objects");
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>(previewQuery.inspector ?? "properties");
   const [leftOpen, setLeftOpen] = useState(true);
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [loading, setLoading] = useState(true);

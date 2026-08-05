@@ -12,6 +12,7 @@
 .comparison-intro,
 .comparison-controls,
 .comparison-live-grid,
+.comparison-scenarios,
 .comparison-analysis-section,
 .comparison-decision-section {
   width: min(1880px, calc(100% - 32px));
@@ -51,6 +52,16 @@
 .comparison-preview-footer span { display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
 .comparison-preview-footer code { overflow: hidden; color: #8abbff; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 
+.comparison-scenarios { display: grid; gap: 18px; padding: 4px 0 24px; }
+.comparison-scenarios-header { display: flex; justify-content: space-between; gap: 24px; align-items: end; padding: 20px 0 4px; border-top: 1px solid #394b59; }
+.comparison-scenarios-header h2 { margin: 5px 0 8px; font-size: 24px; letter-spacing: -.02em; }
+.comparison-scenarios-header p, .comparison-scenario-heading p { max-width: 940px; margin: 0; color: #abb3bf; line-height: 1.55; }
+.comparison-scenario-section { scroll-margin-top: 64px; padding: 18px; border: 1px solid #394b59; background: #151d24; }
+.comparison-scenario-heading { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 460px); gap: 22px; align-items: end; }
+.comparison-scenario-heading h3 { margin: 4px 0 7px; font-size: 20px; letter-spacing: -.015em; }
+.comparison-scenario-grid { width: 100%; padding-bottom: 0; }
+.comparison-scenario-grid .comparison-preview-header { min-height: 94px; }
+
 .comparison-analysis-section, .comparison-decision-section { margin-top: 4px; padding: 18px; border: 1px solid #394b59; background: #182026; }
 .comparison-decision-section { margin-top: 16px; }
 .comparison-section-heading { display: flex; justify-content: space-between; gap: 20px; align-items: center; margin-bottom: 14px; }
@@ -81,6 +92,7 @@
   .comparison-intro,
   .comparison-controls,
   .comparison-live-grid,
+  .comparison-scenarios,
   .comparison-analysis-section,
   .comparison-decision-section { width: min(100% - 18px, 1880px); }
   .comparison-intro { padding-top: 20px; }
@@ -89,6 +101,10 @@
   .comparison-control-group .bp6-button-group { display: grid; grid-template-columns: 1fr 1fr; }
   .comparison-control-note { margin-left: 0; }
   .comparison-live-grid.is-2 { grid-template-columns: 1fr; }
+  .comparison-scenarios-header, .comparison-scenario-heading { grid-template-columns: 1fr; align-items: flex-start; }
+  .comparison-scenarios-header { flex-direction: column; }
+  .comparison-scenario-jumps { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+  .comparison-scenario-section { padding: 12px; }
   .comparison-preview-footer { grid-template-columns: auto auto; }
   .comparison-preview-footer code { grid-column: 1 / -1; text-align: left; }
   .comparison-section-heading { align-items: flex-start; flex-direction: column; }
