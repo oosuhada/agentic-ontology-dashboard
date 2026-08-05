@@ -23,7 +23,7 @@ describe("versioned application registry", () => {
     const states = Object.fromEntries(COMMERCIAL_V4_APPLICATION.surfaces.map((item) => [item.id, item.state]));
     expect(states.lineage).toBe("ready");
     expect(states.actions).toBe("ready");
-    expect(states.automation).toBe("planned");
+    expect(states.automation).toBe("ready");
     expect(states.overview).toBe("ready");
   });
 

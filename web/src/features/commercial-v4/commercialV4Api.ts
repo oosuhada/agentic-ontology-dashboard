@@ -407,6 +407,15 @@ export interface MLOpsSnapshot {
   limitations: string[];
 }
 
+export interface AutomationSnapshot {
+  definition: Record<string, unknown>;
+  simulation: Record<string, unknown>;
+  approval: Record<string, unknown>;
+  recovery: Record<string, unknown>;
+  integrations: Record<string, unknown>;
+  guarantees: string[];
+}
+
 export async function getProjectV4ApplicationDefinition(projectId: string): Promise<ProjectV4ApplicationDefinition> {
   const response = await fetch(
     `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/applications/v4`,
@@ -682,4 +691,19 @@ export async function getMLOpsSnapshot(projectId: string): Promise<MLOpsSnapshot
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload?.error?.message ?? `MLOps snapshot failed: ${response.status}`);
   return payload as MLOpsSnapshot;
+}
+
+export async function getAutomationSnapshot(projectId: string): Promise<AutomationSnapshot> {
+  const response = await fetch(`${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/automation`, { credentials: "include" });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message ?? `Automation snapshot failed: ${response.status}`);
+  return payload as AutomationSnapshot;
+}
+
+export function simulateHighRiskAutomation(projectId: string): Promise<Record<string, unknown>> {
+  return artifactOperatorRequest(
+    `/api/platform/projects/${encodeURIComponent(projectId)}/automation/simulate`,
+    "Simulate high-risk inspection automation",
+    { event_id: `v4-simulation-${Date.now()}`, failure_probability: 0.91, criticality: "high", duplicate: false },
+  );
 }

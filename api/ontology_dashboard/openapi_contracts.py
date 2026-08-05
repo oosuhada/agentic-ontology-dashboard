@@ -27,6 +27,7 @@ from starlette.responses import Response, StreamingResponse
 
 from .analysis_models import AnalysisRunResult
 from .application_runtime import ApplicationRuntimeSnapshot
+from .automation_runtime import AutomationSnapshot
 from .branching_lineage import BranchDiff, BranchingLineageSnapshot, PolicyDecision
 from .contracts import GroundedReport, UILayout
 from .connectors import ConnectorSnapshot
@@ -565,6 +566,18 @@ class DriftEvaluationResponse(ContractModel):
     delayed_labels_available: bool
 
 
+class AutomationSimulationResponse(ContractModel):
+    event_id: str
+    state: str
+    condition_matched: bool
+    actions: list[str]
+    external_side_effects_executed: bool
+    approval_required: bool
+    four_eyes: bool
+    replay_safe: bool
+    trace: list[str]
+
+
 def _qname(endpoint: Any) -> str:
     return f"{endpoint.__module__}.{endpoint.__name__}"
 
@@ -630,6 +643,8 @@ _EXPLICIT_MODELS: dict[str, Any] = {
     "ontology_dashboard.routers.platform.project_pipeline_plan": PipelinePlan,
     "ontology_dashboard.routers.platform.project_mlops": MLOpsSnapshot,
     "ontology_dashboard.routers.platform.project_mlops_drift_evaluate": DriftEvaluationResponse,
+    "ontology_dashboard.routers.platform.project_automation": AutomationSnapshot,
+    "ontology_dashboard.routers.platform.project_automation_simulate": AutomationSimulationResponse,
     "ontology_dashboard.routers.platform.project_distributed_job_events": DurableJobEventPage,
     "ontology_dashboard.routers.platform.cancel_distributed_job": DurableJob,
     "ontology_dashboard.routers.platform.replay_distributed_job": DurableJob,

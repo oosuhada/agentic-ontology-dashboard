@@ -41,6 +41,7 @@ def test_migrations_are_idempotent_and_create_outbox(tmp_path: Path) -> None:
             "0026_object_views_search_application_runtime",
             "0027_scalable_pipeline_analysis",
             "0028_continuous_mlops_runtime",
+            "0029_governed_event_automation",
         ]
     assert second == []
 

@@ -159,9 +159,10 @@ const V4_SURFACES: readonly ApplicationSurfaceDefinition[] = [
   {
     id: "automation",
     label: "Automation",
-    description: "Governed event-condition-Action orchestration is planned for Phase 32.",
-    state: "planned",
+    description: "Typed event-condition-Action workflows with dry-run, four-eyes approval and replay safety.",
+    state: "ready",
     phase: 32,
+    permission: "app.access",
   },
   {
     id: "settings",

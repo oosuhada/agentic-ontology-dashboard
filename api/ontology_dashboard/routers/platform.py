@@ -57,6 +57,12 @@ from ..ontology_primitives import (
 )
 from ..pipeline_runtime import PipelinePlan, PipelinePlanRequest, plan_pipeline, sample_pipeline
 from ..mlops_runtime import DriftEvaluationRequest, MLOpsSnapshot, evaluate_drift, mlops_snapshot
+from ..automation_runtime import (
+    AutomationSimulationRequest,
+    AutomationSnapshot,
+    automation_snapshot,
+    simulate_automation,
+)
 from ..projects import ProjectService
 from ..persistence_readiness import persistence_readiness
 
@@ -379,6 +385,28 @@ def project_mlops_drift_evaluate(
 ) -> dict[str, object]:
     projects.get_for_principal(principal, project_id)
     return evaluate_drift(request)
+
+
+@router.get("/projects/{project_id}/automation")
+def project_automation(
+    project_id: str,
+    principal: Principal = Depends(require_permission("app.access")),
+    projects: ProjectService = Depends(get_project_service),
+) -> AutomationSnapshot:
+    projects.get_for_principal(principal, project_id)
+    return automation_snapshot()
+
+
+@router.post("/projects/{project_id}/automation/simulate")
+def project_automation_simulate(
+    project_id: str,
+    request: AutomationSimulationRequest,
+    principal: Principal = Depends(require_permission("ontology.actions.execute")),
+    _: None = Depends(require_csrf),
+    projects: ProjectService = Depends(get_project_service),
+) -> dict[str, object]:
+    projects.get_for_principal(principal, project_id)
+    return simulate_automation(request)
 
 
 @router.get("/projects/{project_id}/distributed-job-events")

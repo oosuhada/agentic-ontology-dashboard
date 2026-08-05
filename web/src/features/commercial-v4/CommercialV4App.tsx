@@ -50,6 +50,8 @@ import {
   getApplicationRuntime,
   getSamplePipelinePlan,
   getMLOpsSnapshot,
+  getAutomationSnapshot,
+  simulateHighRiskAutomation,
   globalObjectSearch,
   createBranchPreview,
   checkRestrictedDatasetPolicy,
@@ -67,6 +69,7 @@ import {
   type ApplicationRuntimeSnapshot,
   type PipelinePlan,
   type MLOpsSnapshot,
+  type AutomationSnapshot,
   operateDistributedJob,
   type DistributedRuntimeSnapshot,
   type DeploymentReadiness,
@@ -111,6 +114,7 @@ interface CommercialContext {
   applicationRuntime: ApplicationRuntimeSnapshot;
   pipeline: PipelinePlan;
   mlops: MLOpsSnapshot;
+  automation: AutomationSnapshot;
 }
 
 function currentSurface(): CommercialSurfaceId {
@@ -201,8 +205,9 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       getApplicationRuntime(projectId),
       getSamplePipelinePlan(projectId),
       getMLOpsSnapshot(projectId),
+      getAutomationSnapshot(projectId),
     ])
-      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts, observability, connectors, primitives, branching, applicationRuntime, pipeline, mlops]) => {
+      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts, observability, connectors, primitives, branching, applicationRuntime, pipeline, mlops, automation]) => {
         if (!controller.signal.aborted) setContext({
           project,
           workspaces,
@@ -220,6 +225,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
           applicationRuntime,
           pipeline,
           mlops,
+          automation,
         });
       })
       .catch((reason: unknown) => {
@@ -377,6 +383,16 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       setOperationMessage(`${result.items.length} governed search results.`);
     } catch (reason) {
       setOperationMessage(reason instanceof Error ? reason.message : "Global search failed.");
+    }
+  }
+
+  async function simulateAutomation() {
+    setOperationMessage("");
+    try {
+      const result = await simulateHighRiskAutomation(projectId);
+      setOperationMessage(`Automation ${String(result.state)} · approval required: ${String(result.approval_required)} · side effects: ${String(result.external_side_effects_executed)}.`);
+    } catch (reason) {
+      setOperationMessage(reason instanceof Error ? reason.message : "Automation simulation failed.");
     }
   }
 
@@ -816,6 +832,21 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
                     <article key={provider}><span><strong>{provider}</strong><small>{status.credential_reference ? "secret reference configured" : "no credential reference"}</small></span><em className={`is-${status.state}`}>{status.state.replace("_", " ")}</em></article>
                   ))}
                 </div>
+              </section>
+            </div>
+          ) : selected.id === "automation" ? (
+            <div className="commercial-v4-grid">
+              {(["definition", "simulation", "approval", "recovery", "integrations"] as const).map((section) => (
+                <section key={section} className="commercial-v4-panel">
+                  <div className="commercial-v4-panel-title"><Workflow aria-hidden="true" /><span>{section}</span></div>
+                  {Object.entries(context.automation[section]).map(([name, value]) => <p key={name} className="commercial-v4-policy-copy"><strong>{name}</strong>: {Array.isArray(value) ? value.join(", ") : String(value)}</p>)}
+                </section>
+              ))}
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><CircleAlert aria-hidden="true" /><span>Dry run & approval</span></div>
+                <button type="button" onClick={() => void simulateAutomation()}>Simulate automation</button>
+                {operationMessage ? <p role="status" className="commercial-v4-policy-copy">{operationMessage}</p> : null}
+                {context.automation.guarantees.map((item) => <p key={item} className="commercial-v4-policy-copy">{item}</p>)}
               </section>
             </div>
           ) : selected.id === "models" ? (
