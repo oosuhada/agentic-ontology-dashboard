@@ -6,6 +6,19 @@ This runbook verifies the immutable V3.1 data, Result Artifact, Ontology, graph,
 replay, visualization, Dashboard, and governance boundary without treating missing
 external infrastructure as a successful production release.
 
+## Release documentation source
+
+- GitHub Release body source:
+  `docs/50-operations/releases/predictive-maintenance-canonical-v3.1-20260805.md`
+- Package structure and relationship guide:
+  `docs/10-product/predictive-maintenance-canonical-v3.1-data-guide.md`
+- Published Release:
+  <https://github.com/oosuhada/agentic-ontology-dashboard/releases/tag/predictive-maintenance-canonical-v3.1-20260805>
+
+When the package structure, counts, checksum, or semantic contract changes, update
+the two source documents first and then synchronize the GitHub Release body from
+the release-body source file.
+
 ## Local contract verification
 
 ```bash
