@@ -40,7 +40,7 @@ def _load_full_surface_snapshot() -> dict:
             "flask": {
                 "registered_operation_count": 0,
                 "business_handler_operation_count": 0,
-                "manual_port_required_operation_count": 0,
+                "manual_business_setup_operation_count": 0,
             },
             "conclusion": {
                 "reason": "전체 API 비교 스냅샷이 아직 생성되지 않았습니다.",
@@ -185,7 +185,7 @@ def _full_surface_rows() -> str:
                 "runtime_response_validation_operation_count"
             ],
             "runtime": fastapi["authenticated_probe"]["operation_count"],
-            "port": 0,
+            "setup": 0,
             "selected": True,
         },
         {
@@ -197,7 +197,7 @@ def _full_surface_rows() -> str:
             "response": flask["automatic_response_schema_operation_count"],
             "response_validation": 0,
             "runtime": flask["registered_operation_count"],
-            "port": flask["manual_port_required_operation_count"],
+            "setup": flask["manual_business_setup_operation_count"],
             "selected": False,
         },
     ]
@@ -213,7 +213,7 @@ def _full_surface_rows() -> str:
         f"<td>{item['response']}</td>"
         f"<td>{item['response_validation']}</td>"
         f"<td>{item['runtime']}</td>"
-        f"<td>{item['port']}</td>"
+        f"<td>{item['setup']}</td>"
         "</tr>"
         for item in rows
     )
@@ -232,12 +232,66 @@ def _selection_basis_cards() -> str:
     return "".join(cards)
 
 
+def _list_items(items: list[str]) -> str:
+    return "".join(f"<li>{escape(item)}</li>" for item in items)
+
+
+def _framework_summary_cards() -> str:
+    conclusion = FULL_SURFACE_SNAPSHOT["conclusion"]
+    summaries = conclusion["framework_summaries"]
+    totals = conclusion["evaluation"]["totals"]
+    cards: list[str] = []
+    for key, label, badge in (
+        ("fastapi", "FastAPI", "최종 선택"),
+        ("flask", "Flask", "비교 대상"),
+    ):
+        item = summaries[key]
+        cards.append(
+            f'<article class="framework-card {key}">'
+            '<div class="framework-head">'
+            f'<div><span class="badge {"selected" if key == "fastapi" else ""}">{badge}</span>'
+            f'<h3>{label}</h3></div>'
+            f'<strong class="total-score">{totals[key]}<small>/100</small></strong>'
+            "</div>"
+            '<div class="result-block"><h4>실제 테스트 결과</h4>'
+            f'<ul>{_list_items(item["tested_results"])}</ul></div>'
+            '<div class="pros-cons">'
+            f'<div class="pros"><h4>장점</h4><ul>{_list_items(item["advantages"])}</ul></div>'
+            f'<div class="cons"><h4>단점</h4><ul>{_list_items(item["disadvantages"])}</ul></div>'
+            "</div>"
+            "</article>"
+        )
+    return "".join(cards)
+
+
+def _weighted_score_rows() -> str:
+    criteria = FULL_SURFACE_SNAPSHOT["conclusion"]["evaluation"]["criteria"]
+    rows: list[str] = []
+    for item in criteria:
+        fastapi_weighted = item["weight"] * item["fastapi_score"] / 5
+        flask_weighted = item["weight"] * item["flask_score"] / 5
+        rows.append(
+            "<tr>"
+            f'<td><strong>{escape(item["title"])}</strong></td>'
+            f'<td><strong>{item["weight"]}%</strong></td>'
+            f'<td class="evidence-cell">{escape(item["observed_result"])}</td>'
+            f'<td><strong>{item["fastapi_score"]}/5</strong><span class="weighted">{fastapi_weighted:g}점 반영</span></td>'
+            f'<td class="reason-cell">{escape(item["fastapi_reason"])}</td>'
+            f'<td><strong>{item["flask_score"]}/5</strong><span class="weighted">{flask_weighted:g}점 반영</span></td>'
+            f'<td class="reason-cell">{escape(item["flask_reason"])}</td>'
+            "</tr>"
+        )
+    return "".join(rows)
+
+
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def comparison_page() -> HTMLResponse:
     source = COMPARISON_SNAPSHOT["source"]
     scope = FULL_SURFACE_SNAPSHOT["scope"]
     fastapi_surface = FULL_SURFACE_SNAPSHOT["fastapi"]
     authenticated = fastapi_surface["authenticated_probe"]
+    evaluation = FULL_SURFACE_SNAPSHOT["conclusion"]["evaluation"]
+    totals = evaluation["totals"]
     status_summary = " · ".join(
         f"{status} {count}건"
         for status, count in authenticated["status_counts"].items()
@@ -260,11 +314,27 @@ def comparison_page() -> HTMLResponse:
     a.button {{ color:var(--text); text-decoration:none; border:1px solid var(--line); background:#13222e; border-radius:10px; padding:10px 14px; font-weight:700; }}
     a.button.primary {{ color:#04120f; background:var(--accent); border-color:var(--accent); }}
     .grid {{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:24px 0; }}
-    .basis-grid {{ display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin:18px 0 30px; }}
+    .framework-grid {{ display:grid; grid-template-columns:repeat(2,1fr); gap:18px; margin:18px 0 34px; }}
     .card,.table-wrap,.conclusion {{ border:1px solid var(--line); background:rgba(13,24,34,.9); border-radius:16px; padding:22px; box-shadow:0 18px 60px rgba(0,0,0,.22); }}
-    .basis-card {{ border:1px solid var(--line); background:rgba(13,24,34,.78); border-radius:14px; padding:20px; }}
-    .basis-card h3 {{ margin:12px 0 2px; font-size:15px; }}
-    .basis-card p {{ margin:0; color:#c7d5df; }}
+    .framework-card {{ border:1px solid var(--line); background:rgba(13,24,34,.82); border-radius:18px; padding:24px; }}
+    .framework-card.fastapi {{ border-color:#2d725f; box-shadow:inset 0 1px 0 rgba(103,232,199,.16); }}
+    .framework-head {{ display:flex; align-items:flex-start; justify-content:space-between; gap:20px; border-bottom:1px solid var(--line); padding-bottom:18px; }}
+    .framework-head h3 {{ margin:6px 0 0; font-size:30px; }}
+    .total-score {{ font-size:42px; line-height:1; color:var(--accent); }}
+    .framework-card.flask .total-score {{ color:var(--blue); }}
+    .total-score small {{ color:var(--muted); font-size:14px; margin-left:3px; }}
+    .framework-card h4 {{ margin:20px 0 8px; font-size:14px; letter-spacing:.04em; }}
+    .framework-card ul {{ margin:0; padding-left:20px; color:#c7d5df; }}
+    .framework-card li + li {{ margin-top:6px; }}
+    .pros-cons {{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }}
+    .pros h4 {{ color:var(--accent); }}
+    .cons h4 {{ color:#f1b4a8; }}
+    .decision-model {{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:14px 0 18px; }}
+    .score-card {{ border:1px solid var(--line); border-radius:14px; background:#0a141d; padding:18px; }}
+    .score-card strong {{ display:block; font-size:34px; margin-top:4px; }}
+    .score-card.fastapi strong {{ color:var(--accent); }}
+    .score-card.flask strong {{ color:var(--blue); }}
+    .weight-note {{ border-left:3px solid var(--accent); background:rgba(103,232,199,.06); padding:14px 16px; margin:12px 0 18px; color:#c7d5df; }}
     .card strong {{ display:block; font-size:26px; margin-top:7px; }}
     .card span {{ color:var(--muted); }}
     .live {{ display:inline-flex; align-items:center; gap:7px; font-weight:800; }}
@@ -272,24 +342,27 @@ def comparison_page() -> HTMLResponse:
     .dot.ok {{ background:#4ade80; box-shadow:0 0 0 4px rgba(74,222,128,.12); }}
     .table-wrap {{ overflow:auto; padding:0; }}
     table {{ width:100%; border-collapse:collapse; min-width:930px; }}
+    .score-table {{ min-width:1280px; }}
     th,td {{ padding:14px 16px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }}
     th {{ color:var(--muted); font-size:12px; letter-spacing:.05em; text-transform:uppercase; }}
     td:first-child {{ min-width:170px; }}
     .badge {{ display:block; width:max-content; margin-top:5px; color:var(--muted); font-size:11px; }}
     .badge.selected {{ color:var(--accent); }}
+    .evidence-cell,.reason-cell {{ white-space:normal; min-width:260px; color:#c7d5df; }}
+    .weighted {{ display:block; color:var(--muted); font-size:12px; margin-top:3px; }}
     .conclusion {{ margin-top:18px; border-color:#2d725f; background:linear-gradient(135deg,rgba(24,83,68,.45),rgba(13,24,34,.92)); }}
     .conclusion h2 {{ margin:0 0 8px; font-size:26px; }}
     pre {{ overflow:auto; padding:16px; border-radius:12px; background:#050b10; color:#c6f7ea; border:1px solid var(--line); }}
     .note {{ color:var(--muted); font-size:13px; margin-top:16px; }}
     footer {{ color:var(--muted); margin-top:34px; font-size:13px; }}
-    @media (max-width:800px) {{ .grid,.basis-grid {{ grid-template-columns:1fr; }} main {{ padding-top:30px; }} }}
+    @media (max-width:800px) {{ .grid,.framework-grid,.decision-model,.pros-cons {{ grid-template-columns:1fr; }} main {{ padding-top:30px; }} }}
   </style>
 </head>
 <body>
 <main>
   <div class="eyebrow">WEEK 1 · 프레임워크 비교</div>
   <h1>FastAPI vs Flask<br/>전체 MVP 구현 기준 비교</h1>
-  <p class="lead">초기 <code>GET /health</code> 최소 비교를 기준선으로만 남기고, 현재 Ontology Dashboard MVP의 <strong>{scope['path_count']}개 OpenAPI 경로·{scope['operation_count']}개 HTTP 작업 전체</strong>를 비교 대상으로 확장했습니다. FastAPI의 실제 업무 핸들러·요청 검증·성공 응답 Schema·런타임 응답 검증과 Flask 재구현 비용을 함께 평가했습니다.</p>
+  <p class="lead">초기 <code>GET /health</code> 최소 비교를 기준선으로만 남기고, 현재 Ontology Dashboard MVP의 <strong>{scope['path_count']}개 OpenAPI 경로·{scope['operation_count']}개 HTTP 작업 전체</strong>를 비교 대상으로 확장했습니다. FastAPI와 bare Flask의 개발 구조, 계약 자동화, 검증 안정성, 경량성을 같은 비중으로 평가했습니다.</p>
   <div class="actions">
     <a class="button primary" href="https://dashboard.oosu.dev/docs">실제 서비스 162경로 Swagger</a>
     <a class="button" href="/docs">비교 화면 Swagger</a>
@@ -297,7 +370,6 @@ def comparison_page() -> HTMLResponse:
     <a class="button" href="/flask-health">Flask /health 프록시</a>
     <a class="button" href="/full-comparison.json">162경로 전수 비교 JSON</a>
     <a class="button" href="/comparison.json">전체 비교 JSON</a>
-    <a class="button" href="https://github.com/{source['repository']}/tree/{source['branch']}">GitHub 브랜치</a>
   </div>
 
   <section class="grid">
@@ -307,18 +379,32 @@ def comparison_page() -> HTMLResponse:
     <article class="card"><span>기준선 실험</span><strong>GET /health</strong><div class="live"><i id="fast-dot" class="dot"></i><span id="fast-live">FastAPI 확인 중</span></div><div class="live"><i id="flask-dot" class="dot"></i><span id="flask-live">Flask 확인 중</span></div></article>
   </section>
 
-  <h2>FastAPI를 최종 선택한 근거</h2>
-  <section class="basis-grid">{_selection_basis_cards()}</section>
+  <h2>1. 프레임워크별 실제 테스트 결과와 장단점</h2>
+  <p class="lead">먼저 각 프레임워크에서 실제로 확인한 결과를 분리했습니다. Flask의 전체 제품 로직을 구현한 것이 아니므로, Flask 점수는 <strong>bare Flask의 기본 제공 범위와 새 제품을 구성할 때 필요한 추가 설정</strong>을 기준으로 평가했습니다.</p>
+  <section class="framework-grid">{_framework_summary_cards()}</section>
 
-  <h2>전체 162개 경로·172개 작업 비교</h2>
+  <h2>2. 어떤 요소에 더 큰 비중을 뒀는가</h2>
+  <div class="weight-note"><strong>네 항목을 동일하게 평가했습니다.</strong> 개발 완성도·API 계약 자동화·검증 안정성·경량성에 각각 {evaluation['equal_weight_per_criterion']}%를 배정했습니다. 모든 프로젝트에 FastAPI가 더 낫다는 뜻은 아니며, 이번 실험에서 확인한 기본 제공 범위와 개발 방식에 대한 비교입니다.</div>
+  <section class="decision-model">
+    <article class="score-card fastapi"><span>FastAPI 가중 합계</span><strong>{totals['fastapi']} / 100</strong><span>개발 구조·계약·검증에서 우세</span></article>
+    <article class="score-card flask"><span>Flask 가중 합계</span><strong>{totals['flask']} / 100</strong><span>최소 API 경량성에서 우세</span></article>
+  </section>
+  <section class="table-wrap">
+    <table class="score-table">
+      <thead><tr><th>평가 요소</th><th>가중치</th><th>실제 테스트 결과</th><th>FastAPI 점수</th><th>FastAPI 판단</th><th>Flask 점수</th><th>Flask 판단</th></tr></thead>
+      <tbody>{_weighted_score_rows()}</tbody>
+    </table>
+  </section>
+
+  <h2>3. 전체 162개 경로·172개 작업의 원본 수치</h2>
   <section class="table-wrap">
     <table>
-      <thead><tr><th>프레임워크</th><th>API 표면</th><th>업무 핸들러</th><th>자동 OpenAPI</th><th>요청 자동 검증</th><th>성공 응답 계약</th><th>응답 런타임 검증</th><th>전수 프로브</th><th>수동 이식</th></tr></thead>
+      <thead><tr><th>프레임워크</th><th>API 표면</th><th>업무 핸들러</th><th>자동 OpenAPI</th><th>요청 자동 검증</th><th>성공 응답 계약</th><th>응답 런타임 검증</th><th>전수 프로브</th><th>추가 업무 구성</th></tr></thead>
       <tbody>{_full_surface_rows()}</tbody>
     </table>
   </section>
 
-  <h2>동일 `/health` 기준선 마이크로 비교</h2>
+  <h2>4. 참고: 동일 `/health` 최소 응답 비교</h2>
   <section class="table-wrap">
     <table>
       <thead><tr><th>프레임워크</th><th>HTTP</th><th>응답 일치</th><th>OpenAPI</th><th>응답 Schema</th><th>코드 줄 수</th><th>p50*</th><th>p95*</th><th>점수</th></tr></thead>
@@ -330,6 +416,8 @@ def comparison_page() -> HTMLResponse:
     <div class="eyebrow">최종 선정</div>
     <h2>최종 선택: FastAPI</h2>
     <p>{escape(FULL_SURFACE_SNAPSHOT['conclusion']['reason'])}</p>
+    <p><strong>Flask가 우세한 부분:</strong> 단순 endpoint의 가벼움과 로컬 인프로세스 응답 속도입니다.</p>
+    <p><strong>FastAPI가 우세한 부분:</strong> 큰 API의 구조화, 코드와 Swagger가 공유하는 계약 자동화, 요청·응답 오류를 조기에 발견하는 검증 안정성입니다. 네 항목의 가중치는 모두 동일합니다.</p>
     <p class="note">{escape(FULL_SURFACE_SNAPSHOT['conclusion']['limitation'])} <code>/health</code> 지연시간은 로컬 인프로세스 참고값이며 최종 선정 점수에 사용하지 않았습니다.</p>
   </section>
 

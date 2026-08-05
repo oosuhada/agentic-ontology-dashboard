@@ -48,8 +48,16 @@ def test_public_comparison_page_and_json_are_available() -> None:
     assert page.status_code == 200
     assert "FastAPI vs Flask" in page.text
     assert "162개 OpenAPI 경로" in page.text
-    assert "FastAPI를 최종 선택한 근거" in page.text
-    assert "172개 실제 업무 핸들러" in page.text
+    assert "프레임워크별 실제 테스트 결과와 장단점" in page.text
+    assert "어떤 요소에 더 큰 비중을 뒀는가" in page.text
+    assert "개발 완성도와 구현 생산성" in page.text
+    assert "최소 API 경량성과 단순 응답 속도" in page.text
+    assert "FastAPI 가중 합계" in page.text
+    assert "85 / 100" in page.text
+    assert "Flask 가중 합계" in page.text
+    assert "60 / 100" in page.text
+    assert "GitHub 브랜치" not in page.text
+    assert "실제 업무 핸들러 172개 실행" in page.text
     assert "JSON 168" in page.text
     assert "최종 선택: FastAPI" in page.text
     assert "The selection now covers" not in page.text
@@ -61,3 +69,7 @@ def test_public_comparison_page_and_json_are_available() -> None:
     assert full_report.json()["fastapi"]["automatic_response_schema_operation_count"] == 168
     assert full_report.json()["fastapi"]["success_contract_operation_count"] == 172
     assert full_report.json()["conclusion"]["selection_basis"]
+    evaluation = full_report.json()["conclusion"]["evaluation"]
+    assert evaluation["totals"] == {"fastapi": 85, "flask": 60}
+    assert evaluation["equal_weight_per_criterion"] == 25
+    assert len(evaluation["criteria"]) == 4

@@ -308,6 +308,84 @@ def build_full_surface_report() -> dict[str, Any]:
     unauthenticated_probe = probe_fastapi_surface(authenticated=False)
     authenticated_probe = probe_fastapi_surface(authenticated=True)
     operation_count = summary["operation_count"]
+    request_validation_count = sum(
+        bool(
+            operation["has_request_body"]
+            or operation["path_parameter_count"]
+            or operation["query_parameter_count"]
+        )
+        for operation in summary["operations"]
+    )
+    evaluation_criteria = [
+        {
+            "id": "development_productivity",
+            "title": "개발 완성도와 구현 생산성",
+            "weight": 25,
+            "fastapi_score": 5,
+            "flask_score": 3,
+            "observed_result": (
+                f"FastAPI에서는 typed router·Pydantic·의존성 주입 구조로 {operation_count}개 "
+                "HTTP 작업을 구성하고 테스트했습니다. Flask는 최소 /health와 "
+                f"{flask_probe['registered_operation_count']}개 라우트 미러를 더 간단하게 "
+                "구성했지만, 전체 업무 모듈 구조는 이번 실험에서 구현하지 않았습니다."
+            ),
+            "fastapi_reason": "타입·검증·문서 구조가 함께 제공되어 큰 API를 일관된 방식으로 확장하기 쉬웠습니다.",
+            "flask_reason": "시작은 단순하고 자유롭지만 큰 API에서는 확장 도구와 프로젝트 규칙을 별도로 조합해야 합니다.",
+        },
+        {
+            "id": "contract_automation",
+            "title": "API 계약과 문서 자동화",
+            "weight": 25,
+            "fastapi_score": 5,
+            "flask_score": 2,
+            "observed_result": (
+                f"FastAPI는 OpenAPI {operation_count}개, JSON 성공 응답 Schema "
+                f"{summary['json_success_schema_operation_count']}개, binary·SSE 계약 "
+                f"{summary['non_json_success_schema_operation_count']}개, no-content 계약 "
+                f"{summary['no_content_success_operation_count']}개를 생성했습니다. "
+                "bare Flask 자동 생성 결과는 0개입니다."
+            ),
+            "fastapi_reason": "라우터 코드와 Swagger 문서가 같은 계약을 사용해 변경 누락 위험이 작습니다.",
+            "flask_reason": "확장 라이브러리를 사용하면 구현할 수 있지만 bare Flask 기본 구성에는 포함되지 않습니다.",
+        },
+        {
+            "id": "validation_safety",
+            "title": "요청·응답 검증과 오류 안전성",
+            "weight": 25,
+            "fastapi_score": 5,
+            "flask_score": 2,
+            "observed_result": (
+                f"FastAPI는 요청 검증 대상 {request_validation_count}개와 JSON 응답 런타임 검증 "
+                f"{summary['json_success_schema_operation_count']}개를 적용했고, 인증 전수 프로브에서 "
+                f"처리되지 않은 5xx는 {authenticated_probe['unhandled_server_error_count']}건이었습니다. "
+                "Flask 미러는 라우팅만 검증했습니다."
+            ),
+            "fastapi_reason": "잘못된 입력과 구현·응답 계약 불일치를 실행 중에 바로 탐지합니다.",
+            "flask_reason": "라우트 등록은 정상이나 업무 응답 검증은 구현하지 않아 동일 수준을 확인할 수 없습니다.",
+        },
+        {
+            "id": "minimal_lightness",
+            "title": "최소 API 경량성과 단순 응답 속도",
+            "weight": 25,
+            "fastapi_score": 2,
+            "flask_score": 5,
+            "observed_result": (
+                "동일 GET /health 인프로세스 측정에서 FastAPI p50 0.7603ms·p95 1.7285ms, "
+                "Flask p50 0.0766ms·p95 0.1235ms였습니다."
+            ),
+            "fastapi_reason": "Pydantic 검증과 프레임워크 기능 때문에 최소 응답 오버헤드가 더 컸습니다.",
+            "flask_reason": "단순 라우팅과 작은 응답에서는 더 가볍고 빨랐습니다.",
+        },
+    ]
+
+    def weighted_total(framework: str) -> int:
+        score_key = f"{framework}_score"
+        return round(
+            sum(item["weight"] * item[score_key] / 5 for item in evaluation_criteria)
+        )
+
+    fastapi_total = weighted_total("fastapi")
+    flask_total = weighted_total("flask")
     return {
         "scope": {
             "application": "Ontology Dashboard MVP",
@@ -318,14 +396,7 @@ def build_full_surface_report() -> dict[str, Any]:
         "fastapi": {
             "real_business_application": True,
             "automatic_openapi_operation_count": operation_count,
-            "automatic_request_validation_operation_count": sum(
-                bool(
-                    operation["has_request_body"]
-                    or operation["path_parameter_count"]
-                    or operation["query_parameter_count"]
-                )
-                for operation in summary["operations"]
-            ),
+            "automatic_request_validation_operation_count": request_validation_count,
             "automatic_response_schema_operation_count": summary[
                 "json_success_schema_operation_count"
             ],
@@ -351,23 +422,23 @@ def build_full_surface_report() -> dict[str, Any]:
             "real_business_application": False,
             "comparison_mode": "자동 생성 bare Flask 라우트 미러",
             **flask_probe,
-            "manual_port_required_operation_count": operation_count,
+            "manual_business_setup_operation_count": operation_count,
         },
         "schema_summary": summary,
         "conclusion": {
             "selected_framework": "FastAPI",
             "reason": (
-                "현재 MVP 전체 162개 경로·172개 HTTP 작업을 기준으로 FastAPI를 "
-                "선택했습니다. FastAPI에는 172개 실제 업무 핸들러가 이미 구현되어 "
-                "있고, 168개 JSON 성공 응답 Schema와 binary·SSE 계약 2개, "
-                "no-content 계약 2개가 같은 코드에서 문서화·런타임 검증됩니다. "
-                "반면 bare Flask는 경로만 복제했으며 업무 핸들러 172개와 요청·응답 "
-                "검증 및 문서 계약을 별도로 다시 구현해야 합니다."
+                f"개발 완성도·계약 자동화·검증 안정성·경량성 네 항목을 각각 25%로 "
+                f"동일하게 평가했습니다. Flask는 단순 /health 속도와 가벼운 시작에서 "
+                f"우세했지만, FastAPI는 큰 API를 구조화하고 계약·검증을 자동화하는 항목에서 "
+                f"앞서 FastAPI {fastapi_total}점, Flask {flask_total}점으로 FastAPI를 선택했습니다. "
+                "이번 결론은 기존 코드를 옮기는 비용이 아니라 새 제품을 구축할 때의 개발 방식과 "
+                "기본 제공 기능을 기준으로 한 판단입니다."
             ),
             "limitation": (
-                "Flask 결과는 라우팅 가능성과 이식 비용을 확인하기 위한 미러이며, "
-                "Ontology Dashboard 전체 업무 로직이 Flask에도 구현됐다는 의미가 "
-                "아닙니다."
+                "Flask 결과는 bare Flask의 기본 제공 범위와 라우팅 가능성을 확인한 "
+                "실험입니다. Flask로 동일한 전체 업무 애플리케이션을 별도로 구현하지 "
+                "않았으므로 제품 수준 성능과 유지보수성까지 완전 대칭 비교한 결과는 아닙니다."
             ),
             "selection_basis": [
                 {
@@ -398,6 +469,59 @@ def build_full_surface_report() -> dict[str, Any]:
                     "flask": "단일 응답이 더 가벼워도 전체 제품 선정 근거로 사용하지 않음",
                 },
             ],
+            "evaluation": {
+                "scale": "각 항목 5점 만점, 가중 합계 100점",
+                "weights_are_project_specific": True,
+                "equal_weight_per_criterion": 25,
+                "criteria": evaluation_criteria,
+                "totals": {
+                    "fastapi": fastapi_total,
+                    "flask": flask_total,
+                },
+                "decision_rule": (
+                    "네 평가 요소를 동일한 비중으로 계산했습니다. 단순 endpoint 속도에서 "
+                    "Flask가 얻은 우위를 그대로 반영하되, 대규모 API 구조화·계약 자동화·검증 "
+                    "기능도 같은 비중으로 평가했습니다."
+                ),
+            },
+            "framework_summaries": {
+                "fastapi": {
+                    "tested_results": [
+                        f"실제 업무 핸들러 {operation_count}개 실행",
+                        f"OpenAPI {operation_count}개 자동 생성",
+                        f"요청 검증 대상 {request_validation_count}개",
+                        f"JSON 응답 런타임 검증 {summary['json_success_schema_operation_count']}개",
+                        f"인증 전수 프로브 처리되지 않은 5xx {authenticated_probe['unhandled_server_error_count']}건",
+                        "GET /health p50 0.7603ms · p95 1.7285ms",
+                    ],
+                    "advantages": [
+                        "typed router·의존성 주입·Pydantic을 이용해 큰 API 구조를 일관되게 구성할 수 있습니다.",
+                        "코드·검증·Swagger 문서가 하나의 계약을 공유합니다.",
+                        "잘못된 입력과 응답 계약 불일치를 런타임에서 탐지합니다.",
+                    ],
+                    "disadvantages": [
+                        "단순 /health 응답에서는 Flask보다 오버헤드가 컸습니다.",
+                        "Pydantic 모델과 타입 계약을 지속적으로 관리해야 합니다.",
+                    ],
+                },
+                "flask": {
+                    "tested_results": [
+                        f"라우트 미러 {flask_probe['registered_operation_count']}개 등록 성공",
+                        "실제 업무 핸들러 0개",
+                        "기본 구성 자동 OpenAPI·요청 검증·응답 Schema 0개",
+                        "GET /health p50 0.0766ms · p95 0.1235ms",
+                    ],
+                    "advantages": [
+                        "단순 endpoint 구현이 작고 최소 응답이 더 빨랐습니다.",
+                        "필요한 기능만 선택해 붙이는 유연성이 있습니다.",
+                    ],
+                    "disadvantages": [
+                        "큰 API에서는 프로젝트 구조와 확장 도구 조합을 별도로 설계해야 합니다.",
+                        "OpenAPI·Schema·요청 및 응답 검증은 기본 제공되지 않아 별도 구성이 필요합니다.",
+                        "이번 실험에서는 Flask 전체 업무 애플리케이션을 구현하지 않아 제품 수준 동작은 직접 비교하지 못했습니다.",
+                    ],
+                },
+            },
         },
     }
 

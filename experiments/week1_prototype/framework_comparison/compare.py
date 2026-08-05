@@ -230,7 +230,7 @@ def render_markdown(report: dict) -> str:
                 f"- FastAPI no-content 성공 응답 계약: {fastapi['no_content_contract_operation_count']}개 작업",
                 f"- Flask 라우트 미러: {flask['registered_operation_count']}개 작업",
                 f"- Flask 실제 업무 핸들러: {flask['business_handler_operation_count']}개",
-                f"- Flask 수동 이식 필요: {flask['manual_port_required_operation_count']}개 작업",
+                f"- Flask 추가 업무 구성 대상: {flask['manual_business_setup_operation_count']}개 작업",
                 "",
                 full_surface["conclusion"]["limitation"],
             ]

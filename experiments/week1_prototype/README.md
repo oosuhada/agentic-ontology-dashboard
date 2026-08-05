@@ -7,7 +7,7 @@
    차트로 렌더링한다.
 2. FastAPI와 Flask에 동일한 `GET /health` 계약을 구현한 기준선 실험과 함께,
    현재 Ontology Dashboard MVP의 전체 OpenAPI 표면을 수집해 162개 경로·172개
-   HTTP 작업의 계약·검증·이식 비용을 비교한다.
+   HTTP 작업의 개발 구조·계약 자동화·검증 안정성·경량성을 비교한다.
 
 ## 디렉터리 구성
 
@@ -82,10 +82,30 @@ https://fastapi-flask.oosu.dev
 - 명시적 no-content 성공 계약: 2개 작업
 - 전체 성공 응답 계약: 172개 작업
 - Flask route mirror: 172개 작업 등록
-- Flask 실제 business handler: 0개 — 전체 이식 시 172개를 별도 구현해야 함
+- Flask 실제 business handler: 0개 — 이번 실험에서는 전체 업무 애플리케이션을 구현하지 않음
 
-Flask route mirror는 라우팅 가능성과 수동 이식량을 측정하기 위한 비교 계층이며,
-Ontology Dashboard의 business logic이 Flask로도 구현됐다고 주장하지 않는다.
+Flask route mirror는 bare Flask의 기본 제공 범위와 라우팅 가능성을 확인하기 위한
+비교 계층이며, Ontology Dashboard의 전체 business logic이 Flask에도 구현됐다고
+주장하지 않는다.
+
+### 가중 평가 결과
+
+이번 평가는 모든 프로젝트에 적용되는 보편 점수가 아니라 현재 MVP의 우선순위를
+반영한 의사결정 점수다.
+
+| 평가 요소 | 가중치 | FastAPI | Flask |
+|---|---:|---:|---:|
+| 개발 완성도와 구현 생산성 | 25% | 5/5 | 3/5 |
+| API 계약과 문서 자동화 | 25% | 5/5 | 2/5 |
+| 요청·응답 검증과 오류 안전성 | 25% | 5/5 | 2/5 |
+| 최소 API 경량성과 단순 응답 속도 | 25% | 2/5 | 5/5 |
+| **가중 합계** | **100%** | **85점** | **60점** |
+
+Flask는 동일 `/health` 최소 응답에서 더 빠르고 가벼웠다. 이 장점을 숨기지 않고
+경량성 항목에서 5점을 부여했다. 네 항목은 각각 25%로 동일하게 계산했고,
+FastAPI는 큰 API 구조화·계약 자동화·검증 안정성에서 앞서 최종 선택됐다.
+이 결론은 기존 코드를 옮기는 비용이 아니라 새 제품을 구축할 때의 개발 방식과
+기본 제공 기능을 기준으로 한 판단이다.
 
 ```bash
 bash experiments/week1_prototype/run_framework_comparison.sh
@@ -117,6 +137,7 @@ bash experiments/week1_prototype/run_full_surface_comparison.sh
 - binary·SSE 2개와 no-content 2개를 JSON과 분리해 문서화
 - bare Flask에 172개 route mirror를 생성해 route 등록 parity 검증
 - FastAPI 자동 계약과 Flask 수동 port 필요량 비교
+- 프레임워크별 테스트 결과·장점·단점과 5점 척도 가중 평가
 
 공개 JSON:
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from ontology_dashboard.main import app as product_app
 
 from framework_comparison.full_surface import (
+    build_full_surface_report,
     build_flask_contract_mirror,
     collect_operations,
     operation_keys,
@@ -64,4 +65,18 @@ def test_every_fastapi_operation_is_probed_with_authenticated_admin() -> None:
     # PostgreSQL-only predictive-maintenance runtime routes are expected to
     # report explicit unavailability in the isolated SQLite probe.
     assert report["expected_503_count"] == 10
+
+
+def test_weighted_selection_keeps_flask_lightness_advantage_visible() -> None:
+    report = build_full_surface_report()
+    evaluation = report["conclusion"]["evaluation"]
+    by_id = {item["id"]: item for item in evaluation["criteria"]}
+
+    assert evaluation["totals"] == {"fastapi": 85, "flask": 60}
+    assert by_id["minimal_lightness"]["flask_score"] == 5
+    assert by_id["minimal_lightness"]["fastapi_score"] == 2
+    assert by_id["development_productivity"]["weight"] == 25
+    assert by_id["development_productivity"]["flask_score"] == 3
+    assert report["conclusion"]["framework_summaries"]["fastapi"]["disadvantages"]
+    assert report["conclusion"]["framework_summaries"]["flask"]["advantages"]
 
