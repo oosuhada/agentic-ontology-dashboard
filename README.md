@@ -4,11 +4,11 @@
 
 > **팀 공유·온보딩 시작점:** [`docs/00-team-onboarding/README.md`](./docs/00-team-onboarding/README.md)
 >
-> Story 데스크톱·모바일 + 기능 캡처 15장: [`docs/00-team-onboarding/02-feature-tour.md`](./docs/00-team-onboarding/02-feature-tour.md)
+> 최신 전체 프로젝트 화면 투어: [`docs/00-team-onboarding/10-adaptive-modeling-release-tour.md`](./docs/00-team-onboarding/10-adaptive-modeling-release-tour.md)
 >
-> 브라우저 인터랙티브 Story: `http://127.0.0.1:3100/team-share`
-> V3.1 + Adaptive Modeling 비교 Story: `http://127.0.0.1:3100/team-share-adaptive`
+> 최신 통합 인터랙티브 Story: `http://127.0.0.1:3100/team-share-adaptive`
 > 독립 HTML 공유본: `http://127.0.0.1:3100/team-share-adaptive.html`
+> 2026-08-04 이전 Story 기록: `http://127.0.0.1:3100/team-share`
 >
 > 전체 문서 지도: [`docs/README.md`](./docs/README.md)
 

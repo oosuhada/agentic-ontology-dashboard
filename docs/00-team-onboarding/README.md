@@ -4,24 +4,25 @@
 
 ## 브라우저에서 시각적으로 보기
 
-로컬 서버가 실행 중이면 다음 공개 route를 먼저 연다.
-
-```text
-http://127.0.0.1:3100/team-share
-```
-
-이 화면은 로그인 없이 User Flow, 역할별 화면, Dataset 적응형 구성, Analysis·Ontology와 구현 상태를 클릭하며 볼 수 있는 HTML Story다.
-
-![Team share story](./assets/screenshots/00-team-share-story.png)
-
-Predictive Maintenance V3.1과 Adaptive Modeling까지 포함한 최신 비교 자료는 기존 Story를 덮어쓰지 않고 별도 route로 제공한다.
+로컬 서버가 실행 중이면 최신 통합 공개 route를 먼저 연다.
 
 ```text
 http://127.0.0.1:3100/team-share-adaptive
 https://dashboard.oosu.dev/team-share-adaptive
 ```
 
-상세 화면 설명: [`10-adaptive-modeling-release-tour.md`](./10-adaptive-modeling-release-tour.md)
+이 화면은 로그인 없이 기존 선행 프로토타입 전체와 Predictive Maintenance V3.1·Adaptive Modeling 업그레이드를 한 페이지에서 볼 수 있는 최신 HTML Story다.
+
+![Latest complete team share story](../../web/public/team-share-adaptive-assets/00-team-share-adaptive-story.png)
+
+2026-08-04 시점의 이전 Story는 비교와 기록 목적으로 그대로 유지한다.
+
+```text
+http://127.0.0.1:3100/team-share
+https://dashboard.oosu.dev/team-share
+```
+
+최신 통합 상세 화면 설명: [`10-adaptive-modeling-release-tour.md`](./10-adaptive-modeling-release-tour.md)
 
 ## 프로젝트 한 문장
 
@@ -31,12 +32,12 @@ Ontology Dashboard는 **Dataset → Ontology Object → Analysis → Report/Dash
 
 ## 5분 읽기 순서
 
-1. [`01-product-overview.md`](./01-product-overview.md) — 왜 만들었고 무엇이 핵심인가
-2. [`02-feature-tour.md`](./02-feature-tour.md) — Story 데스크톱·모바일과 렌더 완료를 검증한 기능 캡처 15장
+1. [`10-adaptive-modeling-release-tour.md`](./10-adaptive-modeling-release-tour.md) — 기존 기능과 V3.1·Adaptive Modeling을 합친 최신 전체 화면 투어
+2. [`01-product-overview.md`](./01-product-overview.md) — 왜 만들었고 무엇이 핵심인가
 3. [`03-user-flow.md`](./03-user-flow.md) — 가입부터 역할별 업무와 개인화까지
 4. [`06-implementation-status.md`](./06-implementation-status.md) — API·DB 연결과 프로토타입 경계
-5. [`09-verification-report.md`](./09-verification-report.md) — Story·문서 구조 재검증 결과
-6. [`10-adaptive-modeling-release-tour.md`](./10-adaptive-modeling-release-tour.md) — V3.1 runtime, replay, ML Validator와 release governance
+5. [`02-feature-tour.md`](./02-feature-tour.md) — 2026-08-04 시점 기능 캡처 기록
+6. [`09-verification-report.md`](./09-verification-report.md) — 이전 Story·문서 구조 검증 결과
 
 ## 직접 실행할 때
 
@@ -75,8 +76,8 @@ Dataset schema, 시간·수치·범주·관계·문서 신호와 projection 상�
 ## 현재 기준 버전
 
 ```text
-Branch  prototype/ontology-dashboard-prebuild
-Tag     team-share-capture-integrity-20260804
+Branch  feature/predictive-maintenance-adaptive-modeling
+Tag     team-share-adaptive-complete-integrity-20260805
 Web     http://127.0.0.1:3100/
 API     http://127.0.0.1:8100/
 ```

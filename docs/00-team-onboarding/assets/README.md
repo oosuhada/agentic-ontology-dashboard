@@ -25,10 +25,12 @@ Story 자산:
 - `00-team-share-story.png`: 데스크톱 전체 페이지
 - `00-team-share-story-mobile.png`: 390×844 모바일 전체 페이지
 
-## V3.1 + Adaptive Modeling 별도 비교 자료
+## 최신 전체 프로젝트 Story
 
 - 기존 `/team-share`와 기존 캡처는 변경하지 않는다.
-- 새 인터랙티브 경로: `/team-share-adaptive`
-- 새 독립 HTML: `/team-share-adaptive.html`
-- 새 자산 폴더: `web/public/team-share-adaptive-assets/`
+- 최신 인터랙티브 경로: `/team-share-adaptive`
+- 최신 독립 HTML: `/team-share-adaptive.html`
+- 최신 자산 폴더: `web/public/team-share-adaptive-assets/`
+- 최신 Story는 기존 기능 11장과 V3.1·Adaptive Modeling 기능 5장을 합친 완결형 프로젝트 투어다.
+- 최신 검증 태그: `team-share-adaptive-complete-integrity-20260805`
 - 캡처는 loader, skeleton, refreshing, `aria-busy=true`, 미완성 image/font 상태가 모두 사라진 뒤 생성한다.
