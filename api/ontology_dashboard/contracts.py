@@ -87,6 +87,7 @@ class UILayout(StrictModel):
     layout_id: str
     event_id: str
     role: Role
+    locale: AppLocale = "ko-KR"
     intent: Intent
     mode: Literal["deterministic", "llm", "deterministic_fallback"]
     blocks: list[UIBlock]

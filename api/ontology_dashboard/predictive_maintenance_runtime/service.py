@@ -1144,6 +1144,7 @@ class PredictiveMaintenanceRuntimeService:
             "layout_id": f"pm-layout:{event_id}:{role}:{intent}:{locale}",
             "event_id": event_id,
             "role": role,
+            "locale": locale,
             "intent": intent,
             "mode": "dataset_version_aware_server_adapter",
             "blocks": [

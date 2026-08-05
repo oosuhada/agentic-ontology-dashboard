@@ -186,6 +186,7 @@ class ManufacturingPredictiveMaintenanceService:
             report,
             request.role,
             request.intent,
+            locale=request.locale,
             use_llm=request.use_llm,
             provider_available=fixture["runtime"]["planner_available"],
         )
@@ -227,6 +228,7 @@ class ManufacturingPredictiveMaintenanceService:
             report,
             request.role,
             intent,
+            locale=request.locale,
             use_llm=False,
             provider_available=False,
         )

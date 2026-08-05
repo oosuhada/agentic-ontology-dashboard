@@ -76,6 +76,24 @@ FEATURE_LABELS_EN = {
 }
 
 
+
+def _equipment_name(value: str, locale: AppLocale) -> str:
+    if locale == "ko-KR":
+        return value
+    replacements = {
+        "절삭 설비": "Cutting Machine",
+        "성형 설비": "Forming Machine",
+        "프레스 설비": "Press Machine",
+        "복합 가공 설비": "Multi-process Machine",
+        "조립 설비": "Assembly Machine",
+        "검사 설비": "Inspection Machine",
+    }
+    translated = value
+    for source, target in replacements.items():
+        translated = translated.replace(source, target)
+    return translated
+
+
 def _probability_text(evidence: dict[str, Any], locale: AppLocale) -> str:
     value = evidence["failure_probability"]
     if value is None:
@@ -159,6 +177,7 @@ def render_report(
     mode: str = "deterministic",
 ) -> GroundedReport:
     equipment = evidence["equipment"]
+    equipment_name = _equipment_name(str(equipment["display_name"]), locale)
     status = evidence["status"]
     status_label = STATUS_LABELS[locale][status]
     decision_label = DECISION_LABELS[locale][evidence["recommended_decision"]]
@@ -186,12 +205,12 @@ def render_report(
     if status == "data_quality_hold":
         warnings = _data_quality_text(evidence, locale)
         if locale == "ko-KR":
-            headline = f"{equipment['display_name']} 데이터 확인이 필요합니다"
+            headline = f"{equipment_name} 데이터 확인이 필요합니다"
             summary = f"센서 데이터 품질 문제로 고장 위험을 판단하지 않았습니다. {warnings}"
             section_titles = ("판단 보류 사유", "권장 결정")
             limitations.append("유효한 센서 값으로 다시 검증하기 전 정상 또는 고장으로 단정할 수 없습니다.")
         else:
-            headline = f"{equipment['display_name']} requires a data-quality review"
+            headline = f"{equipment_name} requires a data-quality review"
             summary = f"Failure risk was not assessed because the sensor data did not pass validation. {warnings}"
             section_titles = ("Reason for holding the decision", "Recommended decision")
             limitations.append("The asset must not be classified as normal or failed until valid sensor values are verified.")
@@ -211,7 +230,7 @@ def render_report(
         ]
     elif role == "manager":
         if locale == "ko-KR":
-            headline = f"{equipment['display_name']} · {status_label} · {decision_label}"
+            headline = f"{equipment_name} · {status_label} · {decision_label}"
             summary = (
                 f"고장 위험도는 {_probability_text(evidence, locale)}이며 {failure_label}이 추정됩니다. "
                 f"예상 정지 영향은 {equipment['estimated_downtime_minutes']}분입니다. "
@@ -231,7 +250,7 @@ def render_report(
                 ReportSection(section_id="manager-evidence", title="핵심 근거", body=factor_text or "현재 위험을 뒷받침하는 유효한 요인이 없습니다.", evidence_field_ids=factor_ids[:3]),
             ]
         else:
-            headline = f"{equipment['display_name']} · {status_label} · {decision_label}"
+            headline = f"{equipment_name} · {status_label} · {decision_label}"
             summary = (
                 f"The estimated failure risk is {_probability_text(evidence, locale)}, with {failure_label.lower()}. "
                 f"The estimated downtime exposure is {equipment['estimated_downtime_minutes']} minutes. "
@@ -253,7 +272,7 @@ def render_report(
     else:
         interval = evidence["detected_interval"]
         if locale == "ko-KR":
-            headline = f"{equipment['display_name']} 근거 분석 · {status_label}"
+            headline = f"{equipment_name} 근거 분석 · {status_label}"
             summary = (
                 f"{interval['start']}부터 {interval['end']}까지의 관측에서 {failure_label}이 추정됐습니다. "
                 f"고장 위험도는 {_probability_text(evidence, locale)}, 신뢰도는 {evidence['confidence']}입니다."
@@ -266,7 +285,7 @@ def render_report(
                 ReportSection(section_id="engineer-manager-summary", title="매니저 보고용 요약", body=f"{status_label} 상태로 분류됐으며 권장 결정은 '{decision_label}'입니다. 현장 점검으로 원인을 확인해야 합니다.", evidence_field_ids=["status", "recommended_decision"]),
             ]
         else:
-            headline = f"{equipment['display_name']} evidence analysis · {status_label}"
+            headline = f"{equipment_name} evidence analysis · {status_label}"
             summary = (
                 f"Observations from {interval['start']} to {interval['end']} indicate {failure_label.lower()}. "
                 f"The estimated failure risk is {_probability_text(evidence, locale)} with {evidence['confidence']} confidence."
