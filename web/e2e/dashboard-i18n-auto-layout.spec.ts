@@ -78,4 +78,16 @@ test("locale switch updates the dashboard chrome and content-aware AI layout can
     return overlaps;
   });
   expect(overlapCount).toBe(0);
+
+  const restoreStatus = await page.evaluate(async () => {
+    const csrf = document.cookie.split(";").map((item) => item.trim()).find((item) => item.startsWith("ontology_csrf="))?.split("=").slice(1).join("=") ?? "";
+    const response = await fetch("/api/dashboards/preferences/restore", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": decodeURIComponent(csrf) },
+      body: JSON.stringify({ workspace_id: "manufacturing-demo" }),
+    });
+    return response.status;
+  });
+  expect(restoreStatus).toBe(200);
 });
