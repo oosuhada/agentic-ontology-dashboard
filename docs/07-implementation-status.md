@@ -73,10 +73,11 @@ The Azure and MetroPT fixtures prove multi-project abstraction and user flow. Th
 
 ### Remaining local architecture debt
 
-- import graph inventory and the foundation/identity compatibility slice are complete
+- import graph inventory plus the foundation/identity and Dashboard compatibility slices are complete
 - `context`, `contracts`, `security`, identity models/repository/service, audit repository, and the manufacturing demo service now load physically from `api/ontology_dashboard/`
+- Dashboard models, catalog, repository, and service now load physically from `api/ontology_dashboard/`; catalog and repository class identity are guarded by executable architecture tests
 - matching legacy files are thin re-export shims guarded by executable architecture tests
-- Dashboard, Analysis, Export/Workflow, and the remaining Ontology compatibility slices still depend on the temporary `ontology_dashboard.__path__` extension
+- Analysis, Export/Workflow, and the remaining Ontology compatibility slices still depend on the temporary `ontology_dashboard.__path__` extension
 - the namespace path extension is removed only after all remaining service/model/repository modules are relocated and package/runtime verification passes
 
 ### Externally blocked backend work

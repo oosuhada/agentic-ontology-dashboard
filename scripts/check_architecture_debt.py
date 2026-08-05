@@ -60,6 +60,12 @@ def collect_architecture_debt(root: Path) -> list[DebtItem]:
         "repository",
         "service",
     )
+    dashboard_modules = (
+        "dashboard_models",
+        "dashboard_catalog",
+        "dashboard_repository",
+        "dashboard_service",
+    )
 
     legacy_path_extension = _contains(canonical_init, "__path__.append")
     canonical_root_present = canonical_composition_root.exists() and _contains(canonical_composition_root, "app = create_app()")
@@ -103,6 +109,14 @@ def collect_architecture_debt(root: Path) -> list[DebtItem]:
         )
         for module in foundation_modules
     )
+    dashboard_relocated = all(
+        (root / "api" / "ontology_dashboard" / f"{module}.py").exists()
+        and _is_thin_reexport(
+            root / "api" / "factory_signal_board" / f"{module}.py",
+            f"ontology_dashboard.{module}",
+        )
+        for module in dashboard_modules
+    )
 
     return [
         DebtItem(
@@ -139,6 +153,13 @@ def collect_architecture_debt(root: Path) -> list[DebtItem]:
             stage=55,
             evidence="canonical foundation/identity modules with compatibility-only legacy re-exports",
             action="Keep context, contracts, security, identity, audit repository and demo service implementations physically canonical.",
+        ),
+        DebtItem(
+            id="dashboard_physical_relocation",
+            state="resolved" if dashboard_relocated else "regression",
+            stage=55,
+            evidence="canonical Dashboard models, catalog, repository and service with compatibility-only legacy re-exports",
+            action="Keep Dashboard contracts, catalog constants, repository cache and service implementation physically canonical.",
         ),
         DebtItem(
             id="legacy_namespace_path_extension",
