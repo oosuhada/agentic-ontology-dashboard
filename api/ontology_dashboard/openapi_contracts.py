@@ -16,6 +16,7 @@ from __future__ import annotations
 import ast
 import inspect
 import textwrap
+from copy import deepcopy
 from datetime import datetime
 from typing import Any, Generic, TypeVar, get_type_hints
 
@@ -82,29 +83,30 @@ class ItemsResponse(ContractModel, Generic[T]):
     items: list[T]
 
 
+PROJECT_LIST_EXAMPLE = {
+    "items": [
+        {
+            "id": "manufacturing-demo-project",
+            "organization_id": "org-ontology-demo",
+            "slug": "manufacturing-demo-project",
+            "display_name": "Manufacturing Demo Project",
+            "description": "Predictive-maintenance ontology dashboard demo",
+            "domain_pack_code": "manufacturing-predictive-maintenance",
+            "status": "active",
+            "default_workspace_id": "manufacturing-demo",
+            "created_at": "2026-08-05T00:00:00Z",
+            "updated_at": "2026-08-05T00:00:00Z",
+        }
+    ]
+}
+
+
 class ProjectListResponse(ContractModel):
     items: list[Project]
 
     model_config = ConfigDict(
         extra="forbid",
-        json_schema_extra={
-            "example": {
-                "items": [
-                    {
-                        "id": "manufacturing-demo-project",
-                        "organization_id": "org-ontology-demo",
-                        "slug": "manufacturing-demo-project",
-                        "display_name": "Manufacturing Demo Project",
-                        "description": "Predictive-maintenance ontology dashboard demo",
-                        "domain_pack_code": "manufacturing-predictive-maintenance",
-                        "status": "active",
-                        "default_workspace_id": "manufacturing-demo",
-                        "created_at": "2026-08-05T00:00:00Z",
-                        "updated_at": "2026-08-05T00:00:00Z",
-                    }
-                ]
-            }
-        },
+        json_schema_extra={"example": PROJECT_LIST_EXAMPLE},
     )
 
 
@@ -613,6 +615,11 @@ _EXPLICIT_MODELS: dict[str, Any] = {
 }
 
 
+_EXPLICIT_MEDIA_EXAMPLES: dict[str, dict[str, Any]] = {
+    "ontology_dashboard.routers.projects.list_projects": PROJECT_LIST_EXAMPLE,
+}
+
+
 _NO_CONTENT_ENDPOINTS = {
     "ontology_dashboard.routers.auth.logout",
     "ontology_dashboard.routers.dashboards.delete_dashboard_saved_view",
@@ -804,7 +811,19 @@ def apply_response_contracts(router: APIRouter) -> None:
                 f"missing response contract for {next(iter(route.methods or []), '?')} {route.path} "
                 f"({_qname(route.endpoint)})"
             )
-        rebuilt.append(_clone_route(route, response_model=model))
+        responses = route.responses
+        media_example = _EXPLICIT_MEDIA_EXAMPLES.get(endpoint_name)
+        if media_example is not None:
+            responses = deepcopy(route.responses)
+            success = responses.setdefault(
+                route.status_code or 200,
+                {"description": "Successful Response"},
+            )
+            content = success.setdefault("content", {})
+            content.setdefault("application/json", {})["example"] = media_example
+        rebuilt.append(
+            _clone_route(route, response_model=model, responses=responses)
+        )
 
     router.routes[:] = rebuilt
 

@@ -73,12 +73,19 @@ def test_representative_schemas_expose_real_fields() -> None:
     projects_schema = spec["paths"]["/api/projects"]["get"]["responses"]["200"][
         "content"
     ]["application/json"]["schema"]
+    projects_example = spec["paths"]["/api/projects"]["get"]["responses"]["200"][
+        "content"
+    ]["application/json"]["example"]
     modeling_schema = spec["paths"]["/api/modeling/contracts"]["get"]["responses"][
         "200"
     ]["content"]["application/json"]["schema"]
 
     assert me_schema["$ref"].endswith("/CurrentUserResponse")
     assert projects_schema["$ref"].endswith("/ProjectListResponse")
+    assert projects_example["items"][0]["id"] == "manufacturing-demo-project"
+    assert projects_example["items"][0]["domain_pack_code"] == (
+        "manufacturing-predictive-maintenance"
+    )
     assert modeling_schema["$ref"].endswith("/ModelingContractsResponse")
 
     components = spec["components"]["schemas"]
