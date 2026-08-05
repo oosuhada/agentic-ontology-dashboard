@@ -3,6 +3,7 @@ import {
   matchAgentPath,
   matchAnalysisPath,
   matchBlueprintProjectPath,
+  matchBlueprintV2ProjectPath,
   matchDatasetCatalogPath,
   matchGovernancePath,
   matchModelingPath,
@@ -30,6 +31,9 @@ const ManufacturingApp = lazy(() =>
 );
 const BlueprintManufacturingApp = lazy(() =>
   import("./features/blueprint/BlueprintManufacturingApp").then((module) => ({ default: module.BlueprintManufacturingApp })),
+);
+const BlueprintManufacturingV2App = lazy(() =>
+  import("./features/blueprint-v2/BlueprintManufacturingV2App").then((module) => ({ default: module.BlueprintManufacturingV2App })),
 );
 const ProjectHomePage = lazy(() =>
   import("./features/projects/ProjectHomePage").then((module) => ({ default: module.ProjectHomePage })),
@@ -199,6 +203,17 @@ function AppRouter() {
       <ProjectRouteBoundary projectId={blueprintProjectRoute.projectId}>
         <Suspense fallback={<RouteLoading operation="Loading Blueprint Workbench" detail="Resolving Project, Ontology, Analysis, and operational workflow surfaces." />}>
           <BlueprintManufacturingApp projectId={blueprintProjectRoute.projectId} />
+        </Suspense>
+      </ProjectRouteBoundary>
+    );
+  }
+
+  const blueprintV2ProjectRoute = matchBlueprintV2ProjectPath(pathname);
+  if (blueprintV2ProjectRoute) {
+    return (
+      <ProjectRouteBoundary projectId={blueprintV2ProjectRoute.projectId}>
+        <Suspense fallback={<RouteLoading operation="Loading Blueprint V2 Workbench" detail="Resolving the dense Object, Analysis, and Action workspace." />}>
+          <BlueprintManufacturingV2App projectId={blueprintV2ProjectRoute.projectId} />
         </Suspense>
       </ProjectRouteBoundary>
     );
