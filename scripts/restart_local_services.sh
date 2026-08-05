@@ -79,8 +79,8 @@ if [[ -z "${WEB_PID}" ]]; then
 fi
 
 for _ in $(seq 1 90); do
-  if curl -fsS "http://127.0.0.1:${API_PORT}/health" >/dev/null \
-    && curl -fsS "http://127.0.0.1:${WEB_PORT}/" >/dev/null; then
+  if curl -fsS "http://127.0.0.1:${API_PORT}/health" >/dev/null 2>&1 \
+    && curl -fsS "http://127.0.0.1:${WEB_PORT}/" >/dev/null 2>&1; then
     API_PID="$(lsof -tiTCP:"${API_PORT}" -sTCP:LISTEN | head -1)"
     WEB_PID="$(lsof -tiTCP:"${WEB_PORT}" -sTCP:LISTEN | head -1)"
     printf '%s\n' "${API_PID}" > "${API_PID_FILE}"

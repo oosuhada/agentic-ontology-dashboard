@@ -310,6 +310,10 @@ def test_rate_limiter_and_security_headers(client: TestClient) -> None:
     assert health.headers["x-frame-options"] == "DENY"
     assert health.headers["referrer-policy"] == "no-referrer"
     assert health.headers["content-security-policy"] == "default-src 'none'; frame-ancestors 'none'"
+    docs = client.get("/docs")
+    assert docs.status_code == 200
+    assert "https://cdn.jsdelivr.net" in docs.headers["content-security-policy"]
+    assert "connect-src 'self'" in docs.headers["content-security-policy"]
 
 
 def test_permission_regression_matrix_for_planner_export_admin_and_fde(
