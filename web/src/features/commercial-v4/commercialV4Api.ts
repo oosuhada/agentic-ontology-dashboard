@@ -61,6 +61,29 @@ export interface PersistenceReadiness {
   blockers: string[];
 }
 
+export interface EnterpriseIdentityReadiness {
+  state: "ready" | "not_configured" | "blocked" | "error";
+  providers: Array<{
+    provider: "local" | "oidc";
+    state: "ready" | "not_configured" | "blocked" | "error";
+    issuer: string | null;
+    client_id_configured: boolean;
+    audience_configured: boolean;
+    secret_reference_configured: boolean;
+    discovery_url: string | null;
+    callback_allowlist: string[];
+    jit_policy: string;
+    blockers: string[];
+  }>;
+  canonical_context: string;
+  group_mapping: string;
+  scim: Record<string, unknown>;
+  mfa: Record<string, unknown>;
+  service_identity: Record<string, unknown>;
+  session: Record<string, unknown>;
+  break_glass: Record<string, unknown>;
+}
+
 export async function getProjectV4ApplicationDefinition(projectId: string): Promise<ProjectV4ApplicationDefinition> {
   const response = await fetch(
     `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/applications/v4`,
@@ -81,4 +104,14 @@ export async function getPersistenceReadiness(projectId: string): Promise<Persis
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload?.error?.message ?? `Persistence readiness failed: ${response.status}`);
   return payload as PersistenceReadiness;
+}
+
+export async function getEnterpriseIdentityReadiness(projectId: string): Promise<EnterpriseIdentityReadiness> {
+  const response = await fetch(
+    `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/enterprise-identity`,
+    { credentials: "include" },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message ?? `Enterprise identity readiness failed: ${response.status}`);
+  return payload as EnterpriseIdentityReadiness;
 }

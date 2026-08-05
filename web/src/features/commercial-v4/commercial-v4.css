@@ -110,6 +110,16 @@
 .commercial-v4-context-list em { align-self: center; color: var(--v4-accent); font-size: 9px; font-style: normal; white-space: nowrap; }
 .commercial-v4-contract-list { margin: 12px 0; padding-left: 21px; color: var(--v4-muted); font-size: 11px; line-height: 1.7; }
 .commercial-v4-state-badge.is-degraded { border-color: #846b3c; background: #3b301c; color: #ebc77f; }
+.commercial-v4-identity-providers { display: grid; gap: 6px; margin-top: 12px; }
+.commercial-v4-identity-providers article { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; background: var(--v4-panel-muted); border-radius: 5px; }
+.commercial-v4-identity-providers strong, .commercial-v4-identity-providers small { display: block; }
+.commercial-v4-identity-providers strong { font-size: 11px; }
+.commercial-v4-identity-providers small { margin-top: 3px; color: var(--v4-muted); font-size: 9px; }
+.commercial-v4-identity-providers em { font-size: 9px; font-style: normal; font-weight: 800; text-transform: uppercase; }
+.commercial-v4-identity-providers em.is-ready { color: var(--v4-ready); }
+.commercial-v4-identity-providers em.is-not_configured, .commercial-v4-identity-providers em.is-blocked { color: var(--v4-planned); }
+.commercial-v4-chip-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.commercial-v4-chip-list span { padding: 4px 7px; border: 1px solid var(--v4-border); border-radius: 999px; color: var(--v4-muted); font-size: 9px; }
 
 .commercial-v4-feature-state { min-height: 320px; margin-top: 16px; display: grid; place-content: center; justify-items: center; gap: 9px; text-align: center; }
 .commercial-v4-feature-state > svg { width: 34px; height: 34px; color: var(--v4-accent); }

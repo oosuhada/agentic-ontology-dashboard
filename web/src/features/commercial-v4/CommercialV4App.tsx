@@ -10,6 +10,7 @@ import {
   GitBranch,
   LockKeyhole,
   Settings2,
+  Users,
   Workflow,
 } from "lucide-react";
 import {
@@ -35,6 +36,8 @@ import {
 import {
   getProjectV4ApplicationDefinition,
   getPersistenceReadiness,
+  getEnterpriseIdentityReadiness,
+  type EnterpriseIdentityReadiness,
   type PersistenceReadiness,
   type ProjectV4ApplicationDefinition,
 } from "./commercialV4Api";
@@ -42,6 +45,7 @@ import "./commercial-v4.css";
 
 const ICONS = {
   overview: Activity,
+  identity: Users,
   objects: Boxes,
   analysis: Workflow,
   models: BrainCircuit,
@@ -58,6 +62,7 @@ interface CommercialContext {
   datasets: DatasetCatalogItem[];
   application: ProjectV4ApplicationDefinition;
   persistence: PersistenceReadiness;
+  identity: EnterpriseIdentityReadiness;
 }
 
 function currentSurface(): CommercialSurfaceId {
@@ -134,14 +139,16 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       getDatasetCatalogPage({ project_id: projectId, offset: 0, limit: 8 }),
       getProjectV4ApplicationDefinition(projectId),
       getPersistenceReadiness(projectId),
+      getEnterpriseIdentityReadiness(projectId),
     ])
-      .then(([project, workspaces, datasets, application, persistence]) => {
+      .then(([project, workspaces, datasets, application, persistence, identity]) => {
         if (!controller.signal.aborted) setContext({
           project,
           workspaces,
           datasets: datasets.items,
           application,
           persistence,
+          identity,
         });
       })
       .catch((reason: unknown) => {
@@ -360,6 +367,51 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
                 </section>
               </div>
             </>
+          ) : selected.id === "identity" ? (
+            <div className="commercial-v4-grid">
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Users aria-hidden="true" /><span>Provider status</span></div>
+                <div className="commercial-v4-identity-providers">
+                  {context.identity.providers.map((provider) => (
+                    <article key={provider.provider}>
+                      <span>
+                        <strong>{provider.provider === "oidc" ? "Enterprise OIDC" : "Local development"}</strong>
+                        <small>{provider.issuer ?? "Built-in credential provider"}</small>
+                      </span>
+                      <em className={`is-${provider.state}`}>{provider.state.replace("_", " ")}</em>
+                    </article>
+                  ))}
+                </div>
+                {context.identity.providers.flatMap((provider) => provider.blockers).map((blocker) => (
+                  <p key={blocker} className="commercial-v4-policy-copy">{blocker}</p>
+                ))}
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><LockKeyhole aria-hidden="true" /><span>Access lifecycle contract</span></div>
+                <dl>
+                  <div><dt>Canonical context</dt><dd>{context.identity.canonical_context}</dd></div>
+                  <div><dt>Group mapping</dt><dd>{context.identity.group_mapping}</dd></div>
+                  <div><dt>SCIM</dt><dd>{String(context.identity.scim.state)}</dd></div>
+                  <div><dt>Break glass</dt><dd>{String(context.identity.break_glass.state)}</dd></div>
+                </dl>
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Settings2 aria-hidden="true" /><span>MFA & step-up</span></div>
+                <p className="commercial-v4-policy-copy">High-impact operations require IdP MFA claims or phishing-resistant assurance. Local admin enrollment remains not configured rather than bypassed.</p>
+                <div className="commercial-v4-chip-list">
+                  {(context.identity.mfa.step_up_operations as string[]).map((operation) => <span key={operation}>{operation}</span>)}
+                </div>
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Workflow aria-hidden="true" /><span>Service & session identity</span></div>
+                <dl>
+                  <div><dt>Interactive cookie</dt><dd>{String(context.identity.service_identity.interactive_cookie)}</dd></div>
+                  <div><dt>Scoped credentials</dt><dd>{String(context.identity.service_identity.scoped)}</dd></div>
+                  <div><dt>Session rotation</dt><dd>{String(context.identity.session.rotation)}</dd></div>
+                  <div><dt>Cross-instance revoke</dt><dd>{String(context.identity.session.cross_instance)}</dd></div>
+                </dl>
+              </section>
+            </div>
           ) : selected.id === "settings" ? (
             <div className="commercial-v4-grid">
               <section className="commercial-v4-panel">

@@ -57,7 +57,7 @@ def postgresql_database():
     dsn = _dsn_for_database(database)
     try:
         applied = migrate(dsn)
-        assert applied[-1] == "0019_tenant_transaction_convergence"
+        assert applied[-1] == "0020_enterprise_identity_access"
         assert migrate(dsn) == []
         import psycopg
 

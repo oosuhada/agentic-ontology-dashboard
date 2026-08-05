@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 
 from ..dependencies import database_target, get_project_service, require_permission
 from ..domain_packs import ProjectApplicationDefinition, list_domain_packs, resolve_domain_pack
+from ..enterprise_identity import enterprise_identity_readiness
 from ..identity import Principal
 from ..projects import ProjectService
 from ..persistence_readiness import persistence_readiness
@@ -44,3 +45,13 @@ def project_persistence_readiness(
 ):
     projects.get_for_principal(principal, project_id)
     return persistence_readiness(database_target()).model_dump(mode="json")
+
+
+@router.get("/projects/{project_id}/enterprise-identity")
+def project_enterprise_identity(
+    project_id: str,
+    principal: Principal = Depends(require_permission("app.access")),
+    projects: ProjectService = Depends(get_project_service),
+):
+    projects.get_for_principal(principal, project_id)
+    return enterprise_identity_readiness().model_dump(mode="json")
