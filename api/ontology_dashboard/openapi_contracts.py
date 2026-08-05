@@ -82,6 +82,32 @@ class ItemsResponse(ContractModel, Generic[T]):
     items: list[T]
 
 
+class ProjectListResponse(ContractModel):
+    items: list[Project]
+
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "items": [
+                    {
+                        "id": "manufacturing-demo-project",
+                        "organization_id": "org-ontology-demo",
+                        "slug": "manufacturing-demo-project",
+                        "display_name": "Manufacturing Demo Project",
+                        "description": "Predictive-maintenance ontology dashboard demo",
+                        "domain_pack_code": "manufacturing-predictive-maintenance",
+                        "status": "active",
+                        "default_workspace_id": "manufacturing-demo",
+                        "created_at": "2026-08-05T00:00:00Z",
+                        "updated_at": "2026-08-05T00:00:00Z",
+                    }
+                ]
+            }
+        },
+    )
+
+
 class StoreHealthResponse(ContractModel):
     store: str
     status: str
@@ -534,7 +560,7 @@ _EXPLICIT_MODELS: dict[str, Any] = {
     "ontology_dashboard.routers.ontology.aggregate_ontology_objects": OntologyAggregateResponse,
     "ontology_dashboard.routers.ontology.list_ontology_action_invocations": ItemsResponse[ActionInvocationRecord],
     "ontology_dashboard.routers.analyses.queue_analysis_run": AnalysisRunResult,
-    "ontology_dashboard.routers.projects.list_projects": ItemsResponse[Project],
+    "ontology_dashboard.routers.projects.list_projects": ProjectListResponse,
     "ontology_dashboard.routers.projects.list_project_workspaces": ItemsResponse[dict[str, Any]],
     "ontology_dashboard.routers.projects.list_project_events": ItemsResponse[dict[str, Any]],
     "ontology_dashboard.routers.dashboards.get_report_draft": ReportDraftResponse,

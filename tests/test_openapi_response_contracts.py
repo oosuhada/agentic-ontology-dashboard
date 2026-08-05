@@ -78,12 +78,17 @@ def test_representative_schemas_expose_real_fields() -> None:
     ]["content"]["application/json"]["schema"]
 
     assert me_schema["$ref"].endswith("/CurrentUserResponse")
-    assert projects_schema["$ref"].endswith("/ItemsResponse_Project_")
+    assert projects_schema["$ref"].endswith("/ProjectListResponse")
     assert modeling_schema["$ref"].endswith("/ModelingContractsResponse")
 
     components = spec["components"]["schemas"]
     assert {"user", "csrf_token"} <= set(components["CurrentUserResponse"]["properties"])
-    assert "items" in components["ItemsResponse_Project_"]["properties"]
+    assert "items" in components["ProjectListResponse"]["properties"]
+    project_item = components["ProjectListResponse"]["properties"]["items"]["items"]
+    assert project_item["$ref"].endswith("/Project")
+    assert {"id", "display_name", "status", "default_workspace_id"} <= set(
+        components["Project"]["properties"]
+    )
     assert {
         "contracts",
         "artifact_store",
