@@ -112,7 +112,7 @@ class SemanticFieldCatalogEntry(StrictModel):
     allowed_filters: list[SemanticFilterOperator] = Field(default_factory=list)
     cardinality_limit: int | None = Field(default=None, ge=1)
     source_roles: list[SemanticSourceRole]
-    source_expressions: dict[str, str] = Field(exclude=True)
+    source_expressions: dict[str, str] = Field(default_factory=dict, exclude=True)
     source_role: str
     dataset_version: str
     source_version: str
