@@ -37,3 +37,15 @@ def test_comparison_selects_fastapi_on_contract_rubric() -> None:
     by_name = {item["framework"]: item for item in report["results"]}
     assert by_name["FastAPI"]["rubric_score"] > by_name["Flask"]["rubric_score"]
 
+
+
+def test_public_comparison_page_and_json_are_available() -> None:
+    client = TestClient(fastapi_app)
+    page = client.get("/")
+    report = client.get("/comparison.json")
+
+    assert page.status_code == 200
+    assert "FastAPI vs Flask" in page.text
+    assert "최종 선택: FastAPI" in page.text
+    assert report.status_code == 200
+    assert report.json()["selected_framework"] == "FastAPI"
