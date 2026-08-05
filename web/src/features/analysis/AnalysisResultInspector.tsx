@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, Clock3, GitBranch, ListChecks, Settings2, Table2, Trash2 } from "lucide-react";
+import { AlertTriangle, Clock3, GitBranch, Settings2, Table2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { Evidence } from "../../types";
 import { InspectorTabs } from "../../ui/foundry/InspectorTabs";
@@ -96,12 +96,10 @@ export function AnalysisResultInspector({
         tabs={[
           { id: "configuration", label: "Config", icon: <Settings2 size={11} /> },
           { id: "result", label: "Result", count: rows.length, icon: <Table2 size={11} /> },
-          { id: "forecast", label: "Forecast", icon: <Activity size={11} /> },
-          { id: "quality", label: "Quality", count: warnings.length, icon: <ListChecks size={11} /> },
           { id: "lineage", label: "Lineage", icon: <GitBranch size={11} /> },
-          { id: "runtime", label: "Runtime", icon: <Clock3 size={11} /> },
         ]}
       />
+      <label className="analysis-inspector-more">More<select aria-label="More analysis inspector sections" value={["forecast", "quality", "runtime"].includes(activeTab) ? activeTab : ""} onChange={(event) => event.target.value && setActiveTab(event.target.value as InspectorTab)}><option value="">Select section</option><option value="forecast">Forecast</option><option value="quality">Quality ({warnings.length})</option><option value="runtime">Runtime</option></select></label>
 
       <div className="analysis-inspector-tab-body">
         {activeTab === "configuration" ? (

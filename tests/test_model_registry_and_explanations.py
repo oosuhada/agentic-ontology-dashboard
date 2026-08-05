@@ -550,6 +550,10 @@ def test_workbench_payload_uses_real_experiment_artifacts_and_explicit_blocked_s
         selected_experiment_id=experiments[0].experiment_id,
     )
     assert payload["schema_version"] == "ml-validator-workbench-v1"
+    assert payload["project_id"] == "project-a"
+    assert payload["workspace_id"] == "workspace-a"
+    assert payload["scope"]["project_id"] == payload["project_id"]
+    assert payload["scope"]["workspace_id"] == payload["workspace_id"]
     assert payload["report"]["status"] == "available"
     assert payload["report"]["validation_used_for_selection"] is True
     assert payload["report"]["test_used_for_selection"] is False

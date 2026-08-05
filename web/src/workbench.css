@@ -466,6 +466,11 @@ kbd { border: 1px solid var(--od-border); border-bottom-width: 2px; border-radiu
 .dashboard-workspace-layout.with-inspector { grid-template-columns: 244px minmax(0,1fr) 286px; }
 .dashboard-context-panel, .dashboard-inspector { position: sticky; top: 108px; display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 120px); overflow: auto; border: 1px solid var(--od-border); border-radius: var(--od-radius-md); padding: 11px; color: var(--od-text); background: var(--od-surface); box-shadow: var(--od-shadow-sm); }
 .dashboard-context-panel > section, .dashboard-inspector > section { border-color: var(--od-border); }
+.dashboard-context-tabs { position: sticky; z-index: 3; top: -11px; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 2px; margin: -11px -11px 0; border-bottom: 1px solid var(--od-border); padding: 5px; background: var(--od-surface-raised); }
+.dashboard-context-tabs button { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; gap: 4px; border: 1px solid transparent; border-radius: 4px; padding: 0 6px; color: var(--od-text-secondary); background: transparent; font-size: 10px; font-weight: 800; }
+.dashboard-context-tabs button:hover { color: var(--od-text); background: var(--od-surface-muted); }
+.dashboard-context-tabs button.active { border-color: var(--od-accent); color: var(--od-accent); background: var(--od-accent-soft); }
+.dashboard-context-tabs small { min-width: 17px; border-radius: 999px; padding: 1px 4px; color: var(--od-text-muted); background: var(--od-surface-muted); font-size: 8px; }
 .context-object-card, .inspector-definition, .parameter-state-list > div { border-color: var(--od-border); color: var(--od-text); background: var(--od-surface-muted); }
 .context-event-nav > button, .context-field input, .context-field select, .context-field textarea, .saved-view-select { border-color: var(--od-border); color: var(--od-text); background: var(--od-surface); }
 .context-event-nav > button:hover, .context-event-nav > button.active { border-color: var(--od-accent); color: var(--od-text); background: var(--od-accent-soft); }
@@ -905,6 +910,7 @@ kbd { border: 1px solid var(--od-border); border-bottom-width: 2px; border-radiu
   .dashboard-context-compact__controls > label { min-width: 0; }
   .dashboard-workspace-layout, .dashboard-workspace-layout.with-inspector { grid-template-columns: 1fr; }
   .dashboard-context-panel { position: static; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); max-height: none; }
+  .dashboard-context-tabs { grid-column: 1 / -1; position: static; }
   .context-event-section { grid-column: 1 / -1; }
   .analysis-workbench-grid.flow-grid, .analysis-workbench.with-result-inspector .analysis-workbench-grid.flow-grid { grid-template-columns: 180px minmax(0,1fr); }
   .analysis-result-inspector { display: grid; }
@@ -936,7 +942,7 @@ kbd { border: 1px solid var(--od-border); border-bottom-width: 2px; border-radiu
   .od-workbench-toolbar { position: static; align-items: stretch; flex-direction: column; padding: 0 8px; }
   .dashboard-edit-toolbar { overflow-x: auto; justify-content: flex-start; }
   .dashboard-workspace-layout, .dashboard-workspace-layout.with-inspector { padding: 7px; }
-  .dashboard-context-panel { display: flex; }
+.dashboard-context-panel { display: flex; }
   .analysis-workspace-region { padding: 6px; }
   .analysis-workbench-header { align-items: flex-start; flex-direction: column; padding: 10px; }
   .analysis-run-actions { width: 100%; flex-wrap: wrap; }
@@ -960,7 +966,7 @@ kbd { border: 1px solid var(--od-border); border-bottom-width: 2px; border-radiu
   .dashboard-context-compact__controls > label:last-child { grid-column: auto; }
   .analysis-board-rail { grid-template-columns: 1fr; }
   .advanced-kpi-grid, .generic-metric-grid { grid-template-columns: 1fr; }
-  .dashboard-edit-toolbar > button.secondary, .dashboard-export-control { display: none; }
+  .dashboard-edit-toolbar > button.secondary, .dashboard-export-control { display: flex; flex: 0 0 auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {

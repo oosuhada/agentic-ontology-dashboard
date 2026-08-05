@@ -313,6 +313,12 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
     }
   }
 
+  const graphAvailable = Boolean(status?.health.available);
+
+  useEffect(() => {
+    if (!graphAvailable && view === "graph") setView("table");
+  }, [graphAvailable, view]);
+
   if (loading) return <main className="ontology-workbench-loading"><LoadingState title="Building Object Explorer" detail="Loading registry, Project scope, and graph readiness." /></main>;
 
   return (
@@ -329,14 +335,14 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
 
       <section className="ontology-query-toolbar fd-resource-toolbar">
         <div className="fd-resource-toolbar__group ontology-global-search"><Search size={13} /><InputGroup aria-label="Ontology object property search" placeholder="Search object identity or properties" value={search} onChange={(event) => setSearch(event.currentTarget.value)} /><button type="button" className="fd-toolbar-button primary" disabled={!agentQuestion.trim() || agentLoading} onClick={() => void askAcrossStores()}>Ask</button></div>
-        <div className="fd-resource-toolbar__group"><InputGroup aria-label="Multi-store ontology question" placeholder="M-014와 연결된 최근 위험 사건, 관련 부품, 유사 정비 사례와 SOP를 보여줘." value={agentQuestion} onChange={(event) => setAgentQuestion(event.currentTarget.value)} /><div className="fd-view-switch" role="group" aria-label="Object Explorer view"><button type="button" className={view === "table" ? "active" : ""} onClick={() => setView("table")}><Table2 size={12} /> Table</button><button type="button" className={view === "exploration" ? "active" : ""} onClick={() => setView("exploration")}><Waypoints size={12} /> Explore</button><button type="button" className={view === "graph" ? "active" : ""} onClick={() => setView("graph")}><Network size={12} /> Graph</button></div></div>
+        <div className="fd-resource-toolbar__group"><InputGroup aria-label="Multi-store ontology question" placeholder="M-014와 연결된 최근 위험 사건, 관련 부품, 유사 정비 사례와 SOP를 보여줘." value={agentQuestion} onChange={(event) => setAgentQuestion(event.currentTarget.value)} /><div className="fd-view-switch" role="group" aria-label="Object Explorer view"><button type="button" className={view === "table" ? "active" : ""} onClick={() => setView("table")}><Table2 size={12} /> Table</button><button type="button" className={view === "exploration" ? "active" : ""} onClick={() => setView("exploration")}><Waypoints size={12} /> Explore</button><button type="button" className={view === "graph" ? "active" : ""} disabled={!graphAvailable} title={graphAvailable ? "Verified Project 3 subgraph" : "Project 3 연결 후 사용할 수 있습니다."} onClick={() => setView("graph")}><Network size={12} /> {graphAvailable ? "Graph" : "Graph · 연결 필요"}</button></div></div>
       </section>
 
       <section className="ontology-workbench-grid">
         <aside className="ontology-object-rail">
           <div className="pane-heading"><div><small>OBJECT TYPES</small><strong>{objectTypes.length} resources</strong></div><Tag minimal>{objectTotal} objects</Tag></div>
           <div className="ontology-type-list">
-            {objectTypes.map((item) => { const TypeIcon = objectTypeIcon(item.id); return <button type="button" key={item.id} className={selectedType === item.id ? "active" : ""} onClick={() => setSelectedType(item.id)}><span><TypeIcon size={12} /></span><div><strong>{item.display_name}</strong><small>{item.domain_pack} · {item.properties.length} properties</small></div></button>; })}
+            {objectTypes.map((item) => { const TypeIcon = objectTypeIcon(item.id); return <button type="button" key={item.id} title={`${item.display_name} · ${item.domain_pack} · ${item.properties.length} properties`} className={selectedType === item.id ? "active" : ""} onClick={() => setSelectedType(item.id)}><span><TypeIcon size={12} /></span><div><strong>{item.display_name}</strong><small>{item.domain_pack} · {item.properties.length} properties</small></div></button>; })}
           </div>
           <footer className="ontology-pagination"><Button small icon="chevron-left" disabled={objectOffset === 0} onClick={() => setObjectOffset((current) => Math.max(0, current - 50))}>{t("common.previous")}</Button><span>{objectTotal ? `${objectOffset + 1}-${Math.min(objectOffset + objects.length, objectTotal)} / ${objectTotal}` : "0 objects"}</span><Button small rightIcon="chevron-right" disabled={objectOffset + objects.length >= objectTotal} onClick={() => setObjectOffset((current) => current + 50)}>{t("common.next")}</Button></footer>
         </aside>

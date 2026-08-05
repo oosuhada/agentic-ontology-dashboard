@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, Check, FilePenLine, LayoutDashboard, Printer, RefreshCw, Save, TrendingUp } from "lucide-react";
+import { AlertTriangle, BarChart3, Check, FilePenLine, LayoutDashboard, Printer, RefreshCw, RotateCcw, Save, TrendingUp, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getReportDraft, saveReportDraft } from "../../api";
 import type { Evidence, EventSummary, Report } from "../../types";
@@ -53,6 +53,10 @@ function reportCopy(locale: AppLocale) {
     saveReport: "리포트 저장",
     resolvingReport: "리포트 확인 중",
     editReport: "리포트 편집",
+    cancelEdit: "편집 취소",
+    resetChanges: "변경 되돌리기",
+    unsavedChanges: "저장되지 않은 변경",
+    unsavedConfirm: "저장하지 않은 변경 사항이 있습니다. 이 화면을 벗어나시겠습니까?",
     printPdf: "인쇄 / PDF",
     openDashboard: "상세 대시보드 열기",
     documentId: "문서 ID",
@@ -82,6 +86,7 @@ function reportCopy(locale: AppLocale) {
     linkedTrend: "리포트 본문과 선택 Object에 연결됨",
     contributingEvidence: "기여 근거",
     groundedFactors: "개의 근거 요인",
+    technicalEvidence: "기술 근거 필드",
     decisionContext: "판단 Context",
     decisionContextDetail: "리포트에 연결된 운영 영향",
     decision: "권장 결정",
@@ -103,6 +108,10 @@ function reportCopy(locale: AppLocale) {
     saveReport: "Save report",
     resolvingReport: "Resolving report",
     editReport: "Edit report",
+    cancelEdit: "Cancel editing",
+    resetChanges: "Reset changes",
+    unsavedChanges: "Unsaved changes",
+    unsavedConfirm: "You have unsaved changes. Leave this report without saving?",
     printPdf: "Print / PDF",
     openDashboard: "Open detailed dashboard",
     documentId: "Document ID",
@@ -132,6 +141,7 @@ function reportCopy(locale: AppLocale) {
     linkedTrend: "Linked to the narrative and selected object",
     contributingEvidence: "Contributing evidence",
     groundedFactors: " grounded factors",
+    technicalEvidence: "Technical evidence fields",
     decisionContext: "Decision context",
     decisionContextDetail: "Operational impact linked to the report",
     decision: "Decision",
@@ -155,6 +165,52 @@ function localizedDecision(value: string, locale: AppLocale) {
   };
   const pair = labels[value];
   return pair ? pair[locale === "ko-KR" ? 0 : 1] : value.replaceAll("_", " ");
+}
+
+function localizedStatus(value: string, locale: AppLocale) {
+  const labels: Record<string, [string, string]> = {
+    critical: ["긴급 검토", "Critical"],
+    warning: ["경고", "Warning"],
+    attention: ["관찰", "Attention"],
+    data_quality_hold: ["데이터 확인", "Data quality hold"],
+    normal: ["정상", "Normal"],
+    high: ["높음", "High"],
+    medium: ["중간", "Medium"],
+    low: ["낮음", "Low"],
+  };
+  const pair = labels[value];
+  return pair ? pair[locale === "ko-KR" ? 0 : 1] : value.replaceAll("_", " ");
+}
+
+function localizedFailureType(value: string, locale: AppLocale) {
+  const labels: Record<string, [string, string]> = {
+    power_or_overstrain_failure: ["동력·과부하 이상", "Power or overstrain failure"],
+    tool_wear_failure: ["공구 마모 이상", "Tool wear failure"],
+    heat_dissipation_failure: ["방열 이상", "Heat dissipation failure"],
+    multi_factor_risk: ["복합 위험", "Multi-factor risk"],
+    uncertain: ["불확실", "Uncertain"],
+    unavailable: ["판단 불가", "Unavailable"],
+    none: ["이상 없음", "No predicted failure"],
+  };
+  const pair = labels[value];
+  return pair ? pair[locale === "ko-KR" ? 0 : 1] : value.replaceAll("_", " ");
+}
+
+function localizedNarrativeText(value: string, locale: AppLocale) {
+  const formatted = value.replace(
+    /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})/g,
+    (timestamp) => {
+      const parsed = new Date(timestamp);
+      return Number.isNaN(parsed.getTime()) ? timestamp : parsed.toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" });
+    },
+  );
+  if (locale === "ko-KR") {
+    return formatted
+      .replace(/신뢰도는 high입니다/g, "신뢰도는 높음입니다")
+      .replace(/신뢰도는 medium입니다/g, "신뢰도는 중간입니다")
+      .replace(/신뢰도는 low입니다/g, "신뢰도는 낮음입니다");
+  }
+  return formatted;
 }
 
 function TrendVisual({ values, locale }: { values: number[]; locale: AppLocale }) {
@@ -241,6 +297,16 @@ export function RoleReportWorkbench({
     return () => { cancelled = true; };
   }, [copy.reportLoadFailed, locale, report?.report_id, report?.role, selectedEventId, workspaceId]);
 
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
   const trend = useMemo(() => metricValues(evidence, profile), [evidence, profile]);
   const criticalEvents = events.filter((event) => (event.failure_probability ?? 0) >= .7).length;
   const pendingEvents = events.filter((event) => !["closed", "resolved", "completed"].includes(event.status.toLowerCase())).length;
@@ -249,6 +315,25 @@ export function RoleReportWorkbench({
   function changeSection(index: number, patch: Partial<ReportDraftSection>) {
     setSections((current) => current.map((section, sectionIndex) => sectionIndex === index ? { ...section, ...patch } : section));
     setDirty(true);
+  }
+
+  function restoreBaseline() {
+    if (!report) return;
+    setHeadline(savedDraft?.headline ?? report.headline);
+    setSummary(savedDraft?.summary ?? report.summary);
+    setSections(savedDraft?.sections ?? generatedSections(report));
+    setDirty(false);
+  }
+
+  function cancelEditing() {
+    restoreBaseline();
+    setEditing(false);
+    setMessage("");
+  }
+
+  function changeSelectedEvent(nextEventId: string) {
+    if (dirty && !window.confirm(copy.unsavedConfirm)) return;
+    onSelectEvent(nextEventId);
   }
 
   async function saveDraft() {
@@ -292,9 +377,14 @@ export function RoleReportWorkbench({
           </div>
           <div className="role-report-actions">
             <StatusPill intent={savedDraft ? "success" : "primary"}>{savedDraft ? `${copy.sharedRevision} ${savedDraft.revision}` : copy.generatedReport}</StatusPill>
+            {dirty ? <StatusPill intent="warning">{copy.unsavedChanges}</StatusPill> : null}
             {canEdit ? editing
-              ? <button type="button" className="primary" disabled={!dirty || saving} onClick={() => void saveDraft()}><Save size={13} /> {saving ? copy.saving : copy.saveReport}</button>
-              : <button type="button" disabled={loading} onClick={() => setEditing(true)}><FilePenLine size={13} /> {loading ? copy.resolvingReport : copy.editReport}</button>
+              ? <>
+                  <button type="button" onClick={cancelEditing}><X size={13} /> {copy.cancelEdit}</button>
+                  <button type="button" disabled={!dirty || saving} onClick={restoreBaseline}><RotateCcw size={13} /> {copy.resetChanges}</button>
+                  <button type="button" className="primary" disabled={!dirty || saving} onClick={() => void saveDraft()}><Save size={13} /> {saving ? copy.saving : copy.saveReport}</button>
+                </>
+              : <button type="button" disabled={loading} onClick={() => { setMessage(""); setEditing(true); }}><FilePenLine size={13} /> {loading ? copy.resolvingReport : copy.editReport}</button>
               : null}
             <button type="button" onClick={() => window.print()}><Printer size={13} /> {copy.printPdf}</button>
             <button type="button" onClick={onOpenDashboard}><LayoutDashboard size={13} /> {copy.openDashboard}</button>
@@ -304,12 +394,12 @@ export function RoleReportWorkbench({
         <section className="role-report-meta" aria-label={copy.documentId}>
           <div><span>{copy.documentId}</span><strong>{report.report_id}</strong></div>
           <div><span>{copy.issued}</span><strong>{formatReportDate(report.generated_at, locale)}</strong></div>
-          <div><span>{copy.status}</span><strong>{report.status}</strong></div>
-          <div><span>{copy.confidence}</span><strong>{report.confidence}</strong></div>
+          <div><span>{copy.status}</span><strong title={report.status}>{localizedStatus(report.status, locale)}</strong></div>
+          <div><span>{copy.confidence}</span><strong title={report.confidence}>{localizedStatus(report.confidence, locale)}</strong></div>
         </section>
 
         <section className="role-report-scopebar">
-          <label>{copy.reportSubject}<select aria-label={copy.reportSubject} value={selectedEventId} onChange={(event) => onSelectEvent(event.target.value)}>{events.map((event) => <option key={event.event_id} value={event.event_id}>{event.equipment.display_name} · {event.predicted_failure_type}</option>)}</select></label>
+          <label>{copy.reportSubject}<select aria-label={copy.reportSubject} value={selectedEventId} onChange={(event) => changeSelectedEvent(event.target.value)}>{events.map((event) => <option key={event.event_id} value={event.event_id}>{event.equipment.display_name} · {localizedFailureType(event.predicted_failure_type, locale)}</option>)}</select></label>
           <div><span>{copy.primaryObject}<strong>{evidence.equipment.display_name}</strong></span><span>{copy.risk}<strong>{riskPercent}%</strong></span><span>{copy.openEvents}<strong>{pendingEvents}</strong></span><span>{copy.highRisk}<strong>{criticalEvents}</strong></span></div>
         </section>
 
@@ -337,8 +427,8 @@ export function RoleReportWorkbench({
               <section key={section.section_id}>
                 <span>{String(index + 1).padStart(2, "0")} · {profile.reportSections[index] ?? copy.evidenceFinding}</span>
                 {editing ? <input value={section.title} onChange={(event) => changeSection(index, { title: event.target.value })} /> : <h2>{section.title}</h2>}
-                {editing ? <textarea value={section.body} onChange={(event) => changeSection(index, { body: event.target.value })} /> : <p>{section.body}</p>}
-                <div className="role-report-citations">{section.evidence_field_ids.map((field) => <code key={field}>{field}</code>)}</div>
+                {editing ? <textarea value={section.body} onChange={(event) => changeSection(index, { body: event.target.value })} /> : <p>{localizedNarrativeText(section.body, locale)}</p>}
+                {section.evidence_field_ids.length ? <details className="role-report-citations"><summary>{copy.technicalEvidence} · {section.evidence_field_ids.length}</summary><div>{section.evidence_field_ids.map((field) => <code key={field}>{field}</code>)}</div></details> : null}
               </section>
             ))}
             {report.actions.length ? <section className="role-report-actions-list"><span>{copy.recommendedActions}</span><h2>{copy.actionsHeading}</h2><ol>{report.actions.map((action) => <li key={action.action_id}><Check size={12} /><div><strong>{action.label}</strong><small>{action.requires_human_approval ? copy.approvalRequired : copy.governedExecution}</small></div></li>)}</ol></section> : null}
@@ -348,7 +438,7 @@ export function RoleReportWorkbench({
           <aside className="role-report-evidence">
             <section className="role-report-visual-card wide"><header><TrendingUp size={14} /><div><strong>{profile.primaryMetric} {locale === "ko-KR" ? "추세" : "trend"}</strong><small>{copy.linkedTrend}</small></div></header><TrendVisual values={trend} locale={locale} /></section>
             <section className="role-report-visual-card"><header><BarChart3 size={14} /><div><strong>{copy.contributingEvidence}</strong><small>{locale === "ko-KR" ? `${evidence.top_factors.length}${copy.groundedFactors}` : `${evidence.top_factors.length}${copy.groundedFactors}`}</small></div></header><div className="role-report-factor-bars">{evidence.top_factors.slice(0, 5).map((factor) => <div key={factor.evidence_field_id}><span>{factor.display_name}</span><i><b style={{ width: `${Math.max(8, Math.min(100, factor.contribution * 100))}%` }} /></i><strong>{Math.round(factor.contribution * 100)}%</strong></div>)}</div></section>
-            <section className="role-report-visual-card"><header><LayoutDashboard size={14} /><div><strong>{copy.decisionContext}</strong><small>{copy.decisionContextDetail}</small></div></header><dl><div><dt>{copy.decision}</dt><dd>{localizedDecision(report.recommended_decision, locale)}</dd></div><div><dt>{copy.downtime}</dt><dd>{evidence.equipment.estimated_downtime_minutes} {copy.minutes}</dd></div><div><dt>{copy.owner}</dt><dd>{evidence.equipment.assigned_engineer}</dd></div><div><dt>{copy.confidence}</dt><dd>{report.confidence}</dd></div></dl></section>
+            <section className="role-report-visual-card"><header><LayoutDashboard size={14} /><div><strong>{copy.decisionContext}</strong><small>{copy.decisionContextDetail}</small></div></header><dl><div><dt>{copy.decision}</dt><dd>{localizedDecision(report.recommended_decision, locale)}</dd></div><div><dt>{copy.downtime}</dt><dd>{evidence.equipment.estimated_downtime_minutes} {copy.minutes}</dd></div><div><dt>{copy.owner}</dt><dd>{evidence.equipment.assigned_engineer}</dd></div><div><dt>{copy.confidence}</dt><dd title={report.confidence}>{localizedStatus(report.confidence, locale)}</dd></div></dl></section>
           </aside>
         </div>
 

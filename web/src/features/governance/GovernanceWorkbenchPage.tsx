@@ -17,6 +17,7 @@ import { useMediaQuery } from "../../ui/foundry/useMediaQuery";
 import { WorkbenchState } from "../../ui/foundry/WorkbenchState";
 import { useI18n } from "../../ui/i18n/I18nProvider";
 import type { AgentRunPage } from "../agent/types";
+import { agentOutcomeIntent, agentOutcomeLabel, deriveAgentOutcome } from "../agent/agentOutcome";
 import { GovernanceRecordInspector } from "./GovernanceRecordInspector";
 import type {
   GovernanceAgentRunDetail,
@@ -41,6 +42,15 @@ const TABS: Array<{ id: GovernanceTab; label: string }> = [
   { id: "policies", label: "Access & Policy" },
 ];
 
+const TAB_LABELS_KO: Record<GovernanceTab, string> = {
+  overview: "개요",
+  "agent-runs": "Agent 실행",
+  projections: "Projection 상태",
+  lineage: "데이터 계보",
+  approvals: "승인",
+  policies: "접근 및 정책",
+};
+
 function statusIntent(status: string): "success" | "warning" | "danger" | "none" {
   if (["ready", "succeeded", "approved", "active"].includes(status)) return "success";
   if (["failed", "rejected", "unavailable"].includes(status)) return "danger";
@@ -51,6 +61,11 @@ function statusIntent(status: string): "success" | "warning" | "danger" | "none"
 function pillIntent(status: string): "success" | "warning" | "danger" | "neutral" {
   const resolved = statusIntent(status);
   return resolved === "none" ? "neutral" : resolved;
+}
+
+function agentTagIntent(input: Parameters<typeof deriveAgentOutcome>[0]): "success" | "warning" | "danger" | "none" {
+  const intent = agentOutcomeIntent(deriveAgentOutcome(input));
+  return intent === "neutral" ? "none" : intent;
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -64,7 +79,7 @@ function JsonPreview({ value }: { value: unknown }) {
 
 export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWorkbenchPageProps) {
   const isMobile = useMediaQuery("(max-width: 760px)");
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [overview, setOverview] = useState<GovernanceOverview | null>(null);
   const [activeTab, setActiveTab] = useState<GovernanceTab>("overview");
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
@@ -159,6 +174,22 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
     () => overview?.projections.filter((item) => item.status === "failed") ?? [],
     [overview],
   );
+  const pendingProjections = useMemo(
+    () => overview?.projections.filter((item) => item.status !== "ready" && item.status !== "failed") ?? [],
+    [overview],
+  );
+  const noEvidenceRuns = useMemo(
+    () => overview?.agent_runs.filter((run) => deriveAgentOutcome({ status: run.status, evidenceCount: run.evidence_count, claimCount: run.claim_count, caveats: run.caveats }) === "no_evidence").length ?? 0,
+    [overview],
+  );
+  const permissionGroups = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    for (const permission of overview?.access.permissions ?? []) {
+      const group = permission.split(".")[0] || "other";
+      groups.set(group, [...(groups.get(group) ?? []), permission]);
+    }
+    return [...groups.entries()].sort(([left], [right]) => left.localeCompare(right));
+  }, [overview]);
   const selectedProjection = useMemo(
     () => overview?.projections.find((item) => item.id === selectedProjectionId) ?? null,
     [overview, selectedProjectionId],
@@ -189,8 +220,8 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
     <main className="governance-workbench-page">
       <WorkbenchHeader
         className="governance-workbench-header"
-        title={<EntityTitle icon={ShieldCheck} eyebrow="GOVERNANCE WORKBENCH" title="Project Checkpoints" subtitle={`${projectId} · ${workspaceId} · generated ${formatDate(overview?.generated_at)}`} />}
-        metadata={<StatusPill intent={failedProjections.length ? "danger" : "success"}>{failedProjections.length} failed projections</StatusPill>}
+        title={<EntityTitle icon={ShieldCheck} eyebrow="GOVERNANCE WORKBENCH" title={locale === "ko-KR" ? "프로젝트 점검 상태" : "Project Checkpoints"} subtitle={`${projectId} · ${workspaceId} · ${locale === "ko-KR" ? "갱신" : "generated"} ${formatDate(overview?.generated_at)}`} />}
+        metadata={<StatusPill intent={failedProjections.length ? "danger" : pendingProjections.length || noEvidenceRuns ? "warning" : "success"}>{locale === "ko-KR" ? `조치 필요 ${failedProjections.length + pendingProjections.length + noEvidenceRuns}` : `${failedProjections.length + pendingProjections.length + noEvidenceRuns} need attention`}</StatusPill>}
         actions={<div className="governance-header-actions"><Button icon="refresh" onClick={() => void refresh()}>{t("common.refresh")}</Button><Button icon="diagram-tree" onClick={() => navigate(ontologyPath(projectId, workspaceId))}>{t("common.ontology")}</Button><Button icon="database" onClick={() => navigate(datasetCatalogPath(projectId))}>{t("common.datasets")}</Button><Button icon="dashboard" onClick={() => navigate(`/app/projects/${encodeURIComponent(projectId)}`)}>{t("common.dashboard")}</Button></div>}
       />
 
@@ -203,7 +234,7 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
       <nav className="governance-tabs" aria-label="Governance sections">
         {TABS.map((tab) => (
           <button key={tab.id} type="button" className={activeTab === tab.id ? "active" : ""} onClick={() => setActiveTab(tab.id)}>
-            {tab.label}
+            {locale === "ko-KR" ? TAB_LABELS_KO[tab.id] : tab.label}
           </button>
         ))}
       </nav>
@@ -211,11 +242,11 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
       {overview && activeTab === "overview" ? (
         <section className="governance-overview" aria-label="Governance overview">
           <MetricStrip className="governance-kpi-grid" metrics={[
+            { id: "ready-projections", label: locale === "ko-KR" ? "정상 Projection" : "Ready projections", value: overview.projections.filter((item) => item.status === "ready").length, detail: `${overview.counts.projections} total`, tone: "success" },
+            { id: "projection-attention", label: locale === "ko-KR" ? "Projection 조치 필요" : "Projection attention", value: failedProjections.length + pendingProjections.length, detail: `${failedProjections.length} failed · ${pendingProjections.length} pending`, tone: failedProjections.length ? "danger" : pendingProjections.length ? "warning" : "success" },
+            { id: "agent-evidence", label: locale === "ko-KR" ? "근거 없는 Agent 실행" : "Runs without evidence", value: noEvidenceRuns, detail: `${overview.counts.agent_runs} total runs`, tone: noEvidenceRuns ? "warning" : "success" },
+            { id: "approvals", label: locale === "ko-KR" ? "승인 대기" : "Pending approvals", value: overview.counts.pending_approvals, detail: locale === "ko-KR" ? "검토 대기" : "pending review", tone: overview.counts.pending_approvals ? "warning" : "success" },
             { id: "datasets", label: "Datasets", value: overview.counts.datasets, detail: `${overview.counts.dataset_versions} versions` },
-            { id: "projections", label: "Projections", value: overview.counts.projections, detail: `${overview.counts.failed_projections} failed · ${overview.counts.pending_projections} pending`, tone: overview.counts.failed_projections ? "danger" : overview.counts.pending_projections ? "warning" : "success" },
-            { id: "agent", label: "Agent runs", value: overview.counts.agent_runs, detail: `${overview.counts.failed_agent_runs} failed`, tone: overview.counts.failed_agent_runs ? "danger" : "default" },
-            { id: "approvals", label: "Approvals", value: overview.counts.pending_approvals, detail: "pending review", tone: overview.counts.pending_approvals ? "warning" : "success" },
-            { id: "materializations", label: "Materializations", value: overview.counts.materializations, detail: "registered artifacts" },
           ]} />
           <div className="governance-overview-grid">
             <section className="governance-panel">
@@ -224,7 +255,7 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
                 {overview.agent_runs.slice(0, 6).map((run) => (
                   <button key={run.run_id} type="button" onClick={() => { setSelectedRunId(run.run_id); setActiveTab("agent-runs"); }}>
                     <div><strong>{run.question}</strong><small>{run.run_id}</small></div>
-                    <div><Tag minimal>{run.route}</Tag><Tag minimal intent={statusIntent(run.status)}>{run.status}</Tag></div>
+                    <div><Tag minimal>{run.route}</Tag><Tag minimal intent={agentTagIntent({ status: run.status, evidenceCount: run.evidence_count, claimCount: run.claim_count })}>{agentOutcomeLabel(deriveAgentOutcome({ status: run.status, evidenceCount: run.evidence_count, claimCount: run.claim_count }), locale)}</Tag></div>
                   </button>
                 ))}
                 {!overview.agent_runs.length ? <p className="governance-empty">아직 저장된 agent run이 없습니다.</p> : null}
@@ -265,7 +296,7 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
               {runPage.items.map((run) => (
                 <button key={run.run_id} type="button" className={selectedRunId === run.run_id ? "active" : ""} onClick={() => setSelectedRunId(run.run_id)}>
                   <div><strong>{run.question}</strong><small>{run.run_id} · {run.evidence_count} evidence · {new Date(run.created_at).toLocaleString()}</small></div>
-                  <Tag minimal intent={statusIntent(run.status)}>{run.status}</Tag>
+                  <Tag minimal intent={agentTagIntent({ status: run.status, evidenceCount: run.evidence_count, claimCount: run.claim_count })}>{agentOutcomeLabel(deriveAgentOutcome({ status: run.status, evidenceCount: run.evidence_count, claimCount: run.claim_count }), locale)}</Tag>
                 </button>
               ))}
               {!runListLoading && !runPage.items.length ? <p className="governance-empty">조건에 맞는 Agent run이 없습니다.</p> : null}
@@ -280,7 +311,7 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
             {runLoading ? <div className="governance-detail-loading"><Spinner size={24} />Trace reconstruction</div> : null}
             {runDetail ? (
               <>
-                <div className="governance-panel-heading"><div><small>RUN DETAIL</small><strong>{runDetail.state.run_id}</strong></div><div><Tag minimal>{runDetail.state.route}</Tag><Tag intent={statusIntent(runDetail.state.status)}>{runDetail.state.status}</Tag><Button small icon="search-around" onClick={() => navigate(agentPath(projectId, workspaceId, { runId: runDetail.state.run_id }))}>Open Agent Evidence</Button></div></div>
+                <div className="governance-panel-heading"><div><small>RUN DETAIL</small><strong>{runDetail.state.run_id}</strong></div><div><Tag minimal>{runDetail.state.route}</Tag>{(() => { const input = { status: runDetail.state.status, evidenceCount: runDetail.state.evidence.length, claimCount: runDetail.state.claims.length, failedStepCount: runDetail.traces.filter((trace) => trace.status === "failed").length, caveats: runDetail.state.caveats }; const outcome = deriveAgentOutcome(input); return <Tag intent={agentTagIntent(input)}>{agentOutcomeLabel(outcome, locale)}</Tag>; })()}<Button small icon="search-around" onClick={() => navigate(agentPath(projectId, workspaceId, { runId: runDetail.state.run_id }))}>Open Agent Evidence</Button></div></div>
                 <div className="governance-detail-scroll">
                   <Card elevation={0} className="governance-answer-card">
                     <small>QUESTION</small><h2>{runDetail.state.question}</h2>
@@ -335,7 +366,7 @@ export function GovernanceWorkbenchPage({ projectId, workspaceId }: GovernanceWo
         <section className="governance-policy-layout" aria-label="Access and policy">
           <Card elevation={0}><small>ACTIVE SCOPE</small><h2>{overview.access.project_id}</h2><dl><div><dt>Organization</dt><dd>{overview.access.organization_id}</dd></div><div><dt>Workspace</dt><dd>{overview.access.workspace_id}</dd></div><div><dt>Roles</dt><dd>{overview.access.roles.join(", ")}</dd></div><div><dt>Projection retry</dt><dd>{overview.access.can_retry_projection ? "Allowed" : "Read only"}</dd></div></dl></Card>
           <Card elevation={0}><small>POLICY BOUNDARIES</small><h2>Governed operations</h2><ol>{overview.policy_boundaries.map((policy) => <li key={policy}>{policy}</li>)}</ol></Card>
-          <Card elevation={0} className="governance-permissions-card"><small>EFFECTIVE PERMISSIONS</small><h2>{overview.access.permissions.length} permissions</h2><div>{overview.access.permissions.map((permission) => <Tag key={permission} minimal>{permission}</Tag>)}</div></Card>
+          <Card elevation={0} className="governance-permissions-card"><small>EFFECTIVE PERMISSIONS</small><h2>{overview.access.permissions.length} permissions</h2><div className="governance-permission-groups">{permissionGroups.map(([group, permissions]) => <details key={group}><summary><strong>{group}</strong><span>{permissions.length}</span></summary><div>{permissions.map((permission) => <Tag key={permission} minimal>{permission}</Tag>)}</div></details>)}</div></Card>
         </section>
       ) : null}
       {isMobile && recordInspectorOpen && activeTab === "projections" ? <FoundryDrawer ariaLabel="Projection inspector" title="Projection inspector" position="bottom" onClose={() => setRecordInspectorOpen(false)}><GovernanceRecordInspector projection={selectedProjection} retrying={retryingId === selectedProjection?.id} onRetryProjection={(projection) => void retryProjection(projection)} /></FoundryDrawer> : null}

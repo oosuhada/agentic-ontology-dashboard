@@ -92,6 +92,7 @@ button, input, select, textarea { line-height: var(--od-leading-control); }
   background: var(--fd-surface-raised);
   box-shadow: var(--fd-shadow-popover);
 }
+.od-display-menu:not([open]) > .od-display-popover { display: none; }
 .od-display-popover header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .od-display-popover header > div { display: flex; flex-direction: column; gap: 1px; }
 .od-display-popover header strong { font-size: var(--od-type-sm); }

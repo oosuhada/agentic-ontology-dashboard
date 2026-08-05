@@ -1,4 +1,4 @@
-import { Database, Files, GitBranch, Layers3, Network, Rows3, Sigma, TableProperties } from "lucide-react";
+import { Database, GitBranch, Rows3, Sigma, TableProperties } from "lucide-react";
 import { useMemo, useState } from "react";
 import { InspectorTabs } from "../../ui/foundry/InspectorTabs";
 import { MetricStrip } from "../../ui/foundry/MetricStrip";
@@ -31,6 +31,25 @@ function previewValue(value: unknown) {
   return String(value);
 }
 
+export function safeArtifactUri(uri: string, datasetVersionId: string): string {
+  if (!uri.startsWith("file://")) return uri;
+  try {
+    const decoded = decodeURIComponent(uri.replace(/^file:\/\//, ""));
+    const fileName = decoded.split(/[\\/]/).filter(Boolean).at(-1) ?? "source-artifact";
+    return `artifact://datasets/${datasetVersionId}/${fileName}`;
+  } catch {
+    return `artifact://datasets/${datasetVersionId}/source-artifact`;
+  }
+}
+
+interface SchemaColumn {
+  name: string;
+  value_type?: string;
+  nullable?: boolean;
+  description?: string;
+  source?: string;
+}
+
 interface DatasetDetailInspectorProps {
   detail: DatasetCatalogDetail | null;
   loading: boolean;
@@ -39,6 +58,11 @@ interface DatasetDetailInspectorProps {
 export function DatasetDetailInspector({ detail, loading }: DatasetDetailInspectorProps) {
   const [activeTab, setActiveTab] = useState<DatasetInspectorTab>("overview");
   const latestVersion = detail?.versions[0] ?? null;
+  const schemaColumns = useMemo<SchemaColumn[]>(() => {
+    const columns = latestVersion?.schema?.columns;
+    if (!Array.isArray(columns)) return [];
+    return columns.filter((item): item is SchemaColumn => Boolean(item && typeof item === "object" && "name" in item));
+  }, [latestVersion]);
   const schemaRows = useMemo(() => latestVersion ? Object.entries(latestVersion.schema).map(([key, value]) => ({ id: key, label: key, value: previewValue(value), type: typeof value, mono: typeof value === "string" && key.includes("id") })) : [], [latestVersion]);
   const profileRows = useMemo(() => latestVersion ? Object.entries(latestVersion.profile).map(([key, value]) => ({ id: key, label: key, value: previewValue(value), type: "profile" })) : [], [latestVersion]);
 
@@ -59,12 +83,10 @@ export function DatasetDetailInspector({ detail, loading }: DatasetDetailInspect
           { id: "overview", label: "Overview", icon: <Database size={11} /> },
           { id: "schema", label: "Schema", count: schemaRows.length, icon: <TableProperties size={11} /> },
           { id: "profile", label: "Profile", count: profileRows.length, icon: <Sigma size={11} /> },
-          { id: "files", label: "Files", count: detail.files.length, icon: <Files size={11} /> },
-          { id: "versions", label: "Versions", count: detail.versions.length, icon: <Layers3 size={11} /> },
           { id: "lineage", label: "Lineage", count: detail.lineage_references.length, icon: <GitBranch size={11} /> },
-          { id: "projections", label: "Projections", count: detail.projections.length, icon: <Network size={11} /> },
         ]}
       />
+      <label className="dataset-inspector-more">More<select aria-label="More Dataset inspector sections" value={["files", "versions", "projections"].includes(activeTab) ? activeTab : ""} onChange={(event) => event.target.value && setActiveTab(event.target.value as DatasetInspectorTab)}><option value="">Select section</option><option value="files">Files ({detail.files.length})</option><option value="versions">Versions ({detail.versions.length})</option><option value="projections">Projections ({detail.projections.length})</option></select></label>
       <div className="dataset-detail-scroll">
         {activeTab === "overview" ? (
           <>
@@ -86,14 +108,14 @@ export function DatasetDetailInspector({ detail, loading }: DatasetDetailInspect
           </>
         ) : null}
 
-        {activeTab === "schema" ? <PropertyTable rows={schemaRows} emptyMessage="No schema registered for the current Dataset Version." /> : null}
+        {activeTab === "schema" ? schemaColumns.length ? <div className="dataset-schema-table" role="table" aria-label="Dataset schema columns"><div className="dataset-schema-table__header" role="row"><span>Field</span><span>Type</span><span>Nullable</span><span>Description / source</span></div>{schemaColumns.map((column) => <div className="dataset-schema-table__row" role="row" key={column.name}><code>{column.name}</code><span>{column.value_type ?? "unknown"}</span><StatusPill intent={column.nullable ? "warning" : "success"}>{column.nullable ? "nullable" : "required"}</StatusPill><span>{column.description ?? column.source ?? "—"}</span></div>)}</div> : <PropertyTable rows={schemaRows} emptyMessage="No schema registered for the current Dataset Version." /> : null}
         {activeTab === "profile" ? <><MetricStrip metrics={[
           { id: "rows", label: "Rows", value: latestVersion?.record_count.toLocaleString() ?? "0", detail: latestVersion?.version_label ?? "—" },
           { id: "fields", label: "Profile fields", value: profileRows.length, detail: "server-computed" },
           { id: "checksum", label: "Checksum", value: latestVersion?.checksum_sha256.slice(0, 10) ?? "—", detail: "sha256" },
         ]} /><PropertyTable rows={profileRows} emptyMessage="No profile registered for the current Dataset Version." /></> : null}
 
-        {activeTab === "files" ? <div className="dataset-inspector-list">{detail.files.map((file) => <article key={file.id}><div><Rows3 size={14} /><span><strong>{file.media_type}</strong><small>{file.dataset_version_id}</small></span></div><code>{file.uri}</code><footer><span>{formatBytes(file.size_bytes)}</span><StatusPill>{file.checksum_sha256.slice(0, 10)}</StatusPill></footer></article>)}{!detail.files.length ? <EmptyState title="No source files" detail="This Dataset Version has no registered file artifact." /> : null}</div> : null}
+        {activeTab === "files" ? <div className="dataset-inspector-list">{detail.files.map((file) => { const displayUri = safeArtifactUri(file.uri, file.dataset_version_id); return <article key={file.id}><div><Rows3 size={14} /><span><strong>{file.media_type}</strong><small>{file.dataset_version_id}</small></span></div><code className="dataset-safe-uri" title={displayUri}>{displayUri}</code><footer><span>{formatBytes(file.size_bytes)}</span><StatusPill>{file.checksum_sha256.slice(0, 10)}</StatusPill></footer></article>; })}{!detail.files.length ? <EmptyState title="No source files" detail="This Dataset Version has no registered file artifact." /> : null}</div> : null}
 
         {activeTab === "versions" ? <div className="fd-resource-table dataset-version-resource-table" role="table"><div className="fd-resource-table__header" role="row" style={{ gridTemplateColumns: "90px minmax(160px,1fr) 90px 90px 150px" }}><span>Version</span><span>Source revision</span><span>Rows</span><span>Status</span><span>Created</span></div>{detail.versions.map((version) => <div className="fd-resource-table__row" role="row" key={version.id} style={{ gridTemplateColumns: "90px minmax(160px,1fr) 90px 90px 150px" }}><span><strong>{version.version_label}</strong></span><span><code>{version.source_version}</code></span><span className="fd-resource-table__numeric">{version.record_count.toLocaleString()}</span><span><StatusPill intent={version.status === "ready" ? "success" : version.status === "failed" ? "danger" : "warning"}>{version.status}</StatusPill></span><span>{new Date(version.created_at).toLocaleString()}</span></div>)}</div> : null}
 

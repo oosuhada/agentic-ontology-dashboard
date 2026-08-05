@@ -2416,6 +2416,11 @@ class ModelingService:
         queued = [item for item in experiments if str(item.status) == "queued"]
         return {
             "schema_version": "ml-validator-workbench-v1",
+            # Keep the canonical nested scope while also exposing the two
+            # route identities at the response root.  The public OpenAPI
+            # contract and older clients both require these fields.
+            "project_id": project_id,
+            "workspace_id": workspace_id,
             "scope": {
                 "organization_id": organization_id,
                 "project_id": project_id,

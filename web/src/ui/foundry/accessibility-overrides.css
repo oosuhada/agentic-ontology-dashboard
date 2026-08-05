@@ -34,6 +34,11 @@
 .dashboard-focus-segments button.active { border-color: var(--fd-accent); color: var(--fd-accent); background: var(--fd-accent-soft); }
 .dashboard-focus-toolbar label { display: flex; align-items: center; gap: 5px; color: var(--fd-text-muted); }
 .dashboard-focus-toolbar select { max-width: 220px; border: 1px solid var(--fd-border); background: var(--fd-surface); }
+.dashboard-toolbar-group { display: inline-flex; align-items: center; gap: 4px; border-left: 1px solid var(--fd-border); padding-left: 6px; }
+.dashboard-toolbar-group:first-child { border-left: 0; padding-left: 0; }
+.dashboard-toolbar-mode { flex: 0 0 auto; }
+.dashboard-toolbar-layout { flex: 0 0 auto; }
+.dashboard-toolbar-document { flex: 0 0 auto; }
 .dashboard-board-frame.is-collapsed { min-height: var(--fd-board-header-h); }
 .dashboard-board-frame.is-collapsed .dashboard-board-header { border-bottom: 0; }
 .dashboard-collapsed-board-tray {
@@ -47,6 +52,24 @@
   min-height: var(--fd-board-header-h);
   height: auto;
 }
+.dashboard-runtime-warning {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr) auto;
+  align-items: center;
+  gap: 9px;
+  margin: 6px 8px;
+  border: 1px solid color-mix(in srgb,var(--fd-warning) 55%,var(--fd-border));
+  border-left: 4px solid var(--fd-warning);
+  border-radius: var(--fd-radius-sm);
+  padding: 8px 10px;
+  color: var(--fd-text-secondary);
+  background: color-mix(in srgb,var(--fd-warning) 8%,var(--fd-surface));
+}
+.dashboard-runtime-warning > svg { color: var(--fd-warning); }
+.dashboard-runtime-warning > div { display: grid; gap: 2px; }
+.dashboard-runtime-warning strong { color: var(--fd-text); font-size: 11px; }
+.dashboard-runtime-warning span { font-size: 10px; line-height: 1.45; }
+.dashboard-runtime-warning button { min-height: 32px; border: 1px solid var(--fd-warning); border-radius: var(--fd-radius-xs); padding: 0 9px; color: var(--fd-text); background: var(--fd-surface); font-size: 10px; font-weight: 700; }
 
 /* Final readable floor for legacy dashboard renderers. Compact density changes
  * geometry, never the information-bearing text size. */
@@ -177,6 +200,36 @@
 
 .dashboard-board-actions > button,
 .dashboard-board-more > summary { font-size: var(--od-type-xs); }
+
+/* Workbench authoring surfaces must remain readable even in compact density.
+ * The earlier visual copy used 6–8px labels, which made the Canvas and
+ * inspectors technically dense but practically unreadable. */
+.analysis-board-rail > p,
+.analysis-board-rail > button small,
+.analysis-board-rail > button p,
+.analysis-result-inspector h3,
+.analysis-result-inspector label,
+.analysis-result-inspector input,
+.analysis-result-inspector select,
+.analysis-lineage-node-copy span,
+.analysis-lineage-meta span,
+.agent-query-rail small,
+.agent-lineage-pane small,
+.ontology-object-rail small,
+.dataset-catalog-page small,
+.governance-workbench-page small {
+  font-size: max(10px, var(--od-type-2xs));
+}
+.analysis-board-rail > button strong,
+.analysis-result-inspector strong,
+.agent-query-rail strong,
+.ontology-object-rail strong,
+.dataset-catalog-page strong,
+.governance-workbench-page strong {
+  font-size: max(11px, var(--od-type-xs));
+}
+.fd-inspector-tabs { scrollbar-width: thin; overscroll-behavior-x: contain; }
+.fd-inspector-tabs button { min-height: 36px; }
 
 .od-topbar-actions > button,
 .od-mobile-menu,
@@ -363,6 +416,54 @@
 @media (max-width: 760px) {
   .mobile-inspector-trigger { display: inline-flex; }
 
+  /* Mobile is a touch interface, not a compressed desktop. */
+  .od-product-shell button,
+  .od-product-shell summary,
+  .fd-route-shell__content button,
+  .fd-route-shell__content summary,
+  .fd-route-shell__content select,
+  .fd-route-shell__content input:not([type="checkbox"]):not([type="radio"]),
+  .fd-route-shell__content textarea,
+  .role-report-workbench button,
+  .role-report-workbench select,
+  .role-report-workbench input,
+  .role-report-workbench textarea {
+    min-height: 44px;
+  }
+  .od-topbar-actions > button,
+  .od-mobile-menu,
+  .fd-platform-rail button,
+  .od-primary-sidebar button,
+  .od-sidebar-collapse,
+  .od-display-menu > summary,
+  details > summary[aria-label$="column menu"],
+  .fd-inspector-tabs button,
+  .dashboard-board-actions > button,
+  .dashboard-board-more > summary,
+  .react-flow__controls-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .fd-inspector-tabs { min-height: 44px; scroll-snap-type: x proximity; }
+  .fd-inspector-tabs button { flex: 0 0 auto; scroll-snap-align: start; padding-inline: 12px; }
+  .od-display-popover {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: min(82dvh, 720px);
+    overflow: auto;
+    border-radius: 12px 12px 0 0;
+    padding: 16px;
+  }
+  .dashboard-runtime-warning { grid-template-columns: auto minmax(0,1fr); }
+  .dashboard-runtime-warning button { grid-column: 1 / -1; width: 100%; min-height: 44px; }
+  .dashboard-toolbar-group { flex: 0 0 auto; border-left: 0; padding-left: 0; }
+  .dashboard-edit-toolbar { gap: 10px; scroll-snap-type: x proximity; }
+  .dashboard-toolbar-group { scroll-snap-align: start; }
+
   .fd-route-shell__content .agent-workbench-grid,
   .fd-route-shell__content .ontology-workbench-grid,
   .fd-route-shell__content .dataset-catalog-grid,
@@ -409,7 +510,7 @@
   .dataset-catalog-pagination button,
   .agent-run-pagination button,
   .governance-run-pagination button,
-  .ontology-pagination button { min-width: 44px; min-height: 40px; }
+  .ontology-pagination button { min-width: 44px; min-height: 44px; }
 
   .governance-tabs { overflow-x: auto; white-space: nowrap; }
   .governance-tabs button { min-height: 42px; flex: 0 0 auto; }

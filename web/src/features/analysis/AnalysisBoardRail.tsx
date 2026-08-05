@@ -1,4 +1,5 @@
 import { BarChart3, Calculator, Database, Filter, GitMerge, Plus, Sigma, Table2 } from "lucide-react";
+import { useState } from "react";
 import { DataPill } from "../../ui/foundry/DataPill";
 import { ANALYSIS_BOARD_LIBRARY, analysisCardMetadata, compatibleAnalysisBoards } from "./catalog";
 import type { AnalysisBoardDefinition, AnalysisDataKind, AnalysisStepKind } from "./types";
@@ -19,6 +20,7 @@ const GROUPS: Array<{ label: string; kinds: AnalysisPaletteKind[] }> = [
 ];
 
 export function AnalysisBoardRail({ onAddStep, selectedOutput = "object-set" }: AnalysisBoardRailProps) {
+  const [showUnavailable, setShowUnavailable] = useState(false);
   const byKind = new Map(ANALYSIS_BOARD_LIBRARY.map((item) => [item.kind, item]));
   const compatibleKinds = new Set(compatibleAnalysisBoards(selectedOutput).map((item) => item.kind));
   return (
@@ -27,15 +29,19 @@ export function AnalysisBoardRail({ onAddStep, selectedOutput = "object-set" }: 
         <span className="section-label">BOARD PALETTE</span>
         <strong>Build the path</strong>
         <p>현재 output contract와 호환되는 governed board만 추가합니다.</p>
+        <button type="button" className="analysis-unavailable-toggle" aria-pressed={showUnavailable} onClick={() => setShowUnavailable((current) => !current)}>{showUnavailable ? "호환 가능한 Board만 보기" : "사용할 수 없는 Board도 보기"}</button>
       </div>
       <div className="analysis-input-source">
         <span><Database size={13} /></span>
         <div><small>CURRENT OUTPUT</small><strong><DataPill kind={selectedOutput} /></strong></div>
       </div>
-      {GROUPS.map((group) => (
+      {GROUPS.map((group) => {
+        const visibleKinds = group.kinds.filter((kind) => showUnavailable || compatibleKinds.has(kind));
+        if (!visibleKinds.length) return null;
+        return (
         <section className="analysis-board-group" key={group.label}>
           <header>{group.label}</header>
-          {group.kinds.map((kind) => {
+          {visibleKinds.map((kind) => {
             const item = byKind.get(kind) as AnalysisBoardDefinition | undefined;
             if (!item) return null;
             const Icon = ICONS[item.kind];
@@ -50,7 +56,7 @@ export function AnalysisBoardRail({ onAddStep, selectedOutput = "object-set" }: 
             );
           })}
         </section>
-      ))}
+      ); })}
     </aside>
   );
 }

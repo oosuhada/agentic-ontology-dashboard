@@ -1,7 +1,7 @@
 import { Button, Callout, Card, HTMLSelect, InputGroup, Tag } from "@blueprintjs/core";
 import { Bot, PanelRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { getAgentRun, listAgentRuns, runAgentQuery } from "../../api";
+import { getAgentRun, getProject3Status, listAgentRuns, runAgentQuery } from "../../api";
 import { governancePath, navigate, ontologyPath } from "../../routing";
 import { EntityTitle } from "../../ui/foundry/EntityTitle";
 import { FoundryDrawer } from "../../ui/foundry/FoundryDrawer";
@@ -13,6 +13,7 @@ import { useI18n } from "../../ui/i18n/I18nProvider";
 import { AgentQueryBoard } from "./AgentQueryBoard";
 import { AgentRunInspector } from "./AgentRunInspector";
 import { GroundedClaimList } from "./GroundedClaimList";
+import { agentOutcomeIntent, agentOutcomeLabel, deriveAgentOutcome } from "./agentOutcome";
 import type { AgentQueryInput, AgentRunPage, AgentRunResponse } from "./types";
 
 interface AgentWorkbenchPageProps {
@@ -41,19 +42,12 @@ function loadRecent(projectId: string, workspaceId: string): RecentAgentRun[] {
   }
 }
 
-function statusIntent(status: string): "success" | "danger" | "warning" | "none" {
-  if (status === "succeeded") return "success";
-  if (status === "failed") return "danger";
-  if (status === "running" || status === "awaiting_approval") return "warning";
-  return "none";
-}
-
 function currentSearch(): URLSearchParams {
   return new URLSearchParams(window.location.search);
 }
 
 export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPageProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const isMobile = useMediaQuery("(max-width: 760px)");
   const initial = useMemo(() => currentSearch(), []);
   const [run, setRun] = useState<AgentRunResponse | null>(null);
@@ -69,6 +63,7 @@ export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPag
   const [loadingRun, setLoadingRun] = useState(false);
   const [error, setError] = useState("");
   const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [graphRoutesAvailable, setGraphRoutesAvailable] = useState(true);
 
   async function refreshRunList(nextOffset = runOffset) {
     setRunListLoading(true);
@@ -150,6 +145,9 @@ export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPag
     const runId = initial.get("run");
     if (runId) void loadRun(runId, false);
     void refreshRunList(0);
+    void getProject3Status(projectId)
+      .then((status) => setGraphRoutesAvailable(Boolean(status.health.available)))
+      .catch(() => setGraphRoutesAvailable(false));
   }, []);
 
   useEffect(() => {
@@ -162,7 +160,16 @@ export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPag
       <WorkbenchHeader
         className="agent-workbench-header"
         title={<EntityTitle icon={Bot} eyebrow="AGENT EVIDENCE WORKBENCH" title="Grounded Evidence Terminal" subtitle={`${projectId} · ${workspaceId} · typed tools only`} />}
-        metadata={run ? <div className="agent-header-status"><StatusPill intent={run.state.status === "succeeded" ? "success" : run.state.status === "failed" ? "danger" : "warning"}>{run.state.status}</StatusPill><StatusPill intent="primary">{run.state.route}</StatusPill></div> : null}
+        metadata={run ? (() => {
+          const outcome = deriveAgentOutcome({
+            status: run.state.status,
+            evidenceCount: run.state.evidence.length,
+            claimCount: run.state.claims.length,
+            failedStepCount: run.traces.filter((trace) => trace.status === "failed").length,
+            caveats: run.state.caveats,
+          });
+          return <div className="agent-header-status"><StatusPill intent={agentOutcomeIntent(outcome)}>{agentOutcomeLabel(outcome, locale)}</StatusPill><StatusPill intent="primary">{run.state.route}</StatusPill></div>;
+        })() : null}
         actions={<div className="agent-header-actions"><Button icon="diagram-tree" onClick={() => navigate(ontologyPath(projectId, workspaceId))}>Ontology</Button><Button icon="shield" onClick={() => navigate(governancePath(projectId, workspaceId))}>Governance</Button><Button icon="dashboard" onClick={() => navigate(`/app/projects/${encodeURIComponent(projectId)}`)}>Dashboard</Button></div>}
       />
 
@@ -190,7 +197,7 @@ export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPag
                 <button type="button" key={item.run_id} className={run?.state.run_id === item.run_id ? "active" : ""} onClick={() => void loadRun(item.run_id)}>
                   <strong>{item.question}</strong>
                   <span>{item.run_id}</span>
-                  <small>{item.route} · {item.status} · {item.evidence_count} evidence · {new Date(item.created_at).toLocaleString()}</small>
+                  <small>{item.route} · {agentOutcomeLabel(deriveAgentOutcome({ status: item.status, evidenceCount: item.evidence_count, claimCount: item.claim_count }), locale)} · {item.evidence_count} evidence · {new Date(item.created_at).toLocaleString(locale)}</small>
                 </button>
               ))}
               {!runListLoading && !runPage.items.length ? <WorkbenchState kind="empty" compact detail="조건에 맞는 persisted run이 없습니다." /> : null}
@@ -213,6 +220,18 @@ export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPag
                 <div><Tag minimal>{run.state.evidence.length} evidence</Tag><Tag minimal>{run.state.claims.length} claims</Tag>{isMobile ? <button type="button" className="fd-toolbar-button" onClick={() => setInspectorOpen(true)}><PanelRight size={12} /> Inspector</button> : null}</div>
               </div>
               <div className="agent-answer-scroll">
+                {(() => {
+                  const outcome = deriveAgentOutcome({
+                    status: run.state.status,
+                    evidenceCount: run.state.evidence.length,
+                    claimCount: run.state.claims.length,
+                    failedStepCount: run.traces.filter((trace) => trace.status === "failed").length,
+                    caveats: run.state.caveats,
+                  });
+                  if (outcome === "no_evidence") return <Callout intent="warning" title={agentOutcomeLabel(outcome, locale)}>{locale === "ko-KR" ? "질의 실행은 완료됐지만 현재 Scope에서 검증 가능한 근거를 찾지 못했습니다. 성공 결과로 오해하지 않도록 근거 없음 상태로 표시합니다." : "The query completed, but no verifiable evidence matched the current scope."}</Callout>;
+                  if (outcome === "partial") return <Callout intent="warning" title={agentOutcomeLabel(outcome, locale)}>{locale === "ko-KR" ? "일부 Evidence Store가 응답하지 않아 제한된 근거만 사용했습니다." : "One or more evidence stores were unavailable, so the answer uses limited evidence."}</Callout>;
+                  return null;
+                })()}
                 <Card elevation={0} className="agent-answer-card">
                   <span className="eyebrow">QUESTION</span>
                   <h2>{run.state.question}</h2>
@@ -247,6 +266,7 @@ export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPag
             loadingRun={loadingRun}
             onQuery={query}
             onLoadRun={loadRun}
+            graphRoutesAvailable={graphRoutesAvailable}
           />
         </section>
 

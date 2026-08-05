@@ -286,6 +286,8 @@ button.fd-resource-table__row { width: 100%; border-width: 0 0 1px; text-align: 
 .dataset-entity-header strong, .dataset-entity-header small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dataset-entity-header strong { font-size: var(--fd-font-md); }
 .dataset-entity-header small { color: var(--fd-text-muted); font-size: 8px; }
+.dataset-inspector-more { display: flex; min-height: 36px; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--fd-border); padding: 4px 8px; color: var(--fd-text-muted); font-size: 10px; font-weight: 800; }
+.dataset-inspector-more select { min-height: 28px; min-width: 150px; border: 1px solid var(--fd-border); border-radius: var(--fd-radius-xs); color: var(--fd-text); background: var(--fd-surface); font-size: 10px; }
 .dataset-detail-scroll { display: flex; min-height: 0; flex-direction: column; gap: 7px; overflow: auto; padding: 7px; }
 .dataset-detail-scroll > .fd-metric-strip { flex: 0 0 auto; }
 .dataset-detail-scroll > .fd-property-table { flex: 0 0 auto; }
@@ -305,6 +307,14 @@ button.fd-resource-table__row { width: 100%; border-width: 0 0 1px; text-align: 
 .dataset-inspector-list strong { font-size: var(--fd-font-xs); }
 .dataset-inspector-list small, .dataset-inspector-list code { color: var(--fd-text-muted); font-size: 8px; }
 .dataset-inspector-list footer { display: flex; align-items: center; justify-content: space-between; gap: 6px; color: var(--fd-text-secondary); font-size: 8px; }
+.dataset-safe-uri { user-select: all; }
+.dataset-schema-table { overflow: auto; border: 1px solid var(--fd-border); border-radius: var(--fd-radius-sm); background: var(--fd-surface); }
+.dataset-schema-table__header, .dataset-schema-table__row { display: grid; min-width: 620px; grid-template-columns: minmax(150px,1fr) 100px 90px minmax(220px,1.6fr); align-items: center; }
+.dataset-schema-table__header { min-height: 34px; position: sticky; z-index: 1; top: 0; border-bottom: 1px solid var(--fd-border); color: var(--fd-text-muted); background: var(--fd-surface-muted); font-size: 10px; font-weight: 800; }
+.dataset-schema-table__row { min-height: 38px; border-bottom: 1px solid var(--fd-border); color: var(--fd-text-secondary); font-size: 11px; }
+.dataset-schema-table__row:last-child { border-bottom: 0; }
+.dataset-schema-table__row > *, .dataset-schema-table__header > * { min-width: 0; padding: 6px 8px; overflow-wrap: anywhere; }
+.dataset-schema-table__row code { color: var(--fd-text); font-size: 10px; }
 .dataset-version-resource-table { max-height: 100%; }
 .dataset-version-resource-table .fd-resource-table__row code { font-size: 8px; }
 .dataset-lineage-browser section > article { display: flex; flex-direction: column; gap: 3px; border-top: 1px solid var(--fd-border); padding: 6px 0; }
@@ -351,6 +361,13 @@ button.fd-resource-table__row { width: 100%; border-width: 0 0 1px; text-align: 
 .governance-approval-payload { display: flex; flex-direction: column; gap: 5px; }
 .governance-approval-payload .section-label { display: flex; align-items: center; gap: 4px; }
 .governance-approval-payload pre { max-height: 280px; overflow: auto; margin: 0; border: 1px solid var(--fd-border); padding: 7px; color: var(--fd-text-secondary); background: var(--fd-surface-subtle); font-size: 8px; white-space: pre-wrap; }
+.governance-permission-groups { display: grid; gap: 5px; }
+.governance-permission-groups details { border: 1px solid var(--fd-border); border-radius: var(--fd-radius-sm); background: var(--fd-surface); }
+.governance-permission-groups summary { display: flex; min-height: 36px; align-items: center; justify-content: space-between; padding: 0 9px; cursor: pointer; list-style: none; }
+.governance-permission-groups summary::-webkit-details-marker { display: none; }
+.governance-permission-groups summary strong { text-transform: capitalize; }
+.governance-permission-groups summary span { min-width: 24px; border-radius: 999px; padding: 2px 6px; color: var(--fd-text-muted); background: var(--fd-surface-muted); text-align: center; }
+.governance-permission-groups details > div { display: flex; flex-wrap: wrap; gap: 4px; border-top: 1px solid var(--fd-border); padding: 8px; }
 .governance-agent-layout { min-height: 0; flex: 1; }
 .governance-agent-rail, .governance-agent-detail { min-height: 0; }
 .governance-table-scroll table { font-size: var(--fd-font-xs); }

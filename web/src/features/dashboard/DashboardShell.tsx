@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
+  AlertTriangle,
   Bell,
   Bot,
   Blocks,
@@ -219,7 +220,7 @@ export function DashboardShell({
   const [workspaceDetailsOpen, setWorkspaceDetailsOpen] = useState(initialWorkspaceView !== "dashboard");
   const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
   const isCompactWorkbench = useMediaQuery("(max-width: 980px)");
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { preferences, setDensity } = useDisplayPreferences();
   const roleLabels: Record<AppRole, string> = {
     tenant_admin: t("role.tenant_admin"),
@@ -387,9 +388,9 @@ export function DashboardShell({
                 <EntityTitle
                   icon={workspaceView === "report" ? FileText : workspaceView === "dashboard" ? LayoutDashboard : Workflow}
                   eyebrow={workspaceView === "report" ? `REPORT · ${roleEyebrow}` : workspaceView === "dashboard" ? `DASHBOARD · ${roleEyebrow}` : "ANALYSIS · GOVERNED PATH"}
-                  title={workspaceView === "report" ? `${roleLabel} Operational Briefing` : workspaceView === "dashboard" ? activeTabTitle ?? `${roleLabel} Operations` : "Risk Event Analysis Path"}
+                  title={workspaceView === "report" ? (locale === "ko-KR" ? `${roleLabel} 운영 브리핑` : `${roleLabel} Operational Briefing`) : workspaceView === "dashboard" ? activeTabTitle ?? `${roleLabel} Operations` : locale === "ko-KR" ? "Risk Event 분석 경로" : "Risk Event Analysis Path"}
                   subtitle={workspaceView === "report"
-                    ? `${adaptiveProfile.label} · narrative and governed evidence`
+                    ? `${adaptiveProfile.label} · ${locale === "ko-KR" ? "설명과 관리형 근거" : "narrative and governed evidence"}`
                     : workspaceView === "dashboard"
                       ? `${selectedProject?.display_name ?? "Project"} / ${selectedWorkspace?.display_name ?? "Workspace"} · ${roleLabel}`
                       : `${selectedWorkspace?.display_name ?? "Workspace"} · Object set → transform → validate → publish`}
@@ -421,6 +422,17 @@ export function DashboardShell({
 
         {draftRecovery}
 
+        {workspaceView === "dashboard" && layoutMode?.includes("fallback") ? (
+          <section className="dashboard-runtime-warning" role="status" aria-label={locale === "ko-KR" ? "대체 데이터 안내" : "Fallback data notice"}>
+            <AlertTriangle size={15} />
+            <div>
+              <strong>{locale === "ko-KR" ? "현재 Dashboard는 대체 Runtime으로 표시됩니다" : "This dashboard is using a fallback runtime"}</strong>
+              <span>{locale === "ko-KR" ? "운영 데이터 연결이 준비되지 않아 검증된 Fixture 또는 결정론적 결과를 사용하고 있습니다. 실제 운영 Runtime과 동일한 상태로 해석하지 마세요." : "The operational data connection is unavailable, so validated fixture or deterministic results are shown. Do not interpret this as the live runtime state."}</span>
+            </div>
+            <button type="button" onClick={onRetry}>{t("common.retry")}</button>
+          </section>
+        ) : null}
+
         {workspaceView === "dashboard" ? (
           <WorkbenchToolbar
             className="dashboard-tab-toolbar od-workbench-toolbar"
@@ -449,22 +461,30 @@ export function DashboardShell({
               {mode === "edit" ? <button type="button" className="add-tab-button" onClick={onAddTab}><Plus size={13} /> {t("dashboard.newTabLabel")}</button> : null}
             </nav>}
             end={<div className="dashboard-edit-toolbar">
-              <div className="view-edit-switch" role="group" aria-label={t("dashboard.mode")}>
-                <button type="button" className={mode === "view" ? "active" : ""} onClick={() => onModeChange("view")}><Eye size={12} /> {mode === "edit" ? t("common.done") : t("common.view")}</button>
-                <button type="button" className={mode === "edit" ? "active" : ""} title={t("common.edit")} onClick={() => onModeChange("edit")}><Blocks size={12} /> {t("common.edit")}</button>
+              <div className="dashboard-toolbar-group dashboard-toolbar-mode">
+                <div className="view-edit-switch" role="group" aria-label={t("dashboard.mode")}>
+                  <button type="button" className={mode === "view" ? "active" : ""} onClick={() => onModeChange("view")}><Eye size={12} /> {mode === "edit" ? t("common.done") : t("common.view")}</button>
+                  <button type="button" className={mode === "edit" ? "active" : ""} title={t("common.edit")} onClick={() => onModeChange("edit")}><Blocks size={12} /> {t("common.edit")}</button>
+                </div>
+                {mode === "edit" ? <>
+                  <button type="button" className="icon-button" aria-label="Undo dashboard edit" title="실행 취소 (⌘Z)" disabled={!canUndo} onClick={onUndo}><Undo2 size={13} /></button>
+                  <button type="button" className="icon-button" aria-label="Redo dashboard edit" title="다시 실행 (⌘⇧Z)" disabled={!canRedo} onClick={onRedo}><Redo2 size={13} /></button>
+                </> : null}
               </div>
               {mode === "edit" ? <>
-                <button type="button" className="icon-button" aria-label="Undo dashboard edit" title="실행 취소 (⌘Z)" disabled={!canUndo} onClick={onUndo}><Undo2 size={13} /></button>
-                <button type="button" className="icon-button" aria-label="Redo dashboard edit" title="다시 실행 (⌘⇧Z)" disabled={!canRedo} onClick={onRedo}><Redo2 size={13} /></button>
-                <button type="button" className="secondary" aria-label={t("dialog.boardCatalog")} onClick={onOpenCatalog}><Plus size={12} /> {t("dashboard.addBoard")}</button>
-                <button type="button" className="secondary" disabled={layoutOptimizing} onClick={onAutoFitLayout}><Rows3 size={12} /> {t("dashboard.autoFit")}</button>
-                <button type="button" className="secondary" disabled={layoutOptimizing} onClick={onAiOptimizeLayout}><Sparkles size={12} /> {layoutOptimizing ? t("dashboard.layoutOptimizing") : t("dashboard.aiOptimize")}</button>
+                <div className="dashboard-toolbar-group dashboard-toolbar-layout">
+                  <button type="button" className="secondary" aria-label={t("dialog.boardCatalog")} onClick={onOpenCatalog}><Plus size={12} /> {t("dashboard.addBoard")}</button>
+                  <button type="button" className="secondary" disabled={layoutOptimizing} onClick={onAutoFitLayout}><Rows3 size={12} /> {t("dashboard.autoFit")}</button>
+                  <button type="button" className="secondary" disabled={layoutOptimizing} onClick={onAiOptimizeLayout}><Sparkles size={12} /> {layoutOptimizing ? t("dashboard.layoutOptimizing") : t("dashboard.aiOptimize")}</button>
+                </div>
               </> : null}
-              <button type="button" className="secondary" aria-label={t("dashboard.saveView")} onClick={onSaveView}><Sparkles size={12} /> {t("dashboard.saveView")}</button>
-              <button type="button" className="secondary" aria-label={t("common.share")} onClick={onShare}><Share2 size={12} /> {t("common.share")}</button>
-              <div className="dashboard-export-control"><select aria-label={t("dashboard.exportFormat")} value={exportFormat} onChange={(event) => setExportFormat(event.target.value as "json" | "csv" | "pdf")}><option value="pdf">PDF</option><option value="csv">CSV</option><option value="json">JSON</option></select><button type="button" className="secondary" disabled={exporting} onClick={() => onExport(exportFormat)}><Download size={12} />{exporting ? t("common.exporting") : t("common.export")}</button></div>
-              <button type="button" className="icon-button" title={t("dashboard.restore")} onClick={onRestore}><RotateCcw size={13} /></button>
-              <button type="button" className="primary" aria-label={saving ? t("common.saving") : dirty ? t("dashboard.saveLayout") : t("common.saved")} disabled={!dirty || saving} onClick={onSave}><Save size={13} />{saving ? t("common.saving") : dirty ? t("dashboard.saveLayout") : t("common.saved")}</button>
+              <div className="dashboard-toolbar-group dashboard-toolbar-document">
+                <button type="button" className="secondary" aria-label={t("dashboard.saveView")} onClick={onSaveView}><Sparkles size={12} /> {t("dashboard.saveView")}</button>
+                <button type="button" className="secondary" aria-label={t("common.share")} onClick={onShare}><Share2 size={12} /> {t("common.share")}</button>
+                <div className="dashboard-export-control"><select aria-label={t("dashboard.exportFormat")} value={exportFormat} onChange={(event) => setExportFormat(event.target.value as "json" | "csv" | "pdf")}><option value="pdf">PDF</option><option value="csv">CSV</option><option value="json">JSON</option></select><button type="button" className="secondary" disabled={exporting} onClick={() => onExport(exportFormat)}><Download size={12} />{exporting ? t("common.exporting") : t("common.export")}</button></div>
+                <button type="button" className="icon-button" title={t("dashboard.restore")} onClick={onRestore}><RotateCcw size={13} /></button>
+                <button type="button" className="primary" aria-label={saving ? t("common.saving") : dirty ? t("dashboard.saveLayout") : t("common.saved")} disabled={!dirty || saving} onClick={onSave}><Save size={13} />{saving ? t("common.saving") : dirty ? t("dashboard.saveLayout") : t("common.saved")}</button>
+              </div>
             </div>}
           />
         ) : null}

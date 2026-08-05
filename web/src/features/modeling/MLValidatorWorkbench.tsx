@@ -9,6 +9,7 @@ import {
 } from "./modelingApi";
 import type { CandidateResult, ExplanationArtifact, MetricSet, ModelVersion, WorkbenchPayload } from "./types";
 import { useAuth } from "../auth/AuthContext";
+import { datasetCatalogPath, navigate } from "../../routing";
 import "./MLValidatorWorkbench.css";
 
 type Props = { projectId: string; workspaceId: string };
@@ -127,6 +128,7 @@ export function MLValidatorWorkbench({ projectId, workspaceId }: Props) {
   const [tab, setTab] = useState<Tab>("experiments");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [errorTimestamp, setErrorTimestamp] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [featureText, setFeatureText] = useState("{}");
   const [explanation, setExplanation] = useState<ExplanationArtifact | null>(null);
@@ -141,6 +143,7 @@ export function MLValidatorWorkbench({ projectId, workspaceId }: Props) {
       setSelectedModel((current) => current ?? result.active_models[0]?.model_version_id ?? result.models[0]?.model_version_id);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "ML Validator Workbench를 불러오지 못했습니다.");
+      setErrorTimestamp(new Date().toISOString());
     } finally {
       setLoading(false);
     }
@@ -154,6 +157,7 @@ export function MLValidatorWorkbench({ projectId, workspaceId }: Props) {
     setFeatureText("{}");
     setNotice("");
     setError("");
+    setErrorTimestamp(null);
   }, [projectId, workspaceId]);
 
   useEffect(() => { void load(); }, [load]);
@@ -180,7 +184,10 @@ export function MLValidatorWorkbench({ projectId, workspaceId }: Props) {
     && payload.scope.workspace_id === workspaceId,
   );
   if ((loading && !payload) || (payload && !payloadMatchesScope)) return <main className="mlv-shell"><div className="mlv-loading">Experiment artifact와 Model Registry를 불러오는 중입니다.</div></main>;
-  if (error && !payload) return <main className="mlv-shell"><div className="mlv-error"><strong>Workbench unavailable</strong><p>{error}</p><button onClick={() => void load()}>다시 시도</button></div></main>;
+  if (error && !payload) {
+    const reference = `MLW-${Math.abs(Array.from(`${projectId}:${workspaceId}:${errorTimestamp ?? "unknown"}`).reduce((hash, character) => ((hash << 5) - hash) + character.charCodeAt(0), 0)).toString(36).toUpperCase()}`;
+    return <main className="mlv-shell"><section className="mlv-error mlv-error-recovery" role="alert"><div><span>ML VALIDATOR UNAVAILABLE</span><strong>모델 검증 Workbench를 불러오지 못했습니다.</strong><p>서버 응답 계약이나 모델링 Runtime을 확인한 뒤 다시 시도하세요. Dataset과 Dashboard는 계속 사용할 수 있습니다.</p></div><dl><div><dt>오류 참조</dt><dd><code>{reference}</code></dd></div><div><dt>발생 시각</dt><dd>{errorTimestamp ? new Date(errorTimestamp).toLocaleString() : "—"}</dd></div><div><dt>기술 메시지</dt><dd>{error}</dd></div></dl><div className="mlv-error-actions"><button onClick={() => void load()}>다시 시도</button><button onClick={() => navigate(datasetCatalogPath(projectId))}>Dataset Browser</button><button onClick={() => navigate(`/app/projects/${encodeURIComponent(projectId)}`)}>Dashboard</button></div></section></main>;
+  }
 
   return (
     <main className="mlv-shell">

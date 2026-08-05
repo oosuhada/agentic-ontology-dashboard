@@ -1,4 +1,5 @@
 import { Database, ExternalLink, PlugZap, Rows3 } from "lucide-react";
+import { useState } from "react";
 import type { EventSummary } from "../../types";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useI18n } from "../../ui/i18n/I18nProvider";
@@ -77,6 +78,7 @@ export function ContextPanel({
   onDeleteSavedView,
 }: ContextPanelProps) {
   const { t, locale } = useI18n();
+  const [activeSection, setActiveSection] = useState<"context" | "filters" | "events">("context");
   const optionLabel = (value: string) => {
     const key = STATUS_OPTION_KEYS[value] ?? INTENT_OPTION_KEYS[value];
     return key ? t(key) : value;
@@ -100,6 +102,13 @@ export function ContextPanel({
 
   return (
     <aside className="dashboard-context-panel">
+      <nav className="dashboard-context-tabs" aria-label={locale === "ko-KR" ? "Dashboard 상황 패널" : "Dashboard context sections"}>
+        <button type="button" className={activeSection === "context" ? "active" : ""} onClick={() => setActiveSection("context")}>{locale === "ko-KR" ? "상황" : "Context"}</button>
+        <button type="button" className={activeSection === "filters" ? "active" : ""} onClick={() => setActiveSection("filters")}>{locale === "ko-KR" ? "필터" : "Filters"}{affectedCount ? <small>{affectedCount}</small> : null}</button>
+        <button type="button" className={activeSection === "events" ? "active" : ""} onClick={() => setActiveSection("events")}>Event<small>{filteredEvents.length}</small></button>
+      </nav>
+
+      {activeSection === "context" ? <>
       <section className="dashboard-data-connections">
         <div className="context-section-heading">
           <span className="section-label">{t("dashboard.connectedResources")}</span>
@@ -155,6 +164,23 @@ export function ContextPanel({
       </section>
 
       <section>
+        <span className="section-label">{t("dashboard.savedViews")}</span>
+        <select
+          className="saved-view-select"
+          value={selectedSavedViewId}
+          onChange={(event) => onSelectSavedView(event.target.value)}
+        >
+          <option value="">{t("dashboard.saveView")}</option>
+          {savedViews.map((view) => <option key={view.id} value={view.id}>{view.name}</option>)}
+        </select>
+        <div className="button-row compact-row">
+          <button type="button" className="secondary" disabled={!selectedSavedViewId} onClick={onApplySavedView}>{t("common.apply")}</button>
+          <button type="button" className="secondary" disabled={!selectedSavedViewId} onClick={onDeleteSavedView}>{t("common.delete")}</button>
+        </div>
+      </section>
+      </> : null}
+
+      {activeSection === "filters" ? <section>
         <div className="context-section-heading">
           <span className="section-label">{t("dashboard.parametersFilters")}</span>
           <strong>{t("dashboard.boardsAffected", { count: affectedCount })}</strong>
@@ -210,9 +236,9 @@ export function ContextPanel({
             </div>
           ))}
         </div>
-      </section>
+      </section> : null}
 
-      <section className="context-event-section">
+      {activeSection === "events" ? <section className="context-event-section">
         <span className="section-label">{t("dashboard.riskEvents")}</span>
         <div className="event-nav context-event-nav">
           {filteredEvents.map((event) => (
@@ -227,23 +253,7 @@ export function ContextPanel({
             </button>
           ))}
         </div>
-      </section>
-
-      <section>
-        <span className="section-label">{t("dashboard.savedViews")}</span>
-        <select
-          className="saved-view-select"
-          value={selectedSavedViewId}
-          onChange={(event) => onSelectSavedView(event.target.value)}
-        >
-          <option value="">{t("dashboard.saveView")}</option>
-          {savedViews.map((view) => <option key={view.id} value={view.id}>{view.name}</option>)}
-        </select>
-        <div className="button-row compact-row">
-          <button type="button" className="secondary" disabled={!selectedSavedViewId} onClick={onApplySavedView}>{t("common.apply")}</button>
-          <button type="button" className="secondary" disabled={!selectedSavedViewId} onClick={onDeleteSavedView}>{t("common.delete")}</button>
-        </div>
-      </section>
+      </section> : null}
     </aside>
   );
 }

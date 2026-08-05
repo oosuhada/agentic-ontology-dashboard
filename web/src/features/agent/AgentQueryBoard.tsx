@@ -1,6 +1,6 @@
 import { Button, FormGroup, HTMLSelect, InputGroup, NumericInput, TextArea } from "@blueprintjs/core";
 import { Paperclip, Search, Send } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AgentQueryInput, AgentRoute } from "./types";
 
 interface AgentQueryBoardProps {
@@ -13,6 +13,7 @@ interface AgentQueryBoardProps {
   loadingRun: boolean;
   onQuery: (input: AgentQueryInput) => Promise<void>;
   onLoadRun: (runId: string) => Promise<void>;
+  graphRoutesAvailable?: boolean;
 }
 
 export function AgentQueryBoard({
@@ -25,6 +26,7 @@ export function AgentQueryBoard({
   loadingRun,
   onQuery,
   onLoadRun,
+  graphRoutesAvailable = true,
 }: AgentQueryBoardProps) {
   const [question, setQuestion] = useState(initialQuestion);
   const [route, setRoute] = useState<"auto" | AgentRoute>("auto");
@@ -33,6 +35,10 @@ export function AgentQueryBoard({
   const [topK, setTopK] = useState(8);
   const [runId, setRunId] = useState("");
   const [advanced, setAdvanced] = useState(Boolean(initialObjectType || initialObjectId));
+
+  useEffect(() => {
+    if (!graphRoutesAvailable && ["graph", "vector", "hybrid"].includes(route)) setRoute("relational");
+  }, [graphRoutesAvailable, route]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -53,7 +59,7 @@ export function AgentQueryBoard({
         </div> : null}
         <footer>
           <div className="agent-composer-options">
-            <FormGroup label="Route" labelFor="agent-route"><HTMLSelect id="agent-route" value={route} onChange={(event) => setRoute(event.currentTarget.value as "auto" | AgentRoute)}><option value="auto">Auto classify</option><option value="relational">Relational</option><option value="graph">Graph</option><option value="vector">Vector</option><option value="hybrid">Hybrid</option></HTMLSelect></FormGroup>
+            <FormGroup label="Route" labelFor="agent-route" helperText={!graphRoutesAvailable ? "Project 3 연결 전에는 Relational evidence만 사용할 수 있습니다." : undefined}><HTMLSelect id="agent-route" value={route} onChange={(event) => setRoute(event.currentTarget.value as "auto" | AgentRoute)}><option value="auto" disabled={!graphRoutesAvailable}>Auto classify</option><option value="relational">Relational</option><option value="graph" disabled={!graphRoutesAvailable}>Graph</option><option value="vector" disabled={!graphRoutesAvailable}>Vector</option><option value="hybrid" disabled={!graphRoutesAvailable}>Hybrid</option></HTMLSelect></FormGroup>
             <FormGroup label="Evidence limit" labelFor="agent-top-k"><NumericInput id="agent-top-k" min={1} max={30} value={topK} onValueChange={(value) => setTopK(Math.min(30, Math.max(1, value || 1)))} /></FormGroup>
           </div>
           <Button type="submit" intent="primary" icon={<Send size={13} />} loading={loading} disabled={!question.trim()}>Run governed query</Button>
