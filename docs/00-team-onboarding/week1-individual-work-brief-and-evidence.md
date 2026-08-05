@@ -94,28 +94,39 @@ canonical-ai4i-physics-v3.1
 dsv-9fc144c7-d3f8-5b37-8465-04248165b7ce
 ```
 
-## 3. FastAPI 서버 기동 및 `/health` 엔드포인트 구현·검증
+## 3. FastAPI·Flask 전체 MVP API 표면 비교 및 전수 계약 검증
 
-FastAPI와 Flask에 동일한 `GET /health` API와 JSON 응답 계약을 각각
-구현했습니다.
+초기 기준선으로 FastAPI와 Flask에 동일한 `GET /health` API와 JSON 응답
+계약을 각각 구현했습니다. 여기에 머물지 않고 현재 Ontology Dashboard MVP의
+FastAPI OpenAPI 전체를 수집해 162개 경로·172개 HTTP 작업을 전수 비교했습니다.
 
-두 프레임워크의 HTTP 응답, Payload 일치, 최소 코드량, 테스트 방식, OpenAPI
-자동 생성, Swagger 제공 여부와 응답 Schema 검증을 비교했습니다.
+비인증 상태와 Tenant Admin 인증 상태에서 172개 작업을 각각 호출해 라우팅,
+인증, CSRF, 권한, 요청 Schema와 예외 계약을 확인했습니다. 처리되지 않은 HTTP
+500은 0건이었고, SQLite 격리 환경에서 PostgreSQL 전용 Predictive Maintenance
+Runtime 10개 작업은 의도된 503 degraded contract를 반환했습니다.
+
+FastAPI는 172개 실제 business handler와 OpenAPI를 제공하며, 147개 작업에서
+요청 Body 또는 Parameter 검증을 자동 적용하고 150개 작업의 응답 Schema를
+문서화합니다. Flask에는 동일 172개 route mirror를 생성해 등록 parity를
+확인했지만 실제 business handler, 자동 OpenAPI와 Schema 검증은 기본 제공되지
+않으므로 172개 작업을 별도로 이식해야 합니다.
 
 Flask는 단일 API의 최소 실행과 로컬 인프로세스 응답에서 더 가벼웠습니다.
 반면 FastAPI는 별도 확장 없이 Pydantic 응답 Schema, 데이터 검증, OpenAPI와
 Swagger를 함께 제공했습니다.
 
-따라서 단순 응답 속도가 아니라 계약, 문서화, 테스트 및 향후
-Dataset·Prediction API 확장성을 기준으로 FastAPI를 최종 프레임워크로
-선정했습니다.
+따라서 최종 선정은 `/health` 한 개의 결과가 아니라 Dataset, Ontology,
+Analysis, Dashboard, Modeling, Predictive Maintenance Runtime을 포함한 전체
+162개 경로·172개 작업의 계약, 문서화, 검증과 이식 비용을 기준으로 했습니다.
 
 ### 실행 화면
 
 - [FastAPI vs Flask 비교 결과](https://fastapi-flask.oosu.dev)
+- [전체 162개 경로·172개 작업 비교 JSON](https://fastapi-flask.oosu.dev/full-comparison.json)
+- [실제 Ontology Dashboard 162경로 Swagger](https://dashboard.oosu.dev/docs)
+- [비교 화면 Swagger](https://fastapi-flask.oosu.dev/docs)
 - [FastAPI `/health`](https://fastapi-flask.oosu.dev/health)
 - [Flask `/health` 비교 응답](https://fastapi-flask.oosu.dev/flask-health)
-- [FastAPI Swagger](https://fastapi-flask.oosu.dev/docs)
 - [비교 결과 JSON](https://fastapi-flask.oosu.dev/comparison.json)
 
 ### GitHub
@@ -124,6 +135,8 @@ Dataset·Prediction API 확장성을 기준으로 FastAPI를 최종 프레임워
 - [FastAPI 구현](https://github.com/oosuhada/agentic-ontology-dashboard/blob/experiment/week1-streamlit-plotly-framework-comparison/experiments/week1_prototype/framework_comparison/fastapi_app.py)
 - [Flask 구현](https://github.com/oosuhada/agentic-ontology-dashboard/blob/experiment/week1-streamlit-plotly-framework-comparison/experiments/week1_prototype/framework_comparison/flask_app.py)
 - [비교 실행 코드](https://github.com/oosuhada/agentic-ontology-dashboard/blob/experiment/week1-streamlit-plotly-framework-comparison/experiments/week1_prototype/framework_comparison/compare.py)
+- [전체 API 표면 비교 하네스](https://github.com/oosuhada/agentic-ontology-dashboard/blob/experiment/week1-streamlit-plotly-framework-comparison/experiments/week1_prototype/framework_comparison/full_surface.py)
+- [전체 API 전수 테스트](https://github.com/oosuhada/agentic-ontology-dashboard/blob/experiment/week1-streamlit-plotly-framework-comparison/experiments/week1_prototype/tests/test_full_api_surface.py)
 - [비교 테스트](https://github.com/oosuhada/agentic-ontology-dashboard/blob/experiment/week1-streamlit-plotly-framework-comparison/experiments/week1_prototype/tests/test_framework_comparison.py)
 - [구현 보고서](https://github.com/oosuhada/agentic-ontology-dashboard/blob/experiment/week1-streamlit-plotly-framework-comparison/experiments/week1_prototype/IMPLEMENTATION_REPORT.md)
 

@@ -43,9 +43,14 @@ def test_public_comparison_page_and_json_are_available() -> None:
     client = TestClient(fastapi_app)
     page = client.get("/")
     report = client.get("/comparison.json")
+    full_report = client.get("/full-comparison.json")
 
     assert page.status_code == 200
     assert "FastAPI vs Flask" in page.text
+    assert "162개 OpenAPI 경로" in page.text
     assert "최종 선택: FastAPI" in page.text
     assert report.status_code == 200
-    assert report.json()["selected_framework"] == "FastAPI"
+    assert report.json()["baseline"]["selected_framework"] == "FastAPI"
+    assert report.json()["full_surface"]["scope"]["operation_count"] == 172
+    assert full_report.status_code == 200
+    assert full_report.json()["scope"]["path_count"] == 162

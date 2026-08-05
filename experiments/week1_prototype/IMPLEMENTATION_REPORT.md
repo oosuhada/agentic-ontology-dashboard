@@ -57,7 +57,60 @@ plotly_chart elements: 7
 
 Streamlit runtime health도 `HTTP 200`, 본문 `ok`로 확인했다.
 
-## 3. FastAPI·Flask 동일 조건 비교
+## 3. FastAPI·Flask 전체 MVP API 표면 비교
+
+초기에는 두 프레임워크에 동일한 `/health` 한 개를 구현해 기본 계약 기능을
+비교했다. 이후 현재 MVP 구현량을 반영하기 위해 Adaptive Modeling 최신
+브랜치를 병합하고, FastAPI OpenAPI 전체를 기준으로 비교 범위를 확장했다.
+
+### 전체 전수 범위
+
+```text
+OpenAPI paths: 162
+HTTP operations: 172
+GET: 93
+POST: 66
+PUT: 7
+PATCH: 4
+DELETE: 2
+```
+
+주요 범주는 Modeling 38, Dashboard 18, Admin 13, Predictive Maintenance
+Runtime 13, Ontology 12, Dataset 11, Manufacturing 11, Analysis 10,
+Authentication 10개 작업이다.
+
+### FastAPI 실제 Runtime 전수 probe
+
+비인증 상태와 Tenant Admin 인증 상태에서 172개 작업을 각각 호출했다. 쓰기
+작업은 격리 SQLite DB에 contract probe payload를 보내 요청 Schema·CSRF·권한
+계약을 확인했다.
+
+```text
+비인증: 200 3건 · 401 165건 · 403 2건 · 422 2건
+인증:   200 34건 · 403 36건 · 404 9건 · 422 83건 · 503 10건
+처리되지 않은 HTTP 500: 0건
+```
+
+인증 probe의 503 10건은 오류 은폐가 아니라 SQLite 격리 환경에서 PostgreSQL
+전용 Canonical V3.1 Runtime이 명시적으로 반환한 degraded contract다.
+
+### 전체 표면의 계약 자동화 비교
+
+| 항목 | FastAPI 실제 앱 | bare Flask route mirror |
+|---|---:|---:|
+| 등록 HTTP 작업 | 172 | 172 |
+| 실제 business handler | 172 | 0 |
+| 자동 OpenAPI 작업 | 172 | 0 |
+| 자동 요청·파라미터 검증 대상 | 147 | 0 |
+| 응답 Schema 작업 | 150 | 0 |
+| 수동 business port 필요 | 0 | 172 |
+
+Flask route mirror는 172개 경로가 Flask에서도 등록 가능한지와 이식 대상 규모를
+측정한다. 제품 business logic을 FastAPI로 proxy하거나 Flask 구현으로 가장하지
+않는다. 동일 기능의 Flask 제품을 만들려면 172개 handler와 validation·문서화
+계약을 별도로 이식해야 한다.
+
+### `/health` 기준선 마이크로 비교
 
 두 프레임워크에 아래와 같은 계약을 각각 구현했다.
 
@@ -112,16 +165,20 @@ Flask에서도 extension과 별도 schema 코드를 추가하면 같은 기능�
 
 ### 발표·보고용 선정 문장
 
-> FastAPI와 Flask로 동일한 `/health` API를 각각 구현해 비교했습니다. Flask는
-> 단일 endpoint 구현과 인프로세스 응답이 더 가벼웠지만, FastAPI는 별도
-> extension 없이 응답 schema 검증과 OpenAPI 문서를 함께 생성했습니다. 이후
-> 데이터셋과 예측 결과 API 확장까지 고려했을 때 결과물 완성도가 더 높아
-> FastAPI를 최종 선택했습니다.
+> 초기에는 FastAPI와 Flask로 동일한 `/health` API를 구현해 기준선을
+> 비교했습니다. 이후 현재 MVP의 OpenAPI 전체를 기준으로 162개 경로·172개
+> HTTP 작업을 전수 수집하고, 인증 전·후 runtime probe와 Flask route mirror를
+> 실행했습니다. FastAPI는 172개 실제 business handler, 자동 OpenAPI, 요청
+> 검증과 응답 Schema를 제공했고 처리되지 않은 HTTP 500은 0건이었습니다.
+> 반면 bare Flask는 172개 route를 등록할 수 있었지만 실제 handler와 계약을
+> 모두 별도로 이식해야 했기 때문에 전체 MVP 결과물 기준으로 FastAPI를 최종
+> 선택했습니다.
 
 ## 4. 자동 테스트
 
 ```text
-6 passed
+전체 백엔드: 255 passed, 2 skipped
+Week 1 실험: 11 passed
 ```
 
 검증 범위:
@@ -130,9 +187,15 @@ Flask에서도 extension과 별도 schema 코드를 추가하면 같은 기능�
 - 양쪽 JSON payload 완전 일치
 - FastAPI OpenAPI response schema 생성
 - Flask 기본 구성에서 `/openapi.json` 404
-- 비교 rubric에서 FastAPI 선정
+- 162개 OpenAPI 경로·172개 HTTP 작업 inventory
+- 172개 FastAPI 작업 비인증 runtime probe
+- 172개 FastAPI 작업 Tenant Admin 인증 runtime probe
+- 처리되지 않은 HTTP 500 0건
+- Flask 172개 route mirror 등록 parity
+- 전체 API 표면 기준 FastAPI 선정
 - Canonical package path 탐색
 - JSONL timeline 선택 설비 필터링
+- DevSpace worktree에서도 Canonical V2/V3.1 외부 패키지 경로 복원
 
 ## 5. 로컬 확인 주소
 
@@ -143,5 +206,6 @@ Flask에서도 extension과 별도 schema 코드를 추가하면 같은 기능�
 | Streamlit + Plotly | `http://127.0.0.1:8511` |
 | FastAPI health | `http://127.0.0.1:8111/health` |
 | FastAPI OpenAPI | `http://127.0.0.1:8111/docs` |
+| 전체 API 비교 JSON | `http://127.0.0.1:8111/full-comparison.json` |
 | Flask health | `http://127.0.0.1:5111/health` |
 

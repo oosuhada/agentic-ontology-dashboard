@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -19,8 +20,42 @@ from predictive_maintenance_v3_helpers import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
-V2_ROOT = ROOT.parent / "predictive_maintenance_canonical_v2"
-V3_ROOT = ROOT.parent / "predictive_maintenance_canonical_v3.1"
+
+
+def _external_package_root(name: str, env_name: str) -> Path:
+    candidates: list[Path] = []
+    configured = os.getenv(env_name)
+    if configured:
+        candidates.append(Path(configured).expanduser())
+    candidates.append(ROOT.parent / name)
+
+    # A managed Git worktree lives under ~/.devspace/worktrees, so ROOT.parent
+    # is not the directory that contains the canonical packages.  Resolve the
+    # main checkout from the worktree's .git pointer and use its parent as the
+    # stable sibling-package location.
+    git_pointer = ROOT / ".git"
+    if git_pointer.is_file():
+        prefix = "gitdir:"
+        content = git_pointer.read_text(encoding="utf-8").strip()
+        if content.startswith(prefix):
+            git_dir = Path(content[len(prefix) :].strip()).expanduser().resolve()
+            if len(git_dir.parents) >= 3:
+                candidates.append(git_dir.parents[2].parent / name)
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate.resolve()
+    return candidates[0]
+
+
+V2_ROOT = _external_package_root(
+    "predictive_maintenance_canonical_v2",
+    "PREDICTIVE_MAINTENANCE_CANONICAL_V2_ROOT",
+)
+V3_ROOT = _external_package_root(
+    "predictive_maintenance_canonical_v3.1",
+    "PREDICTIVE_MAINTENANCE_CANONICAL_V3_1_ROOT",
+)
 V2_CHECKSUM = "ac12fdc33f1e03b46447687e689566fd2b66f5d30bb253fbe82309770313594b"
 ROW_COUNT_KEYS = {
     "asset_master": "assets",

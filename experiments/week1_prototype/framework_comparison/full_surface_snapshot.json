@@ -1,0 +1,2219 @@
+{
+  "scope": {
+    "application": "Ontology Dashboard MVP",
+    "path_count": 162,
+    "operation_count": 172,
+    "comparison_unit": "every OpenAPI path and HTTP operation"
+  },
+  "fastapi": {
+    "real_business_application": true,
+    "automatic_openapi_operation_count": 172,
+    "automatic_request_validation_operation_count": 147,
+    "automatic_response_schema_operation_count": 150,
+    "unauthenticated_probe": {
+      "authenticated": false,
+      "operation_count": 172,
+      "status_counts": {
+        "200": 3,
+        "401": 165,
+        "403": 2,
+        "422": 2
+      },
+      "unhandled_server_error_count": 0,
+      "unhandled_server_errors": [],
+      "expected_503_count": 0,
+      "expected_503_operations": []
+    },
+    "authenticated_probe": {
+      "authenticated": true,
+      "operation_count": 172,
+      "status_counts": {
+        "200": 34,
+        "403": 36,
+        "404": 9,
+        "422": 83,
+        "503": 10
+      },
+      "unhandled_server_error_count": 0,
+      "unhandled_server_errors": [],
+      "expected_503_count": 10,
+      "expected_503_operations": [
+        {
+          "method": "GET",
+          "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/context",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/dashboard",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/observations",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/release",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/replay/sessions/{session_id}",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/replay/sessions/{session_id}/events",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/results/latest",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/snapshots/{prediction_id}",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/timeline",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/versions",
+          "status": 503
+        }
+      ]
+    }
+  },
+  "flask": {
+    "real_business_application": false,
+    "comparison_mode": "generated bare-Flask route mirror",
+    "registered_operation_count": 172,
+    "status_counts": {
+      "200": 172
+    },
+    "failure_count": 0,
+    "failures": [],
+    "automatic_openapi_operation_count": 0,
+    "automatic_request_validation_operation_count": 0,
+    "automatic_response_schema_operation_count": 0,
+    "business_handler_operation_count": 0,
+    "manual_port_required_operation_count": 172
+  },
+  "schema_summary": {
+    "path_count": 162,
+    "operation_count": 172,
+    "request_body_operation_count": 72,
+    "parameterized_operation_count": 115,
+    "response_schema_operation_count": 150,
+    "method_counts": {
+      "DELETE": 2,
+      "GET": 93,
+      "PATCH": 4,
+      "POST": 66,
+      "PUT": 7
+    },
+    "tag_counts": {
+      "modeling": 38,
+      "dashboards": 18,
+      "admin": 13,
+      "predictive-maintenance-runtime": 13,
+      "ontology": 12,
+      "datasets": 11,
+      "manufacturing-domain-pack": 11,
+      "analyses": 10,
+      "auth": 10,
+      "role-workspaces": 7,
+      "planner": 6,
+      "project3": 6,
+      "projects": 6,
+      "predictions": 5,
+      "agent": 3,
+      "governance": 3,
+      "system": 3,
+      "exports": 2
+    },
+    "operations": [
+      {
+        "method": "GET",
+        "path": "/health",
+        "operation_id": "health_health_get",
+        "tags": [
+          "system"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/system/polyglot-health",
+        "operation_id": "polyglot_health_api_system_polyglot_health_get",
+        "tags": [
+          "system"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/openapi-contract",
+        "operation_id": "openapi_contract_api_openapi_contract_get",
+        "tags": [
+          "system"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/register",
+        "operation_id": "register_api_auth_register_post",
+        "tags": [
+          "auth"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "operation_id": "login_api_auth_login_post",
+        "tags": [
+          "auth"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/logout",
+        "operation_id": "logout_api_auth_logout_post",
+        "tags": [
+          "auth"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/me",
+        "operation_id": "me_api_auth_me_get",
+        "tags": [
+          "auth"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/display-preferences",
+        "operation_id": "get_display_preferences_api_auth_display_preferences_get",
+        "tags": [
+          "auth"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "PUT",
+        "path": "/api/auth/display-preferences",
+        "operation_id": "save_display_preferences_api_auth_display_preferences_put",
+        "tags": [
+          "auth"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/auth/active-project",
+        "operation_id": "set_active_project_api_auth_active_project_patch",
+        "tags": [
+          "auth"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/refresh",
+        "operation_id": "refresh_session_api_auth_refresh_post",
+        "tags": [
+          "auth"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/sessions",
+        "operation_id": "list_sessions_api_auth_sessions_get",
+        "tags": [
+          "auth"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/auth/sessions/others",
+        "operation_id": "revoke_other_sessions_api_auth_sessions_others_delete",
+        "tags": [
+          "auth"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "POST",
+        "path": "/api/agent/query",
+        "operation_id": "run_agent_query_api_agent_query_post",
+        "tags": [
+          "agent"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/agent/runs",
+        "operation_id": "list_agent_runs_api_agent_runs_get",
+        "tags": [
+          "agent"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 7,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/agent/runs/{run_id}",
+        "operation_id": "inspect_agent_run_api_agent_runs__run_id__get",
+        "tags": [
+          "agent"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/adapters",
+        "operation_id": "list_adapters_api_adapters_get",
+        "tags": [
+          "datasets",
+          "predictions"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/datasets",
+        "operation_id": "list_project_datasets_api_projects__project_id__datasets_get",
+        "tags": [
+          "datasets",
+          "predictions"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/{project_id}/datasets/ingest",
+        "operation_id": "ingest_project_dataset_api_projects__project_id__datasets_ingest_post",
+        "tags": [
+          "datasets",
+          "predictions"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/predictions",
+        "operation_id": "list_project_predictions_api_projects__project_id__predictions_get",
+        "tags": [
+          "datasets",
+          "predictions"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/{project_id}/predictions",
+        "operation_id": "ingest_prediction_result_api_projects__project_id__predictions_post",
+        "tags": [
+          "datasets",
+          "predictions"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/dataset-catalog",
+        "operation_id": "list_datasets_api_projects__project_id__dataset_catalog_get",
+        "tags": [
+          "datasets"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 6,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/{project_id}/dataset-catalog",
+        "operation_id": "create_dataset_api_projects__project_id__dataset_catalog_post",
+        "tags": [
+          "datasets"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/dataset-catalog/{dataset_id}",
+        "operation_id": "dataset_detail_api_projects__project_id__dataset_catalog__dataset_id__get",
+        "tags": [
+          "datasets"
+        ],
+        "path_parameter_count": 2,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/{project_id}/dataset-catalog/{dataset_id}/versions",
+        "operation_id": "create_dataset_version_api_projects__project_id__dataset_catalog__dataset_id__versions_post",
+        "tags": [
+          "datasets"
+        ],
+        "path_parameter_count": 2,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "PUT",
+        "path": "/api/projects/{project_id}/dataset-catalog/{dataset_id}/versions/{version_id}/mapping",
+        "operation_id": "save_ontology_mapping_api_projects__project_id__dataset_catalog__dataset_id__versions__version_id__mapping_put",
+        "tags": [
+          "datasets"
+        ],
+        "path_parameter_count": 3,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/{project_id}/dataset-catalog/{dataset_id}/versions/{version_id}/materializations",
+        "operation_id": "create_materialization_api_projects__project_id__dataset_catalog__dataset_id__versions__version_id__materializations_post",
+        "tags": [
+          "datasets"
+        ],
+        "path_parameter_count": 3,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/workspaces",
+        "operation_id": "list_workspaces_api_workspaces_get",
+        "tags": [
+          "ontology"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/domain-packs",
+        "operation_id": "list_domain_packs_api_domain_packs_get",
+        "tags": [
+          "ontology"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/ontology/registry",
+        "operation_id": "ontology_registry_api_ontology_registry_get",
+        "tags": [
+          "ontology"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/ontology/object-types",
+        "operation_id": "list_object_types_api_ontology_object_types_get",
+        "tags": [
+          "ontology"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/ontology/link-types",
+        "operation_id": "list_link_types_api_ontology_link_types_get",
+        "tags": [
+          "ontology"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/ontology/action-types",
+        "operation_id": "list_action_types_api_ontology_action_types_get",
+        "tags": [
+          "ontology"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/ontology/objects",
+        "operation_id": "query_ontology_objects_api_ontology_objects_get",
+        "tags": [
+          "ontology"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 6,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/ontology/objects/aggregate",
+        "operation_id": "aggregate_ontology_objects_api_ontology_objects_aggregate_get",
+        "tags": [
+          "ontology"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 6,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/ontology/objects/{object_id}",
+        "operation_id": "get_ontology_object_api_ontology_objects__object_id__get",
+        "tags": [
+          "ontology"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/ontology/objects/{object_id}/links",
+        "operation_id": "traverse_ontology_object_api_ontology_objects__object_id__links_get",
+        "tags": [
+          "ontology"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 5,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/ontology/objects/{object_id}/action-invocations",
+        "operation_id": "list_ontology_action_invocations_api_ontology_objects__object_id__action_invocations_get",
+        "tags": [
+          "ontology"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 1,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/ontology/actions/invoke",
+        "operation_id": "invoke_ontology_action_api_ontology_actions_invoke_post",
+        "tags": [
+          "ontology"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/analyses",
+        "operation_id": "create_analysis_api_analyses_post",
+        "tags": [
+          "analyses"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses/{analysis_id}",
+        "operation_id": "get_analysis_api_analyses__analysis_id__get",
+        "tags": [
+          "analyses"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "PUT",
+        "path": "/api/analyses/{analysis_id}",
+        "operation_id": "update_analysis_api_analyses__analysis_id__put",
+        "tags": [
+          "analyses"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/analyses/{analysis_id}/run",
+        "operation_id": "run_analysis_api_analyses__analysis_id__run_post",
+        "tags": [
+          "analyses"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/analyses/{analysis_id}/materializations",
+        "operation_id": "materialize_analysis_result_api_analyses__analysis_id__materializations_post",
+        "tags": [
+          "analyses"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/analyses/{analysis_id}/jobs",
+        "operation_id": "queue_analysis_run_api_analyses__analysis_id__jobs_post",
+        "tags": [
+          "analyses"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/analysis-runs/{run_id}/cancel",
+        "operation_id": "cancel_analysis_run_api_analysis_runs__run_id__cancel_post",
+        "tags": [
+          "analyses"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 1,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/analysis-runs/{run_id}/nodes/{node_id}/rows",
+        "operation_id": "get_analysis_node_rows_api_analysis_runs__run_id__nodes__node_id__rows_get",
+        "tags": [
+          "analyses"
+        ],
+        "path_parameter_count": 2,
+        "query_parameter_count": 3,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/analysis-runs/{run_id}",
+        "operation_id": "get_analysis_run_api_analysis_runs__run_id__get",
+        "tags": [
+          "analyses"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 1,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses/{analysis_id}/nodes/{node_id}/result",
+        "operation_id": "get_analysis_node_result_api_analyses__analysis_id__nodes__node_id__result_get",
+        "tags": [
+          "analyses"
+        ],
+        "path_parameter_count": 2,
+        "query_parameter_count": 3,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects",
+        "operation_id": "list_projects_api_projects_get",
+        "tags": [
+          "projects"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}",
+        "operation_id": "get_project_api_projects__project_id__get",
+        "tags": [
+          "projects"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/workspaces",
+        "operation_id": "list_project_workspaces_api_projects__project_id__workspaces_get",
+        "tags": [
+          "projects"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/events",
+        "operation_id": "list_project_events_api_projects__project_id__events_get",
+        "tags": [
+          "projects"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/projects",
+        "operation_id": "create_project_api_admin_projects_post",
+        "tags": [
+          "projects"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/admin/projects/{project_id}",
+        "operation_id": "update_project_api_admin_projects__project_id__patch",
+        "tags": [
+          "projects"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/reports/draft",
+        "operation_id": "get_report_draft_api_reports_draft_get",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "PUT",
+        "path": "/api/reports/draft",
+        "operation_id": "save_report_draft_api_reports_draft_put",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/dashboards/resolved",
+        "operation_id": "resolved_dashboard_api_dashboards_resolved_get",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 1,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/dashboard-templates/{role_code}/versions",
+        "operation_id": "dashboard_template_versions_api_dashboard_templates__role_code__versions_get",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 1,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/dashboard-templates/{role_code}/preview",
+        "operation_id": "preview_dashboard_template_api_dashboard_templates__role_code__preview_get",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/dashboard-templates/{role_code}/publish",
+        "operation_id": "publish_dashboard_template_api_dashboard_templates__role_code__publish_post",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/dashboard-templates/{role_code}/publish-requests",
+        "operation_id": "request_dashboard_template_publish_api_dashboard_templates__role_code__publish_requests_post",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/dashboard-templates/{role_code}",
+        "operation_id": "current_dashboard_template_api_dashboard_templates__role_code__get",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 1,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/boards/catalog",
+        "operation_id": "board_catalog_api_boards_catalog_get",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 4,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/dashboards/{dashboard_id}/boards/{board_id}/query",
+        "operation_id": "query_dashboard_board_api_dashboards__dashboard_id__boards__board_id__query_post",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 2,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "PUT",
+        "path": "/api/dashboards/preferences",
+        "operation_id": "save_dashboard_preferences_api_dashboards_preferences_put",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/dashboards/preferences/restore",
+        "operation_id": "restore_dashboard_preferences_api_dashboards_preferences_restore_post",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/dashboards/saved-views",
+        "operation_id": "list_dashboard_saved_views_api_dashboards_saved_views_get",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 1,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/dashboards/saved-views",
+        "operation_id": "create_dashboard_saved_view_api_dashboards_saved_views_post",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/dashboards/saved-views/{view_id}",
+        "operation_id": "get_dashboard_saved_view_api_dashboards_saved_views__view_id__get",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/dashboards/saved-views/{view_id}",
+        "operation_id": "delete_dashboard_saved_view_api_dashboards_saved_views__view_id__delete",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/dashboards/shares",
+        "operation_id": "create_dashboard_share_api_dashboards_shares_post",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/dashboards/shares/{token}",
+        "operation_id": "resolve_dashboard_share_api_dashboards_shares__token__get",
+        "tags": [
+          "dashboards"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/exports",
+        "operation_id": "create_export_api_exports_post",
+        "tags": [
+          "exports"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/exports/checkpoints",
+        "operation_id": "list_export_checkpoints_api_exports_checkpoints_get",
+        "tags": [
+          "exports"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/workspaces/{workspace_id}/governance",
+        "operation_id": "governance_overview_api_projects__project_id__workspaces__workspace_id__governance_get",
+        "tags": [
+          "governance"
+        ],
+        "path_parameter_count": 2,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/workspaces/{workspace_id}/governance/agent-runs/{run_id}",
+        "operation_id": "governance_agent_run_api_projects__project_id__workspaces__workspace_id__governance_agent_runs__run_id__get",
+        "tags": [
+          "governance"
+        ],
+        "path_parameter_count": 3,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/{project_id}/workspaces/{workspace_id}/governance/projections/{projection_id}/retry",
+        "operation_id": "retry_projection_api_projects__project_id__workspaces__workspace_id__governance_projections__projection_id__retry_post",
+        "tags": [
+          "governance"
+        ],
+        "path_parameter_count": 3,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/planner/object-query",
+        "operation_id": "plan_object_query_api_planner_object_query_post",
+        "tags": [
+          "planner"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/planner/board-recommendations",
+        "operation_id": "recommend_boards_api_planner_board_recommendations_post",
+        "tags": [
+          "planner"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/planner/dashboard-drafts",
+        "operation_id": "generate_dashboard_draft_api_planner_dashboard_drafts_post",
+        "tags": [
+          "planner"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/planner/visualizations/recommend",
+        "operation_id": "recommend_visualization_api_planner_visualizations_recommend_post",
+        "tags": [
+          "planner"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/planner/visualizations/semantic-plan",
+        "operation_id": "plan_semantic_visualization_api_planner_visualizations_semantic_plan_post",
+        "tags": [
+          "planner"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/planner/grounded-narrative",
+        "operation_id": "generate_grounded_narrative_api_planner_grounded_narrative_post",
+        "tags": [
+          "planner"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/integrations/project3/status",
+        "operation_id": "project3_status_api_integrations_project3_status_get",
+        "tags": [
+          "project3"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 1,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/integrations/project3/schema",
+        "operation_id": "project3_schema_api_integrations_project3_schema_get",
+        "tags": [
+          "project3"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 1,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/integrations/project3/search",
+        "operation_id": "project3_search_api_integrations_project3_search_get",
+        "tags": [
+          "project3"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 4,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/integrations/project3/subgraph",
+        "operation_id": "project3_subgraph_api_integrations_project3_subgraph_get",
+        "tags": [
+          "project3"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 5,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/integrations/project3/query",
+        "operation_id": "project3_query_api_integrations_project3_query_post",
+        "tags": [
+          "project3"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/integrations/project3/rag",
+        "operation_id": "project3_rag_api_integrations_project3_rag_post",
+        "tags": [
+          "project3"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/context",
+        "operation_id": "runtime_context_api_projects__project_id__workspaces__workspace_id__predictive_maintenance_context_get",
+        "tags": [
+          "predictive-maintenance-runtime"
+        ],
+        "path_parameter_count": 2,
+        "query_parameter_count": 1,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/versions",
+        "operation_id": "runtime_versions_api_projects__project_id__workspaces__workspace_id__predictive_maintenance_versions_get",
+        "tags": [
+          "predictive-maintenance-runtime"
+        ],
+        "path_parameter_count": 2,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "PUT",
+        "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/selection",
+        "operation_id": "select_runtime_version_api_projects__project_id__workspaces__workspace_id__predictive_maintenance_selection_put",
+        "tags": [
+          "predictive-maintenance-runtime"
+        ],
+        "path_parameter_count": 2,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/dashboard",
+        "operation_id": "dashboard_source_api_projects__project_id__workspaces__workspace_id__predictive_maintenance_dashboard_get",
+        "tags": [
+          "predictive-maintenance-runtime"
+        ],
+        "path_parameter_count": 2,
+        "query_parameter_count": 4,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/release",
+        "operation_id": "release_overview_api_projects__project_id__workspaces__workspace_id__predictive_maintenance_release_get",
+        "tags": [
+          "predictive-maintenance-runtime"
+        ],
+        "path_parameter_count": 2,
+        "query_parameter_count": 1,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/results/latest",
+        "operation_id": "latest_product_results_api_projects__project_id__workspaces__workspace_id__predictive_maintenance_results_latest_get",
+        "tags": [
+          "predictive-maintenance-runtime"
+        ],
+        "path_parameter_count": 2,
+        "query_parameter_count": 8,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/snapshots/{prediction_id}",
+        "operation_id": "snapshot_drilldown_api_projects__project_id__workspaces__workspace_id__predictive_maintenance_snapshots__prediction_id__get",
+        "tags": [
+          "predictive-maintenance-runtime"
+        ],
+        "path_parameter_count": 3,
+        "query_parameter_count": 1,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/timeline",
+        "operation_id": "prediction_timeline_api_projects__project_id__workspaces__workspace_id__predictive_maintenance_timeline_get",
+        "tags": [
+          "predictive-maintenance-runtime"
+        ],
+        "path_parameter_count": 2,
+        "query_parameter_count": 6,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/observations",
+        "operation_id": "observation_window_api_projects__project_id__workspaces__workspace_id__predictive_maintenance_observations_get",
+        "tags": [
+          "predictive-maintenance-runtime"
+        ],
+        "path_parameter_count": 2,
+        "query_parameter_count": 10,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/replay/sessions",
+        "operation_id": "start_replay_api_projects__project_id__workspaces__workspace_id__predictive_maintenance_replay_sessions_post",
+        "tags": [
+          "predictive-maintenance-runtime"
+        ],
+        "path_parameter_count": 2,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/replay/sessions/{session_id}",
+        "operation_id": "replay_snapshot_api_projects__project_id__workspaces__workspace_id__predictive_maintenance_replay_sessions__session_id__get",
+        "tags": [
+          "predictive-maintenance-runtime"
+        ],
+        "path_parameter_count": 3,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/replay/sessions/{session_id}/{action}",
+        "operation_id": "control_replay_api_projects__project_id__workspaces__workspace_id__predictive_maintenance_replay_sessions__session_id___action__post",
+        "tags": [
+          "predictive-maintenance-runtime"
+        ],
+        "path_parameter_count": 4,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/{project_id}/workspaces/{workspace_id}/predictive-maintenance/replay/sessions/{session_id}/events",
+        "operation_id": "replay_events_api_projects__project_id__workspaces__workspace_id__predictive_maintenance_replay_sessions__session_id__events_get",
+        "tags": [
+          "predictive-maintenance-runtime"
+        ],
+        "path_parameter_count": 3,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/modeling/contracts",
+        "operation_id": "modeling_contracts_api_modeling_contracts_get",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/intake/profiles",
+        "operation_id": "create_intake_profile_api_modeling_intake_profiles_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/modeling/intake/profiles/{profile_id}",
+        "operation_id": "get_intake_profile_api_modeling_intake_profiles__profile_id__get",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/manifest-drafts",
+        "operation_id": "create_manifest_draft_api_modeling_manifest_drafts_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/modeling/manifest-drafts/{draft_id}",
+        "operation_id": "get_manifest_draft_api_modeling_manifest_drafts__draft_id__get",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/modeling/manifest-drafts/{draft_id}",
+        "operation_id": "update_manifest_draft_api_modeling_manifest_drafts__draft_id__patch",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/manifest-drafts/{draft_id}/decision",
+        "operation_id": "decide_manifest_draft_api_modeling_manifest_drafts__draft_id__decision_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/modeling/manifest-drafts/{draft_id}/approved-manifest",
+        "operation_id": "approved_manifest_payload_api_modeling_manifest_drafts__draft_id__approved_manifest_get",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/manifest-drafts/{draft_id}/ingest",
+        "operation_id": "ingest_approved_manifest_draft_api_modeling_manifest_drafts__draft_id__ingest_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/mapping-sets",
+        "operation_id": "create_mapping_set_api_modeling_mapping_sets_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/modeling/mapping-sets/{mapping_set_id}",
+        "operation_id": "get_mapping_set_api_modeling_mapping_sets__mapping_set_id__get",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/mapping-sets/{mapping_set_id}/candidate-decision",
+        "operation_id": "decide_mapping_candidate_api_modeling_mapping_sets__mapping_set_id__candidate_decision_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/mapping-sets/{mapping_set_id}/decision",
+        "operation_id": "decide_mapping_set_api_modeling_mapping_sets__mapping_set_id__decision_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/mapping-sets/{mapping_set_id}/versions",
+        "operation_id": "clone_mapping_set_api_modeling_mapping_sets__mapping_set_id__versions_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/modeling/mapping-sets/{mapping_set_id}/capabilities",
+        "operation_id": "mapping_capabilities_api_modeling_mapping_sets__mapping_set_id__capabilities_get",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/feature-recipe-sets",
+        "operation_id": "create_feature_recipe_set_api_modeling_feature_recipe_sets_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/modeling/feature-recipe-sets/{recipe_set_id}",
+        "operation_id": "get_feature_recipe_set_api_modeling_feature_recipe_sets__recipe_set_id__get",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/feature-recipe-sets/{recipe_set_id}/decision",
+        "operation_id": "decide_feature_recipe_set_api_modeling_feature_recipe_sets__recipe_set_id__decision_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/feature-datasets/materialize",
+        "operation_id": "materialize_feature_dataset_api_modeling_feature_datasets_materialize_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/modeling/feature-datasets/{feature_dataset_version_id}",
+        "operation_id": "get_feature_dataset_version_api_modeling_feature_datasets__feature_dataset_version_id__get",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/modeling/experiment-capabilities",
+        "operation_id": "experiment_capabilities_api_modeling_experiment_capabilities_get",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/experiments",
+        "operation_id": "queue_experiment_api_modeling_experiments_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/modeling/experiments",
+        "operation_id": "list_experiments_api_modeling_experiments_get",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 3,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/modeling/experiments/{experiment_id}",
+        "operation_id": "get_experiment_api_modeling_experiments__experiment_id__get",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/experiments/{experiment_id}/retry",
+        "operation_id": "retry_experiment_api_modeling_experiments__experiment_id__retry_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/experiments/{experiment_id}/cancel",
+        "operation_id": "cancel_experiment_api_modeling_experiments__experiment_id__cancel_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/experiments/{experiment_id}/recover-stale",
+        "operation_id": "recover_stale_experiment_api_modeling_experiments__experiment_id__recover_stale_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/model-versions",
+        "operation_id": "create_model_version_api_modeling_model_versions_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/modeling/model-versions",
+        "operation_id": "list_model_versions_api_modeling_model_versions_get",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 3,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/modeling/model-versions/{model_version_id}",
+        "operation_id": "get_model_version_api_modeling_model_versions__model_version_id__get",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/model-versions/{model_version_id}/release-requests",
+        "operation_id": "request_model_release_api_modeling_model_versions__model_version_id__release_requests_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/modeling/model-release-requests",
+        "operation_id": "list_model_release_requests_api_modeling_model_release_requests_get",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 3,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/model-release-requests/{release_request_id}/decision",
+        "operation_id": "decide_model_release_api_modeling_model_release_requests__release_request_id__decision_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/model-versions/{model_version_id}/activate",
+        "operation_id": "activate_model_api_modeling_model_versions__model_version_id__activate_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/model-versions/rollback",
+        "operation_id": "rollback_model_api_modeling_model_versions_rollback_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/modeling/model-versions/{model_version_id}/score",
+        "operation_id": "score_model_version_api_modeling_model_versions__model_version_id__score_post",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/modeling/explanations/{explanation_id}",
+        "operation_id": "get_explanation_api_modeling_explanations__explanation_id__get",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/modeling/workbench",
+        "operation_id": "modeling_workbench_api_modeling_workbench_get",
+        "tags": [
+          "modeling"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 3,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/role-workspaces/executive",
+        "operation_id": "executive_role_workspace_api_role_workspaces_executive_get",
+        "tags": [
+          "role-workspaces"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 1,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/role-workspaces/audit",
+        "operation_id": "audit_role_workspace_api_role_workspaces_audit_get",
+        "tags": [
+          "role-workspaces"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 2,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/role-workspaces/audit/export-checkpoints",
+        "operation_id": "create_audit_export_checkpoint_api_role_workspaces_audit_export_checkpoints_post",
+        "tags": [
+          "role-workspaces"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/role-workspaces/field",
+        "operation_id": "field_role_workspace_api_role_workspaces_field_get",
+        "tags": [
+          "role-workspaces"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 1,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/role-workspaces/fde",
+        "operation_id": "fde_role_workspace_api_role_workspaces_fde_get",
+        "tags": [
+          "role-workspaces"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 1,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/role-workspaces/ml",
+        "operation_id": "ml_role_workspace_api_role_workspaces_ml_get",
+        "tags": [
+          "role-workspaces"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 1,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/role-workspaces/ml/release-requests",
+        "operation_id": "create_model_release_request_api_role_workspaces_ml_release_requests_post",
+        "tags": [
+          "role-workspaces"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/equipment",
+        "operation_id": "list_equipment_api_equipment_get",
+        "tags": [
+          "manufacturing-domain-pack"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/equipment/{equipment_id}",
+        "operation_id": "get_equipment_api_equipment__equipment_id__get",
+        "tags": [
+          "manufacturing-domain-pack"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/events",
+        "operation_id": "list_events_api_events_get",
+        "tags": [
+          "manufacturing-domain-pack"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/events/{event_id}",
+        "operation_id": "get_event_api_events__event_id__get",
+        "tags": [
+          "manufacturing-domain-pack"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/events/{event_id}/evidence",
+        "operation_id": "get_evidence_api_events__event_id__evidence_get",
+        "tags": [
+          "manufacturing-domain-pack"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/events/{event_id}/report",
+        "operation_id": "create_report_api_events__event_id__report_post",
+        "tags": [
+          "manufacturing-domain-pack"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/events/{event_id}/layout",
+        "operation_id": "create_layout_api_events__event_id__layout_post",
+        "tags": [
+          "manufacturing-domain-pack"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/events/{event_id}/decision",
+        "operation_id": "record_decision_api_events__event_id__decision_post",
+        "tags": [
+          "manufacturing-domain-pack"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/events/{event_id}/notes",
+        "operation_id": "add_note_api_events__event_id__notes_post",
+        "tags": [
+          "manufacturing-domain-pack"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/events/{event_id}/follow-up",
+        "operation_id": "follow_up_api_events__event_id__follow_up_post",
+        "tags": [
+          "manufacturing-domain-pack"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/events/{event_id}/activity",
+        "operation_id": "event_activity_api_events__event_id__activity_get",
+        "tags": [
+          "manufacturing-domain-pack"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/overview",
+        "operation_id": "admin_overview_api_admin_overview_get",
+        "tags": [
+          "admin"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/notifications",
+        "operation_id": "admin_notifications_api_admin_notifications_get",
+        "tags": [
+          "admin"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 1,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/notifications/{notification_id}/read",
+        "operation_id": "admin_mark_notification_read_api_admin_notifications__notification_id__read_post",
+        "tags": [
+          "admin"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/users",
+        "operation_id": "admin_users_api_admin_users_get",
+        "tags": [
+          "admin"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/projects/{project_id}/members",
+        "operation_id": "admin_project_members_api_admin_projects__project_id__members_get",
+        "tags": [
+          "admin"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": true
+      },
+      {
+        "method": "PUT",
+        "path": "/api/admin/projects/{project_id}/members/{user_id}",
+        "operation_id": "admin_update_project_membership_api_admin_projects__project_id__members__user_id__put",
+        "tags": [
+          "admin"
+        ],
+        "path_parameter_count": 2,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/admin/users/{user_id}",
+        "operation_id": "admin_update_user_api_admin_users__user_id__patch",
+        "tags": [
+          "admin"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/roles",
+        "operation_id": "admin_roles_api_admin_roles_get",
+        "tags": [
+          "admin"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/workspaces",
+        "operation_id": "admin_workspaces_api_admin_workspaces_get",
+        "tags": [
+          "admin"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/audit",
+        "operation_id": "admin_audit_api_admin_audit_get",
+        "tags": [
+          "admin"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/workflow-approvals",
+        "operation_id": "admin_workflow_approvals_api_admin_workflow_approvals_get",
+        "tags": [
+          "admin"
+        ],
+        "path_parameter_count": 0,
+        "query_parameter_count": 0,
+        "has_request_body": false,
+        "has_response_schema": false
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/template-publish-requests/{request_id}/decision",
+        "operation_id": "admin_decide_template_publish_request_api_admin_template_publish_requests__request_id__decision_post",
+        "tags": [
+          "admin"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/model-release-requests/{request_id}/decision",
+        "operation_id": "admin_decide_model_release_request_api_admin_model_release_requests__request_id__decision_post",
+        "tags": [
+          "admin"
+        ],
+        "path_parameter_count": 1,
+        "query_parameter_count": 0,
+        "has_request_body": true,
+        "has_response_schema": true
+      }
+    ]
+  },
+  "conclusion": {
+    "selected_framework": "FastAPI",
+    "reason": "The selection now covers the full 162-path/172-operation MVP surface. FastAPI already executes the real handlers and generates the request, response and OpenAPI contracts. Bare Flask can mirror all routes, but the 172 business handlers plus validation and documentation contracts would still require an explicit port.",
+    "limitation": "The Flask mirror is a routing and migration-effort comparison, not a claim that the full Ontology Dashboard business implementation exists twice."
+  }
+}

@@ -8,6 +8,7 @@ import json
 import statistics
 import time
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Callable
 
 from fastapi.testclient import TestClient
@@ -15,6 +16,9 @@ from fastapi.testclient import TestClient
 from .contracts import HEALTH_PAYLOAD
 from .fastapi_app import app as fastapi_app
 from .flask_app import app as flask_app
+
+
+FULL_SURFACE_SNAPSHOT_PATH = Path(__file__).with_name("full_surface_snapshot.json")
 
 
 @dataclass(frozen=True)
@@ -149,7 +153,7 @@ def run_comparison(iterations: int = 500) -> dict:
     ]
 
     winner = max(results, key=lambda item: item.rubric_score)
-    return {
+    report = {
         "contract": HEALTH_PAYLOAD,
         "methodology": {
             "same_endpoint": "GET /health",
@@ -170,6 +174,10 @@ def run_comparison(iterations: int = 500) -> dict:
             "a declared response schema without adding a third-party extension."
         ),
     }
+    if FULL_SURFACE_SNAPSHOT_PATH.exists():
+        report["full_surface"] = json.loads(FULL_SURFACE_SNAPSHOT_PATH.read_text())
+        report["selection_reason"] = report["full_surface"]["conclusion"]["reason"]
+    return report
 
 
 def render_markdown(report: dict) -> str:
@@ -186,8 +194,7 @@ def render_markdown(report: dict) -> str:
             )
         )
 
-    return "\n".join(
-        [
+    lines = [
             "# FastAPI vs Flask — 동일 `/health` 비교 결과",
             "",
             "| Framework | HTTP | Payload | Auto OpenAPI | Response schema | LOC | p50 ms* | p95 ms* | Score |",
@@ -200,7 +207,32 @@ def render_markdown(report: dict) -> str:
             "",
             "\\* 지연시간은 인프로세스 로컬 참고값이며 운영 성능 결론이 아니다.",
         ]
-    )
+    full_surface = report.get("full_surface")
+    if full_surface:
+        scope = full_surface["scope"]
+        fastapi = full_surface["fastapi"]
+        flask = full_surface["flask"]
+        auth = fastapi["authenticated_probe"]
+        lines.extend(
+            [
+                "",
+                "# Ontology Dashboard 전체 API 표면 비교",
+                "",
+                f"- OpenAPI 경로: {scope['path_count']}개",
+                f"- HTTP 작업: {scope['operation_count']}개",
+                f"- FastAPI 인증 전수 프로브: {auth['operation_count']} / {scope['operation_count']}",
+                f"- 처리되지 않은 5xx: {auth['unhandled_server_error_count']}건",
+                f"- FastAPI 자동 OpenAPI: {fastapi['automatic_openapi_operation_count']}개 작업",
+                f"- FastAPI 자동 요청 검증: {fastapi['automatic_request_validation_operation_count']}개 작업",
+                f"- FastAPI 응답 Schema: {fastapi['automatic_response_schema_operation_count']}개 작업",
+                f"- Flask route mirror: {flask['registered_operation_count']}개 작업",
+                f"- Flask 실제 business handler: {flask['business_handler_operation_count']}개",
+                f"- Flask 수동 port 필요: {flask['manual_port_required_operation_count']}개 작업",
+                "",
+                full_surface["conclusion"]["limitation"],
+            ]
+        )
+    return "\n".join(lines)
 
 
 def main() -> None:

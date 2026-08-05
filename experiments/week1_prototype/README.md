@@ -5,8 +5,9 @@
 
 1. `Predictive Maintenance Canonical V3.1` 데이터를 Streamlit에서 읽어 Plotly
    차트로 렌더링한다.
-2. FastAPI와 Flask에 동일한 `GET /health` 계약을 구현하고 결과물 완성도를
-   비교한다.
+2. FastAPI와 Flask에 동일한 `GET /health` 계약을 구현한 기준선 실험과 함께,
+   현재 Ontology Dashboard MVP의 전체 OpenAPI 표면을 수집해 162개 경로·172개
+   HTTP 작업의 계약·검증·이식 비용을 비교한다.
 
 ## 디렉터리 구성
 
@@ -64,12 +65,32 @@ bash experiments/week1_prototype/run_streamlit.sh
 https://fastapi-flask.oosu.dev
 ```
 
-공개 화면에서 FastAPI·Flask의 동일 `/health` 응답, OpenAPI·응답 스키마
-지원 여부, 로컬 비교 결과와 최종 선정 근거를 확인할 수 있다.
+공개 화면에서 FastAPI·Flask의 동일 `/health` 기준선뿐 아니라 현재 MVP의
+162개 OpenAPI 경로·172개 HTTP 작업 전수 비교 결과를 확인할 수 있다.
+
+- 실제 Ontology Dashboard 162경로 Swagger: `https://dashboard.oosu.dev/docs`
+- 비교 화면 자체 Swagger: `https://fastapi-flask.oosu.dev/docs`
+
+- FastAPI 실제 제품 handler: 172개 작업
+- 인증 전·후 전수 runtime probe: 각 172개 작업
+- 처리되지 않은 HTTP 500: 0건
+- SQLite 격리 환경에서 PostgreSQL 전용 Runtime의 명시적 503: 10건
+- FastAPI 자동 요청·파라미터 검증 대상: 147개 작업
+- FastAPI 응답 Schema: 150개 작업
+- Flask route mirror: 172개 작업 등록
+- Flask 실제 business handler: 0개 — 전체 이식 시 172개를 별도 구현해야 함
+
+Flask route mirror는 라우팅 가능성과 수동 이식량을 측정하기 위한 비교 계층이며,
+Ontology Dashboard의 business logic이 Flask로도 구현됐다고 주장하지 않는다.
 
 ```bash
 bash experiments/week1_prototype/run_framework_comparison.sh
+bash experiments/week1_prototype/run_full_surface_comparison.sh
 ```
+
+전체 비교는 다음 두 층으로 나뉜다.
+
+### 1. 동일 `/health` 기준선
 
 동일한 `/health` 응답을 대상으로 다음 항목을 비교한다.
 
@@ -81,7 +102,20 @@ bash experiments/week1_prototype/run_framework_comparison.sh
 - 인프로세스 요청 지연시간 참고치
 
 지연시간은 로컬 개발 환경의 참고값이며 운영 성능 결론으로 사용하지 않는다.
-최종 선정 근거는 API 계약, 자동 문서화, 검증, 테스트와 확장성이다.
+최종 선정 근거는 이 단일 endpoint가 아니라 아래 전체 API 표면 결과다.
+
+### 2. 전체 162개 경로·172개 작업
+
+- FastAPI OpenAPI에서 모든 path·method·request body·parameter·response schema 수집
+- 비인증 상태에서 172개 작업의 인증·검증 경계 전수 probe
+- Tenant Admin 인증 상태에서 172개 작업의 handler·권한·Schema 경계 전수 probe
+- bare Flask에 172개 route mirror를 생성해 route 등록 parity 검증
+- FastAPI 자동 계약과 Flask 수동 port 필요량 비교
+
+공개 JSON:
+
+- `/full-comparison.json`: 전체 API 표면 결과
+- `/comparison.json`: `/health` 기준선과 전체 API 표면 통합 결과
 
 ## 테스트
 

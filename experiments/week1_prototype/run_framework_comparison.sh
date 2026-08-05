@@ -10,7 +10,7 @@ if [[ ! -x "${PYTHON_BIN}" ]]; then
   exit 1
 fi
 
-export PYTHONPATH="${ROOT_DIR}/experiments/week1_prototype${PYTHONPATH:+:${PYTHONPATH}}"
+export PYTHONPATH="${ROOT_DIR}/api:${ROOT_DIR}/ml/src:${ROOT_DIR}/experiments/week1_prototype${PYTHONPATH:+:${PYTHONPATH}}"
 
 exec "${PYTHON_BIN}" -m framework_comparison.compare \
   --iterations "${FRAMEWORK_BENCHMARK_ITERATIONS:-500}" \
