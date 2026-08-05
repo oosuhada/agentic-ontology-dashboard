@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ..dependencies import (
     database_target,
+    get_application_runtime_repository,
     get_branching_lineage_repository,
     get_connector_repository,
     get_connector_service,
@@ -14,6 +15,11 @@ from ..dependencies import (
     get_project_service,
     require_csrf,
     require_permission,
+)
+from ..application_runtime import (
+    ApplicationRuntimeRepository,
+    ApplicationRuntimeSnapshot,
+    SearchRequest,
 )
 from ..branching_lineage import (
     BranchChangeRequest,
@@ -292,6 +298,38 @@ def check_project_policy(
     return repository.policy_check(
         principal.organization_id, project_id, principal.user_id, request
     )
+
+
+@router.get("/projects/{project_id}/application-runtime")
+def project_application_runtime(
+    project_id: str,
+    principal: Principal = Depends(require_permission("app.access")),
+    projects: ProjectService = Depends(get_project_service),
+    repository: ApplicationRuntimeRepository = Depends(get_application_runtime_repository),
+) -> ApplicationRuntimeSnapshot:
+    projects.get_for_principal(principal, project_id)
+    repository.ensure_samples(principal.organization_id, project_id)
+    return repository.snapshot(principal.organization_id, project_id)
+
+
+@router.post("/projects/{project_id}/global-search")
+def project_global_search(
+    project_id: str,
+    request: SearchRequest,
+    principal: Principal = Depends(require_permission("app.access")),
+    _: None = Depends(require_csrf),
+    projects: ProjectService = Depends(get_project_service),
+    repository: ApplicationRuntimeRepository = Depends(get_application_runtime_repository),
+) -> dict[str, object]:
+    projects.get_for_principal(principal, project_id)
+    repository.ensure_samples(principal.organization_id, project_id)
+    return {
+        "items": repository.search(
+            principal.organization_id,
+            project_id,
+            request,
+        )
+    }
 
 
 @router.get("/projects/{project_id}/distributed-job-events")

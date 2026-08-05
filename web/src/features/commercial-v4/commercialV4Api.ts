@@ -356,6 +356,34 @@ export interface BranchingLineageSnapshot {
   merge_semantics: Record<string, string>;
 }
 
+export interface ApplicationRuntimeSnapshot {
+  object_views: Array<{
+    id: string;
+    object_type_id: string;
+    interface_id: string | null;
+    form_factor: string;
+    status: string;
+    definition: { title_property: string; status_property: string; sections: string[]; property_order: string[] };
+  }>;
+  search_index: Array<{
+    type: string;
+    id: string;
+    title: string;
+    subtitle: string;
+    markings: string[];
+  }>;
+  application: {
+    id: string;
+    version: number;
+    pages: Array<{ id: string; layout: string; components: Array<{ type: string; version: number; input: string }> }>;
+    variables: Record<string, { kind: string; interface?: string; source?: string }>;
+    events: Array<{ source: string; target: string; action: string }>;
+  };
+  component_catalog: Array<{ type: string; version: number; a11y: string }>;
+  renderer_registry: Record<string, string>;
+  safety: Record<string, string>;
+}
+
 export async function getProjectV4ApplicationDefinition(projectId: string): Promise<ProjectV4ApplicationDefinition> {
   const response = await fetch(
     `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/applications/v4`,
@@ -591,6 +619,30 @@ export function checkRestrictedDatasetPolicy(projectId: string): Promise<{
       resource_id: "canonical-v3.1",
       purpose: "export",
       eligible_markings: ["confidential", "export_restricted"],
+    },
+  );
+}
+
+export async function getApplicationRuntime(projectId: string): Promise<ApplicationRuntimeSnapshot> {
+  const response = await fetch(
+    `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/application-runtime`,
+    { credentials: "include" },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message ?? `Application runtime failed: ${response.status}`);
+  return payload as ApplicationRuntimeSnapshot;
+}
+
+export function globalObjectSearch(projectId: string, query: string): Promise<{
+  items: Array<{ type: string; id: string; title: string; subtitle: string; score: number; explanation: string }>;
+}> {
+  return artifactOperatorRequest(
+    `/api/platform/projects/${encodeURIComponent(projectId)}/global-search`,
+    "Search Commercial V4 governed resources",
+    {
+      query,
+      allowed_types: [],
+      eligible_markings: ["confidential"],
     },
   );
 }

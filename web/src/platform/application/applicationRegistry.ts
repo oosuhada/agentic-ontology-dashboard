@@ -108,9 +108,9 @@ const V4_SURFACES: readonly ApplicationSurfaceDefinition[] = [
   {
     id: "objects",
     label: "Objects",
-    description: "Existing governed Object Explorer; standard Object Views arrive in Phase 29.",
+    description: "Generated Object Views, governed global search and metadata-driven application composition.",
     state: "ready",
-    phase: 18,
+    phase: 29,
     permission: "ontology.objects.read",
     launchPath: (context) => workspaceRoute(context, "/ontology"),
   },

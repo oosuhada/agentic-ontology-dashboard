@@ -26,6 +26,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.responses import Response, StreamingResponse
 
 from .analysis_models import AnalysisRunResult
+from .application_runtime import ApplicationRuntimeSnapshot
 from .branching_lineage import BranchDiff, BranchingLineageSnapshot, PolicyDecision
 from .contracts import GroundedReport, UILayout
 from .connectors import ConnectorSnapshot
@@ -546,6 +547,10 @@ class ConnectorRunQueuedResponse(ContractModel):
     reason: str
 
 
+class GlobalSearchResponse(ContractModel):
+    items: tuple[dict[str, Any], ...]
+
+
 def _qname(endpoint: Any) -> str:
     return f"{endpoint.__module__}.{endpoint.__name__}"
 
@@ -605,6 +610,8 @@ _EXPLICIT_MODELS: dict[str, Any] = {
     "ontology_dashboard.routers.platform.create_project_branch_change": BranchDiff,
     "ontology_dashboard.routers.platform.merge_project_branch": BranchDiff,
     "ontology_dashboard.routers.platform.check_project_policy": PolicyDecision,
+    "ontology_dashboard.routers.platform.project_application_runtime": ApplicationRuntimeSnapshot,
+    "ontology_dashboard.routers.platform.project_global_search": GlobalSearchResponse,
     "ontology_dashboard.routers.platform.project_distributed_job_events": DurableJobEventPage,
     "ontology_dashboard.routers.platform.cancel_distributed_job": DurableJob,
     "ontology_dashboard.routers.platform.replay_distributed_job": DurableJob,

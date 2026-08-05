@@ -174,6 +174,11 @@
 .commercial-v4-lineage-list { display: grid; gap: 6px; }
 .commercial-v4-lineage-list article { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; padding: 8px; background: var(--v4-panel-muted); border-radius: 4px; font-size: 9px; }
 .commercial-v4-lineage-list em { color: var(--v4-accent); font-style: normal; text-align: center; }
+.commercial-v4-search-panel label { font-size: 9px; color: var(--v4-muted); }
+.commercial-v4-search-panel > div:not(.commercial-v4-panel-title) { display: flex; gap: 6px; }
+.commercial-v4-search-panel input { min-width: 0; flex: 1; min-height: 30px; padding: 0 8px; border: 1px solid var(--v4-border); background: var(--v4-panel-muted); color: inherit; }
+.commercial-v4-search-panel article { display: grid; gap: 3px; padding: 8px; background: var(--v4-panel-muted); border-radius: 4px; }
+.commercial-v4-search-panel article small { color: var(--v4-muted); }
 
 .commercial-v4-feature-state { min-height: 320px; margin-top: 16px; display: grid; place-content: center; justify-items: center; gap: 9px; text-align: center; }
 .commercial-v4-feature-state > svg { width: 34px; height: 34px; color: var(--v4-accent); }

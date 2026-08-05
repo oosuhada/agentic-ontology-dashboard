@@ -57,7 +57,7 @@ def postgresql_database():
     dsn = _dsn_for_database(database)
     try:
         applied = migrate(dsn)
-        assert applied[-1] == "0025_global_branching_lineage_markings"
+        assert applied[-1] == "0026_object_views_search_application_runtime"
         assert migrate(dsn) == []
         import psycopg
 

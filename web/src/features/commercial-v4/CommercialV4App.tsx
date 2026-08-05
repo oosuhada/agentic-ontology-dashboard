@@ -47,6 +47,8 @@ import {
   getConnectorSnapshot,
   getOntologyPrimitives,
   getBranchingLineage,
+  getApplicationRuntime,
+  globalObjectSearch,
   createBranchPreview,
   checkRestrictedDatasetPolicy,
   previewGovernedAction,
@@ -60,6 +62,7 @@ import {
   type ConnectorSnapshot,
   type OntologyPrimitiveSnapshot,
   type BranchingLineageSnapshot,
+  type ApplicationRuntimeSnapshot,
   operateDistributedJob,
   type DistributedRuntimeSnapshot,
   type DeploymentReadiness,
@@ -101,6 +104,7 @@ interface CommercialContext {
   connectors: ConnectorSnapshot;
   primitives: OntologyPrimitiveSnapshot;
   branching: BranchingLineageSnapshot;
+  applicationRuntime: ApplicationRuntimeSnapshot;
 }
 
 function currentSurface(): CommercialSurfaceId {
@@ -149,6 +153,8 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
   const [surface, setSurface] = useState<CommercialSurfaceId>(() => currentSurface());
   const [compactNavigation, setCompactNavigation] = useState(false);
   const [operationMessage, setOperationMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("asset");
+  const [searchResults, setSearchResults] = useState<Array<{ type: string; id: string; title: string; subtitle: string; score: number }>>([]);
   const workspace = context?.workspaces.find((item) => item.id === context.project.default_workspace_id)
     ?? context?.workspaces[0]
     ?? null;
@@ -186,8 +192,9 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       getConnectorSnapshot(projectId),
       getOntologyPrimitives(projectId),
       getBranchingLineage(projectId),
+      getApplicationRuntime(projectId),
     ])
-      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts, observability, connectors, primitives, branching]) => {
+      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts, observability, connectors, primitives, branching, applicationRuntime]) => {
         if (!controller.signal.aborted) setContext({
           project,
           workspaces,
@@ -202,6 +209,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
           connectors,
           primitives,
           branching,
+          applicationRuntime,
         });
       })
       .catch((reason: unknown) => {
@@ -348,6 +356,17 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       setOperationMessage(`Policy ${result.decision}: ${result.reason_code} · masked: ${result.masked}.`);
     } catch (reason) {
       setOperationMessage(reason instanceof Error ? reason.message : "Policy check failed.");
+    }
+  }
+
+  async function searchObjects() {
+    setOperationMessage("");
+    try {
+      const result = await globalObjectSearch(projectId, searchQuery);
+      setSearchResults(result.items);
+      setOperationMessage(`${result.items.length} governed search results.`);
+    } catch (reason) {
+      setOperationMessage(reason instanceof Error ? reason.message : "Global search failed.");
     }
   }
 
@@ -787,6 +806,40 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
                     <article key={provider}><span><strong>{provider}</strong><small>{status.credential_reference ? "secret reference configured" : "no credential reference"}</small></span><em className={`is-${status.state}`}>{status.state.replace("_", " ")}</em></article>
                   ))}
                 </div>
+              </section>
+            </div>
+          ) : selected.id === "objects" ? (
+            <div className="commercial-v4-grid">
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Boxes aria-hidden="true" /><span>Standard Object Views</span></div>
+                {context.applicationRuntime.object_views.map((view) => (
+                  <article key={view.id} className="commercial-v4-primitive-card">
+                    <strong>{view.object_type_id} · {view.form_factor}</strong>
+                    <small>{view.definition.sections.join(" · ")}</small>
+                    <div>{view.definition.property_order.map((property) => <span key={property}>{property}</span>)}</div>
+                  </article>
+                ))}
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Workflow aria-hidden="true" /><span>Metadata application runtime</span></div>
+                {context.applicationRuntime.application.pages.map((page) => (
+                  <article key={page.id} className="commercial-v4-primitive-card">
+                    <strong>{page.id} · {page.layout}</strong>
+                    <small>{page.components.map((component) => component.type).join(" · ")}</small>
+                  </article>
+                ))}
+                {Object.entries(context.applicationRuntime.safety).map(([name, value]) => <p key={name} className="commercial-v4-policy-copy"><strong>{name}</strong>: {value}</p>)}
+              </section>
+              <section className="commercial-v4-panel commercial-v4-search-panel">
+                <div className="commercial-v4-panel-title"><Database aria-hidden="true" /><span>Global search</span></div>
+                <label htmlFor="commercial-v4-global-search">Search Objects, Datasets, Actions and Functions</label>
+                <div><input id="commercial-v4-global-search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} /><button type="button" onClick={() => void searchObjects()}>Search</button></div>
+                {operationMessage ? <p role="status" className="commercial-v4-policy-copy">{operationMessage}</p> : null}
+                {searchResults.map((result) => <article key={`${result.type}:${result.id}`}><strong>{result.title}</strong><small>{result.type} · {result.subtitle} · score {result.score}</small></article>)}
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Settings2 aria-hidden="true" /><span>Renderer registry</span></div>
+                <div className="commercial-v4-chip-list">{Object.entries(context.applicationRuntime.renderer_registry).map(([type, renderer]) => <span key={type}>{type}: {renderer}</span>)}</div>
               </section>
             </div>
           ) : selected.id === "lineage" ? (
