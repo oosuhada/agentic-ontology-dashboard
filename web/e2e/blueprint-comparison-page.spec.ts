@@ -20,18 +20,22 @@ test("renders three live project versions and supports pair comparison", async (
 
   const titles = await primaryGrid.locator("iframe").evaluateAll((frames) => frames.map((frame) => frame.getAttribute("title")));
   expect(titles).toEqual([
-    "기존 Dashboard live preview",
-    "Blueprint V1 live preview",
-    "Blueprint V2 live preview",
+    "V1 · 기존 Dashboard live preview",
+    "V2 · Blueprint 1차 live preview",
+    "V3 · Blueprint 2차 live preview",
   ]);
 
-  await expect(page.frameLocator('iframe[title="기존 Dashboard live preview"]').locator("body")).toBeVisible();
-  await expect(page.frameLocator('iframe[title="Blueprint V1 live preview"]').locator(".blueprint-preview")).toBeVisible();
-  await expect(page.frameLocator('iframe[title="Blueprint V2 live preview"]').locator(".blueprint-v2")).toBeVisible();
-  await expect(page.frameLocator('iframe[title="기존 Dashboard live preview"]').getByLabel("이메일")).toHaveCount(0);
-  await expect(page.frameLocator('iframe[title="Blueprint V1 live preview"]').getByLabel("이메일")).toHaveCount(0);
-  await expect(page.frameLocator('iframe[title="Blueprint V2 live preview"]').getByLabel("이메일")).toHaveCount(0);
+  await expect(page.frameLocator('iframe[title="V1 · 기존 Dashboard live preview"]').locator("body")).toBeVisible();
+  await expect(page.frameLocator('iframe[title="V2 · Blueprint 1차 live preview"]').locator(".blueprint-preview")).toBeVisible();
+  await expect(page.frameLocator('iframe[title="V3 · Blueprint 2차 live preview"]').locator(".blueprint-v2")).toBeVisible();
+  await expect(page.frameLocator('iframe[title="V1 · 기존 Dashboard live preview"]').getByLabel("이메일")).toHaveCount(0);
+  await expect(page.frameLocator('iframe[title="V2 · Blueprint 1차 live preview"]').getByLabel("이메일")).toHaveCount(0);
+  await expect(page.frameLocator('iframe[title="V3 · Blueprint 2차 live preview"]').getByLabel("이메일")).toHaveCount(0);
   await expect(primaryGrid.locator("iframe.is-ready")).toHaveCount(3);
+
+  await expect(page.getByRole("button", { name: "V1 · 기존 Dashboard 열기" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "V2 · Blueprint 1차 열기" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "V3 · Blueprint 2차 열기" })).toBeVisible();
 
   await expect(page.locator(".comparison-scenario-section")).toHaveCount(4);
   await expect(page.getByRole("heading", { name: "첫 화면과 운영 개요 비교" })).toBeVisible();
@@ -40,18 +44,14 @@ test("renders three live project versions and supports pair comparison", async (
   await expect(page.getByRole("heading", { name: "운영 판단과 Action 비교" })).toBeVisible();
 
   await page.getByRole("heading", { name: "Object Explorer 비교" }).scrollIntoViewIfNeeded();
-  await expect(page.locator('iframe[title="Object Explorer 비교 · 기존 Dashboard live preview"]')).toBeVisible();
-  await expect(page.locator('iframe[title="Object Explorer 비교 · Blueprint V1 live preview"]')).toBeVisible();
-  await expect(page.locator('iframe[title="Object Explorer 비교 · Blueprint V2 live preview"]')).toBeVisible();
+  await expect(page.locator('iframe[title="Object Explorer 비교 · V1 · 기존 Dashboard live preview"]')).toBeVisible();
+  await expect(page.locator('iframe[title="Object Explorer 비교 · V2 · Blueprint 1차 live preview"]')).toBeVisible();
+  await expect(page.locator('iframe[title="Object Explorer 비교 · V3 · Blueprint 2차 live preview"]')).toBeVisible();
 
-  await page.getByRole("button", { name: "Original ↔ V2" }).click();
+  await page.getByRole("button", { name: "V1 ↔ V3" }).click();
   await expect(primaryGrid.locator(".comparison-preview-card")).toHaveCount(2);
-  await expect(primaryGrid.locator('iframe[title="Blueprint V1 live preview"]')).toHaveCount(0);
-
-  await page.getByRole("button", { name: "Blueprint V2", exact: true }).last().click();
-  await expect(page.getByText("Blueprint V2 선택됨")).toBeVisible();
-  await page.getByLabel("비교 판단 메모").fill("V2의 Object 중심 구조가 가장 명확하다.");
-  await expect(page.getByLabel("비교 판단 메모")).toHaveValue("V2의 Object 중심 구조가 가장 명확하다.");
+  await expect(primaryGrid.locator('iframe[title="V2 · Blueprint 1차 live preview"]')).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "최종 후보와 판단 메모" })).toHaveCount(0);
 });
 
 test("comparison page stays within the mobile document width", async ({ page }) => {

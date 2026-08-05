@@ -10,14 +10,32 @@
 .comparison-mark { display: grid; width: 30px; height: 30px; place-items: center; margin-right: 8px; border: 1px solid #5c7080; background: #293742; }
 
 .comparison-intro,
+.comparison-page-links,
 .comparison-controls,
 .comparison-live-grid,
 .comparison-scenarios,
-.comparison-analysis-section,
-.comparison-decision-section {
+.comparison-analysis-section {
   width: min(1880px, calc(100% - 32px));
   margin-inline: auto;
 }
+
+.comparison-page-links {
+  position: sticky;
+  top: 50px;
+  z-index: 18;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #394b59;
+  border-top: 0;
+  background: rgb(24 32 38 / 96%);
+  backdrop-filter: blur(12px);
+}
+.comparison-version-links,
+.comparison-workflow-links { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.comparison-workflow-links { margin-left: auto; }
 
 .comparison-intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 520px); gap: 24px; align-items: end; padding: 30px 0 20px; }
 .comparison-intro h1, .comparison-section-heading h2 { margin: 4px 0 8px; font-weight: 600; letter-spacing: -.025em; }
@@ -35,7 +53,6 @@
 .comparison-live-grid.is-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 .comparison-preview-card { min-width: 0; padding: 0; overflow: hidden; border: 1px solid #394b59; border-radius: 2px; background: #182026; transition: border-color .15s ease, box-shadow .15s ease; }
-.comparison-preview-card.is-selected { border-color: #32a467; box-shadow: 0 0 0 1px #32a467, 0 8px 28px rgb(0 0 0 / 35%); }
 .comparison-preview-header { display: flex; justify-content: space-between; gap: 12px; min-height: 90px; padding: 13px 13px 9px; }
 .comparison-preview-title { display: flex; gap: 8px; align-items: center; }
 .comparison-preview-title strong { font-size: 15px; }
@@ -63,8 +80,7 @@
 .comparison-scenario-grid { width: 100%; padding-bottom: 0; }
 .comparison-scenario-grid .comparison-preview-header { min-height: 94px; }
 
-.comparison-analysis-section, .comparison-decision-section { margin-top: 4px; padding: 18px; border: 1px solid #394b59; background: #182026; }
-.comparison-decision-section { margin-top: 16px; }
+.comparison-analysis-section { margin-top: 4px; padding: 18px; border: 1px solid #394b59; background: #182026; }
 .comparison-section-heading { display: flex; justify-content: space-between; gap: 20px; align-items: center; margin-bottom: 14px; }
 .comparison-section-heading h2 { font-size: 20px; }
 .comparison-rubric-scroll { overflow-x: auto; }
@@ -74,10 +90,6 @@
 .comparison-rubric tbody th { width: 170px; background: #202b33; color: #d8e1e8; }
 .comparison-rubric td { color: #abb3bf; line-height: 1.5; }
 .comparison-rubric td:last-child { background: rgb(50 164 103 / 7%); color: #d4f0df; }
-
-.comparison-candidate-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
-.comparison-decision-section textarea { min-height: 110px; }
-.comparison-decision-section > small { display: block; margin-top: 8px; color: #8a9ba8; }
 
 @media (max-width: 1180px) {
   .comparison-live-grid.is-3 { grid-template-columns: 1fr; }
@@ -91,11 +103,16 @@
   .comparison-navbar .bp6-navbar-group.bp6-align-left > .bp6-tag { display: none; }
   .comparison-navbar .bp6-navbar-heading { max-width: calc(100vw - 76px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .comparison-intro,
+  .comparison-page-links,
   .comparison-controls,
   .comparison-live-grid,
   .comparison-scenarios,
-  .comparison-analysis-section,
-  .comparison-decision-section { width: min(100% - 18px, 1880px); }
+  .comparison-analysis-section { width: min(100% - 18px, 1880px); }
+  .comparison-page-links { position: static; align-items: stretch; }
+  .comparison-page-links .bp6-navbar-divider { display: none; }
+  .comparison-version-links,
+  .comparison-workflow-links { width: 100%; display: grid; grid-template-columns: 1fr; margin-left: 0; }
+  .comparison-workflow-links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .comparison-intro { padding-top: 20px; }
   .comparison-controls { align-items: stretch; }
   .comparison-control-group, .comparison-control-group .bp6-button-group { width: 100%; }

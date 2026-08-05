@@ -11,7 +11,6 @@ import {
   NavbarGroup,
   NavbarHeading,
   Tag,
-  TextArea,
 } from "@blueprintjs/core";
 import {
   ontologyPath,
@@ -122,16 +121,12 @@ export function BlueprintComparisonPage({ projectId }: BlueprintComparisonPagePr
   const [layout, setLayout] = useState<LayoutId>("triple");
   const [viewportId, setViewportId] = useState<ViewportId>("desktop");
   const [reloadKey, setReloadKey] = useState(0);
-  const [selectedCandidate, setSelectedCandidate] = useState<VersionId | "">(() => {
-    return (window.localStorage.getItem(`blueprint-comparison:${projectId}:candidate`) as VersionId | null) ?? "";
-  });
-  const [notes, setNotes] = useState(() => window.localStorage.getItem(`blueprint-comparison:${projectId}:notes`) ?? "");
 
   const versions = useMemo<PreviewVersion[]>(() => [
     {
       id: "original",
-      label: "기존 Dashboard",
-      shortLabel: "Original",
+      label: "V1 · 기존 Dashboard",
+      shortLabel: "V1",
       path: projectDashboardPath(projectId),
       intent: "none",
       summary: "운영 보고서와 설비 판단 근거를 읽는 현재 제품 화면",
@@ -139,8 +134,8 @@ export function BlueprintComparisonPage({ projectId }: BlueprintComparisonPagePr
     },
     {
       id: "v1",
-      label: "Blueprint V1",
-      shortLabel: "V1",
+      label: "V2 · Blueprint 1차",
+      shortLabel: "V2",
       path: blueprintProjectPath(projectId),
       intent: "primary",
       summary: "기존 디자인 언어에 Blueprint 컴포넌트와 Workbench 구조를 결합",
@@ -148,8 +143,8 @@ export function BlueprintComparisonPage({ projectId }: BlueprintComparisonPagePr
     },
     {
       id: "v2",
-      label: "Blueprint V2",
-      shortLabel: "V2",
+      label: "V3 · Blueprint 2차",
+      shortLabel: "V3",
       path: blueprintV2ProjectPath(projectId),
       intent: "success",
       summary: "Blueprint의 고밀도 도구형 UI를 전면 적용한 Object 중심 Workbench",
@@ -164,7 +159,7 @@ export function BlueprintComparisonPage({ projectId }: BlueprintComparisonPagePr
         id: "overview",
         eyebrow: "PAGE 01 · OVERVIEW",
         title: "첫 화면과 운영 개요 비교",
-        description: "로그인 직후 무엇을 가장 먼저 보여주는지 비교합니다. V2는 별도 Overview 카드 대신 Object 업무 화면을 첫 화면으로 사용합니다.",
+        description: "로그인 직후 무엇을 가장 먼저 보여주는지 비교합니다. V3는 별도 Overview 카드 대신 Object 업무 화면을 첫 화면으로 사용합니다.",
         guidance: "첫 질문, KPI 우선순위, 설명량과 다음 작업으로 이동하는 속도를 확인하세요.",
         paths: {
           original: `${projectDashboardPath(projectId)}?view=dashboard`,
@@ -236,15 +231,6 @@ export function BlueprintComparisonPage({ projectId }: BlueprintComparisonPagePr
     .filter((version): version is PreviewVersion => Boolean(version));
   const viewport = VIEWPORTS[viewportId];
 
-  useEffect(() => {
-    if (selectedCandidate) window.localStorage.setItem(`blueprint-comparison:${projectId}:candidate`, selectedCandidate);
-    else window.localStorage.removeItem(`blueprint-comparison:${projectId}:candidate`);
-  }, [projectId, selectedCandidate]);
-
-  useEffect(() => {
-    window.localStorage.setItem(`blueprint-comparison:${projectId}:notes`, notes);
-  }, [notes, projectId]);
-
   return (
     <main className="blueprint-comparison-page bp6-dark">
       <Navbar className="comparison-navbar">
@@ -253,13 +239,36 @@ export function BlueprintComparisonPage({ projectId }: BlueprintComparisonPagePr
           <NavbarHeading>Blueprint UI 비교실</NavbarHeading>
           <NavbarDivider />
           <Tag minimal>{projectId}</Tag>
-          <Tag intent="primary" minimal>Original · V1 · V2</Tag>
+          <Tag intent="primary" minimal>V1 · V2 · V3</Tag>
         </NavbarGroup>
         <NavbarGroup align="right">
           <Button icon="refresh" onClick={() => setReloadKey((value) => value + 1)}>모두 새로고침</Button>
-          <Button icon="dashboard" intent="primary" onClick={() => window.open(blueprintV2ProjectPath(projectId), "_blank")}>V2 전체 화면</Button>
+          <Button icon="dashboard" intent="primary" onClick={() => window.open(blueprintV2ProjectPath(projectId), "_blank")}>V3 전체 화면</Button>
         </NavbarGroup>
       </Navbar>
+
+      <nav className="comparison-page-links" aria-label="버전 및 비교 페이지 바로가기">
+        <div className="comparison-version-links">
+          {versions.map((version) => (
+            <Button
+              key={version.id}
+              icon="open-application"
+              intent={version.intent}
+              onClick={() => window.open(version.path, "_blank")}
+            >
+              {version.label} 열기
+            </Button>
+          ))}
+        </div>
+        <NavbarDivider />
+        <div className="comparison-workflow-links">
+          <Button minimal onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>첫 화면</Button>
+          <Button minimal onClick={() => document.getElementById("comparison-overview")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Overview</Button>
+          <Button minimal onClick={() => document.getElementById("comparison-objects")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Objects</Button>
+          <Button minimal onClick={() => document.getElementById("comparison-analysis")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Analysis</Button>
+          <Button minimal onClick={() => document.getElementById("comparison-operations")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Operations</Button>
+        </div>
+      </nav>
 
       <header className="comparison-intro">
         <div>
@@ -277,9 +286,9 @@ export function BlueprintComparisonPage({ projectId }: BlueprintComparisonPagePr
           <span>비교 조합</span>
           <ButtonGroup>
             <Button active={layout === "triple"} onClick={() => setLayout("triple")}>3개 전체</Button>
-            <Button active={layout === "original-v1"} onClick={() => setLayout("original-v1")}>Original ↔ V1</Button>
-            <Button active={layout === "v1-v2"} onClick={() => setLayout("v1-v2")}>V1 ↔ V2</Button>
-            <Button active={layout === "original-v2"} onClick={() => setLayout("original-v2")}>Original ↔ V2</Button>
+            <Button active={layout === "original-v1"} onClick={() => setLayout("original-v1")}>V1 ↔ V2</Button>
+            <Button active={layout === "v1-v2"} onClick={() => setLayout("v1-v2")}>V2 ↔ V3</Button>
+            <Button active={layout === "original-v2"} onClick={() => setLayout("original-v2")}>V1 ↔ V3</Button>
           </ButtonGroup>
         </div>
         <div className="comparison-control-group">
@@ -302,8 +311,6 @@ export function BlueprintComparisonPage({ projectId }: BlueprintComparisonPagePr
             key={`${version.id}-${reloadKey}-${viewportId}`}
             version={version}
             viewport={viewport}
-            selected={selectedCandidate === version.id}
-            onSelect={() => setSelectedCandidate((current) => current === version.id ? "" : version.id)}
           />
         ))}
       </section>
@@ -347,8 +354,6 @@ export function BlueprintComparisonPage({ projectId }: BlueprintComparisonPagePr
                     summary: scenario.summaries[version.id],
                   }}
                   viewport={viewport}
-                  selected={false}
-                  onSelect={() => setSelectedCandidate(version.id)}
                   defer
                   titlePrefix={scenario.title}
                 />
@@ -368,7 +373,7 @@ export function BlueprintComparisonPage({ projectId }: BlueprintComparisonPagePr
         </div>
         <div className="comparison-rubric-scroll">
           <table className="comparison-rubric">
-            <thead><tr><th>비교 기준</th><th>기존 Dashboard</th><th>Blueprint V1</th><th>Blueprint V2</th></tr></thead>
+            <thead><tr><th>비교 기준</th><th>V1 · 기존 Dashboard</th><th>V2 · Blueprint 1차</th><th>V3 · Blueprint 2차</th></tr></thead>
             <tbody>
               {RUBRIC.map((row) => (
                 <tr key={row.criterion}>
@@ -383,37 +388,6 @@ export function BlueprintComparisonPage({ projectId }: BlueprintComparisonPagePr
         </div>
       </section>
 
-      <section className="comparison-decision-section">
-        <div className="comparison-section-heading">
-          <div>
-            <span className="comparison-eyebrow">DECISION NOTES</span>
-            <h2>최종 후보와 판단 메모</h2>
-          </div>
-          <Tag intent={selectedCandidate ? "success" : "none"}>{selectedCandidate ? `${versions.find((item) => item.id === selectedCandidate)?.label} 선택됨` : "후보 미선택"}</Tag>
-        </div>
-        <div className="comparison-candidate-buttons">
-          {versions.map((version) => (
-            <Button
-              key={version.id}
-              large
-              icon={selectedCandidate === version.id ? "tick-circle" : "circle"}
-              intent={selectedCandidate === version.id ? "success" : "none"}
-              active={selectedCandidate === version.id}
-              onClick={() => setSelectedCandidate((current) => current === version.id ? "" : version.id)}
-            >
-              {version.label}
-            </Button>
-          ))}
-        </div>
-        <TextArea
-          fill
-          value={notes}
-          onChange={(event) => setNotes(event.currentTarget.value)}
-          placeholder="예: V2는 첫 화면에서 Object와 Action이 바로 보여 업무 도구로 명확하다. 다만 설명이 적어 신규 사용자를 위한 안내가 필요하다."
-          aria-label="비교 판단 메모"
-        />
-        <small>선택과 메모는 이 브라우저에 자동 저장됩니다.</small>
-      </section>
     </main>
   );
 }
@@ -421,15 +395,11 @@ export function BlueprintComparisonPage({ projectId }: BlueprintComparisonPagePr
 function LivePreview({
   version,
   viewport,
-  selected,
-  onSelect,
   defer = false,
   titlePrefix,
 }: {
   version: PreviewVersion;
   viewport: { width: number; height: number; label: string };
-  selected: boolean;
-  onSelect: () => void;
   defer?: boolean;
   titlePrefix?: string;
 }) {
@@ -493,7 +463,7 @@ function LivePreview({
   }, [active, loadSignal, version.id, embeddedPath]);
 
   return (
-    <Card className={`comparison-preview-card ${selected ? "is-selected" : ""}`} elevation={selected ? 3 : 1}>
+    <Card className="comparison-preview-card" elevation={1}>
       <div className="comparison-preview-header">
         <div>
           <div className="comparison-preview-title">
@@ -503,7 +473,6 @@ function LivePreview({
           <p>{version.summary}</p>
         </div>
         <ButtonGroup minimal>
-          <Button icon={selected ? "tick" : "star-empty"} intent={selected ? "success" : "none"} onClick={onSelect} aria-label={`${version.label} 후보 선택`} />
           <Button icon="share" onClick={() => window.open(version.path, "_blank")} aria-label={`${version.label} 새 창에서 열기`} />
         </ButtonGroup>
       </div>
