@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import {
   matchAgentPath,
   matchAnalysisPath,
+  matchBlueprintComparisonPath,
   matchBlueprintProjectPath,
   matchBlueprintV2ProjectPath,
   matchDatasetCatalogPath,
@@ -34,6 +35,9 @@ const BlueprintManufacturingApp = lazy(() =>
 );
 const BlueprintManufacturingV2App = lazy(() =>
   import("./features/blueprint-v2/BlueprintManufacturingV2App").then((module) => ({ default: module.BlueprintManufacturingV2App })),
+);
+const BlueprintComparisonPage = lazy(() =>
+  import("./features/blueprint-compare/BlueprintComparisonPage").then((module) => ({ default: module.BlueprintComparisonPage })),
 );
 const ProjectHomePage = lazy(() =>
   import("./features/projects/ProjectHomePage").then((module) => ({ default: module.ProjectHomePage })),
@@ -196,6 +200,17 @@ function AppRouter() {
 
   const analysisId = matchAnalysisPath(pathname);
   if (analysisId) return <ManufacturingApp initialWorkspaceView="analysis" analysisId={analysisId} />;
+
+  const blueprintComparisonRoute = matchBlueprintComparisonPath(pathname);
+  if (blueprintComparisonRoute) {
+    return (
+      <ProjectRouteBoundary projectId={blueprintComparisonRoute.projectId}>
+        <Suspense fallback={<RouteLoading operation="Loading Blueprint comparison" detail="Preparing three live workbench previews at the same virtual viewport." />}>
+          <BlueprintComparisonPage projectId={blueprintComparisonRoute.projectId} />
+        </Suspense>
+      </ProjectRouteBoundary>
+    );
+  }
 
   const blueprintProjectRoute = matchBlueprintProjectPath(pathname);
   if (blueprintProjectRoute) {

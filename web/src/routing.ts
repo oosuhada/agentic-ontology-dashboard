@@ -90,6 +90,15 @@ export function matchBlueprintV2ProjectPath(pathname: string): { projectId: stri
   return match ? { projectId: decodeURIComponent(match[1]) } : null;
 }
 
+export function blueprintComparisonPath(projectId: string) {
+  return `/app/projects/${encodeURIComponent(projectId)}/blueprint-compare`;
+}
+
+export function matchBlueprintComparisonPath(pathname: string): { projectId: string } | null {
+  const match = pathname.match(/^\/app\/projects\/([^/]+)\/blueprint-compare$/);
+  return match ? { projectId: decodeURIComponent(match[1]) } : null;
+}
+
 export function matchProjectDashboardPath(pathname: string): { projectId: string } | null {
   const match = pathname.match(/^\/app\/projects\/([^/]+)$/);
   return match ? { projectId: decodeURIComponent(match[1]) } : null;
