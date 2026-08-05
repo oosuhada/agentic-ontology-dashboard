@@ -7,6 +7,8 @@ export type CommercialSurfaceId =
   | "deployment"
   | "runtime"
   | "artifacts"
+  | "operations"
+  | "ingestion"
   | "objects"
   | "analysis"
   | "models"
@@ -85,6 +87,22 @@ const V4_SURFACES: readonly ApplicationSurfaceDefinition[] = [
     description: "Object storage, checksum, signed download, retention and reconciliation governance.",
     state: "ready",
     phase: 24,
+    permission: "governance.read",
+  },
+  {
+    id: "operations",
+    label: "Operations & SLO",
+    description: "Telemetry, service level objectives, burn-rate alerts and production diagnostics.",
+    state: "ready",
+    phase: 25,
+    permission: "governance.read",
+  },
+  {
+    id: "ingestion",
+    label: "Ingestion",
+    description: "Governed connector lifecycle, checkpoint, schema drift and quarantine operations.",
+    state: "ready",
+    phase: 26,
     permission: "governance.read",
   },
   {

@@ -7,8 +7,9 @@ from typing import Any, Callable
 
 from .analysis_models import AnalysisRunRequest
 from .analysis_service import AnalysisService
+from .connectors import ConnectorRepository, ConnectorService, FixtureConnectorAdapter
 from .datasets import DatasetMaterializationSource, DatasetRepository
-from .distributed_runtime import DurableJob
+from .distributed_runtime import DurableJob, DurableJobRepository
 from .identity import Principal
 from .ontology_service import OntologyService
 from .postgresql_ontology_repository import PostgreSQLOntologyInstanceRepository
@@ -58,4 +59,27 @@ def analysis_handler(database: str, root: Path) -> Callable[[DurableJob], dict[s
 
 
 def configured_handlers(database: str, root: Path) -> dict[str, Callable[[DurableJob], dict[str, Any]]]:
-    return {"analysis": analysis_handler(database, root)}
+    connectors = ConnectorRepository(database)
+    connector_service = ConnectorService(
+        repository=connectors,
+        jobs=DurableJobRepository(database),
+        adapters={"fixture": FixtureConnectorAdapter()},
+    )
+
+    def connector_ingestion(job: DurableJob) -> dict[str, Any]:
+        definition = connectors.get(
+            job.organization_id,
+            job.project_id,
+            str(job.payload["connector_id"]),
+        )
+        if definition is None:
+            raise KeyError("connector not found in job scope")
+        return connector_service.execute(
+            definition,
+            actor=str(job.payload["actor_user_id"]),
+        ).model_dump(mode="json")
+
+    return {
+        "analysis": analysis_handler(database, root),
+        "connector_ingestion": connector_ingestion,
+    }

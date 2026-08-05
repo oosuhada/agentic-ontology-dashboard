@@ -27,6 +27,7 @@ from starlette.responses import Response, StreamingResponse
 
 from .analysis_models import AnalysisRunResult
 from .contracts import GroundedReport, UILayout
+from .connectors import ConnectorSnapshot
 from .dashboard_models import (
     DashboardSharePayload,
     DashboardTemplateSnapshot,
@@ -537,6 +538,12 @@ class FlexibleObjectResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+class ConnectorRunQueuedResponse(ContractModel):
+    job_id: str
+    state: str
+    reason: str
+
+
 def _qname(endpoint: Any) -> str:
     return f"{endpoint.__module__}.{endpoint.__name__}"
 
@@ -587,6 +594,8 @@ _EXPLICIT_MODELS: dict[str, Any] = {
     "ontology_dashboard.routers.platform.project_enterprise_identity": EnterpriseIdentityReadiness,
     "ontology_dashboard.routers.platform.project_deployment_readiness": DeploymentReadiness,
     "ontology_dashboard.routers.platform.project_distributed_runtime": DistributedRuntimeSnapshot,
+    "ontology_dashboard.routers.platform.project_connectors": ConnectorSnapshot,
+    "ontology_dashboard.routers.platform.run_project_connector": ConnectorRunQueuedResponse,
     "ontology_dashboard.routers.platform.project_distributed_job_events": DurableJobEventPage,
     "ontology_dashboard.routers.platform.cancel_distributed_job": DurableJob,
     "ontology_dashboard.routers.platform.replay_distributed_job": DurableJob,

@@ -48,6 +48,12 @@ test("preserves V1 through V3 and exposes an independent Commercial V4 compositi
   await expect(page.getByText("Service level objectives", { exact: true })).toBeVisible();
   await expect(page.getByText("Alert policy", { exact: true })).toBeVisible();
 
+  await page.getByRole("button", { name: /Ingestion/ }).click();
+  await expect(page.getByText("Connector readiness", { exact: true })).toBeVisible();
+  await expect(page.getByText("Canonical fixture ingestion", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Run ingestion", exact: true }).click();
+  await expect(page.getByText(/Connector ingestion queued as job-/)).toBeVisible();
+
   await page.goto("/app/projects/manufacturing-demo-project");
   await expect(page.getByRole("heading", { name: "운영 매니저 운영 브리핑" })).toBeVisible();
   await expect(page.locator('[data-application-version="v4"]')).toHaveCount(0);

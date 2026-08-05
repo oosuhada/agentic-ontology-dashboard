@@ -255,6 +255,44 @@ export interface ObservabilityReadiness {
   blockers: string[];
 }
 
+export interface ConnectorSnapshot {
+  readiness: {
+    state: "ready" | "degraded" | "not_configured" | "blocked";
+    providers: Record<string, { state: string; credential_reference: boolean; environment?: string }>;
+    checkpoint: string;
+    schema_drift: string;
+    quarantine: string;
+    backpressure: string;
+    secret_handling: string;
+    blockers: string[];
+  };
+  connectors: Array<{
+    id: string;
+    name: string;
+    connector_type: string;
+    status: string;
+    credential_reference: string | null;
+    freshness_policy_seconds: number;
+    max_batch_records: number;
+    max_inflight_batches: number;
+    schema_contract: Record<string, string>;
+  }>;
+  runs: Array<{
+    id: string;
+    connector_id: string;
+    state: string;
+    records_read: number;
+    records_committed: number;
+    records_quarantined: number;
+    bytes_read: number;
+    backpressure_events: number;
+    schema_drift: { added: string[]; removed: string[]; type_changed: Record<string, [string, string]>; breaking: boolean };
+    created_at: string;
+    completed_at: string | null;
+  }>;
+  quarantine_count: number;
+}
+
 export async function getProjectV4ApplicationDefinition(projectId: string): Promise<ProjectV4ApplicationDefinition> {
   const response = await fetch(
     `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/applications/v4`,
@@ -383,4 +421,21 @@ export async function getObservabilityReadiness(projectId: string): Promise<Obse
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload?.error?.message ?? `Observability readiness failed: ${response.status}`);
   return payload as ObservabilityReadiness;
+}
+
+export async function getConnectorSnapshot(projectId: string): Promise<ConnectorSnapshot> {
+  const response = await fetch(
+    `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/connectors`,
+    { credentials: "include" },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message ?? `Connector snapshot failed: ${response.status}`);
+  return payload as ConnectorSnapshot;
+}
+
+export function runConnector(projectId: string, connectorId: string): Promise<{ job_id: string; state: string }> {
+  return artifactOperatorRequest(
+    `/api/platform/projects/${encodeURIComponent(projectId)}/connectors/${encodeURIComponent(connectorId)}/run`,
+    "Run connector ingestion from Commercial V4",
+  );
 }

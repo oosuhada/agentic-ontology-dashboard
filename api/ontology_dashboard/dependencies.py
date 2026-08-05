@@ -16,6 +16,7 @@ from fastapi import Depends, HTTPException, Request, Response, status
 from .adapters.service import AdapterService
 from .adapters.prediction_repository import PredictionResultRepository
 from .analysis_service import AnalysisService
+from .connectors import ConnectorRepository, ConnectorService, FixtureConnectorAdapter
 from .dashboard_service import DashboardService
 from .distributed_runtime import DurableJobRepository
 from .datasets import (
@@ -203,6 +204,23 @@ def get_durable_job_repository(
             1,
             int(os.getenv("ONTOLOGY_DASHBOARD_MAX_QUEUED_JOBS_PER_PROJECT", "5000")),
         ),
+    )
+
+
+@lru_cache(maxsize=1)
+def get_connector_repository() -> ConnectorRepository:
+    ensure_database_migrations()
+    return ConnectorRepository(database_target())
+
+
+def get_connector_service(
+    repository: ConnectorRepository = Depends(get_connector_repository),
+    jobs: DurableJobRepository = Depends(get_durable_job_repository),
+) -> ConnectorService:
+    return ConnectorService(
+        repository=repository,
+        jobs=jobs,
+        adapters={"fixture": FixtureConnectorAdapter()},
     )
 
 

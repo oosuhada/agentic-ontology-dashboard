@@ -44,11 +44,14 @@ import {
   getDistributedRuntime,
   getArtifactGovernance,
   getObservabilityReadiness,
+  getConnectorSnapshot,
+  runConnector,
   reconcileArtifacts,
   signArtifactDownload,
   verifyArtifact,
   type ArtifactGovernanceSnapshot,
   type ObservabilityReadiness,
+  type ConnectorSnapshot,
   operateDistributedJob,
   type DistributedRuntimeSnapshot,
   type DeploymentReadiness,
@@ -64,6 +67,8 @@ const ICONS = {
   deployment: Container,
   runtime: ServerCog,
   artifacts: Archive,
+  operations: Activity,
+  ingestion: Database,
   objects: Boxes,
   analysis: Workflow,
   models: BrainCircuit,
@@ -85,6 +90,7 @@ interface CommercialContext {
   distributed: DistributedRuntimeSnapshot;
   artifacts: ArtifactGovernanceSnapshot;
   observability: ObservabilityReadiness;
+  connectors: ConnectorSnapshot;
 }
 
 function currentSurface(): CommercialSurfaceId {
@@ -167,8 +173,9 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       getDistributedRuntime(projectId),
       getArtifactGovernance(projectId),
       getObservabilityReadiness(projectId),
+      getConnectorSnapshot(projectId),
     ])
-      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts, observability]) => {
+      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts, observability, connectors]) => {
         if (!controller.signal.aborted) setContext({
           project,
           workspaces,
@@ -180,6 +187,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
           distributed,
           artifacts,
           observability,
+          connectors,
         });
       })
       .catch((reason: unknown) => {
@@ -268,6 +276,18 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       );
     } catch (reason) {
       setOperationMessage(reason instanceof Error ? reason.message : "Artifact reconciliation failed.");
+    }
+  }
+
+  async function executeConnector(connectorId: string) {
+    setOperationMessage("");
+    try {
+      const queued = await runConnector(projectId, connectorId);
+      setOperationMessage(`Connector ingestion queued as ${queued.job_id}.`);
+      const connectors = await getConnectorSnapshot(projectId);
+      setContext((current) => current ? { ...current, connectors } : current);
+    } catch (reason) {
+      setOperationMessage(reason instanceof Error ? reason.message : "Connector ingestion failed.");
     }
   }
 
@@ -665,6 +685,48 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
                   {context.observability.dashboards.map((dashboard) => <span key={dashboard}>{dashboard}</span>)}
                 </div>
                 <p className="commercial-v4-policy-copy">{context.observability.log_redaction}</p>
+              </section>
+            </div>
+          ) : selected.id === "ingestion" ? (
+            <div className="commercial-v4-grid">
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Database aria-hidden="true" /><span>Connector readiness</span></div>
+                <dl>
+                  <div><dt>Checkpoint</dt><dd>{context.connectors.readiness.checkpoint}</dd></div>
+                  <div><dt>Schema drift</dt><dd>{context.connectors.readiness.schema_drift}</dd></div>
+                  <div><dt>Quarantine</dt><dd>{context.connectors.quarantine_count}</dd></div>
+                  <div><dt>Backpressure</dt><dd>{context.connectors.readiness.backpressure}</dd></div>
+                </dl>
+                <span className={`commercial-v4-state-badge is-${context.connectors.readiness.state}`}>{context.connectors.readiness.state}</span>
+                {context.connectors.readiness.blockers.slice(0, 3).map((blocker) => <p key={blocker} className="commercial-v4-policy-copy">{blocker}</p>)}
+              </section>
+              <section className="commercial-v4-panel commercial-v4-connector-list">
+                <div className="commercial-v4-panel-title"><Workflow aria-hidden="true" /><span>Configured connectors</span></div>
+                {operationMessage ? <p className="commercial-v4-policy-copy" role="status">{operationMessage}</p> : null}
+                {context.connectors.connectors.map((connector) => (
+                  <article key={connector.id}>
+                    <span><strong>{connector.name}</strong><small>{connector.connector_type} · {connector.max_batch_records.toLocaleString()} records/batch</small></span>
+                    <em className={`is-${connector.status}`}>{connector.status}</em>
+                    {user.permissions.includes("governance.projection.retry") ? <button type="button" onClick={() => void executeConnector(connector.id)}>Run ingestion</button> : null}
+                  </article>
+                ))}
+              </section>
+              <section className="commercial-v4-panel commercial-v4-connector-list">
+                <div className="commercial-v4-panel-title"><Activity aria-hidden="true" /><span>Ingestion history</span></div>
+                {context.connectors.runs.length ? context.connectors.runs.map((run) => (
+                  <article key={run.id}>
+                    <span><strong>{run.state}</strong><small>{run.records_committed} committed · {run.records_quarantined} quarantined · {run.bytes_read.toLocaleString()} B</small></span>
+                    <em className={run.schema_drift.breaking ? "is-error" : "is-ready"}>{run.schema_drift.breaking ? "breaking drift" : "contract compatible"}</em>
+                  </article>
+                )) : <p className="commercial-v4-empty">No connector ingestion run has completed for this Project.</p>}
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><LockKeyhole aria-hidden="true" /><span>Provider configuration</span></div>
+                <div className="commercial-v4-runtime-policy">
+                  {Object.entries(context.connectors.readiness.providers).map(([provider, status]) => (
+                    <article key={provider}><span><strong>{provider}</strong><small>{status.credential_reference ? "secret reference configured" : "no credential reference"}</small></span><em className={`is-${status.state}`}>{status.state.replace("_", " ")}</em></article>
+                  ))}
+                </div>
               </section>
             </div>
           ) : selected.id === "settings" ? (

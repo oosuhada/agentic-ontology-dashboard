@@ -6,10 +6,19 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ..dependencies import (
     database_target,
+    get_connector_repository,
+    get_connector_service,
     get_durable_job_repository,
     get_project_service,
     require_csrf,
     require_permission,
+)
+from ..connectors import (
+    ConnectorRepository,
+    ConnectorRunRequest,
+    ConnectorService,
+    ConnectorSnapshot,
+    connector_readiness,
 )
 from ..distributed_runtime import (
     DistributedRuntimeSnapshot,
@@ -107,6 +116,47 @@ def project_distributed_runtime(
         jobs=recent,
         dead_letters=dead_letters,
     ).model_dump(mode="json")
+
+
+@router.get("/projects/{project_id}/connectors")
+def project_connectors(
+    project_id: str,
+    principal: Principal = Depends(require_permission("app.access")),
+    projects: ProjectService = Depends(get_project_service),
+    repository: ConnectorRepository = Depends(get_connector_repository),
+):
+    projects.get_for_principal(principal, project_id)
+    repository.ensure_fixture(
+        organization_id=principal.organization_id,
+        project_id=project_id,
+        workspace_id=principal.active_workspace_id or "manufacturing-demo",
+        actor=principal.user_id,
+    )
+    runs = repository.list_runs(principal.organization_id, project_id)
+    return ConnectorSnapshot(
+        readiness=connector_readiness(),
+        connectors=repository.list_definitions(principal.organization_id, project_id),
+        runs=runs,
+        quarantine_count=getattr(repository, "last_quarantine_count", 0),
+    ).model_dump(mode="json")
+
+
+@router.post("/projects/{project_id}/connectors/{connector_id}/run")
+def run_project_connector(
+    project_id: str,
+    connector_id: str,
+    request: ConnectorRunRequest,
+    principal: Principal = Depends(require_permission("governance.projection.retry")),
+    _: None = Depends(require_csrf),
+    projects: ProjectService = Depends(get_project_service),
+    service: ConnectorService = Depends(get_connector_service),
+):
+    projects.get_for_principal(principal, project_id)
+    definition = service.repository.get(principal.organization_id, project_id, connector_id)
+    if definition is None:
+        raise HTTPException(status_code=404, detail="connector not found")
+    job_id = service.enqueue(definition, actor=principal.user_id)
+    return {"job_id": job_id, "state": "queued", "reason": request.reason}
 
 
 @router.get("/projects/{project_id}/distributed-job-events")
