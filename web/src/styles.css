@@ -1,7 +1,7 @@
 :root {
   font-family: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #172033;
-  background: #eef1f6;
+  background: var(--fd-canvas, var(--od-canvas, #eef1f6));
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   --od-canvas: #edf0f3;
@@ -286,7 +286,7 @@ th { color: #667085; background: #f9fafb; }
 }
 
 /* Dashboard platform shell — stages 21 to 24 */
-.ontology-dashboard-shell { min-height: 100vh; color: #172033; background: #eef1f6; }
+.ontology-dashboard-shell { min-height: 100vh; color: var(--od-text, #172033); background: var(--fd-canvas, var(--od-canvas, #eef1f6)); }
 .dashboard-global-header { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: minmax(220px,280px) minmax(170px,220px) minmax(170px,220px) minmax(220px,1fr) auto; align-items: center; gap: 18px; min-height: 72px; padding: 12px 22px; border-bottom: 1px solid #dfe3ea; background: rgba(255,255,255,.96); backdrop-filter: blur(14px); }
 .dashboard-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
 .dashboard-brand > div { display: flex; flex-direction: column; min-width: 0; }
