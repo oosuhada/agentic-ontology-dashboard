@@ -365,7 +365,7 @@ th { color: #667085; background: #f9fafb; }
 .dashboard-board-frame:hover { border-color: #c7d2fe; box-shadow: 0 7px 20px rgba(16,24,40,.07); }
 .dashboard-board-frame.is-selected { border-color: #5b7cfa; box-shadow: 0 0 0 2px rgba(91,124,250,.13); }
 .dashboard-board-frame.is-hidden { opacity: .52; border-style: dashed; }
-.dashboard-board-frame.is-affected { border-color: #7f56d9; box-shadow: 0 0 0 3px rgba(127,86,217,.16); animation: affectedPulse .9s ease-in-out 2; }
+.dashboard-board-frame.is-affected { border-color: #7f56d9; box-shadow: 0 0 0 3px rgba(127,86,217,.16); }
 .dashboard-board-frame.is-fullscreen { position: fixed; inset: 18px; z-index: 80; overflow: auto; width: auto !important; max-height: calc(100vh - 36px); border-color: #8fa6ff; box-shadow: 0 30px 90px rgba(16,24,40,.3); }
 .dashboard-board-frame.is-fullscreen::before { position: fixed; inset: 0; z-index: -1; content: ""; background: rgba(16,24,40,.55); }
 .dashboard-board-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 8px 11px; border-bottom: 1px solid #eaecf0; background: #fcfcfd; }
@@ -398,7 +398,6 @@ th { color: #667085; background: #f9fafb; }
 .health-ok { color: #067647; }
 .text-board-card p { min-height: 70px; white-space: pre-wrap; }
 .text-board-card small { color: #98a2b3; }
-@keyframes affectedPulse { 50% { transform: translateY(-2px); } }
 
 .dashboard-inspector { padding: 15px; }
 .inspector-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
