@@ -68,6 +68,32 @@ def login(
     return {"user": principal.model_dump(mode="json"), "csrf_token": csrf_token}
 
 
+@router.post("/public-blueprint-comparison")
+def public_blueprint_comparison(
+    request: Request,
+    response: Response,
+    identity: IdentityService = Depends(get_identity_service),
+    limiter: InMemoryRateLimiter = Depends(get_rate_limiter),
+):
+    limiter.check(
+        bucket="auth.public_blueprint_comparison",
+        subject=rate_limit_subject(str(identity.repository.path), client_ip(request)),
+        rule=SESSION_RATE,
+    )
+    principal, token, expires_at, csrf_token = identity.open_public_comparison_session(
+        user_agent=request.headers.get("User-Agent"),
+        client_ip=client_ip(request),
+    )
+    set_auth_cookies(
+        response=response,
+        identity=identity,
+        token=token,
+        csrf_token=csrf_token,
+        expires_at=expires_at,
+    )
+    return {"user": principal.model_dump(mode="json"), "csrf_token": csrf_token}
+
+
 @router.post("/logout", status_code=204)
 def logout(
     request: Request,

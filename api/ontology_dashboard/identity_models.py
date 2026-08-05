@@ -13,6 +13,10 @@ SESSION_COOKIE = "ontology_session"
 CSRF_COOKIE = "ontology_csrf"
 SESSION_TTL_HOURS = 12
 SESSION_IDLE_MINUTES = 60
+PUBLIC_COMPARISON_EMAIL = "comparison-viewer@ontology.local"
+PUBLIC_COMPARISON_PASSWORD = "ComparisonViewer-NoInteractiveLogin!2026"
+PUBLIC_COMPARISON_PROJECT_ID = "manufacturing-demo-project"
+PUBLIC_COMPARISON_WORKSPACE_ID = "manufacturing-demo"
 
 ROLE_DEFINITIONS: dict[str, tuple[str, str]] = {
     "tenant_admin": ("조직 관리자", "사용자, 역할, workspace scope와 관리자 감사를 관리합니다."),
@@ -123,6 +127,27 @@ DEMO_ACCOUNTS: tuple[dict[str, Any], ...] = (
         "password": "FDE!2026",
         "display_name": "Forward Deployed Engineer",
         "roles": ["fde"],
+    },
+    {
+        "email": PUBLIC_COMPARISON_EMAIL,
+        "password": PUBLIC_COMPARISON_PASSWORD,
+        "display_name": "공개 비교 Viewer",
+        "roles": ["process_manager"],
+        "fixture_scopes": (
+            (PUBLIC_COMPARISON_WORKSPACE_ID, PUBLIC_COMPARISON_PROJECT_ID),
+        ),
+        "permission_overrides": {
+            permission: permission
+            in {
+                "app.access",
+                "events.read",
+                "ontology.registry.read",
+                "ontology.objects.read",
+                "dashboards.read",
+                "datasets.read",
+            }
+            for permission in ROLE_PERMISSIONS["process_manager"]
+        },
     },
 )
 

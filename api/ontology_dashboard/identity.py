@@ -20,6 +20,8 @@ from .identity_models import (
     ROLE_PERMISSIONS,
     SESSION_COOKIE,
     SESSION_TTL_HOURS,
+    PUBLIC_COMPARISON_EMAIL,
+    PUBLIC_COMPARISON_PASSWORD,
     ActiveProjectRequest,
     AdminUserUpdateRequest,
     AuthError,
@@ -94,6 +96,29 @@ class IdentityService:
         )
         csrf_token = secrets.token_urlsafe(32)
         return principal, token, expires_at, csrf_token
+
+    def open_public_comparison_session(
+        self,
+        *,
+        user_agent: str | None = None,
+        client_ip: str | None = None,
+    ) -> tuple[Principal, str, datetime, str]:
+        enabled = os.getenv("ENABLE_PUBLIC_BLUEPRINT_COMPARISON")
+        public_enabled = (
+            enabled.lower() in {"1", "true", "yes"}
+            if enabled is not None
+            else self.app_env in {"development", "demo", "test"}
+        )
+        if not public_enabled:
+            raise AuthError(404, "public_comparison_disabled", "공개 비교 화면을 사용할 수 없습니다.")
+        return self.login(
+            LoginRequest(
+                email=PUBLIC_COMPARISON_EMAIL,
+                password=PUBLIC_COMPARISON_PASSWORD,
+            ),
+            user_agent=user_agent,
+            client_ip=client_ip,
+        )
 
     def principal_for_token(
         self,

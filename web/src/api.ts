@@ -185,6 +185,15 @@ export async function login(email: string, password: string): Promise<AuthUser> 
   return payload.user;
 }
 
+export async function openPublicBlueprintComparison(signal?: AbortSignal): Promise<AuthUser> {
+  const payload = await request<{ user: AuthUser; csrf_token: string }>(
+    "/api/auth/public-blueprint-comparison",
+    { method: "POST", signal },
+  );
+  csrfTokenCache = payload.csrf_token;
+  return payload.user;
+}
+
 export function register(input: {
   display_name: string;
   email: string;

@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ontology_dashboard.identity import CSRF_COOKIE, DEMO_ACCOUNTS, AuthError, IdentityService
+from ontology_dashboard.identity_models import PUBLIC_COMPARISON_EMAIL
 from ontology_dashboard.main import app, get_identity_service, get_service
 from ontology_dashboard.service import ManufacturingPredictiveMaintenanceService as FactorySignalService
 
@@ -52,7 +53,7 @@ def admin_user(client: TestClient, email: str) -> dict:
     return next(item for item in response.json()["items"] if item["email"] == email)
 
 
-def test_eight_demo_accounts_login_with_argon2id_hashes(client: TestClient, identity: IdentityService) -> None:
+def test_demo_accounts_login_with_argon2id_hashes(client: TestClient, identity: IdentityService) -> None:
     expected_roles = {
         "admin@ontology.local": "tenant_admin",
         "executive@ontology.local": "executive_viewer",
@@ -62,18 +63,20 @@ def test_eight_demo_accounts_login_with_argon2id_hashes(client: TestClient, iden
         "quality@ontology.local": "quality_auditor",
         "datascientist@ontology.local": "ml_validator",
         "fde@ontology.local": "fde",
+        PUBLIC_COMPARISON_EMAIL: "process_manager",
     }
-    assert len(DEMO_ACCOUNTS) == 8
+    assert len(DEMO_ACCOUNTS) == 9
     for account in DEMO_ACCOUNTS:
         response = login(client, account["email"], account["password"])
         assert response.status_code == 200, response.text
         user = response.json()["user"]
         assert user["roles"] == [expected_roles[account["email"]]]
-        assert user["workspace_scopes"] == [
+        expected_scopes = ["manufacturing-demo"] if account["email"] == PUBLIC_COMPARISON_EMAIL else [
             "azure-fleet-maintenance",
             "manufacturing-demo",
             "metropt-compressor-monitoring",
         ]
+        assert user["workspace_scopes"] == expected_scopes
         password_hash = identity.repository.password_hash_for_email(account["email"])
         assert password_hash is not None
         assert password_hash.startswith("$argon2id$")
@@ -82,6 +85,25 @@ def test_eight_demo_accounts_login_with_argon2id_hashes(client: TestClient, iden
     fde = login(client, "fde@ontology.local", "FDE!2026").json()["user"]
     assert fde["is_admin"] is False
     assert not any(permission.startswith("admin.") for permission in fde["permissions"])
+
+
+def test_public_blueprint_comparison_opens_read_only_demo_session(client: TestClient) -> None:
+    response = client.post("/api/auth/public-blueprint-comparison")
+    assert response.status_code == 200, response.text
+    user = response.json()["user"]
+    assert user["email"] == PUBLIC_COMPARISON_EMAIL
+    assert user["project_scopes"] == ["manufacturing-demo-project"]
+    assert user["workspace_scopes"] == ["manufacturing-demo"]
+    assert set(user["permissions"]) == {
+        "app.access",
+        "dashboards.read",
+        "datasets.read",
+        "events.read",
+        "ontology.objects.read",
+        "ontology.registry.read",
+    }
+    assert client.cookies.get("ontology_session")
+    assert client.get("/api/auth/me").status_code == 200
 
 
 def test_signup_stays_pending_until_admin_approves_role_and_scope(client: TestClient) -> None:
@@ -247,7 +269,7 @@ def test_admin_route_is_server_protected_and_fde_is_not_admin(client: TestClient
     assert login(client, "admin@ontology.local", "OntologyAdmin!2026").status_code == 200
     overview = client.get("/api/admin/overview")
     assert overview.status_code == 200
-    assert overview.json()["active_users"] == 8
+    assert overview.json()["active_users"] == 9
 
 
 def test_workspace_scope_is_enforced_for_existing_manufacturing_api(client: TestClient) -> None:

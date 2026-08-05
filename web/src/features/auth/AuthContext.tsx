@@ -4,6 +4,7 @@ import {
   getCurrentUser,
   login as loginRequest,
   logout as logoutRequest,
+  openPublicBlueprintComparison,
   setActiveProject as setActiveProjectRequest,
 } from "../../api";
 import type { AuthUser } from "../../types";
@@ -19,6 +20,11 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const AUTH_BOOTSTRAP_TIMEOUT_MS = 6_000;
+const PUBLIC_COMPARISON_PATH = "/app/projects/manufacturing-demo-project/blueprint-compare";
+
+function isPublicComparisonPath() {
+  return window.location.pathname.replace(/\/$/, "") === PUBLIC_COMPARISON_PATH;
+}
 
 type ComparisonHostWindow = Window & {
   __ONTOLOGY_COMPARISON_USER__?: AuthUser | null;
@@ -62,7 +68,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let active = true;
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), AUTH_BOOTSTRAP_TIMEOUT_MS);
-    getCurrentUser(controller.signal)
+    const bootstrap = async () => {
+      try {
+        return await getCurrentUser(controller.signal);
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401 && isPublicComparisonPath()) {
+          return openPublicBlueprintComparison(controller.signal);
+        }
+        throw error;
+      }
+    };
+    bootstrap()
       .then((current) => active && setUser(current))
       .catch((error) => {
         if (active && error instanceof DOMException && error.name === "AbortError") {

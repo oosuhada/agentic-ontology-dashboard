@@ -465,7 +465,18 @@ class IdentityRepository:
                         )
                 else:
                     user_id = str(existing["id"])
-                for fixture_workspace_id, fixture_project_id in fixture_scopes:
+                for permission_code, allowed in account.get("permission_overrides", {}).items():
+                    connection.execute(
+                        """
+                        INSERT INTO user_permission_overrides(user_id,permission_code,allowed,updated_at)
+                        VALUES (?,?,?,?)
+                        ON CONFLICT(user_id,permission_code)
+                        DO UPDATE SET allowed=excluded.allowed,updated_at=excluded.updated_at
+                        """,
+                        (user_id, permission_code, int(bool(allowed)), now),
+                    )
+                account_scopes = account.get("fixture_scopes", fixture_scopes)
+                for fixture_workspace_id, fixture_project_id in account_scopes:
                     connection.execute(
                         "INSERT OR IGNORE INTO user_scopes (user_id,workspace_id) VALUES (?,?)",
                         (user_id, fixture_workspace_id),

@@ -8,6 +8,15 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/app\/projects\//);
 }
 
+test("opens the comparison page without manual login", async ({ page }) => {
+  await page.goto("/app/projects/manufacturing-demo-project/blueprint-compare");
+
+  await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project\/blueprint-compare$/);
+  await expect(page.getByRole("heading", { name: "세 화면을 같은 조건에서 비교하세요" })).toBeVisible();
+  await expect(page.getByLabel("이메일")).toHaveCount(0);
+  await expect(page.locator(".blueprint-comparison-page > .comparison-live-grid iframe.is-ready")).toHaveCount(3, { timeout: 30_000 });
+});
+
 test("renders three live project versions and supports pair comparison", async ({ page }) => {
   await login(page);
   await page.goto("/app/projects/manufacturing-demo-project/blueprint-compare");

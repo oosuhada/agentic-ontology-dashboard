@@ -535,6 +535,7 @@ _EXPLICIT_MODELS: dict[str, Any] = {
     "ontology_dashboard.routers.system.openapi_contract": dict[str, Any],
     "ontology_dashboard.routers.auth.register": RegisterResponse,
     "ontology_dashboard.routers.auth.login": AuthSessionResponse,
+    "ontology_dashboard.routers.auth.public_blueprint_comparison": AuthSessionResponse,
     "ontology_dashboard.routers.auth.me": CurrentUserResponse,
     "ontology_dashboard.routers.auth.get_display_preferences": DisplayPreferencesResponse,
     "ontology_dashboard.routers.auth.save_display_preferences": DisplayPreferenceRecord,
