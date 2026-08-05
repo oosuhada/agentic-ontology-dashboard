@@ -67,8 +67,8 @@ https://fastapi-flask.oosu.dev
 
 공개 화면은 두 비교 층을 구분한다.
 
-1. 제조 Dashboard 대표 API 1개를 FastAPI와 Flask에 동일하게 실제 구현한
-   기능·성능 대칭 비교
+1. Dashboard 집계·위험 이벤트 검색·정비 조치 추천 등 대표 기능 3개를
+   FastAPI와 Flask에 동일하게 실제 구현한 기능·검증·성능 대칭 비교
 2. FastAPI 전체 제품 162개 OpenAPI 경로·172개 HTTP 작업의 구현 현황과
    Flask route mirror 범위 분석
 
@@ -87,42 +87,47 @@ https://fastapi-flask.oosu.dev
 - 전체 성공 응답 계약: 172개 작업
 - Flask route mirror: 172개 작업 등록
 - Flask 전체 제품 business handler: 0개
-- Flask 대표 제조 Dashboard business handler: 1개 실제 구현
+- Flask 대표 업무 business handler: 3개 실제 구현
 
 Flask route mirror는 bare Flask의 기본 제공 범위와 라우팅 가능성을 확인하기 위한
 비교 계층이며, Ontology Dashboard의 전체 business logic이 Flask에도 구현됐다고
 주장하지 않는다.
 
-### 동일 제조 Dashboard API 실제 비교
+### 대표 기능 3개 실제 대칭 비교
 
-`/app/projects/manufacturing-demo-project` 첫 화면을 대표하는 다음 API를 양쪽에
-동일하게 구현했다.
+`/app/projects/manufacturing-demo-project`의 서로 다른 사용 패턴을 대표하는
+다음 기능을 양쪽에 동일하게 구현했다.
 
 ```text
 GET /benchmark/manufacturing-dashboard?risk_threshold=0.0&limit=8
+GET /benchmark/risk-events?risk_threshold=0.6&status=warning&sort=probability_desc&limit=5
+POST /benchmark/maintenance-recommendation
 ```
 
 - 같은 GS-001~GS-008 제품 fixture
 - 같은 product risk snapshot
-- 같은 집계 함수와 Pydantic 응답 모델
-- 위험 이벤트 8개, 센서 시계열 31개
-- 정상 JSON 응답 완전 일치
-- 잘못된 `limit=0` 요청은 양쪽 모두 422
-- FastAPI adapter 15 LOC
-- Flask adapter와 수동 query parser 33 LOC
+- 같은 집계·검색·정비 판단 함수와 Pydantic 계약
+- 정상 JSON 3개와 canonical SHA-256 모두 일치
+- 입력 범위, 잘못된 정렬·enum, 빈 결과, 존재하지 않는 이벤트 등 검증 사례 5개
+- 검증 사례의 FastAPI·Flask HTTP 상태 모두 일치
+- FastAPI adapter 고유 코드 50 LOC
+- Flask adapter와 수동 query·body 검증 고유 코드 80 LOC
 
-실제 별도 HTTP 프로세스를 실행하고, 프레임워크 실행 순서를 번갈아가며 순차
-300회와 동시성 10의 300회를 각각 3라운드 측정했다. 아래 값은 라운드 중앙값이다.
+각 기능마다 별도 HTTP 프로세스를 실행하고, 프레임워크 실행 순서를 번갈아가며
+순차 300회와 동시성 10의 300회를 각각 3라운드 측정했다. 아래 값은 라운드
+중앙값이다.
 
-| Framework | 순차 p50 | 순차 p95 | 순차 RPS | 동시 p50 | 동시 p95 | 동시 RPS | 오류율 | 성능 점수 |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| FastAPI | 4.4392ms | 6.8936ms | 207.34 | 13.3380ms | 28.1913ms | 626.24 | 0% | 4.78/5 |
-| Flask | 4.5172ms | 6.3509ms | 197.14 | 12.2540ms | 27.0817ms | 662.36 | 0% | 4.94/5 |
+| 대표 기능 | FastAPI 동시 p95 / RPS | Flask 동시 p95 / RPS | FastAPI 점수 | Flask 점수 |
+|---|---:|---:|---:|---:|
+| 제조 Dashboard 집계 | 17.8237ms / 1001.27 | 18.2752ms / 979.18 | 4.92/5 | 4.94/5 |
+| 위험 이벤트 검색·필터 | 17.3627ms / 999.00 | 17.9439ms / 1026.44 | 4.90/5 | 4.96/5 |
+| 정비 조치 추천 | 17.6160ms / 1010.78 | 19.0106ms / 973.31 | 4.90/5 | 4.86/5 |
+| **3개 기능 평균** |  |  | **4.91/5** | **4.92/5** |
 
-FastAPI는 순차 p50과 순차 처리량이 근소하게 높았고, Flask는 순차 p95와 동시
-p50·p95·처리량에서 앞섰다. 네 성능 지표를 동일 비중으로 정규화한 결과 Flask가
-성능 항목에서 근소하게 높은 점수를 받았다. 이 값은 로컬 Mac loopback과 각
-프레임워크의 로컬 server stack을 포함하며 운영 환경 성능을 보장하지 않는다.
+기능별로 우세한 프레임워크가 달랐다. 순차 p95·처리량과 동시성 10의 p95·처리량
+네 지표를 동일 비중으로 계산하고 세 기능을 다시 평균한 결과 FastAPI 4.91점,
+Flask 4.92점으로 사실상 동률이었다. 이 값은 로컬 Mac loopback과 각 프레임워크의
+로컬 server stack을 포함하며 운영 환경 성능을 보장하지 않는다.
 
 ### 가중 평가 결과
 
@@ -134,12 +139,12 @@ p50·p95·처리량에서 앞섰다. 네 성능 지표를 동일 비중으로 �
 | 개발 완성도와 구현 생산성 | 25% | 5/5 | 3/5 |
 | API 계약과 문서 자동화 | 25% | 5/5 | 2/5 |
 | 요청·응답 검증과 오류 안전성 | 25% | 5/5 | 4/5 |
-| 대표 업무 API 성능과 경량성 | 25% | 4.78/5 | 4.94/5 |
-| **가중 합계** | **100%** | **98.9점** | **69.7점** |
+| 대표 업무 API 성능과 경량성 | 25% | 4.91/5 | 4.92/5 |
+| **가중 합계** | **100%** | **99.55점** | **69.60점** |
 
-Flask는 실제 대표 업무 API 성능에서 근소하게 앞섰다. FastAPI는 동일 기능의
-adapter 코드량, 계약 자동화와 검증 안정성에서 앞섰다. 네 항목은 각각 25%로
-동일하게 계산했고, 성능 우위를 Flask에 반영한 뒤에도 FastAPI가 최종 선택됐다.
+대표 기능 3개의 평균 성능은 사실상 동률이었다. FastAPI는 동일 기능의 adapter
+코드량, 계약 자동화와 검증 안정성에서 앞섰다. 네 항목은 각각 25%로 동일하게
+계산했고, 측정된 Flask의 근소한 성능 우위를 반영한 뒤에도 FastAPI가 최종 선택됐다.
 이 결론은 기존 코드를 옮기는 비용이 아니라 새 제품을 구축할 때의 개발 방식과
 기본 제공 기능을 기준으로 한 판단이다.
 
@@ -151,12 +156,12 @@ bash experiments/week1_prototype/run_full_surface_comparison.sh
 
 전체 비교는 다음 세 층으로 나뉜다.
 
-### 1. 동일 제조 Dashboard API
+### 1. 동일 대표 기능 3개
 
-- FastAPI·Flask에 같은 업무 API 실제 구현
-- 동일 JSON 응답과 오류 응답 검증
+- Dashboard 집계, 위험 검색, 정비 추천을 FastAPI·Flask에 실제 구현
+- 동일 JSON 3개와 오류·경계값 사례 5개 검증
 - 별도 로컬 HTTP 프로세스 성능 측정
-- adapter 코드량과 검증 방식 비교
+- 기능별·3개 평균 성능, adapter 코드량과 검증 방식 비교
 
 ### 2. 동일 `/health` 기준선
 
@@ -186,8 +191,8 @@ bash experiments/week1_prototype/run_full_surface_comparison.sh
 공개 JSON:
 
 - `/full-comparison.json`: 전체 API 표면 결과
-- `/representative-benchmark.json`: 대표 제조 Dashboard 실제 성능 결과
-- `/comparison.json`: 대표 API, `/health` 기준선과 전체 API 표면 통합 결과
+- `/representative-benchmark.json`: 대표 기능 3개 실제 성능·검증 결과
+- `/comparison.json`: 대표 기능 3개, `/health` 기준선과 전체 API 표면 통합 결과
 
 ## 테스트
 

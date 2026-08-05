@@ -100,7 +100,7 @@ Authentication 10개 작업이다.
 |---|---:|---:|
 | 등록 HTTP 작업 | 172 | 172 |
 | 전체 제품 business handler | 172 | 0 |
-| 대표 제조 Dashboard business handler | 1 | 1 |
+| 대표 업무 business handler | 3 | 3 |
 | 자동 OpenAPI 작업 | 172 | 0 |
 | 자동 요청·파라미터 검증 대상 | 147 | 0 |
 | JSON 성공 응답 Schema·런타임 검증 | 168 | 0 |
@@ -115,40 +115,43 @@ Flask route mirror는 172개 경로가 bare Flask에서도 등록 가능한지�
 가장하지 않는다. 동일 수준의 Flask 제품을 새로 구축하려면 handler 구조,
 validation, OpenAPI와 문서화 규칙을 별도로 선택하고 연결해야 한다.
 
-### 동일 제조 Dashboard API 실제 대칭 비교
+### 대표 기능 3개 실제 대칭 비교
 
-`/app/projects/manufacturing-demo-project` 첫 화면을 대표하는 API를 FastAPI와
-Flask에 동일하게 구현했다.
+`/app/projects/manufacturing-demo-project`의 서로 다른 업무 패턴을 대표하도록
+집계·검색·POST 판단 기능을 FastAPI와 Flask에 동일하게 구현했다.
 
 ```http
 GET /benchmark/manufacturing-dashboard?risk_threshold=0.0&limit=8
+GET /benchmark/risk-events?risk_threshold=0.6&status=warning&sort=probability_desc&limit=5
+POST /benchmark/maintenance-recommendation
 ```
 
-두 adapter는 GS-001~GS-008 fixture, product risk snapshot, 집계 함수와 Pydantic
-응답 모델을 공유한다. 정상 응답은 위험 이벤트 8개와 센서 시계열 31개를
-포함하며 파싱된 JSON과 canonical SHA-256이 완전히 일치했다. `limit=0`은 양쪽
-모두 422를 반환했다.
+두 adapter는 GS-001~GS-008 fixture, product risk snapshot, 집계·검색·정비 판단
+함수와 Pydantic 계약을 공유한다. 정상 응답 3개는 파싱된 JSON과 canonical
+SHA-256이 모두 일치했다. 입력 범위 초과, 잘못된 정렬·enum, 정상 빈 결과,
+존재하지 않는 이벤트 등 검증 사례 5개도 양쪽 HTTP 상태가 모두 일치했다.
 
-| 항목 | FastAPI | Flask |
-|---|---:|---:|
-| Adapter 코드량 | 15 LOC | 33 LOC |
-| Query 검증 | `Query` constraint 자동 적용 | 수동 parser |
-| 응답 검증 | Pydantic `response_model` | 공유 Pydantic payload 후 `jsonify` |
-| 자동 OpenAPI | 제공 | 기본 미제공 |
+| 대표 기능 | FastAPI LOC | Flask LOC | 검증 차이 |
+|---|---:|---:|---|
+| 제조 Dashboard 집계 | 15 | 33 | 선언형 query 제약 vs 수동 parser |
+| 위험 이벤트 검색·필터 | 23 | 56 | Literal·범위·페이지네이션 vs 수동 선택값·범위 검증 |
+| 정비 조치 추천 | 12 | 13 | Pydantic body 자동 주입 vs 명시적 model validation |
+| **고유 adapter 코드 합계** | **50** | **80** | FastAPI OpenAPI·response_model 자동, Flask 수동 오류 계약 |
 
-각 서버를 별도 프로세스로 실행하고 실행 순서를 번갈아가며 순차 300회와
-동시성 10의 300회를 각각 3라운드 측정했다. 아래 값은 라운드 중앙값이다.
+각 기능마다 서버를 별도 프로세스로 실행하고 실행 순서를 번갈아가며 순차
+300회와 동시성 10의 300회를 각각 3라운드 측정했다. 아래 값은 라운드 중앙값이다.
 
-| Framework | 순차 p50 | 순차 p95 | 순차 RPS | 동시 p50 | 동시 p95 | 동시 p99 | 동시 RPS | 오류율 | 성능 점수 |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| FastAPI | 4.4392ms | 6.8936ms | 207.34 | 13.3380ms | 28.1913ms | 32.3406ms | 626.24 | 0% | 4.78/5 |
-| Flask | 4.5172ms | 6.3509ms | 197.14 | 12.2540ms | 27.0817ms | 33.9609ms | 662.36 | 0% | 4.94/5 |
+| 대표 기능 | FastAPI 동시 p95 / RPS | Flask 동시 p95 / RPS | FastAPI 점수 | Flask 점수 |
+|---|---:|---:|---:|---:|
+| 제조 Dashboard 집계 | 17.8237ms / 1001.27 | 18.2752ms / 979.18 | 4.92/5 | 4.94/5 |
+| 위험 이벤트 검색·필터 | 17.3627ms / 999.00 | 17.9439ms / 1026.44 | 4.90/5 | 4.96/5 |
+| 정비 조치 추천 | 17.6160ms / 1010.78 | 19.0106ms / 973.31 | 4.90/5 | 4.86/5 |
+| **3개 기능 평균** |  |  | **4.91/5** | **4.92/5** |
 
-FastAPI는 순차 p50과 순차 처리량이 근소하게 높았고, Flask는 순차 p95와 동시
-p50·p95·처리량에서 앞섰다. 순차 p95·처리량과 동시 p95·처리량을 동일 비중으로
-정규화한 결과 Flask가 성능 항목에서 근소하게 높은 점수를 받았다. 이 측정은
-로컬 Mac loopback과 Uvicorn·Werkzeug server stack을 포함하며 운영 환경
-벤치마크가 아니다.
+기능별로 우세한 프레임워크가 달랐다. 순차 p95·처리량과 동시 p95·처리량을
+동일 비중으로 정규화한 뒤 세 기능을 평균한 결과 FastAPI 4.91점, Flask 4.92점으로
+사실상 동률이었다. 이 측정은 로컬 Mac loopback과 Uvicorn·Werkzeug server
+stack을 포함하며 운영 환경 벤치마크가 아니다.
 
 ### 동일 가중치 평가표
 
@@ -160,13 +163,13 @@ p50·p95·처리량에서 앞섰다. 순차 p95·처리량과 동시 p95·처리
 |---|---:|---|---|
 | 개발 완성도와 구현 생산성 | 25% | **5/5 · 25점 반영**<br>typed router·Pydantic·의존성 주입으로 큰 API를 일관되게 구성 | **3/5 · 15점 반영**<br>시작은 단순하지만 큰 API의 구조와 확장 도구를 별도로 조합해야 함 |
 | API 계약과 문서 자동화 | 25% | **5/5 · 25점 반영**<br>OpenAPI 172개와 전체 성공 응답 계약 자동 생성 | **2/5 · 10점 반영**<br>확장 도구로 구현 가능하지만 bare Flask 기본 구성에는 없음 |
-| 요청·응답 검증과 오류 안전성 | 25% | **5/5 · 25점 반영**<br>대표 API 자동 query·응답 검증, 전체 요청 검증 147개·응답 검증 168개 | **4/5 · 20점 반영**<br>대표 API는 같은 422를 반환하지만 수동 parser가 필요 |
-| 대표 업무 API 성능과 경량성 | 25% | **4.78/5 · 23.9점 반영**<br>순차 처리량 우세 | **4.94/5 · 24.7점 반영**<br>순차 p95와 동시 p95·처리량 우세 |
-| **가중 합계** | **100%** | **98.9점 · 평균 4.95/5** | **69.7점 · 평균 3.49/5** |
+| 요청·응답 검증과 오류 안전성 | 25% | **5/5 · 25점 반영**<br>대표 기능 3개 자동 query·body·응답 검증, 전체 요청 검증 147개·응답 검증 168개 | **4/5 · 20점 반영**<br>검증 사례 5개는 같은 상태를 반환하지만 수동 연결 필요 |
+| 대표 업무 API 성능과 경량성 | 25% | **4.91/5 · 24.55점 반영**<br>3개 기능 평균 | **4.92/5 · 24.60점 반영**<br>3개 기능 평균 |
+| **가중 합계** | **100%** | **99.55점 · 평균 4.98/5** | **69.60점 · 평균 3.48/5** |
 
-Flask는 대표 업무 API 성능에서 근소하게 우세했다. 반면 FastAPI는 동일
-adapter 코드량, 계약 자동화와 검증에서 앞섰다. Flask의 실제 성능 우위를
-그대로 점수에 반영한 뒤에도 FastAPI가 98.9점, Flask가 69.7점이었고, 새 제품
+대표 기능 3개의 평균 성능은 사실상 동률이었다. 반면 FastAPI는 고유 adapter
+코드량, 계약 자동화와 검증에서 앞섰다. 측정된 Flask의 근소한 성능 우위를
+그대로 점수에 반영한 뒤에도 FastAPI가 99.55점, Flask가 69.60점이었고, 새 제품
 구축 기준으로 FastAPI를 최종 선택했다.
 
 ### `/health` 기준선 마이크로 비교
@@ -198,8 +201,8 @@ GET /health
 
 | Framework | `/health` | Payload | Auto OpenAPI | Response schema | Endpoint LOC | p50 ms* | p95 ms* | 종합 평균* |
 |---|---:|---|---|---|---:|---:|---:|---:|
-| FastAPI | 200 | 일치 | 제공 | 선언·검증 | 3 | 0.7603 | 1.7285 | 4.95/5 |
-| Flask | 200 | 일치 | 기본 미제공 | 수동 처리 | 3 | 0.0766 | 0.1235 | 3.49/5 |
+| FastAPI | 200 | 일치 | 제공 | 선언·검증 | 3 | 0.7603 | 1.7285 | 4.98/5 |
+| Flask | 200 | 일치 | 기본 미제공 | 수동 처리 | 3 | 0.0766 | 0.1235 | 3.48/5 |
 
 \* 지연시간은 TestClient 기반 인프로세스 참고값이며, 운영 서버 성능 비교가 아니다.
 종합 평균은 위 네 평가 요소 점수의 동일 가중치 산술평균이다.
@@ -232,27 +235,28 @@ Flask에서도 extension과 별도 schema 코드를 추가하면 같은 기능�
 > 요청 검증 대상과 168개 JSON 응답 런타임 검증을 제공했고, binary·SSE 2개와
 > no-content 2개도 별도 성공 계약으로 문서화했습니다. 처리되지 않은 HTTP
 > 500은 0건이었습니다.
-> 추가로 제조 Dashboard 대표 API를 FastAPI와 Flask에 동일하게 구현하고,
-> 순차·동시 HTTP 성능을 3라운드 측정했습니다. 응답과 오류 계약은 일치했고,
-> 성능 점수는 FastAPI 4.78점, Flask 4.94점으로 Flask가 근소하게 앞섰습니다.
+> 추가로 Dashboard 집계, 위험 이벤트 검색, 정비 조치 추천이라는 서로 다른
+> 대표 기능 3개를 FastAPI와 Flask에 동일하게 구현하고, 각 기능의 순차·동시
+> HTTP 성능을 3라운드 측정했습니다. 정상 응답 3개와 검증 사례 5개의 계약이
+> 일치했고, 세 기능 평균 성능은 FastAPI 4.91점, Flask 4.92점이었습니다.
 > 개발 생산성·계약 자동화·검증 안정성·대표 API 성능을 각각 25%로 계산한
-> 결과는 FastAPI 98.9점, Flask 69.7점이었습니다. Flask의 성능 우위를 그대로
+> 결과는 FastAPI 99.55점, Flask 69.60점이었습니다. Flask의 근소한 성능 우위를
 > 반영한 뒤에도 계약과 검증 자동화에서 FastAPI가 앞서 최종 선택했습니다.
 
 ## 4. 자동 테스트
 
 ```text
 전체 백엔드: 259 passed, 2 skipped
-Week 1 실험: 14 passed
+Week 1 실험: 16 passed
 ```
 
 검증 범위:
 
 - FastAPI·Flask `/health` HTTP 200
 - 양쪽 JSON payload 완전 일치
-- FastAPI·Flask 대표 제조 Dashboard 정상 JSON 완전 일치
-- 대표 API 잘못된 query 양쪽 422
-- 실제 HTTP 3라운드 성능 snapshot 계약
+- FastAPI·Flask 대표 기능 3개 정상 JSON·SHA-256 완전 일치
+- 대표 기능 오류·경계값 사례 5개 HTTP 상태 일치
+- 기능별 실제 HTTP 3라운드 성능과 3개 평균 snapshot 계약
 - FastAPI OpenAPI response schema 생성
 - Flask 기본 구성에서 `/openapi.json` 404
 - 162개 OpenAPI 경로·172개 HTTP 작업 inventory

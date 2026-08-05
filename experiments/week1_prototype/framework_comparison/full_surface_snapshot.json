@@ -2911,229 +2911,1473 @@
   },
   "representative_dashboard": {
     "status": "measured",
-    "measured_at": "2026-08-05T09:57:52.230864+00:00",
-    "endpoint": "/benchmark/manufacturing-dashboard?risk_threshold=0.0&limit=8",
+    "measured_at": "2026-08-05T11:01:02.113637+00:00",
+    "feature_count": 3,
     "page": "/app/projects/manufacturing-demo-project",
-    "comparison_scope": "Same product GS fixtures, same risk snapshot, same aggregation function, different FastAPI/Flask HTTP adapters",
+    "comparison_scope": "Three symmetric product features using the same GS fixtures, risk snapshot and shared business functions; only HTTP adapters differ",
     "environment": {
       "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
       "python": "3.14.6",
       "measurement": "local loopback HTTP, separate server processes",
       "rounds": 3,
-      "round_order": "alternating FastAPI-first and Flask-first",
+      "round_order": "alternating framework-first order across rounds and features",
       "connection_mode": "new HTTP connection per request for both servers",
       "fastapi_server": "Uvicorn single worker",
       "flask_server": "Werkzeug development server, threaded",
       "production_benchmark": false
     },
+    "parity": {
+      "all_feature_responses_equal": true,
+      "feature_count": 3,
+      "validation_statuses_match": true,
+      "validation_expected_statuses": true
+    },
+    "validation": {
+      "case_count": 5,
+      "all_statuses_match": true,
+      "all_expected_statuses": true,
+      "successful_payloads_equal": true,
+      "cases": [
+        {
+          "feature": "manufacturing_dashboard",
+          "name": "limit below minimum",
+          "method": "GET",
+          "endpoint": "/benchmark/manufacturing-dashboard?limit=0",
+          "json_body": null,
+          "expected_status": 422,
+          "statuses": {
+            "FastAPI": 422,
+            "Flask": 422
+          },
+          "status_match": true,
+          "expected_status_match": true,
+          "payload_equal_when_successful": null
+        },
+        {
+          "feature": "risk_event_search",
+          "name": "unsupported sort value",
+          "method": "GET",
+          "endpoint": "/benchmark/risk-events?sort=unsupported",
+          "json_body": null,
+          "expected_status": 422,
+          "statuses": {
+            "FastAPI": 422,
+            "Flask": 422
+          },
+          "status_match": true,
+          "expected_status_match": true,
+          "payload_equal_when_successful": null
+        },
+        {
+          "feature": "risk_event_search",
+          "name": "valid empty result",
+          "method": "GET",
+          "endpoint": "/benchmark/risk-events?risk_threshold=1&status=normal",
+          "json_body": null,
+          "expected_status": 200,
+          "statuses": {
+            "FastAPI": 200,
+            "Flask": 200
+          },
+          "status_match": true,
+          "expected_status_match": true,
+          "payload_equal_when_successful": true
+        },
+        {
+          "feature": "maintenance_recommendation",
+          "name": "invalid operator role",
+          "method": "POST",
+          "endpoint": "/benchmark/maintenance-recommendation",
+          "json_body": {
+            "event_id": "EVT-GS-004",
+            "operator_role": "unknown"
+          },
+          "expected_status": 422,
+          "statuses": {
+            "FastAPI": 422,
+            "Flask": 422
+          },
+          "status_match": true,
+          "expected_status_match": true,
+          "payload_equal_when_successful": null
+        },
+        {
+          "feature": "maintenance_recommendation",
+          "name": "unknown event",
+          "method": "POST",
+          "endpoint": "/benchmark/maintenance-recommendation",
+          "json_body": {
+            "event_id": "EVT-NOT-FOUND",
+            "operator_role": "process_manager"
+          },
+          "expected_status": 404,
+          "statuses": {
+            "FastAPI": 404,
+            "Flask": 404
+          },
+          "status_match": true,
+          "expected_status_match": true,
+          "payload_equal_when_successful": null
+        }
+      ]
+    },
     "implementation": {
       "shared_service": "framework_comparison.representative_dashboard",
-      "fastapi_adapter_loc": 15,
-      "flask_adapter_loc": 33,
-      "fastapi_validation": "Query constraints + Pydantic response_model",
-      "flask_validation": "Manual query parsing + Pydantic shared payload"
+      "fastapi_adapter_loc": 50,
+      "flask_adapter_loc": 80,
+      "fastapi_validation": "Declarative query/body constraints + response_model",
+      "flask_validation": "Manual query parsing + Pydantic body/shared payload"
     },
-    "parity": {
-      "responses_equal": true,
-      "fastapi_payload_sha256": "f5a39e3913a7e31b5b790d95e73c03801aab31184a298d0b16bbe8f538702380",
-      "flask_payload_sha256": "f5a39e3913a7e31b5b790d95e73c03801aab31184a298d0b16bbe8f538702380",
-      "visible_events": 8,
-      "sensor_points": 31
-    },
-    "results": {
-      "FastAPI": {
-        "sequential": {
-          "round_count": 3,
-          "requests_per_round": 300,
-          "request_count": 900,
-          "concurrency": 1,
-          "connection_mode": "new HTTP connection per request",
-          "success_count": 900,
-          "error_count": 0,
-          "error_rate_percent": 0.0,
-          "mean_ms": 4.8086,
-          "p50_ms": 4.4392,
-          "p95_ms": 6.8936,
-          "p99_ms": 14.3806,
-          "throughput_rps": 207.34,
-          "wall_seconds": 1.4469,
-          "stable_payload": true,
-          "payload_sha256": "0114fac75ba2ad8a4846a8f648c874a1597cf83f0f148e4b4e706f42bbc52248",
-          "payload_bytes": 11601,
-          "round_metrics": [
-            {
-              "p50_ms": 3.9929,
-              "p95_ms": 8.7457,
-              "p99_ms": 12.3089,
-              "throughput_rps": 212.28,
-              "error_rate_percent": 0.0
-            },
-            {
-              "p50_ms": 4.4392,
-              "p95_ms": 5.6476,
-              "p99_ms": 14.3806,
-              "throughput_rps": 207.34,
-              "error_rate_percent": 0.0
-            },
-            {
-              "p50_ms": 4.9615,
-              "p95_ms": 6.8936,
-              "p99_ms": 16.3867,
-              "throughput_rps": 182.15,
-              "error_rate_percent": 0.0
-            }
-          ]
+    "features": {
+      "manufacturing_dashboard": {
+        "title": "제조 Dashboard 집계",
+        "method": "GET",
+        "endpoint": "/benchmark/manufacturing-dashboard?risk_threshold=0.0&limit=8",
+        "request_body": null,
+        "comparison_scope": "Aggregate eight risk events, line summaries and sensor series",
+        "parity": {
+          "responses_equal": true,
+          "fastapi_payload_sha256": "d073b7fcc1799a947a61a29b70c53777c97b912d8ac17f4ac638678ae8974870",
+          "flask_payload_sha256": "d073b7fcc1799a947a61a29b70c53777c97b912d8ac17f4ac638678ae8974870",
+          "payload_bytes": {
+            "FastAPI": 12428,
+            "Flask": 12428
+          }
         },
-        "concurrent": {
-          "round_count": 3,
-          "requests_per_round": 300,
-          "request_count": 900,
-          "concurrency": 10,
-          "connection_mode": "new HTTP connection per request",
-          "success_count": 900,
-          "error_count": 0,
-          "error_rate_percent": 0.0,
-          "mean_ms": 15.785,
-          "p50_ms": 13.338,
-          "p95_ms": 28.1913,
-          "p99_ms": 32.3406,
-          "throughput_rps": 626.24,
-          "wall_seconds": 0.479,
-          "stable_payload": true,
-          "payload_sha256": "0114fac75ba2ad8a4846a8f648c874a1597cf83f0f148e4b4e706f42bbc52248",
-          "payload_bytes": 11601,
-          "round_metrics": [
-            {
-              "p50_ms": 13.338,
-              "p95_ms": 27.22,
-              "p99_ms": 32.3406,
-              "throughput_rps": 625.95,
-              "error_rate_percent": 0.0
+        "implementation": {
+          "fastapi_adapter_loc": 15,
+          "flask_adapter_loc": 33
+        },
+        "results": {
+          "FastAPI": {
+            "sequential": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 1,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 3.636,
+              "p50_ms": 3.4082,
+              "p95_ms": 3.823,
+              "p99_ms": 11.5824,
+              "throughput_rps": 274.56,
+              "wall_seconds": 1.0927,
+              "stable_payload": true,
+              "payload_sha256": "0114fac75ba2ad8a4846a8f648c874a1597cf83f0f148e4b4e706f42bbc52248",
+              "payload_bytes": 11601,
+              "round_metrics": [
+                {
+                  "p50_ms": 3.3991,
+                  "p95_ms": 3.823,
+                  "p99_ms": 11.3168,
+                  "throughput_rps": 275.5,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.4082,
+                  "p95_ms": 3.5257,
+                  "p99_ms": 11.5824,
+                  "throughput_rps": 274.56,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.4237,
+                  "p95_ms": 3.8631,
+                  "p99_ms": 11.6567,
+                  "throughput_rps": 271.17,
+                  "error_rate_percent": 0.0
+                }
+              ]
             },
-            {
-              "p50_ms": 13.4003,
-              "p95_ms": 28.5238,
-              "p99_ms": 37.9697,
-              "throughput_rps": 626.91,
-              "error_rate_percent": 0.0
-            },
-            {
-              "p50_ms": 13.0749,
-              "p95_ms": 28.1913,
-              "p99_ms": 31.781,
-              "throughput_rps": 626.24,
-              "error_rate_percent": 0.0
+            "concurrent": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 10,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 9.8971,
+              "p50_ms": 7.8964,
+              "p95_ms": 17.8237,
+              "p99_ms": 20.7399,
+              "throughput_rps": 1001.27,
+              "wall_seconds": 0.2996,
+              "stable_payload": true,
+              "payload_sha256": "0114fac75ba2ad8a4846a8f648c874a1597cf83f0f148e4b4e706f42bbc52248",
+              "payload_bytes": 11601,
+              "round_metrics": [
+                {
+                  "p50_ms": 8.1214,
+                  "p95_ms": 18.0313,
+                  "p99_ms": 20.7399,
+                  "throughput_rps": 980.3,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 7.8964,
+                  "p95_ms": 17.8237,
+                  "p99_ms": 20.939,
+                  "throughput_rps": 1001.27,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 7.8874,
+                  "p95_ms": 17.3425,
+                  "p99_ms": 19.4562,
+                  "throughput_rps": 1012.59,
+                  "error_rate_percent": 0.0
+                }
+              ]
             }
-          ]
+          },
+          "Flask": {
+            "sequential": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 1,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 3.6159,
+              "p50_ms": 3.3705,
+              "p95_ms": 3.6115,
+              "p99_ms": 11.7216,
+              "throughput_rps": 276.05,
+              "wall_seconds": 1.0868,
+              "stable_payload": true,
+              "payload_sha256": "362fa207051c66909079646e21b32703dc1c51a9fabc911ed4fe6752c6d257d0",
+              "payload_bytes": 11965,
+              "round_metrics": [
+                {
+                  "p50_ms": 3.2636,
+                  "p95_ms": 3.4707,
+                  "p99_ms": 11.3342,
+                  "throughput_rps": 287.4,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.3803,
+                  "p95_ms": 3.9732,
+                  "p99_ms": 11.7483,
+                  "throughput_rps": 272.83,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.3705,
+                  "p95_ms": 3.6115,
+                  "p99_ms": 11.7216,
+                  "throughput_rps": 276.05,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            },
+            "concurrent": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 10,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 10.1011,
+              "p50_ms": 8.0787,
+              "p95_ms": 18.2752,
+              "p99_ms": 23.4696,
+              "throughput_rps": 979.18,
+              "wall_seconds": 0.3064,
+              "stable_payload": true,
+              "payload_sha256": "362fa207051c66909079646e21b32703dc1c51a9fabc911ed4fe6752c6d257d0",
+              "payload_bytes": 11965,
+              "round_metrics": [
+                {
+                  "p50_ms": 8.0787,
+                  "p95_ms": 18.6735,
+                  "p99_ms": 22.6569,
+                  "throughput_rps": 988.18,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 7.9835,
+                  "p95_ms": 18.0648,
+                  "p99_ms": 26.5634,
+                  "throughput_rps": 979.18,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 8.4041,
+                  "p95_ms": 18.2752,
+                  "p99_ms": 23.4696,
+                  "throughput_rps": 975.98,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            }
+          }
+        },
+        "performance_scores": {
+          "FastAPI": 4.92,
+          "Flask": 4.94
         }
       },
-      "Flask": {
-        "sequential": {
-          "round_count": 3,
-          "requests_per_round": 300,
-          "request_count": 900,
-          "concurrency": 1,
-          "connection_mode": "new HTTP connection per request",
-          "success_count": 900,
-          "error_count": 0,
-          "error_rate_percent": 0.0,
-          "mean_ms": 5.0574,
-          "p50_ms": 4.5172,
-          "p95_ms": 6.3509,
-          "p99_ms": 15.83,
-          "throughput_rps": 197.14,
-          "wall_seconds": 1.5217,
-          "stable_payload": true,
-          "payload_sha256": "362fa207051c66909079646e21b32703dc1c51a9fabc911ed4fe6752c6d257d0",
-          "payload_bytes": 11965,
-          "round_metrics": [
-            {
-              "p50_ms": 3.6387,
-              "p95_ms": 4.7678,
-              "p99_ms": 12.242,
-              "throughput_rps": 250.92,
-              "error_rate_percent": 0.0
-            },
-            {
-              "p50_ms": 4.5172,
-              "p95_ms": 6.3509,
-              "p99_ms": 15.83,
-              "throughput_rps": 197.14,
-              "error_rate_percent": 0.0
-            },
-            {
-              "p50_ms": 4.7087,
-              "p95_ms": 7.4722,
-              "p99_ms": 22.9433,
-              "throughput_rps": 182.59,
-              "error_rate_percent": 0.0
-            }
-          ]
+      "risk_event_search": {
+        "title": "위험 이벤트 검색·필터",
+        "method": "GET",
+        "endpoint": "/benchmark/risk-events?risk_threshold=0.6&status=warning&sort=probability_desc&limit=5&offset=0",
+        "request_body": null,
+        "comparison_scope": "Filter, sort and paginate product risk events",
+        "parity": {
+          "responses_equal": true,
+          "fastapi_payload_sha256": "87d6788ce00a2ec53c5cf19fa9e6611d7efe7d4e2989a14e07dadaa88f625ba4",
+          "flask_payload_sha256": "87d6788ce00a2ec53c5cf19fa9e6611d7efe7d4e2989a14e07dadaa88f625ba4",
+          "payload_bytes": {
+            "FastAPI": 2193,
+            "Flask": 2193
+          }
         },
-        "concurrent": {
-          "round_count": 3,
-          "requests_per_round": 300,
-          "request_count": 900,
-          "concurrency": 10,
-          "connection_mode": "new HTTP connection per request",
-          "success_count": 900,
-          "error_count": 0,
-          "error_rate_percent": 0.0,
-          "mean_ms": 14.8235,
-          "p50_ms": 12.254,
-          "p95_ms": 27.0817,
-          "p99_ms": 33.9609,
-          "throughput_rps": 662.36,
-          "wall_seconds": 0.4529,
-          "stable_payload": true,
-          "payload_sha256": "362fa207051c66909079646e21b32703dc1c51a9fabc911ed4fe6752c6d257d0",
-          "payload_bytes": 11965,
-          "round_metrics": [
-            {
-              "p50_ms": 11.0444,
-              "p95_ms": 21.818,
-              "p99_ms": 23.533,
-              "throughput_rps": 787.07,
-              "error_rate_percent": 0.0
+        "implementation": {
+          "fastapi_adapter_loc": 23,
+          "flask_adapter_loc": 56
+        },
+        "results": {
+          "FastAPI": {
+            "sequential": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 1,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 3.5782,
+              "p50_ms": 3.3308,
+              "p95_ms": 3.6527,
+              "p99_ms": 11.6175,
+              "throughput_rps": 278.96,
+              "wall_seconds": 1.0754,
+              "stable_payload": true,
+              "payload_sha256": "ed70b172533da4eeb45761cfb3d978d039b10bc7ca18a0da3571c75c46b67e1e",
+              "payload_bytes": 2058,
+              "round_metrics": [
+                {
+                  "p50_ms": 3.3308,
+                  "p95_ms": 3.5398,
+                  "p99_ms": 11.6175,
+                  "throughput_rps": 279.52,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.3402,
+                  "p95_ms": 3.6527,
+                  "p99_ms": 11.6304,
+                  "throughput_rps": 278.96,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.3265,
+                  "p95_ms": 3.659,
+                  "p99_ms": 11.4756,
+                  "throughput_rps": 274.9,
+                  "error_rate_percent": 0.0
+                }
+              ]
             },
-            {
-              "p50_ms": 12.3779,
-              "p95_ms": 27.1218,
-              "p99_ms": 45.8262,
-              "throughput_rps": 651.89,
-              "error_rate_percent": 0.0
-            },
-            {
-              "p50_ms": 12.254,
-              "p95_ms": 27.0817,
-              "p99_ms": 33.9609,
-              "throughput_rps": 662.36,
-              "error_rate_percent": 0.0
+            "concurrent": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 10,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 9.9298,
+              "p50_ms": 7.9047,
+              "p95_ms": 17.3627,
+              "p99_ms": 18.7136,
+              "throughput_rps": 999.0,
+              "wall_seconds": 0.3003,
+              "stable_payload": true,
+              "payload_sha256": "ed70b172533da4eeb45761cfb3d978d039b10bc7ca18a0da3571c75c46b67e1e",
+              "payload_bytes": 2058,
+              "round_metrics": [
+                {
+                  "p50_ms": 7.9047,
+                  "p95_ms": 18.1582,
+                  "p99_ms": 20.284,
+                  "throughput_rps": 999.0,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 7.8543,
+                  "p95_ms": 17.3627,
+                  "p99_ms": 18.3612,
+                  "throughput_rps": 1017.72,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 8.3232,
+                  "p95_ms": 17.1769,
+                  "p99_ms": 18.7136,
+                  "throughput_rps": 992.47,
+                  "error_rate_percent": 0.0
+                }
+              ]
             }
-          ]
+          },
+          "Flask": {
+            "sequential": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 1,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 3.4718,
+              "p50_ms": 3.2242,
+              "p95_ms": 3.5578,
+              "p99_ms": 11.6445,
+              "throughput_rps": 287.49,
+              "wall_seconds": 1.0435,
+              "stable_payload": true,
+              "payload_sha256": "620d7dcd6be72be2d5b045d30ff8c2a36ea9e45f137d7635ad7dd7bd08f4f359",
+              "payload_bytes": 2197,
+              "round_metrics": [
+                {
+                  "p50_ms": 3.2242,
+                  "p95_ms": 3.586,
+                  "p99_ms": 11.5878,
+                  "throughput_rps": 287.0,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.232,
+                  "p95_ms": 3.499,
+                  "p99_ms": 11.6445,
+                  "throughput_rps": 287.49,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.2222,
+                  "p95_ms": 3.5578,
+                  "p99_ms": 11.6888,
+                  "throughput_rps": 289.38,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            },
+            "concurrent": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 10,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 9.4685,
+              "p50_ms": 7.4828,
+              "p95_ms": 17.9439,
+              "p99_ms": 20.3548,
+              "throughput_rps": 1026.44,
+              "wall_seconds": 0.2923,
+              "stable_payload": true,
+              "payload_sha256": "620d7dcd6be72be2d5b045d30ff8c2a36ea9e45f137d7635ad7dd7bd08f4f359",
+              "payload_bytes": 2197,
+              "round_metrics": [
+                {
+                  "p50_ms": 7.478,
+                  "p95_ms": 17.5931,
+                  "p99_ms": 18.7509,
+                  "throughput_rps": 1026.44,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 7.4828,
+                  "p95_ms": 19.0312,
+                  "p99_ms": 22.9193,
+                  "throughput_rps": 1020.68,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 7.5583,
+                  "p95_ms": 17.9439,
+                  "p99_ms": 20.3548,
+                  "throughput_rps": 1041.17,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            }
+          }
+        },
+        "performance_scores": {
+          "FastAPI": 4.9,
+          "Flask": 4.96
+        }
+      },
+      "maintenance_recommendation": {
+        "title": "정비 조치 추천",
+        "method": "POST",
+        "endpoint": "/benchmark/maintenance-recommendation",
+        "request_body": {
+          "event_id": "EVT-GS-004",
+          "operator_role": "process_manager",
+          "include_evidence": true
+        },
+        "comparison_scope": "Validate a POST body and apply a deterministic maintenance rule",
+        "parity": {
+          "responses_equal": true,
+          "fastapi_payload_sha256": "3a13a15f7db52dd4c3edd828c874494819ac66c100f2fae311a7af5cfb1a673a",
+          "flask_payload_sha256": "3a13a15f7db52dd4c3edd828c874494819ac66c100f2fae311a7af5cfb1a673a",
+          "payload_bytes": {
+            "FastAPI": 1290,
+            "Flask": 1290
+          }
+        },
+        "implementation": {
+          "fastapi_adapter_loc": 12,
+          "flask_adapter_loc": 13
+        },
+        "results": {
+          "FastAPI": {
+            "sequential": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 1,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 3.5751,
+              "p50_ms": 3.3172,
+              "p95_ms": 3.6473,
+              "p99_ms": 11.6836,
+              "throughput_rps": 279.21,
+              "wall_seconds": 1.0745,
+              "stable_payload": true,
+              "payload_sha256": "8ca55514f40329d318cd7cb24b48c3aed03c68123cc0e81c00d2f0a532a5ca50",
+              "payload_bytes": 1222,
+              "round_metrics": [
+                {
+                  "p50_ms": 3.3172,
+                  "p95_ms": 3.6473,
+                  "p99_ms": 11.6597,
+                  "throughput_rps": 277.62,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.2961,
+                  "p95_ms": 3.5204,
+                  "p99_ms": 11.6836,
+                  "throughput_rps": 282.63,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.3229,
+                  "p95_ms": 3.6624,
+                  "p99_ms": 12.057,
+                  "throughput_rps": 279.21,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            },
+            "concurrent": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 10,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 9.6755,
+              "p50_ms": 7.8068,
+              "p95_ms": 17.616,
+              "p99_ms": 20.3067,
+              "throughput_rps": 1010.78,
+              "wall_seconds": 0.2968,
+              "stable_payload": true,
+              "payload_sha256": "8ca55514f40329d318cd7cb24b48c3aed03c68123cc0e81c00d2f0a532a5ca50",
+              "payload_bytes": 1222,
+              "round_metrics": [
+                {
+                  "p50_ms": 7.5726,
+                  "p95_ms": 17.5696,
+                  "p99_ms": 18.484,
+                  "throughput_rps": 1057.07,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 7.8068,
+                  "p95_ms": 17.616,
+                  "p99_ms": 20.3067,
+                  "throughput_rps": 1010.78,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 9.3273,
+                  "p95_ms": 21.1105,
+                  "p99_ms": 27.8067,
+                  "throughput_rps": 886.66,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            }
+          },
+          "Flask": {
+            "sequential": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 1,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 3.4789,
+              "p50_ms": 3.2191,
+              "p95_ms": 3.4648,
+              "p99_ms": 11.774,
+              "throughput_rps": 286.91,
+              "wall_seconds": 1.0456,
+              "stable_payload": true,
+              "payload_sha256": "d195d7d883eebadf413db041b8e6b15cf0bb6b905bea6d9926b5ca9aa1c67022",
+              "payload_bytes": 1556,
+              "round_metrics": [
+                {
+                  "p50_ms": 3.2171,
+                  "p95_ms": 3.4648,
+                  "p99_ms": 11.4978,
+                  "throughput_rps": 290.19,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.2191,
+                  "p95_ms": 3.4774,
+                  "p99_ms": 11.774,
+                  "throughput_rps": 286.91,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.2447,
+                  "p95_ms": 3.398,
+                  "p99_ms": 11.9313,
+                  "throughput_rps": 286.41,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            },
+            "concurrent": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 10,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 10.1051,
+              "p50_ms": 8.2141,
+              "p95_ms": 19.0106,
+              "p99_ms": 21.69,
+              "throughput_rps": 973.31,
+              "wall_seconds": 0.3082,
+              "stable_payload": true,
+              "payload_sha256": "d195d7d883eebadf413db041b8e6b15cf0bb6b905bea6d9926b5ca9aa1c67022",
+              "payload_bytes": 1556,
+              "round_metrics": [
+                {
+                  "p50_ms": 7.8616,
+                  "p95_ms": 18.7966,
+                  "p99_ms": 21.69,
+                  "throughput_rps": 993.75,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 8.2141,
+                  "p95_ms": 19.0106,
+                  "p99_ms": 20.7807,
+                  "throughput_rps": 973.31,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 8.2563,
+                  "p95_ms": 20.6689,
+                  "p99_ms": 26.3381,
+                  "throughput_rps": 921.41,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            }
+          }
+        },
+        "performance_scores": {
+          "FastAPI": 4.9,
+          "Flask": 4.86
         }
       }
     },
-    "performance_score_formula": "equal average of normalized sequential p95, sequential throughput, concurrent p95 and concurrent throughput; best metric receives 5",
+    "performance_score_formula": "Per feature: equal average of normalized sequential p95, sequential throughput, concurrent p95 and concurrent throughput. Overall: arithmetic mean of three feature scores.",
     "performance_scores": {
-      "FastAPI": 4.78,
-      "Flask": 4.94
+      "FastAPI": 4.91,
+      "Flask": 4.92
     },
     "limitations": [
       "Local Mac loopback measurement; not a cloud production benchmark.",
       "FastAPI and Flask use their normal local servers, so the result includes server-stack overhead.",
-      "The shared business function uses eight product GS fixtures and does not include a remote database or external model call."
+      "The shared functions use eight product GS fixtures and do not include a remote database or external model call."
+    ]
+  },
+  "representative_features": {
+    "status": "measured",
+    "measured_at": "2026-08-05T11:01:02.113637+00:00",
+    "feature_count": 3,
+    "page": "/app/projects/manufacturing-demo-project",
+    "comparison_scope": "Three symmetric product features using the same GS fixtures, risk snapshot and shared business functions; only HTTP adapters differ",
+    "environment": {
+      "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+      "python": "3.14.6",
+      "measurement": "local loopback HTTP, separate server processes",
+      "rounds": 3,
+      "round_order": "alternating framework-first order across rounds and features",
+      "connection_mode": "new HTTP connection per request for both servers",
+      "fastapi_server": "Uvicorn single worker",
+      "flask_server": "Werkzeug development server, threaded",
+      "production_benchmark": false
+    },
+    "parity": {
+      "all_feature_responses_equal": true,
+      "feature_count": 3,
+      "validation_statuses_match": true,
+      "validation_expected_statuses": true
+    },
+    "validation": {
+      "case_count": 5,
+      "all_statuses_match": true,
+      "all_expected_statuses": true,
+      "successful_payloads_equal": true,
+      "cases": [
+        {
+          "feature": "manufacturing_dashboard",
+          "name": "limit below minimum",
+          "method": "GET",
+          "endpoint": "/benchmark/manufacturing-dashboard?limit=0",
+          "json_body": null,
+          "expected_status": 422,
+          "statuses": {
+            "FastAPI": 422,
+            "Flask": 422
+          },
+          "status_match": true,
+          "expected_status_match": true,
+          "payload_equal_when_successful": null
+        },
+        {
+          "feature": "risk_event_search",
+          "name": "unsupported sort value",
+          "method": "GET",
+          "endpoint": "/benchmark/risk-events?sort=unsupported",
+          "json_body": null,
+          "expected_status": 422,
+          "statuses": {
+            "FastAPI": 422,
+            "Flask": 422
+          },
+          "status_match": true,
+          "expected_status_match": true,
+          "payload_equal_when_successful": null
+        },
+        {
+          "feature": "risk_event_search",
+          "name": "valid empty result",
+          "method": "GET",
+          "endpoint": "/benchmark/risk-events?risk_threshold=1&status=normal",
+          "json_body": null,
+          "expected_status": 200,
+          "statuses": {
+            "FastAPI": 200,
+            "Flask": 200
+          },
+          "status_match": true,
+          "expected_status_match": true,
+          "payload_equal_when_successful": true
+        },
+        {
+          "feature": "maintenance_recommendation",
+          "name": "invalid operator role",
+          "method": "POST",
+          "endpoint": "/benchmark/maintenance-recommendation",
+          "json_body": {
+            "event_id": "EVT-GS-004",
+            "operator_role": "unknown"
+          },
+          "expected_status": 422,
+          "statuses": {
+            "FastAPI": 422,
+            "Flask": 422
+          },
+          "status_match": true,
+          "expected_status_match": true,
+          "payload_equal_when_successful": null
+        },
+        {
+          "feature": "maintenance_recommendation",
+          "name": "unknown event",
+          "method": "POST",
+          "endpoint": "/benchmark/maintenance-recommendation",
+          "json_body": {
+            "event_id": "EVT-NOT-FOUND",
+            "operator_role": "process_manager"
+          },
+          "expected_status": 404,
+          "statuses": {
+            "FastAPI": 404,
+            "Flask": 404
+          },
+          "status_match": true,
+          "expected_status_match": true,
+          "payload_equal_when_successful": null
+        }
+      ]
+    },
+    "implementation": {
+      "shared_service": "framework_comparison.representative_dashboard",
+      "fastapi_adapter_loc": 50,
+      "flask_adapter_loc": 80,
+      "fastapi_validation": "Declarative query/body constraints + response_model",
+      "flask_validation": "Manual query parsing + Pydantic body/shared payload"
+    },
+    "features": {
+      "manufacturing_dashboard": {
+        "title": "제조 Dashboard 집계",
+        "method": "GET",
+        "endpoint": "/benchmark/manufacturing-dashboard?risk_threshold=0.0&limit=8",
+        "request_body": null,
+        "comparison_scope": "Aggregate eight risk events, line summaries and sensor series",
+        "parity": {
+          "responses_equal": true,
+          "fastapi_payload_sha256": "d073b7fcc1799a947a61a29b70c53777c97b912d8ac17f4ac638678ae8974870",
+          "flask_payload_sha256": "d073b7fcc1799a947a61a29b70c53777c97b912d8ac17f4ac638678ae8974870",
+          "payload_bytes": {
+            "FastAPI": 12428,
+            "Flask": 12428
+          }
+        },
+        "implementation": {
+          "fastapi_adapter_loc": 15,
+          "flask_adapter_loc": 33
+        },
+        "results": {
+          "FastAPI": {
+            "sequential": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 1,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 3.636,
+              "p50_ms": 3.4082,
+              "p95_ms": 3.823,
+              "p99_ms": 11.5824,
+              "throughput_rps": 274.56,
+              "wall_seconds": 1.0927,
+              "stable_payload": true,
+              "payload_sha256": "0114fac75ba2ad8a4846a8f648c874a1597cf83f0f148e4b4e706f42bbc52248",
+              "payload_bytes": 11601,
+              "round_metrics": [
+                {
+                  "p50_ms": 3.3991,
+                  "p95_ms": 3.823,
+                  "p99_ms": 11.3168,
+                  "throughput_rps": 275.5,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.4082,
+                  "p95_ms": 3.5257,
+                  "p99_ms": 11.5824,
+                  "throughput_rps": 274.56,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.4237,
+                  "p95_ms": 3.8631,
+                  "p99_ms": 11.6567,
+                  "throughput_rps": 271.17,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            },
+            "concurrent": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 10,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 9.8971,
+              "p50_ms": 7.8964,
+              "p95_ms": 17.8237,
+              "p99_ms": 20.7399,
+              "throughput_rps": 1001.27,
+              "wall_seconds": 0.2996,
+              "stable_payload": true,
+              "payload_sha256": "0114fac75ba2ad8a4846a8f648c874a1597cf83f0f148e4b4e706f42bbc52248",
+              "payload_bytes": 11601,
+              "round_metrics": [
+                {
+                  "p50_ms": 8.1214,
+                  "p95_ms": 18.0313,
+                  "p99_ms": 20.7399,
+                  "throughput_rps": 980.3,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 7.8964,
+                  "p95_ms": 17.8237,
+                  "p99_ms": 20.939,
+                  "throughput_rps": 1001.27,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 7.8874,
+                  "p95_ms": 17.3425,
+                  "p99_ms": 19.4562,
+                  "throughput_rps": 1012.59,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            }
+          },
+          "Flask": {
+            "sequential": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 1,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 3.6159,
+              "p50_ms": 3.3705,
+              "p95_ms": 3.6115,
+              "p99_ms": 11.7216,
+              "throughput_rps": 276.05,
+              "wall_seconds": 1.0868,
+              "stable_payload": true,
+              "payload_sha256": "362fa207051c66909079646e21b32703dc1c51a9fabc911ed4fe6752c6d257d0",
+              "payload_bytes": 11965,
+              "round_metrics": [
+                {
+                  "p50_ms": 3.2636,
+                  "p95_ms": 3.4707,
+                  "p99_ms": 11.3342,
+                  "throughput_rps": 287.4,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.3803,
+                  "p95_ms": 3.9732,
+                  "p99_ms": 11.7483,
+                  "throughput_rps": 272.83,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.3705,
+                  "p95_ms": 3.6115,
+                  "p99_ms": 11.7216,
+                  "throughput_rps": 276.05,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            },
+            "concurrent": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 10,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 10.1011,
+              "p50_ms": 8.0787,
+              "p95_ms": 18.2752,
+              "p99_ms": 23.4696,
+              "throughput_rps": 979.18,
+              "wall_seconds": 0.3064,
+              "stable_payload": true,
+              "payload_sha256": "362fa207051c66909079646e21b32703dc1c51a9fabc911ed4fe6752c6d257d0",
+              "payload_bytes": 11965,
+              "round_metrics": [
+                {
+                  "p50_ms": 8.0787,
+                  "p95_ms": 18.6735,
+                  "p99_ms": 22.6569,
+                  "throughput_rps": 988.18,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 7.9835,
+                  "p95_ms": 18.0648,
+                  "p99_ms": 26.5634,
+                  "throughput_rps": 979.18,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 8.4041,
+                  "p95_ms": 18.2752,
+                  "p99_ms": 23.4696,
+                  "throughput_rps": 975.98,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            }
+          }
+        },
+        "performance_scores": {
+          "FastAPI": 4.92,
+          "Flask": 4.94
+        }
+      },
+      "risk_event_search": {
+        "title": "위험 이벤트 검색·필터",
+        "method": "GET",
+        "endpoint": "/benchmark/risk-events?risk_threshold=0.6&status=warning&sort=probability_desc&limit=5&offset=0",
+        "request_body": null,
+        "comparison_scope": "Filter, sort and paginate product risk events",
+        "parity": {
+          "responses_equal": true,
+          "fastapi_payload_sha256": "87d6788ce00a2ec53c5cf19fa9e6611d7efe7d4e2989a14e07dadaa88f625ba4",
+          "flask_payload_sha256": "87d6788ce00a2ec53c5cf19fa9e6611d7efe7d4e2989a14e07dadaa88f625ba4",
+          "payload_bytes": {
+            "FastAPI": 2193,
+            "Flask": 2193
+          }
+        },
+        "implementation": {
+          "fastapi_adapter_loc": 23,
+          "flask_adapter_loc": 56
+        },
+        "results": {
+          "FastAPI": {
+            "sequential": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 1,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 3.5782,
+              "p50_ms": 3.3308,
+              "p95_ms": 3.6527,
+              "p99_ms": 11.6175,
+              "throughput_rps": 278.96,
+              "wall_seconds": 1.0754,
+              "stable_payload": true,
+              "payload_sha256": "ed70b172533da4eeb45761cfb3d978d039b10bc7ca18a0da3571c75c46b67e1e",
+              "payload_bytes": 2058,
+              "round_metrics": [
+                {
+                  "p50_ms": 3.3308,
+                  "p95_ms": 3.5398,
+                  "p99_ms": 11.6175,
+                  "throughput_rps": 279.52,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.3402,
+                  "p95_ms": 3.6527,
+                  "p99_ms": 11.6304,
+                  "throughput_rps": 278.96,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.3265,
+                  "p95_ms": 3.659,
+                  "p99_ms": 11.4756,
+                  "throughput_rps": 274.9,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            },
+            "concurrent": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 10,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 9.9298,
+              "p50_ms": 7.9047,
+              "p95_ms": 17.3627,
+              "p99_ms": 18.7136,
+              "throughput_rps": 999.0,
+              "wall_seconds": 0.3003,
+              "stable_payload": true,
+              "payload_sha256": "ed70b172533da4eeb45761cfb3d978d039b10bc7ca18a0da3571c75c46b67e1e",
+              "payload_bytes": 2058,
+              "round_metrics": [
+                {
+                  "p50_ms": 7.9047,
+                  "p95_ms": 18.1582,
+                  "p99_ms": 20.284,
+                  "throughput_rps": 999.0,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 7.8543,
+                  "p95_ms": 17.3627,
+                  "p99_ms": 18.3612,
+                  "throughput_rps": 1017.72,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 8.3232,
+                  "p95_ms": 17.1769,
+                  "p99_ms": 18.7136,
+                  "throughput_rps": 992.47,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            }
+          },
+          "Flask": {
+            "sequential": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 1,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 3.4718,
+              "p50_ms": 3.2242,
+              "p95_ms": 3.5578,
+              "p99_ms": 11.6445,
+              "throughput_rps": 287.49,
+              "wall_seconds": 1.0435,
+              "stable_payload": true,
+              "payload_sha256": "620d7dcd6be72be2d5b045d30ff8c2a36ea9e45f137d7635ad7dd7bd08f4f359",
+              "payload_bytes": 2197,
+              "round_metrics": [
+                {
+                  "p50_ms": 3.2242,
+                  "p95_ms": 3.586,
+                  "p99_ms": 11.5878,
+                  "throughput_rps": 287.0,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.232,
+                  "p95_ms": 3.499,
+                  "p99_ms": 11.6445,
+                  "throughput_rps": 287.49,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.2222,
+                  "p95_ms": 3.5578,
+                  "p99_ms": 11.6888,
+                  "throughput_rps": 289.38,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            },
+            "concurrent": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 10,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 9.4685,
+              "p50_ms": 7.4828,
+              "p95_ms": 17.9439,
+              "p99_ms": 20.3548,
+              "throughput_rps": 1026.44,
+              "wall_seconds": 0.2923,
+              "stable_payload": true,
+              "payload_sha256": "620d7dcd6be72be2d5b045d30ff8c2a36ea9e45f137d7635ad7dd7bd08f4f359",
+              "payload_bytes": 2197,
+              "round_metrics": [
+                {
+                  "p50_ms": 7.478,
+                  "p95_ms": 17.5931,
+                  "p99_ms": 18.7509,
+                  "throughput_rps": 1026.44,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 7.4828,
+                  "p95_ms": 19.0312,
+                  "p99_ms": 22.9193,
+                  "throughput_rps": 1020.68,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 7.5583,
+                  "p95_ms": 17.9439,
+                  "p99_ms": 20.3548,
+                  "throughput_rps": 1041.17,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            }
+          }
+        },
+        "performance_scores": {
+          "FastAPI": 4.9,
+          "Flask": 4.96
+        }
+      },
+      "maintenance_recommendation": {
+        "title": "정비 조치 추천",
+        "method": "POST",
+        "endpoint": "/benchmark/maintenance-recommendation",
+        "request_body": {
+          "event_id": "EVT-GS-004",
+          "operator_role": "process_manager",
+          "include_evidence": true
+        },
+        "comparison_scope": "Validate a POST body and apply a deterministic maintenance rule",
+        "parity": {
+          "responses_equal": true,
+          "fastapi_payload_sha256": "3a13a15f7db52dd4c3edd828c874494819ac66c100f2fae311a7af5cfb1a673a",
+          "flask_payload_sha256": "3a13a15f7db52dd4c3edd828c874494819ac66c100f2fae311a7af5cfb1a673a",
+          "payload_bytes": {
+            "FastAPI": 1290,
+            "Flask": 1290
+          }
+        },
+        "implementation": {
+          "fastapi_adapter_loc": 12,
+          "flask_adapter_loc": 13
+        },
+        "results": {
+          "FastAPI": {
+            "sequential": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 1,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 3.5751,
+              "p50_ms": 3.3172,
+              "p95_ms": 3.6473,
+              "p99_ms": 11.6836,
+              "throughput_rps": 279.21,
+              "wall_seconds": 1.0745,
+              "stable_payload": true,
+              "payload_sha256": "8ca55514f40329d318cd7cb24b48c3aed03c68123cc0e81c00d2f0a532a5ca50",
+              "payload_bytes": 1222,
+              "round_metrics": [
+                {
+                  "p50_ms": 3.3172,
+                  "p95_ms": 3.6473,
+                  "p99_ms": 11.6597,
+                  "throughput_rps": 277.62,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.2961,
+                  "p95_ms": 3.5204,
+                  "p99_ms": 11.6836,
+                  "throughput_rps": 282.63,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.3229,
+                  "p95_ms": 3.6624,
+                  "p99_ms": 12.057,
+                  "throughput_rps": 279.21,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            },
+            "concurrent": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 10,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 9.6755,
+              "p50_ms": 7.8068,
+              "p95_ms": 17.616,
+              "p99_ms": 20.3067,
+              "throughput_rps": 1010.78,
+              "wall_seconds": 0.2968,
+              "stable_payload": true,
+              "payload_sha256": "8ca55514f40329d318cd7cb24b48c3aed03c68123cc0e81c00d2f0a532a5ca50",
+              "payload_bytes": 1222,
+              "round_metrics": [
+                {
+                  "p50_ms": 7.5726,
+                  "p95_ms": 17.5696,
+                  "p99_ms": 18.484,
+                  "throughput_rps": 1057.07,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 7.8068,
+                  "p95_ms": 17.616,
+                  "p99_ms": 20.3067,
+                  "throughput_rps": 1010.78,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 9.3273,
+                  "p95_ms": 21.1105,
+                  "p99_ms": 27.8067,
+                  "throughput_rps": 886.66,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            }
+          },
+          "Flask": {
+            "sequential": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 1,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 3.4789,
+              "p50_ms": 3.2191,
+              "p95_ms": 3.4648,
+              "p99_ms": 11.774,
+              "throughput_rps": 286.91,
+              "wall_seconds": 1.0456,
+              "stable_payload": true,
+              "payload_sha256": "d195d7d883eebadf413db041b8e6b15cf0bb6b905bea6d9926b5ca9aa1c67022",
+              "payload_bytes": 1556,
+              "round_metrics": [
+                {
+                  "p50_ms": 3.2171,
+                  "p95_ms": 3.4648,
+                  "p99_ms": 11.4978,
+                  "throughput_rps": 290.19,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.2191,
+                  "p95_ms": 3.4774,
+                  "p99_ms": 11.774,
+                  "throughput_rps": 286.91,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 3.2447,
+                  "p95_ms": 3.398,
+                  "p99_ms": 11.9313,
+                  "throughput_rps": 286.41,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            },
+            "concurrent": {
+              "round_count": 3,
+              "requests_per_round": 300,
+              "request_count": 900,
+              "concurrency": 10,
+              "connection_mode": "new HTTP connection per request",
+              "success_count": 900,
+              "error_count": 0,
+              "error_rate_percent": 0.0,
+              "mean_ms": 10.1051,
+              "p50_ms": 8.2141,
+              "p95_ms": 19.0106,
+              "p99_ms": 21.69,
+              "throughput_rps": 973.31,
+              "wall_seconds": 0.3082,
+              "stable_payload": true,
+              "payload_sha256": "d195d7d883eebadf413db041b8e6b15cf0bb6b905bea6d9926b5ca9aa1c67022",
+              "payload_bytes": 1556,
+              "round_metrics": [
+                {
+                  "p50_ms": 7.8616,
+                  "p95_ms": 18.7966,
+                  "p99_ms": 21.69,
+                  "throughput_rps": 993.75,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 8.2141,
+                  "p95_ms": 19.0106,
+                  "p99_ms": 20.7807,
+                  "throughput_rps": 973.31,
+                  "error_rate_percent": 0.0
+                },
+                {
+                  "p50_ms": 8.2563,
+                  "p95_ms": 20.6689,
+                  "p99_ms": 26.3381,
+                  "throughput_rps": 921.41,
+                  "error_rate_percent": 0.0
+                }
+              ]
+            }
+          }
+        },
+        "performance_scores": {
+          "FastAPI": 4.9,
+          "Flask": 4.86
+        }
+      }
+    },
+    "performance_score_formula": "Per feature: equal average of normalized sequential p95, sequential throughput, concurrent p95 and concurrent throughput. Overall: arithmetic mean of three feature scores.",
+    "performance_scores": {
+      "FastAPI": 4.91,
+      "Flask": 4.92
+    },
+    "limitations": [
+      "Local Mac loopback measurement; not a cloud production benchmark.",
+      "FastAPI and Flask use their normal local servers, so the result includes server-stack overhead.",
+      "The shared functions use eight product GS fixtures and do not include a remote database or external model call."
     ]
   },
   "conclusion": {
     "selected_framework": "FastAPI",
-    "reason": "개발 생산성·계약 자동화·검증 안정성·대표 업무 API 성능 네 항목을 각각 25%로 동일하게 평가했습니다. 동일 제조 Dashboard API를 양쪽에 실제 구현한 결과까지 반영했으며, Flask는 대표 업무 API 성능에서 근소하게 앞섰지만, FastAPI는 adapter 코드량·계약 자동화·검증에서 앞서 FastAPI 98.9점, Flask 69.7점으로 FastAPI를 선택했습니다. 이번 결론은 기존 코드를 옮기는 비용이 아니라 새 제품을 구축할 때의 개발 방식과 기본 제공 기능을 기준으로 한 판단입니다.",
-    "limitation": "대표 제조 Dashboard API는 FastAPI와 Flask에 동일하게 구현했지만, 전체 172개 제품 업무 작업을 Flask로 다시 구현한 것은 아닙니다. 성능 값은 로컬 Mac loopback과 각 프레임워크의 로컬 서버 stack을 포함한 측정이며 운영 환경 성능을 보장하지 않습니다.",
+    "reason": "개발 생산성·계약 자동화·검증 안정성·대표 업무 API 성능 네 항목을 각각 25%로 동일하게 평가했습니다. Dashboard 집계·위험 검색·정비 추천 등 대표 기능 3개를 양쪽에 실제 구현한 결과까지 반영했으며, FastAPI는 adapter 코드량·계약 자동화·검증에서 앞서 FastAPI 99.55점, Flask 69.6점으로 FastAPI를 선택했습니다. 이번 결론은 기존 코드를 옮기는 비용이 아니라 새 제품을 구축할 때의 개발 방식과 기본 제공 기능을 기준으로 한 판단입니다.",
+    "limitation": "대표 기능 3개는 FastAPI와 Flask에 동일하게 구현했지만, 전체 172개 제품 업무 작업을 Flask로 다시 구현한 것은 아닙니다. 성능 값은 로컬 Mac loopback과 각 프레임워크의 로컬 서버 stack을 포함한 측정이며 운영 환경 성능을 보장하지 않습니다.",
     "selection_basis": [
       {
-        "title": "대표 업무 API 대칭 구현",
-        "fastapi": "제조 Dashboard API + 자동 query·응답 검증",
-        "flask": "같은 Dashboard API + 수동 query 검증"
+        "title": "대표 업무 API 3종 대칭 구현",
+        "fastapi": "Dashboard·검색·추천 + 자동 query·body·응답 검증",
+        "flask": "같은 3개 기능 + 수동 query·body 검증"
       },
       {
         "title": "성공 응답 계약",
@@ -3147,8 +4391,8 @@
       },
       {
         "title": "실제 HTTP 성능",
-        "fastapi": "동시성 10 p95 28.1913ms · 626.24 RPS",
-        "flask": "동시성 10 p95 27.0817ms · 662.36 RPS"
+        "fastapi": "3개 기능 평균 4.91/5",
+        "flask": "3개 기능 평균 4.92/5"
       }
     ],
     "evaluation": {
@@ -3162,9 +4406,9 @@
           "weight": 25,
           "fastapi_score": 5,
           "flask_score": 3,
-          "observed_result": "동일 제조 Dashboard API adapter를 실제 구현한 결과 FastAPI는 15 LOC, Flask는 수동 query parser를 포함해 33 LOC였습니다. FastAPI 전체 제품은 별도로 172개 업무 작업을 실행합니다.",
-          "fastapi_reason": "동일 기능에서 query 제약과 응답 계약을 route 선언에 함께 표현해 adapter 코드가 더 짧았습니다.",
-          "flask_reason": "route 자체는 단순하지만 동일한 입력 제약을 맞추기 위해 수동 parser와 오류 응답 코드가 추가됐습니다."
+          "observed_result": "서로 다른 대표 기능 3개(제조 Dashboard 집계, 위험 이벤트 검색·필터, 정비 조치 추천)의 HTTP adapter를 실제 구현한 결과 FastAPI는 50 LOC, Flask는 수동 query·body 검증을 포함해 80 LOC였습니다. FastAPI 전체 제품은 별도로 172개 업무 작업을 실행합니다.",
+          "fastapi_reason": "세 기능에서 query·body 제약과 응답 계약을 route 선언에 함께 표현해 adapter 코드가 더 짧았습니다.",
+          "flask_reason": "route 자체는 단순하지만 동일한 query·POST 검증과 오류 계약을 맞추기 위한 수동 코드가 추가됐습니다."
         },
         {
           "id": "contract_automation",
@@ -3182,24 +4426,24 @@
           "weight": 25,
           "fastapi_score": 5,
           "flask_score": 4,
-          "observed_result": "대표 Dashboard API에서 정상 응답 JSON은 완전히 일치했고 잘못된 limit 요청은 양쪽 모두 422를 반환했습니다. FastAPI는 Query constraint와 response_model로 자동 검증했고 Flask는 같은 결과를 수동 parser로 구현했습니다. 전체 FastAPI에서는 요청 검증 147개, JSON 응답 검증 168개, 미처리 5xx 0건을 확인했습니다.",
+          "observed_result": "대표 기능 3개의 정상 응답 JSON과 SHA-256이 모두 일치했고, 입력·빈 결과·존재하지 않는 이벤트를 포함한 5개 검증 사례에서 HTTP 상태도 일치했습니다. FastAPI는 Query·Pydantic body constraint와 response_model로 자동 검증했고 Flask는 같은 결과를 수동 parser와 Pydantic 호출로 구현했습니다. 전체 FastAPI에서는 요청 검증 147개, JSON 응답 검증 168개, 미처리 5xx 0건을 확인했습니다.",
           "fastapi_reason": "잘못된 입력과 구현·응답 계약 불일치를 실행 중에 바로 탐지합니다.",
-          "flask_reason": "대표 API의 입력 오류는 동일하게 처리했지만 query·응답 검증을 route마다 수동 연결해야 합니다."
+          "flask_reason": "세 대표 기능의 오류 상태는 동일했지만 query·body·응답 검증을 route마다 수동 연결해야 합니다."
         },
         {
           "id": "representative_performance",
           "title": "대표 업무 API 성능과 경량성",
           "weight": 25,
-          "fastapi_score": 4.78,
-          "flask_score": 4.94,
-          "observed_result": "동일 제조 Dashboard API를 별도 HTTP 프로세스로 500회 순차·500회 동시성 10으로 측정했습니다. 동시성 10 기준 FastAPI p95 28.1913ms·626.24 RPS, Flask p95 27.0817ms·662.36 RPS였고 양쪽 오류율은 0%였습니다.",
-          "fastapi_reason": "순차 p50·처리량은 근소하게 앞섰지만 3라운드 종합 성능 점수는 Flask보다 약간 낮았습니다.",
-          "flask_reason": "3라운드 중앙값에서 순차 p95와 동시성 10의 p95·처리량이 근소하게 앞섰습니다."
+          "fastapi_score": 4.91,
+          "flask_score": 4.92,
+          "observed_result": "대표 기능 3개를 각각 별도 HTTP 프로세스에서 순차·동시성 10으로 3라운드 교차 측정했습니다. 기능별 점수는 제조 Dashboard 집계 FastAPI 4.92/5, Flask 4.94/5 · 위험 이벤트 검색·필터 FastAPI 4.9/5, Flask 4.96/5 · 정비 조치 추천 FastAPI 4.9/5, Flask 4.86/5이며, 세 기능 평균은 FastAPI 4.91/5, Flask 4.92/5입니다. 모든 정상 부하의 오류율은 0%였습니다.",
+          "fastapi_reason": "세 기능의 순차 p95·처리량과 동시성 p95·처리량을 같은 비중으로 계산한 평균을 반영했습니다.",
+          "flask_reason": "세 기능별 동일 지표를 측정하고 기능 평균을 계산해 단일 API 우연성의 영향을 줄였습니다."
         }
       ],
       "totals": {
-        "fastapi": 98.9,
-        "flask": 69.7
+        "fastapi": 99.55,
+        "flask": 69.6
       },
       "decision_rule": "네 평가 요소를 동일한 비중으로 계산했습니다. 단순 endpoint 속도에서 Flask가 얻은 우위를 그대로 반영하되, 대규모 API 구조화·계약 자동화·검증 기능도 같은 비중으로 평가했습니다."
     },
@@ -3211,7 +4455,7 @@
           "요청 검증 대상 147개",
           "JSON 응답 런타임 검증 168개",
           "인증 전수 프로브 처리되지 않은 5xx 0건",
-          "대표 Dashboard 성능 점수 4.78/5"
+          "대표 기능 3개 성능 평균 4.91/5"
         ],
         "advantages": [
           "typed router·의존성 주입·Pydantic을 이용해 큰 API 구조를 일관되게 구성할 수 있습니다.",
@@ -3219,19 +4463,19 @@
           "잘못된 입력과 응답 계약 불일치를 런타임에서 탐지합니다."
         ],
         "disadvantages": [
-          "대표 Dashboard 성능 종합점수는 Flask보다 약간 낮았습니다.",
+          "대표 기능별로 프레임워크 우위가 달라 환경에 따른 성능 변동을 고려해야 합니다.",
           "Pydantic 모델과 타입 계약을 지속적으로 관리해야 합니다."
         ]
       },
       "flask": {
         "tested_results": [
           "라우트 미러 172개 등록 성공",
-          "대표 제조 Dashboard 업무 API 1개 실제 구현",
+          "대표 업무 API 3개 실제 구현",
           "기본 구성 자동 OpenAPI·요청 검증·응답 Schema 0개",
-          "대표 Dashboard 성능 점수 4.94/5"
+          "대표 기능 3개 성능 평균 4.92/5"
         ],
         "advantages": [
-          "대표 Dashboard의 3라운드 종합 성능 점수가 FastAPI보다 근소하게 높았습니다.",
+          "세 기능의 3라운드 성능 평균으로 단일 endpoint보다 신중하게 비교했습니다.",
           "필요한 기능만 선택해 붙이는 유연성이 있습니다."
         ],
         "disadvantages": [

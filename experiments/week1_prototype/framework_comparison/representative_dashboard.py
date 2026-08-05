@@ -12,7 +12,7 @@ import json
 from collections import Counter, defaultdict
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -147,6 +147,74 @@ class ManufacturingDashboardResponse(BaseModel):
     sensor_series: list[SensorPoint]
     recommended_decisions: list[DecisionCount]
     generated_from_event_count: int = Field(ge=1)
+
+
+RiskStatus = Literal[
+    "critical",
+    "warning",
+    "attention",
+    "data_quality_hold",
+    "normal",
+]
+RiskSort = Literal[
+    "probability_desc",
+    "probability_asc",
+    "event_id_asc",
+    "line_asc",
+]
+OperatorRole = Literal[
+    "process_manager",
+    "process_engineer",
+    "maintenance_engineer",
+    "executive",
+]
+
+
+class RiskEventSearchResponse(BaseModel):
+    contract_version: Literal["risk-event-search-benchmark-v1"]
+    project_id: Literal["manufacturing-demo-project"]
+    source: Literal["product-gs-fixtures-and-risk-snapshot"]
+    filters: dict[str, str | int | float | None]
+    total_matching: int = Field(ge=0)
+    offset: int = Field(ge=0)
+    limit: int = Field(ge=1)
+    items: list[RiskEvent]
+
+
+class MaintenanceRecommendationRequest(BaseModel):
+    event_id: str = Field(min_length=1)
+    operator_role: OperatorRole
+    include_evidence: bool = True
+
+
+class RecommendationEvidence(BaseModel):
+    key: str
+    label: str
+    value: str | int | float | bool | None
+
+
+class MaintenanceRecommendationResponse(BaseModel):
+    contract_version: Literal["maintenance-recommendation-benchmark-v1"]
+    project_id: Literal["manufacturing-demo-project"]
+    event_id: str
+    equipment_id: str
+    equipment_name: str
+    operator_role: OperatorRole
+    priority: RiskStatus
+    recommended_decision: str
+    requires_shutdown_review: bool
+    estimated_downtime_minutes: int = Field(ge=0)
+    spare_part_available: bool
+    confidence: str
+    predicted_failure_type: str
+    reasons: list[str]
+    recommended_actions: list[str]
+    evidence: list[RecommendationEvidence]
+    generated_from_shared_rule: Literal[True]
+
+
+class RepresentativeEventNotFound(KeyError):
+    """Raised when the benchmark request references an unknown event."""
 
 
 RISK_PRIORITY = {
@@ -314,4 +382,198 @@ def build_manufacturing_dashboard(
         generated_from_event_count=len(source_records),
     )
     return response
+
+
+def _risk_event_rows() -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for fixture in _fixture_records():
+        equipment = fixture["equipment"]
+        risk = fixture["risk"]
+        rows.append(
+            {
+                "event_id": fixture["event_id"],
+                "equipment_id": equipment["equipment_id"],
+                "equipment_name": equipment["display_name"],
+                "line": equipment["line"],
+                "criticality": equipment["criticality"],
+                "assigned_engineer": equipment["assigned_engineer"],
+                "status": risk["status"],
+                "failure_probability": risk["failure_probability"],
+                "confidence": risk["confidence"],
+                "predicted_failure_type": risk["predicted_failure_type"],
+                "recommended_decision": risk["recommended_decision"],
+                "spare_part_available": equipment["spare_part_available"],
+                "estimated_downtime_minutes": equipment[
+                    "estimated_downtime_minutes"
+                ],
+                "observation_timestamp": fixture["observation"]["timestamp"],
+            }
+        )
+    return rows
+
+
+def build_risk_event_search(
+    *,
+    risk_threshold: float = 0.0,
+    status: RiskStatus | None = None,
+    failure_type: str | None = None,
+    line: str | None = None,
+    sort: RiskSort = "probability_desc",
+    limit: int = 5,
+    offset: int = 0,
+) -> RiskEventSearchResponse:
+    """Filter, sort and paginate the same product risk-event snapshot."""
+
+    rows = []
+    for row in _risk_event_rows():
+        probability = row["failure_probability"]
+        if probability is None and risk_threshold > 0:
+            continue
+        if probability is not None and probability < risk_threshold:
+            continue
+        if status and row["status"] != status:
+            continue
+        if failure_type and row["predicted_failure_type"] != failure_type:
+            continue
+        if line and row["line"] != line:
+            continue
+        rows.append(row)
+
+    if sort == "probability_desc":
+        rows.sort(
+            key=lambda item: (
+                item["failure_probability"] is None,
+                -(item["failure_probability"] or 0.0),
+                item["event_id"],
+            )
+        )
+    elif sort == "probability_asc":
+        rows.sort(
+            key=lambda item: (
+                item["failure_probability"] is None,
+                item["failure_probability"] or 0.0,
+                item["event_id"],
+            )
+        )
+    elif sort == "line_asc":
+        rows.sort(key=lambda item: (item["line"], item["event_id"]))
+    else:
+        rows.sort(key=lambda item: item["event_id"])
+
+    total_matching = len(rows)
+    page = rows[offset : offset + limit]
+    return RiskEventSearchResponse(
+        contract_version="risk-event-search-benchmark-v1",
+        project_id="manufacturing-demo-project",
+        source="product-gs-fixtures-and-risk-snapshot",
+        filters={
+            "risk_threshold": risk_threshold,
+            "status": status,
+            "failure_type": failure_type,
+            "line": line,
+            "sort": sort,
+        },
+        total_matching=total_matching,
+        offset=offset,
+        limit=limit,
+        items=[RiskEvent(**row) for row in page],
+    )
+
+
+def build_maintenance_recommendation(
+    request: MaintenanceRecommendationRequest,
+) -> MaintenanceRecommendationResponse:
+    """Apply one deterministic maintenance-decision rule to a product event."""
+
+    fixture = next(
+        (
+            item
+            for item in _fixture_records()
+            if item["event_id"] == request.event_id
+        ),
+        None,
+    )
+    if fixture is None:
+        raise RepresentativeEventNotFound(request.event_id)
+
+    equipment = fixture["equipment"]
+    observation = fixture["observation"]
+    risk = fixture["risk"]
+    probability = risk["failure_probability"]
+    reasons = [
+        f"위험 상태가 {risk['status']}입니다.",
+        (
+            f"고장 확률이 {probability:.1%}입니다."
+            if probability is not None
+            else "신뢰 가능한 고장 확률을 계산할 수 없습니다."
+        ),
+        f"예측 고장 유형은 {risk['predicted_failure_type']}입니다.",
+        f"설비 중요도는 {equipment['criticality']}입니다.",
+    ]
+    if risk["confidence"] in {"low", "unavailable"}:
+        reasons.append(f"예측 신뢰도가 {risk['confidence']}이므로 추가 확인이 필요합니다.")
+    if not equipment["spare_part_available"]:
+        reasons.append("즉시 사용할 수 있는 대체 부품이 없습니다.")
+
+    decision = risk["recommended_decision"]
+    if decision == "review_shutdown":
+        actions = ["운영 매니저의 설비 정지 검토", "담당 엔지니어 현장 점검"]
+    elif decision == "request_inspection":
+        actions = ["담당 엔지니어 점검 요청", "센서와 정비 이력 재확인"]
+    elif decision == "hold_for_data_check":
+        actions = ["센서 데이터 품질 확인", "검증 완료 전 자동 의사결정 보류"]
+    else:
+        actions = ["현재 운전 유지", "다음 관측 주기까지 위험 추세 모니터링"]
+    if not equipment["spare_part_available"]:
+        actions.append("대체 부품 확보 가능 시점 확인")
+
+    evidence: list[RecommendationEvidence] = []
+    if request.include_evidence:
+        evidence = [
+            RecommendationEvidence(
+                key="failure_probability",
+                label="고장 확률",
+                value=probability,
+            ),
+            RecommendationEvidence(
+                key="rotational_speed_rpm",
+                label="회전 속도",
+                value=observation.get("rotational_speed_rpm"),
+            ),
+            RecommendationEvidence(
+                key="torque_nm",
+                label="토크",
+                value=observation.get("torque_nm"),
+            ),
+            RecommendationEvidence(
+                key="tool_wear_min",
+                label="공구 마모",
+                value=observation.get("tool_wear_min"),
+            ),
+            RecommendationEvidence(
+                key="spare_part_available",
+                label="대체 부품 확보",
+                value=equipment["spare_part_available"],
+            ),
+        ]
+
+    return MaintenanceRecommendationResponse(
+        contract_version="maintenance-recommendation-benchmark-v1",
+        project_id="manufacturing-demo-project",
+        event_id=fixture["event_id"],
+        equipment_id=equipment["equipment_id"],
+        equipment_name=equipment["display_name"],
+        operator_role=request.operator_role,
+        priority=risk["status"],
+        recommended_decision=decision,
+        requires_shutdown_review=decision == "review_shutdown",
+        estimated_downtime_minutes=equipment["estimated_downtime_minutes"],
+        spare_part_available=equipment["spare_part_available"],
+        confidence=risk["confidence"],
+        predicted_failure_type=risk["predicted_failure_type"],
+        reasons=reasons,
+        recommended_actions=actions,
+        evidence=evidence,
+        generated_from_shared_rule=True,
+    )
 

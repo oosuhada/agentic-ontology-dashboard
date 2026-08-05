@@ -9,13 +9,21 @@ import urllib.request
 from html import escape
 from pathlib import Path
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from .contracts import HEALTH_PAYLOAD, HealthResponse
 from .representative_dashboard import (
+    MaintenanceRecommendationRequest,
+    MaintenanceRecommendationResponse,
     ManufacturingDashboardResponse,
+    RepresentativeEventNotFound,
+    RiskEventSearchResponse,
+    RiskSort,
+    RiskStatus,
+    build_maintenance_recommendation,
     build_manufacturing_dashboard,
+    build_risk_event_search,
 )
 
 
@@ -66,9 +74,11 @@ def _load_representative_benchmark() -> dict:
     if not REPRESENTATIVE_BENCHMARK_PATH.exists():
         return {
             "status": "not-generated",
-            "endpoint": "/benchmark/manufacturing-dashboard",
-            "parity": {"responses_equal": False},
-            "results": {},
+            "feature_count": 0,
+            "parity": {"all_feature_responses_equal": False},
+            "validation": {"case_count": 0, "all_statuses_match": False},
+            "features": {},
+            "performance_scores": {"FastAPI": 0.0, "Flask": 0.0},
         }
     return json.loads(REPRESENTATIVE_BENCHMARK_PATH.read_text(encoding="utf-8"))
 
@@ -186,11 +196,51 @@ def manufacturing_dashboard(
     )
 
 
+@app.get(
+    "/benchmark/risk-events",
+    response_model=RiskEventSearchResponse,
+    tags=["representative-benchmark"],
+)
+def risk_event_search(
+    risk_threshold: float = Query(default=0.6, ge=0.0, le=1.0),
+    status: RiskStatus | None = None,
+    failure_type: str | None = None,
+    line: str | None = None,
+    sort: RiskSort = "probability_desc",
+    limit: int = Query(default=5, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> RiskEventSearchResponse:
+    return build_risk_event_search(
+        risk_threshold=risk_threshold,
+        status=status,
+        failure_type=failure_type,
+        line=line,
+        sort=sort,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@app.post(
+    "/benchmark/maintenance-recommendation",
+    response_model=MaintenanceRecommendationResponse,
+    tags=["representative-benchmark"],
+)
+def maintenance_recommendation(
+    request: MaintenanceRecommendationRequest,
+) -> MaintenanceRecommendationResponse:
+    try:
+        return build_maintenance_recommendation(request)
+    except RepresentativeEventNotFound as error:
+        raise HTTPException(status_code=404, detail="event not found") from error
+
+
 @app.get("/comparison.json", tags=["comparison"])
 def comparison_json() -> dict:
     return {
         "baseline": _baseline_comparison_payload(),
         "representative_dashboard": REPRESENTATIVE_BENCHMARK,
+        "representative_features": REPRESENTATIVE_BENCHMARK,
         "full_surface": FULL_SURFACE_SNAPSHOT,
     }
 
@@ -220,6 +270,40 @@ def flask_health_proxy() -> JSONResponse:
         )
 
 
+def _flask_proxy(
+    path: str,
+    *,
+    method: str = "GET",
+    body: dict | None = None,
+) -> JSONResponse:
+    data = None
+    headers: dict[str, str] = {}
+    if body is not None:
+        data = json.dumps(body).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    request = urllib.request.Request(
+        f"http://127.0.0.1:5111{path}",
+        data=data,
+        headers=headers,
+        method=method,
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=2.0) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+            return JSONResponse(payload, status_code=response.status)
+    except urllib.error.HTTPError as error:
+        try:
+            payload = json.loads(error.read().decode("utf-8"))
+        except json.JSONDecodeError:
+            payload = {"detail": str(error)}
+        return JSONResponse(payload, status_code=error.code)
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as error:
+        return JSONResponse(
+            {"status": "unavailable", "framework": "Flask", "detail": str(error)},
+            status_code=503,
+        )
+
+
 @app.get("/flask-dashboard", tags=["representative-benchmark"])
 def flask_dashboard_proxy(
     risk_threshold: float = Query(default=0.0, ge=0.0, le=1.0),
@@ -233,16 +317,42 @@ def flask_dashboard_proxy(
             **({"line": line} if line else {}),
         }
     )
-    url = f"http://127.0.0.1:5111/benchmark/manufacturing-dashboard?{query}"
-    try:
-        with urllib.request.urlopen(url, timeout=2.0) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-            return JSONResponse(payload, status_code=response.status)
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as error:
-        return JSONResponse(
-            {"status": "unavailable", "framework": "Flask", "detail": str(error)},
-            status_code=503,
-        )
+    return _flask_proxy(f"/benchmark/manufacturing-dashboard?{query}")
+
+
+@app.get("/flask-risk-events", tags=["representative-benchmark"])
+def flask_risk_events_proxy(
+    risk_threshold: float = Query(default=0.6, ge=0.0, le=1.0),
+    status: RiskStatus | None = None,
+    failure_type: str | None = None,
+    line: str | None = None,
+    sort: RiskSort = "probability_desc",
+    limit: int = Query(default=5, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> JSONResponse:
+    query = urllib.parse.urlencode(
+        {
+            "risk_threshold": risk_threshold,
+            "sort": sort,
+            "limit": limit,
+            "offset": offset,
+            **({"status": status} if status else {}),
+            **({"failure_type": failure_type} if failure_type else {}),
+            **({"line": line} if line else {}),
+        }
+    )
+    return _flask_proxy(f"/benchmark/risk-events?{query}")
+
+
+@app.post("/flask-maintenance-recommendation", tags=["representative-benchmark"])
+def flask_maintenance_recommendation_proxy(
+    request: MaintenanceRecommendationRequest,
+) -> JSONResponse:
+    return _flask_proxy(
+        "/benchmark/maintenance-recommendation",
+        method="POST",
+        body=request.model_dump(mode="json"),
+    )
 
 
 def _comparison_rows() -> str:
@@ -392,46 +502,88 @@ def _weighted_score_rows() -> str:
 
 
 def _representative_performance_rows() -> str:
-    results = REPRESENTATIVE_BENCHMARK.get("results", {})
-    scores = REPRESENTATIVE_BENCHMARK.get("performance_scores", {})
     rows: list[str] = []
-    for framework in ("FastAPI", "Flask"):
-        item = results.get(framework, {})
-        sequential = item.get("sequential", {})
-        concurrent = item.get("concurrent", {})
-        rows.append(
-            "<tr>"
-            f"<td><strong>{framework}</strong></td>"
-            f"<td>{sequential.get('p50_ms', '—')}ms</td>"
-            f"<td>{sequential.get('p95_ms', '—')}ms</td>"
-            f"<td>{sequential.get('throughput_rps', '—')}</td>"
-            f"<td>{concurrent.get('p50_ms', '—')}ms</td>"
-            f"<td>{concurrent.get('p95_ms', '—')}ms</td>"
-            f"<td>{concurrent.get('p99_ms', '—')}ms</td>"
-            f"<td>{concurrent.get('throughput_rps', '—')}</td>"
-            f"<td>{concurrent.get('error_rate_percent', '—')}%</td>"
-            f"<td><strong>{scores.get(framework, '—')}/5</strong></td>"
-            "</tr>"
-        )
+    for feature in REPRESENTATIVE_BENCHMARK.get("features", {}).values():
+        for framework in ("FastAPI", "Flask"):
+            item = feature.get("results", {}).get(framework, {})
+            sequential = item.get("sequential", {})
+            concurrent = item.get("concurrent", {})
+            score = feature.get("performance_scores", {}).get(framework, "—")
+            rows.append(
+                "<tr>"
+                f"<td><strong>{escape(str(feature.get('title', '—')))}</strong></td>"
+                f"<td><strong>{framework}</strong></td>"
+                f"<td>{sequential.get('p50_ms', '—')}ms</td>"
+                f"<td>{sequential.get('p95_ms', '—')}ms</td>"
+                f"<td>{sequential.get('throughput_rps', '—')}</td>"
+                f"<td>{concurrent.get('p50_ms', '—')}ms</td>"
+                f"<td>{concurrent.get('p95_ms', '—')}ms</td>"
+                f"<td>{concurrent.get('p99_ms', '—')}ms</td>"
+                f"<td>{concurrent.get('throughput_rps', '—')}</td>"
+                f"<td>{concurrent.get('error_rate_percent', '—')}%</td>"
+                f"<td><strong>{score}/5</strong></td>"
+                "</tr>"
+            )
     return "".join(rows)
 
 
 def _representative_implementation_rows() -> str:
-    implementation = REPRESENTATIVE_BENCHMARK.get("implementation", {})
-    return (
-        "<tr>"
-        "<td><strong>FastAPI</strong></td>"
-        f"<td>{implementation.get('fastapi_adapter_loc', '—')} LOC</td>"
-        f"<td>{escape(str(implementation.get('fastapi_validation', '—')))}</td>"
-        "<td>자동 OpenAPI·요청 제약·응답 모델</td>"
-        "</tr>"
-        "<tr>"
-        "<td><strong>Flask</strong></td>"
-        f"<td>{implementation.get('flask_adapter_loc', '—')} LOC</td>"
-        f"<td>{escape(str(implementation.get('flask_validation', '—')))}</td>"
-        "<td>수동 query parser·422 오류 처리</td>"
-        "</tr>"
-    )
+    rows: list[str] = []
+    for feature in REPRESENTATIVE_BENCHMARK.get("features", {}).values():
+        implementation = feature.get("implementation", {})
+        rows.extend(
+            [
+                "<tr>"
+                f"<td><strong>{escape(str(feature.get('title', '—')))}</strong></td>"
+                "<td><strong>FastAPI</strong></td>"
+                f"<td>{implementation.get('fastapi_adapter_loc', '—')} LOC</td>"
+                "<td>선언형 query/body 검증·response_model·OpenAPI</td>"
+                "</tr>",
+                "<tr>"
+                f"<td><strong>{escape(str(feature.get('title', '—')))}</strong></td>"
+                "<td><strong>Flask</strong></td>"
+                f"<td>{implementation.get('flask_adapter_loc', '—')} LOC</td>"
+                "<td>수동 query parser·Pydantic 호출·오류 응답</td>"
+                "</tr>",
+            ]
+        )
+    return "".join(rows)
+
+
+def _representative_feature_cards() -> str:
+    cards: list[str] = []
+    for feature in REPRESENTATIVE_BENCHMARK.get("features", {}).values():
+        scores = feature.get("performance_scores", {})
+        parity = feature.get("parity", {})
+        cards.append(
+            '<article class="feature-card">'
+            f'<div class="eyebrow">{escape(str(feature.get("method", "—")))}</div>'
+            f'<h3>{escape(str(feature.get("title", "—")))}</h3>'
+            f'<code>{escape(str(feature.get("endpoint", "—")))}</code>'
+            f'<p>{escape(str(feature.get("comparison_scope", "—")))}</p>'
+            f'<div class="feature-score"><span>응답</span><strong>{"일치" if parity.get("responses_equal") else "확인 필요"}</strong></div>'
+            f'<div class="feature-score"><span>FastAPI</span><strong>{scores.get("FastAPI", "—")}/5</strong></div>'
+            f'<div class="feature-score"><span>Flask</span><strong>{scores.get("Flask", "—")}/5</strong></div>'
+            "</article>"
+        )
+    return "".join(cards)
+
+
+def _representative_validation_rows() -> str:
+    rows: list[str] = []
+    for item in REPRESENTATIVE_BENCHMARK.get("validation", {}).get("cases", []):
+        statuses = item.get("statuses", {})
+        rows.append(
+            "<tr>"
+            f"<td>{escape(str(item.get('feature', '—')))}</td>"
+            f"<td>{escape(str(item.get('name', '—')))}</td>"
+            f"<td>{item.get('expected_status', '—')}</td>"
+            f"<td>{statuses.get('FastAPI', '—')}</td>"
+            f"<td>{statuses.get('Flask', '—')}</td>"
+            f"<td>{'일치' if item.get('status_match') else '불일치'}</td>"
+            "</tr>"
+        )
+    return "".join(rows)
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
@@ -444,7 +596,10 @@ def comparison_page() -> HTMLResponse:
     totals = evaluation["totals"]
     representative = REPRESENTATIVE_BENCHMARK
     representative_parity = representative.get("parity", {})
+    representative_validation = representative.get("validation", {})
+    representative_features = representative.get("features", {})
     representative_environment = representative.get("environment", {})
+    first_feature = next(iter(representative_features.values()), {})
     status_summary = " · ".join(
         f"{status} {count}건"
         for status, count in authenticated["status_counts"].items()
@@ -496,6 +651,14 @@ def comparison_page() -> HTMLResponse:
     .benchmark-card strong {{ display:block; margin-top:5px; font-size:25px; }}
     .benchmark-card.fast strong {{ color:var(--accent); }}
     .benchmark-card.flask strong {{ color:var(--blue); }}
+    .feature-grid {{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:16px 0 22px; }}
+    .feature-card {{ border:1px solid var(--line); border-radius:16px; background:rgba(13,24,34,.86); padding:20px; min-width:0; }}
+    .feature-card h3 {{ margin:6px 0 10px; font-size:20px; }}
+    .feature-card code {{ display:block; overflow-wrap:anywhere; color:#c6f7ea; font-size:12px; }}
+    .feature-card p {{ color:var(--muted); min-height:48px; }}
+    .feature-score {{ display:flex; align-items:center; justify-content:space-between; gap:12px; border-top:1px solid var(--line); padding-top:8px; margin-top:8px; }}
+    .feature-score span {{ color:var(--muted); font-size:12px; }}
+    .feature-score strong {{ font-size:14px; }}
     .card strong {{ display:block; font-size:26px; margin-top:7px; }}
     .card span {{ color:var(--muted); }}
     .live {{ display:inline-flex; align-items:center; gap:7px; font-weight:800; }}
@@ -522,14 +685,14 @@ def comparison_page() -> HTMLResponse:
     pre {{ overflow:auto; padding:16px; border-radius:12px; background:#050b10; color:#c6f7ea; border:1px solid var(--line); }}
     .note {{ color:var(--muted); font-size:13px; margin-top:16px; }}
     footer {{ color:var(--muted); margin-top:34px; font-size:13px; }}
-    @media (max-width:800px) {{ .grid,.framework-grid,.decision-model,.pros-cons,.benchmark-grid {{ grid-template-columns:1fr; }} main {{ padding-top:30px; }} }}
+    @media (max-width:800px) {{ .grid,.framework-grid,.decision-model,.pros-cons,.benchmark-grid,.feature-grid {{ grid-template-columns:1fr; }} main {{ padding-top:30px; }} }}
   </style>
 </head>
 <body>
 <main>
   <div class="eyebrow">WEEK 1 · 프레임워크 비교</div>
   <h1>FastAPI vs Flask<br/>전체 MVP 구현 기준 비교</h1>
-  <p class="lead">현재 페이지는 두 층을 분리해 보여줍니다. 제조 Dashboard 대표 API 1개는 FastAPI와 Flask에 <strong>실제로 동일 구현</strong>해 기능·성능을 대칭 비교했고, 전체 <strong>{scope['path_count']}개 OpenAPI 경로·{scope['operation_count']}개 HTTP 작업</strong>은 FastAPI 제품 구현 현황과 Flask route mirror 범위를 구분해 표시합니다.</p>
+  <p class="lead">현재 페이지는 두 층을 분리해 보여줍니다. Dashboard 집계·위험 이벤트 검색·정비 조치 추천 등 대표 기능 <strong>{representative.get('feature_count', 0)}개를 FastAPI와 Flask에 실제로 동일 구현</strong>해 기능·검증·성능을 대칭 비교했고, 전체 <strong>{scope['path_count']}개 OpenAPI 경로·{scope['operation_count']}개 HTTP 작업</strong>은 FastAPI 제품 구현 현황과 Flask route mirror 범위를 구분해 표시합니다.</p>
   <div class="actions">
     <a class="button primary" href="https://dashboard.oosu.dev/docs">실제 서비스 162경로 Swagger</a>
     <a class="button" href="/docs">비교 화면 Swagger</a>
@@ -537,7 +700,9 @@ def comparison_page() -> HTMLResponse:
     <a class="button" href="/flask-health">Flask /health 프록시</a>
     <a class="button" href="/benchmark/manufacturing-dashboard">FastAPI 대표 Dashboard API</a>
     <a class="button" href="/flask-dashboard">Flask 대표 Dashboard API</a>
-    <a class="button" href="/representative-benchmark.json">대표 API 실측 JSON</a>
+    <a class="button" href="/benchmark/risk-events?risk_threshold=0.6&status=warning">FastAPI 위험 검색 API</a>
+    <a class="button" href="/flask-risk-events?risk_threshold=0.6&status=warning">Flask 위험 검색 API</a>
+    <a class="button" href="/representative-benchmark.json">대표 기능 3종 실측 JSON</a>
     <a class="button" href="/full-comparison.json">162경로 전수 비교 JSON</a>
     <a class="button" href="/comparison.json">전체 비교 JSON</a>
   </div>
@@ -551,38 +716,46 @@ def comparison_page() -> HTMLResponse:
 
   <section class="scope-note">
     <strong>비교 범위 구분</strong><br/>
-    대표 제조 Dashboard API는 같은 GS fixture, 같은 risk snapshot, 같은 집계 함수를 양쪽에 연결한 실제 대칭 비교입니다. 반면 전체 172개 작업은 FastAPI에만 제품 업무 로직이 있고 Flask에는 route mirror만 있으므로, 전체 성능을 양쪽이 모두 구현한 것처럼 표현하지 않습니다.
+    대표 기능 3개는 같은 GS fixture, 같은 risk snapshot, 같은 업무 함수를 양쪽에 연결한 실제 대칭 비교입니다. 반면 전체 172개 작업은 FastAPI에만 제품 업무 로직이 있고 Flask에는 route mirror만 있으므로, 전체 성능을 양쪽이 모두 구현한 것처럼 표현하지 않습니다.
   </section>
 
-  <h2>1. 동일 제조 Dashboard API 실제 양방향 구현</h2>
-  <p class="lead"><code>/app/projects/manufacturing-demo-project</code> 첫 화면을 대표해 위험 이벤트 8개, 센서 시계열 {representative_parity.get('sensor_points', '—')}개, 라인별 위험 집계와 권장 조치를 반환하는 API를 양쪽에 구현했습니다.</p>
+  <h2>1. 서로 다른 대표 기능 3개 실제 양방향 구현</h2>
+  <p class="lead"><code>/app/projects/manufacturing-demo-project</code>의 주요 사용 패턴을 반영해 ① 집계·중첩 JSON, ② 필터·정렬·페이지네이션, ③ POST body 검증·업무 판단이라는 서로 다른 성격의 기능을 비교했습니다.</p>
   <section class="benchmark-grid">
-    <article class="benchmark-card"><span>응답 계약 일치</span><strong>{'완전 일치' if representative_parity.get('responses_equal') else '확인 필요'}</strong></article>
-    <article class="benchmark-card"><span>대표 데이터</span><strong>{representative_parity.get('visible_events', '—')} events</strong><span>{representative_parity.get('sensor_points', '—')} sensor points</span></article>
-    <article class="benchmark-card fast"><span>FastAPI 동시 처리량</span><strong>{representative.get('results', {}).get('FastAPI', {}).get('concurrent', {}).get('throughput_rps', '—')} RPS</strong></article>
-    <article class="benchmark-card flask"><span>Flask 동시 처리량</span><strong>{representative.get('results', {}).get('Flask', {}).get('concurrent', {}).get('throughput_rps', '—')} RPS</strong></article>
+    <article class="benchmark-card"><span>대표 기능</span><strong>{representative.get('feature_count', '—')}개</strong><span>GET 2개 · POST 1개</span></article>
+    <article class="benchmark-card"><span>정상 응답 계약</span><strong>{'3/3 일치' if representative_parity.get('all_feature_responses_equal') else '확인 필요'}</strong><span>canonical SHA-256 비교</span></article>
+    <article class="benchmark-card fast"><span>FastAPI 3개 성능 평균</span><strong>{representative.get('performance_scores', {}).get('FastAPI', '—')}/5</strong></article>
+    <article class="benchmark-card flask"><span>Flask 3개 성능 평균</span><strong>{representative.get('performance_scores', {}).get('Flask', '—')}/5</strong></article>
   </section>
+  <section class="feature-grid">{_representative_feature_cards()}</section>
   <section class="table-wrap">
     <table>
-      <thead><tr><th>프레임워크</th><th>순차 p50</th><th>순차 p95</th><th>순차 RPS</th><th>동시 p50</th><th>동시 p95</th><th>동시 p99</th><th>동시 RPS</th><th>오류율</th><th>성능 점수</th></tr></thead>
+      <thead><tr><th>대표 기능</th><th>프레임워크</th><th>순차 p50</th><th>순차 p95</th><th>순차 RPS</th><th>동시 p50</th><th>동시 p95</th><th>동시 p99</th><th>동시 RPS</th><th>오류율</th><th>기능 점수</th></tr></thead>
       <tbody>{_representative_performance_rows()}</tbody>
     </table>
   </section>
-  <p class="section-note">각 서버를 별도 프로세스로 실행하고 순차 {representative.get('results', {}).get('FastAPI', {}).get('sequential', {}).get('requests_per_round', '—')}회 × {representative.get('results', {}).get('FastAPI', {}).get('sequential', {}).get('round_count', '—')}라운드, 동시성 10도 같은 횟수로 로컬 HTTP 요청했습니다. 실행 순서는 FastAPI 우선·Flask 우선을 번갈아 적용했고, 두 서버 모두 매 요청 새 연결을 사용했습니다. 환경: {escape(str(representative_environment.get('platform', '—')))} · Python {escape(str(representative_environment.get('python', '—')))}.</p>
+  <p class="section-note">각 기능마다 서버를 별도 프로세스로 실행하고 순차 {first_feature.get('results', {}).get('FastAPI', {}).get('sequential', {}).get('requests_per_round', '—')}회 × {first_feature.get('results', {}).get('FastAPI', {}).get('sequential', {}).get('round_count', '—')}라운드, 동시성 10도 같은 횟수로 요청했습니다. 기능과 라운드마다 FastAPI 우선·Flask 우선 순서를 교차했고, 두 서버 모두 매 요청 새 연결을 사용했습니다. 환경: {escape(str(representative_environment.get('platform', '—')))} · Python {escape(str(representative_environment.get('python', '—')))}.</p>
   <section class="table-wrap">
     <table>
-      <thead><tr><th>프레임워크</th><th>Adapter 코드량</th><th>검증 방식</th><th>추가 구현</th></tr></thead>
+      <thead><tr><th>대표 기능</th><th>프레임워크</th><th>Adapter 코드량</th><th>검증·계약 구현</th></tr></thead>
       <tbody>{_representative_implementation_rows()}</tbody>
     </table>
   </section>
-  <p class="section-note">FastAPI는 순차 p50과 순차 처리량에서 근소하게 앞섰고, Flask는 순차 p95와 동시성 10의 p50·p95·처리량에서 앞섰습니다. 네 성능 지표를 동일 비중으로 계산한 종합점수는 FastAPI {representative.get('performance_scores', {}).get('FastAPI', '—')}/5, Flask {representative.get('performance_scores', {}).get('Flask', '—')}/5입니다. 운영 환경 벤치마크가 아니라 로컬 framework·server stack 비교이며 원격 DB와 외부 모델 호출은 제외했습니다.</p>
+  <h3>오류·경계값 계약 검증</h3>
+  <section class="table-wrap">
+    <table>
+      <thead><tr><th>기능</th><th>검증 사례</th><th>기대 HTTP</th><th>FastAPI</th><th>Flask</th><th>결과</th></tr></thead>
+      <tbody>{_representative_validation_rows()}</tbody>
+    </table>
+  </section>
+  <p class="section-note">입력 범위 초과, 지원하지 않는 정렬값, 정상적인 빈 검색 결과, 잘못된 POST enum, 존재하지 않는 이벤트 등 {representative_validation.get('case_count', '—')}개 사례를 확인했습니다. 상태 계약은 {'모두 일치했습니다' if representative_validation.get('all_statuses_match') else '추가 확인이 필요합니다'}. 기능별 네 성능 지표를 같은 비중으로 계산한 후 세 기능을 다시 평균한 결과는 FastAPI {representative.get('performance_scores', {}).get('FastAPI', '—')}/5, Flask {representative.get('performance_scores', {}).get('Flask', '—')}/5입니다. 운영 환경 벤치마크가 아니라 로컬 framework·server stack 비교이며 원격 DB와 외부 모델 호출은 제외했습니다.</p>
 
   <h2>2. 프레임워크별 실제 테스트 결과와 장단점</h2>
-  <p class="lead">대표 API는 양쪽 모두 실제 구현했습니다. 전체 제품 수준에서는 FastAPI 172개 업무 작업과 Flask 1개 대표 업무 API + 172개 route mirror를 구분해 평가합니다.</p>
+  <p class="lead">대표 기능 3개는 양쪽 모두 실제 구현했습니다. 전체 제품 수준에서는 FastAPI 172개 업무 작업과 Flask 3개 대표 업무 API + 172개 route mirror를 구분해 평가합니다.</p>
   <section class="framework-grid">{_framework_summary_cards()}</section>
 
   <h2>3. 어떤 요소에 더 큰 비중을 뒀는가</h2>
-  <div class="weight-note"><strong>네 항목을 동일하게 평가했습니다.</strong> 개발 생산성·API 계약 자동화·검증 안정성·대표 업무 API 성능에 각각 {evaluation['equal_weight_per_criterion']}%를 배정했습니다. 성능 점수는 동시성 10의 p95와 처리량을 같은 비중으로 정규화했습니다.</div>
+  <div class="weight-note"><strong>네 항목을 동일하게 평가했습니다.</strong> 개발 생산성·API 계약 자동화·검증 안정성·대표 업무 API 성능에 각각 {evaluation['equal_weight_per_criterion']}%를 배정했습니다. 성능은 각 기능의 순차 p95·처리량과 동시성 10 p95·처리량을 같은 비중으로 계산한 뒤 세 기능 평균을 사용했습니다.</div>
   <section class="decision-model">
     <article class="score-card fastapi"><span>FastAPI 가중 합계</span><strong>{totals['fastapi']} / 100</strong><span>개발 구조·계약·검증에서 우세</span></article>
     <article class="score-card flask"><span>Flask 가중 합계</span><strong>{totals['flask']} / 100</strong><span>대표 업무 API 성능에서 근소 우세</span></article>
@@ -604,7 +777,7 @@ def comparison_page() -> HTMLResponse:
   </section>
 
   <h2>5. 참고: 동일 `/health` 최소 응답 비교</h2>
-  <p class="section-note"><code>/health</code>는 최소 framework overhead를 살펴보는 이전 기준선입니다. 최종 성능 평가는 위의 제조 Dashboard 실제 HTTP 측정을 사용합니다. 마지막 열은 3번 평가표의 네 점수를 평균한 종합점수입니다.</p>
+  <p class="section-note"><code>/health</code>는 최소 framework overhead를 살펴보는 이전 기준선입니다. 최종 성능 평가는 위의 대표 기능 3개 실제 HTTP 측정을 사용합니다. 마지막 열은 3번 평가표의 네 점수를 평균한 종합점수입니다.</p>
   <section class="table-wrap">
     <table>
       <thead><tr><th>프레임워크</th><th>HTTP</th><th>응답 일치</th><th>OpenAPI</th><th>응답 Schema</th><th>코드 줄 수</th><th>p50*</th><th>p95*</th><th>종합 평균*</th></tr></thead>
@@ -616,8 +789,8 @@ def comparison_page() -> HTMLResponse:
     <div class="eyebrow">최종 선정</div>
     <h2>최종 선택: FastAPI</h2>
     <p>{escape(FULL_SURFACE_SNAPSHOT['conclusion']['reason'])}</p>
-    <p><strong>Flask가 우세한 부분:</strong> 대표 Dashboard의 종합 성능 점수와 작은 framework의 단순성입니다.</p>
-    <p><strong>FastAPI가 우세한 부분:</strong> 대표 Dashboard의 adapter 코드량, 자동 계약·검증과 전체 제품 구조화입니다.</p>
+    <p><strong>Flask가 우세한 부분:</strong> 대표 기능 3개의 평균 성능 점수와 작은 framework의 단순성입니다.</p>
+    <p><strong>FastAPI가 우세한 부분:</strong> 대표 기능 3개의 총 adapter 코드량, 자동 계약·검증과 전체 제품 구조화입니다.</p>
     <p class="note">{escape(FULL_SURFACE_SNAPSHOT['conclusion']['limitation'])}</p>
   </section>
 
