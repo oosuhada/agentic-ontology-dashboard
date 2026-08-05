@@ -139,7 +139,7 @@ FastAPI는 큰 API 구조화, 계약 자동화, 요청·응답 검증에서 앞�
 코드의 이식 비용은 평가에서 제외했고, 새 제품을 구축할 때 어떤 개발 방식이
 현재 요구사항에 더 적합한지를 기준으로 FastAPI를 최종 선택했습니다.
 
-### 실행 화면
+### 프레임워크 비교·검증 화면
 
 - [FastAPI vs Flask 비교 결과](https://fastapi-flask.oosu.dev)
 - [전체 162개 경로·172개 작업 비교 JSON](https://fastapi-flask.oosu.dev/full-comparison.json)
@@ -148,17 +148,6 @@ FastAPI는 큰 API 구조화, 계약 자동화, 요청·응답 검증에서 앞�
 - [FastAPI `/health`](https://fastapi-flask.oosu.dev/health)
 - [Flask `/health` 비교 응답](https://fastapi-flask.oosu.dev/flask-health)
 - [비교 결과 JSON](https://fastapi-flask.oosu.dev/comparison.json)
-
-### GitHub
-
-- [비교 실험 브랜치](https://github.com/oosuhada/agentic-ontology-dashboard/tree/experiment/week1-streamlit-plotly-framework-comparison)
-- [FastAPI 구현](https://github.com/oosuhada/agentic-ontology-dashboard/blob/experiment/week1-streamlit-plotly-framework-comparison/experiments/week1_prototype/framework_comparison/fastapi_app.py)
-- [Flask 구현](https://github.com/oosuhada/agentic-ontology-dashboard/blob/experiment/week1-streamlit-plotly-framework-comparison/experiments/week1_prototype/framework_comparison/flask_app.py)
-- [비교 실행 코드](https://github.com/oosuhada/agentic-ontology-dashboard/blob/experiment/week1-streamlit-plotly-framework-comparison/experiments/week1_prototype/framework_comparison/compare.py)
-- [전체 API 표면 비교 하네스](https://github.com/oosuhada/agentic-ontology-dashboard/blob/experiment/week1-streamlit-plotly-framework-comparison/experiments/week1_prototype/framework_comparison/full_surface.py)
-- [전체 API 전수 테스트](https://github.com/oosuhada/agentic-ontology-dashboard/blob/experiment/week1-streamlit-plotly-framework-comparison/experiments/week1_prototype/tests/test_full_api_surface.py)
-- [비교 테스트](https://github.com/oosuhada/agentic-ontology-dashboard/blob/experiment/week1-streamlit-plotly-framework-comparison/experiments/week1_prototype/tests/test_framework_comparison.py)
-- [구현 보고서](https://github.com/oosuhada/agentic-ontology-dashboard/blob/experiment/week1-streamlit-plotly-framework-comparison/experiments/week1_prototype/IMPLEMENTATION_REPORT.md)
 
 ## 4. Plotly/Streamlit 조사 및 Streamlit 대시보드에 Plotly 차트 3종 이상 연동·렌더링
 
@@ -186,25 +175,17 @@ Plotly 단위 테스트와 기존 Dashboard·Architecture 테스트를 실행했
 Streamlit AppTest에서 예외 없이 9개의 Plotly 차트가 렌더링되는 것을
 확인했습니다.
 
-### 실행 화면
+### 시각화 구현·검증 화면
 
-- [Plotly 연동 Streamlit Dashboard](https://plotly-streamlit.oosu.dev/dashboard)
-- [Streamlit Health](https://plotly-streamlit.oosu.dev/_stcore/health)
-
-### GitHub
-
-- [Plotly·Streamlit 실험 브랜치](https://github.com/oosuhada/text2cypher-factory-rca/tree/experiment/streamlit-plotly-dashboard)
-- [Plotly Figure Builder](https://github.com/oosuhada/text2cypher-factory-rca/blob/experiment/streamlit-plotly-dashboard/frontend/dashboard_plotly.py)
-- [Streamlit Dashboard 연동 코드](https://github.com/oosuhada/text2cypher-factory-rca/blob/experiment/streamlit-plotly-dashboard/frontend/pages/dashboard.py)
-- [Plotly 단위 테스트](https://github.com/oosuhada/text2cypher-factory-rca/blob/experiment/streamlit-plotly-dashboard/tests/test_dashboard_plotly.py)
-- [실험 결과 문서](https://github.com/oosuhada/text2cypher-factory-rca/blob/experiment/streamlit-plotly-dashboard/docs/streamlit-plotly-dashboard-experiment.md)
+- [Plotly Express·Graph Objects·React + ECharts 비교](https://plotly-streamlit.oosu.dev/?compare=plotly-ui)
+- [Plotly 기반 Streamlit Dashboard 구현 결과](https://plotly-streamlit.oosu.dev/?workspace=dashboard)
 
 ## 빠른 검토 링크
 
-| 작업 | 실행 화면 | GitHub |
+| 작업 | 구현·검증 화면 | 보조 자료 |
 |---|---|---|
 | Palantir UX/UI 통합 프로토타입 | [통합 Story](https://dashboard.oosu.dev/team-share-adaptive) | [구현 브랜치](https://github.com/oosuhada/agentic-ontology-dashboard/tree/feature/predictive-maintenance-adaptive-modeling) |
 | Canonical V3.1 데이터 패키지 | [데이터셋 변경·검증 Story](https://canonical-v3-1.oosu.dev) | [GitHub Release](https://github.com/oosuhada/agentic-ontology-dashboard/releases/tag/predictive-maintenance-canonical-v3.1-20260805) |
-| FastAPI vs Flask | [비교 화면](https://fastapi-flask.oosu.dev) | [실험 브랜치](https://github.com/oosuhada/agentic-ontology-dashboard/tree/experiment/week1-streamlit-plotly-framework-comparison) |
-| Plotly·Streamlit | [Dashboard](https://plotly-streamlit.oosu.dev/dashboard) | [실험 브랜치](https://github.com/oosuhada/text2cypher-factory-rca/tree/experiment/streamlit-plotly-dashboard) |
+| FastAPI vs Flask | [프레임워크 비교·검증](https://fastapi-flask.oosu.dev) | [전체 비교 JSON](https://fastapi-flask.oosu.dev/full-comparison.json) |
+| Plotly Express·Graph Objects·React + ECharts | [시각화 구현·검증](https://plotly-streamlit.oosu.dev/?compare=plotly-ui) | [Streamlit Dashboard 구현 결과](https://plotly-streamlit.oosu.dev/?workspace=dashboard) |
 
