@@ -72,7 +72,6 @@ COMPARISON_SNAPSHOT = {
             "implementation_loc": 3,
             "median_ms": 0.7603,
             "p95_ms": 1.7285,
-            "rubric_score": 5,
         },
         {
             "framework": "Flask",
@@ -84,7 +83,6 @@ COMPARISON_SNAPSHOT = {
             "implementation_loc": 3,
             "median_ms": 0.0766,
             "p95_ms": 0.1235,
-            "rubric_score": 3,
         },
     ],
     "selected_framework": "FastAPI",
@@ -99,6 +97,39 @@ COMPARISON_SNAPSHOT = {
         "commit": "3556b7d",
     },
 }
+
+
+def _overall_average_scores() -> dict[str, float]:
+    criteria = FULL_SURFACE_SNAPSHOT["conclusion"]["evaluation"]["criteria"]
+    if not criteria:
+        return {"FastAPI": 0.0, "Flask": 0.0}
+    return {
+        "FastAPI": round(
+            sum(item["fastapi_score"] for item in criteria) / len(criteria),
+            2,
+        ),
+        "Flask": round(
+            sum(item["flask_score"] for item in criteria) / len(criteria),
+            2,
+        ),
+    }
+
+
+def _baseline_comparison_payload() -> dict:
+    average_scores = _overall_average_scores()
+    results = [
+        {
+            **item,
+            "overall_average_score": average_scores[item["framework"]],
+            "score_basis": "4개 평가 요소의 동일 가중치 산술평균",
+        }
+        for item in COMPARISON_SNAPSHOT["results"]
+    ]
+    return {
+        **COMPARISON_SNAPSHOT,
+        "results": results,
+        "overall_average_scores": average_scores,
+    }
 
 
 app = FastAPI(
@@ -119,7 +150,7 @@ def health() -> HealthResponse:
 @app.get("/comparison.json", tags=["comparison"])
 def comparison_json() -> dict:
     return {
-        "baseline": COMPARISON_SNAPSHOT,
+        "baseline": _baseline_comparison_payload(),
         "full_surface": FULL_SURFACE_SNAPSHOT,
     }
 
@@ -146,6 +177,7 @@ def flask_health_proxy() -> JSONResponse:
 
 def _comparison_rows() -> str:
     cells: list[str] = []
+    average_scores = _overall_average_scores()
     for item in COMPARISON_SNAPSHOT["results"]:
         selected = item["framework"] == COMPARISON_SNAPSHOT["selected_framework"]
         badge = '<span class="badge selected">최종 선택</span>' if selected else '<span class="badge">비교 대상</span>'
@@ -159,7 +191,8 @@ def _comparison_rows() -> str:
             f"<td>{item['implementation_loc']}줄</td>"
             f"<td>{item['median_ms']:.4f}ms</td>"
             f"<td>{item['p95_ms']:.4f}ms</td>"
-            f"<td><strong>{item['rubric_score']}/5</strong></td>"
+            f"<td><strong>{average_scores[item['framework']]:.2f}/5</strong>"
+            '<span class="weighted">4개 평가 요소 평균</span></td>'
             "</tr>"
         )
     return "".join(cells)
@@ -275,10 +308,14 @@ def _weighted_score_rows() -> str:
             f'<td><strong>{escape(item["title"])}</strong></td>'
             f'<td><strong>{item["weight"]}%</strong></td>'
             f'<td class="evidence-cell">{escape(item["observed_result"])}</td>'
-            f'<td><strong>{item["fastapi_score"]}/5</strong><span class="weighted">{fastapi_weighted:g}점 반영</span></td>'
-            f'<td class="reason-cell">{escape(item["fastapi_reason"])}</td>'
-            f'<td><strong>{item["flask_score"]}/5</strong><span class="weighted">{flask_weighted:g}점 반영</span></td>'
-            f'<td class="reason-cell">{escape(item["flask_reason"])}</td>'
+            '<td class="framework-evaluation fastapi-evaluation">'
+            f'<strong class="criterion-score">{item["fastapi_score"]}/5</strong>'
+            f'<span class="weighted">{fastapi_weighted:g}점 반영</span>'
+            f'<p>{escape(item["fastapi_reason"])}</p></td>'
+            '<td class="framework-evaluation flask-evaluation">'
+            f'<strong class="criterion-score">{item["flask_score"]}/5</strong>'
+            f'<span class="weighted">{flask_weighted:g}점 반영</span>'
+            f'<p>{escape(item["flask_reason"])}</p></td>'
             "</tr>"
         )
     return "".join(rows)
@@ -342,14 +379,20 @@ def comparison_page() -> HTMLResponse:
     .dot.ok {{ background:#4ade80; box-shadow:0 0 0 4px rgba(74,222,128,.12); }}
     .table-wrap {{ overflow:auto; padding:0; }}
     table {{ width:100%; border-collapse:collapse; min-width:930px; }}
-    .score-table {{ min-width:1280px; }}
+    .score-table {{ min-width:980px; }}
     th,td {{ padding:14px 16px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }}
     th {{ color:var(--muted); font-size:12px; letter-spacing:.05em; text-transform:uppercase; }}
     td:first-child {{ min-width:170px; }}
     .badge {{ display:block; width:max-content; margin-top:5px; color:var(--muted); font-size:11px; }}
     .badge.selected {{ color:var(--accent); }}
-    .evidence-cell,.reason-cell {{ white-space:normal; min-width:260px; color:#c7d5df; }}
+    .evidence-cell {{ white-space:normal; min-width:280px; color:#c7d5df; }}
+    .framework-evaluation {{ white-space:normal; min-width:240px; vertical-align:top; }}
+    .framework-evaluation p {{ margin:10px 0 0; color:#c7d5df; }}
+    .criterion-score {{ display:block; font-size:20px; }}
+    .fastapi-evaluation .criterion-score {{ color:var(--accent); }}
+    .flask-evaluation .criterion-score {{ color:var(--blue); }}
     .weighted {{ display:block; color:var(--muted); font-size:12px; margin-top:3px; }}
+    .section-note {{ color:var(--muted); margin:8px 0 14px; }}
     .conclusion {{ margin-top:18px; border-color:#2d725f; background:linear-gradient(135deg,rgba(24,83,68,.45),rgba(13,24,34,.92)); }}
     .conclusion h2 {{ margin:0 0 8px; font-size:26px; }}
     pre {{ overflow:auto; padding:16px; border-radius:12px; background:#050b10; color:#c6f7ea; border:1px solid var(--line); }}
@@ -391,7 +434,7 @@ def comparison_page() -> HTMLResponse:
   </section>
   <section class="table-wrap">
     <table class="score-table">
-      <thead><tr><th>평가 요소</th><th>가중치</th><th>실제 테스트 결과</th><th>FastAPI 점수</th><th>FastAPI 판단</th><th>Flask 점수</th><th>Flask 판단</th></tr></thead>
+      <thead><tr><th>평가 요소</th><th>가중치</th><th>실제 테스트 결과</th><th>FastAPI 평가</th><th>Flask 평가</th></tr></thead>
       <tbody>{_weighted_score_rows()}</tbody>
     </table>
   </section>
@@ -405,9 +448,10 @@ def comparison_page() -> HTMLResponse:
   </section>
 
   <h2>4. 참고: 동일 `/health` 최소 응답 비교</h2>
+  <p class="section-note">마지막 점수는 <code>/health</code>만의 별도 점수가 아니라, 2번 평가표의 네 점수를 동일 비중으로 산술평균한 종합점수입니다.</p>
   <section class="table-wrap">
     <table>
-      <thead><tr><th>프레임워크</th><th>HTTP</th><th>응답 일치</th><th>OpenAPI</th><th>응답 Schema</th><th>코드 줄 수</th><th>p50*</th><th>p95*</th><th>점수</th></tr></thead>
+      <thead><tr><th>프레임워크</th><th>HTTP</th><th>응답 일치</th><th>OpenAPI</th><th>응답 Schema</th><th>코드 줄 수</th><th>p50*</th><th>p95*</th><th>종합 평균*</th></tr></thead>
       <tbody>{_comparison_rows()}</tbody>
     </table>
   </section>
@@ -418,7 +462,7 @@ def comparison_page() -> HTMLResponse:
     <p>{escape(FULL_SURFACE_SNAPSHOT['conclusion']['reason'])}</p>
     <p><strong>Flask가 우세한 부분:</strong> 단순 endpoint의 가벼움과 로컬 인프로세스 응답 속도입니다.</p>
     <p><strong>FastAPI가 우세한 부분:</strong> 큰 API의 구조화, 코드와 Swagger가 공유하는 계약 자동화, 요청·응답 오류를 조기에 발견하는 검증 안정성입니다. 네 항목의 가중치는 모두 동일합니다.</p>
-    <p class="note">{escape(FULL_SURFACE_SNAPSHOT['conclusion']['limitation'])} <code>/health</code> 지연시간은 로컬 인프로세스 참고값이며 최종 선정 점수에 사용하지 않았습니다.</p>
+    <p class="note">{escape(FULL_SURFACE_SNAPSHOT['conclusion']['limitation'])} <code>/health</code> 지연시간은 운영 성능 결론이 아니라 최소 API 경량성 항목의 실험 근거로만 사용했습니다.</p>
   </section>
 
   <footer>소스 · {source['repository']} · {source['branch']} · 최초 실험 커밋 {source['commit']}</footer>

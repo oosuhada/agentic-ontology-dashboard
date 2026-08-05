@@ -56,6 +56,16 @@ def test_public_comparison_page_and_json_are_available() -> None:
     assert "85 / 100" in page.text
     assert "Flask 가중 합계" in page.text
     assert "60 / 100" in page.text
+    assert "FastAPI 평가" in page.text
+    assert "Flask 평가" in page.text
+    assert "<th>FastAPI 점수</th>" not in page.text
+    assert "<th>FastAPI 판단</th>" not in page.text
+    assert "<th>Flask 점수</th>" not in page.text
+    assert "<th>Flask 판단</th>" not in page.text
+    assert "종합 평균*" in page.text
+    assert "4.25/5" in page.text
+    assert "3.00/5" in page.text
+    assert "4개 평가 요소 평균" in page.text
     assert "GitHub 브랜치" not in page.text
     assert "실제 업무 핸들러 172개 실행" in page.text
     assert "JSON 168" in page.text
@@ -63,6 +73,10 @@ def test_public_comparison_page_and_json_are_available() -> None:
     assert "The selection now covers" not in page.text
     assert report.status_code == 200
     assert report.json()["baseline"]["selected_framework"] == "FastAPI"
+    assert report.json()["baseline"]["overall_average_scores"] == {
+        "FastAPI": 4.25,
+        "Flask": 3.0,
+    }
     assert report.json()["full_surface"]["scope"]["operation_count"] == 172
     assert full_report.status_code == 200
     assert full_report.json()["scope"]["path_count"] == 162
