@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, Copy, Eye, EyeOff, GripVertical, Maximize2, Minimize2, MoreHorizontal, Star, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Eye, EyeOff, GripVertical, Maximize2, Minimize2, MoreHorizontal, RotateCcw, Star, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { forwardRef, type CSSProperties, type ReactNode } from "react";
 import type { DashboardBoard, DashboardMode } from "../../features/dashboard/types";
 import { localizedBoardTitle } from "../../features/dashboard/dashboardLocalization";
@@ -21,6 +21,7 @@ interface BoardFrameProps {
   onRemove: () => void;
   onToggleFavorite: () => void;
   onToggleCollapsed?: () => void;
+  onResizeBoard?: (action: "increase" | "decrease" | "reset") => void;
   onFullscreen: () => void;
   className?: string;
   style?: CSSProperties;
@@ -43,6 +44,7 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
   onRemove,
   onToggleFavorite,
   onToggleCollapsed,
+  onResizeBoard,
   onFullscreen,
   className = "",
   style,
@@ -98,7 +100,7 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
           {mode === "edit" ? <span className={`layout-mode-chip mode-${layoutMode}`}>{layoutMode === "ai" ? t("dashboard.layoutModeAi") : layoutMode === "auto" ? t("dashboard.layoutModeAuto") : t("dashboard.layoutModeManual")}</span> : null}
           {affected ? <span className="affected-chip">{t("dashboard.filterApplied")}</span> : null}
           {headerActions}
-          {mode === "view" && onToggleCollapsed ? (
+          {onToggleCollapsed ? (
             <button
               type="button"
               aria-label={collapsed ? `${title} ${t("dashboard.expandBoard")}` : `${title} ${t("dashboard.collapseBoard")}`}
@@ -139,6 +141,10 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
             <details className="dashboard-board-more" onClick={(event) => event.stopPropagation()}>
               <summary aria-label={`${title} ${t("dashboard.moreActions")}`} title={t("dashboard.moreActions")}><MoreHorizontal size={14} /></summary>
               <div role="menu" aria-label={`${title} ${t("dashboard.moreActions")}`}>
+                {onToggleCollapsed ? <button type="button" role="menuitem" onClick={(event) => { onToggleCollapsed(); event.currentTarget.closest("details")?.removeAttribute("open"); }}>{collapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}{collapsed ? t("dashboard.expandBoard") : t("dashboard.minimizeBoard")}</button> : null}
+                {onResizeBoard ? <button type="button" role="menuitem" onClick={(event) => { onResizeBoard("decrease"); event.currentTarget.closest("details")?.removeAttribute("open"); }}><ZoomOut size={13} />{t("dashboard.decreaseBoardSize")}</button> : null}
+                {onResizeBoard ? <button type="button" role="menuitem" onClick={(event) => { onResizeBoard("increase"); event.currentTarget.closest("details")?.removeAttribute("open"); }}><ZoomIn size={13} />{t("dashboard.increaseBoardSize")}</button> : null}
+                {onResizeBoard ? <button type="button" role="menuitem" onClick={(event) => { onResizeBoard("reset"); event.currentTarget.closest("details")?.removeAttribute("open"); }}><RotateCcw size={13} />{t("dashboard.resetBoardSize")}</button> : null}
                 <button type="button" role="menuitem" onClick={(event) => { onToggleFavorite(); event.currentTarget.closest("details")?.removeAttribute("open"); }}><Star size={13} fill={favorite ? "currentColor" : "none"} />{favorite ? t("dashboard.unfavorite") : t("dashboard.favorite")}</button>
                 <button type="button" role="menuitem" onClick={(event) => { onToggleHidden(); event.currentTarget.closest("details")?.removeAttribute("open"); }}>{board.hidden ? <Eye size={13} /> : <EyeOff size={13} />}{board.hidden ? t("common.show") : t("common.hide")}</button>
                 <button type="button" role="menuitem" onClick={(event) => { onDuplicate(); event.currentTarget.closest("details")?.removeAttribute("open"); }}><Copy size={13} />{t("common.duplicate")}</button>

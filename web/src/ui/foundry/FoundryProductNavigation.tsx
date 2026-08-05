@@ -52,7 +52,6 @@ export function FoundryProductNavigation({
   const { t } = useI18n();
   const navigationRef = useRef<HTMLElement | null>(null);
   const activeItem = items.find((item) => item.id === activeId) ?? items[0];
-  const ActiveIcon = activeItem.icon;
 
   useEffect(() => {
     if (!mobileOpen || !window.matchMedia("(max-width: 900px)").matches) return;
@@ -142,7 +141,6 @@ export function FoundryProductNavigation({
       {!collapsed ? (
         <div className="fd-resource-navigation">
           <header className="fd-resource-navigation__header">
-            <span className="fd-resource-navigation__icon"><ActiveIcon size={15} /></span>
             <div>
               <small>{t("nav.application").toUpperCase()}</small>
               <strong>{activeItem.label}</strong>
@@ -153,7 +151,6 @@ export function FoundryProductNavigation({
           <nav className="od-primary-nav" aria-label={t("nav.open")}>
             <span className="od-nav-section">{t("nav.workbenches").toUpperCase()}</span>
             {items.map((item) => {
-              const Icon = item.icon;
               return (
                 <button
                   type="button"
@@ -164,7 +161,6 @@ export function FoundryProductNavigation({
                   aria-label={item.id === "governance" ? "Governance navigation" : item.label}
                   onClick={() => item.enabled && onNavigate(item.id)}
                 >
-                  <Icon size={14} />
                   <span>{item.label}</span>
                   {!item.enabled ? <small>{t("nav.soon").toUpperCase()}</small> : null}
                 </button>

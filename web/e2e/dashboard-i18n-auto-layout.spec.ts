@@ -44,7 +44,8 @@ test("locale switch updates the dashboard chrome and content-aware AI layout can
 
   await login(page);
 
-  await expect(page.getByText("설비 신뢰성 운영", { exact: true })).toBeVisible();
+  await expect(page.locator(".dashboard-context-compact")).toBeVisible();
+  await expect(page.locator(".dashboard-context-compact__summary strong")).toHaveText("도메인 엔지니어");
   await expect(page.getByRole("button", { name: "신뢰성 운영", exact: true })).toBeVisible();
   await expect(page.locator(".dashboard-board-title strong", { hasText: "운영 KPI 요약" }).first()).toBeVisible();
   await expect(page.getByText("표시 중인 Object", { exact: true })).toBeVisible();
@@ -55,6 +56,7 @@ test("locale switch updates the dashboard chrome and content-aware AI layout can
   await expect(page.getByRole("button", { name: "Project home", exact: true })).toBeVisible();
   await expect(page.getByText("Connected resources", { exact: true })).toBeVisible();
   await expect(page.getByText("Parameters and filters", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Show workspace details", exact: true }).click();
   await expect(page.getByText("Automatically compose the workspace around equipment risk, production-line impact, failure type, and inspection decisions.", { exact: true })).toBeVisible();
   await expect(page.getByText("Risk trend + contributing factors + equipment relationships + inspection actions", { exact: true })).toBeVisible();
   await expect(page.locator(".dashboard-board-title strong", { hasText: "Operations KPI Strip" }).first()).toBeVisible();

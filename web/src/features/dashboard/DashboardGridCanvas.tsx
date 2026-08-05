@@ -117,6 +117,7 @@ export function DashboardGridCanvas({
   const { t } = useI18n();
   const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1180 });
   const canvasRef = useRef<HTMLElement | null>(null);
+  const initialBoardSizesRef = useRef<Record<string, Record<string, { width: number; height: number }>>>({});
   const [focusMode, setFocusMode] = useState<"all" | "focus" | "favorites" | "details">("all");
   const [collapseOverrides, setCollapseOverrides] = useState<Record<string, boolean>>({});
   const availableBoards = useMemo(() => tab?.boards.filter((board) => mode === "edit" || !board.hidden) ?? [], [mode, tab]);
@@ -170,6 +171,13 @@ export function DashboardGridCanvas({
   }, [tab?.id]);
 
   useEffect(() => {
+    if (!tab || initialBoardSizesRef.current[tab.id]) return;
+    initialBoardSizesRef.current[tab.id] = Object.fromEntries(
+      (responsiveLayouts(tab.boards).lg ?? []).map((item) => [item.i, { width: item.w, height: item.h }]),
+    );
+  }, [tab]);
+
+  useEffect(() => {
     if (!canvasRef.current || !onContentMetricsChange || typeof ResizeObserver === "undefined") return undefined;
     let frame = 0;
     const observer = new ResizeObserver(() => {
@@ -187,6 +195,35 @@ export function DashboardGridCanvas({
 
   function toggleCollapsed(boardId: string) {
     setCollapseOverrides((current) => ({ ...current, [boardId]: !collapsedBoardIds.has(boardId) }));
+  }
+
+  function resizeBoard(boardId: string, action: "increase" | "decrease" | "reset") {
+    if (!tab) return;
+    const currentLayout = responsiveLayouts(gridBoards).lg ?? [];
+    const target = currentLayout.find((item) => item.i === boardId);
+    if (!target) return;
+    const initial = initialBoardSizesRef.current[tab.id]?.[boardId];
+    const minWidth = target.minW ?? 2;
+    const maxWidth = target.maxW ?? 12;
+    const minHeight = target.minH ?? 1;
+    const maxHeight = target.maxH ?? 12;
+    const nextWidth = action === "reset"
+      ? initial?.width ?? target.w
+      : action === "increase"
+        ? Math.min(maxWidth, target.w + 2)
+        : Math.max(minWidth, target.w - 2);
+    const nextHeight = action === "reset"
+      ? initial?.height ?? target.h
+      : action === "increase"
+        ? Math.min(maxHeight, target.h + 1)
+        : Math.max(minHeight, target.h - 1);
+    const nextItem = {
+      ...target,
+      x: Math.min(target.x, Math.max(0, 12 - nextWidth)),
+      w: nextWidth,
+      h: nextHeight,
+    };
+    onLayoutChange(tab.id, mergeChangedItem(currentLayout, nextItem));
   }
 
   if (!tab) return <div className="dashboard-empty-canvas">{t("dashboard.emptyTabs")}</div>;
@@ -315,6 +352,7 @@ export function DashboardGridCanvas({
                 onRemove={() => onRemoveBoard(board.id)}
                 onToggleFavorite={() => onToggleFavorite(board.id)}
                 onToggleCollapsed={() => toggleCollapsed(board.id)}
+                onResizeBoard={(action) => resizeBoard(board.id, action)}
                 onFullscreen={() => onFullscreen(fullscreen ? null : board.id)}
               >
                 {renderBoard(board)}

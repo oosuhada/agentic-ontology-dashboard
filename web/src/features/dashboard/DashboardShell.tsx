@@ -3,7 +3,9 @@ import {
   Bell,
   Bot,
   Blocks,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   Command,
   Database,
   Download,
@@ -214,6 +216,7 @@ export function DashboardShell({
   const [mobileScopeOpen, setMobileScopeOpen] = useState(false);
   const [mobileContextOpen, setMobileContextOpen] = useState(false);
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
+  const [workspaceDetailsOpen, setWorkspaceDetailsOpen] = useState(initialWorkspaceView !== "dashboard");
   const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
   const isCompactWorkbench = useMediaQuery("(max-width: 980px)");
   const { t } = useI18n();
@@ -248,6 +251,10 @@ export function DashboardShell({
   useEffect(() => {
     setWorkspaceView(initialWorkspaceView);
   }, [initialWorkspaceView]);
+
+  useEffect(() => {
+    setWorkspaceDetailsOpen(workspaceView !== "dashboard");
+  }, [workspaceView]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -354,42 +361,65 @@ export function DashboardShell({
           </div>
         </header>
 
-        <WorkbenchHeader
-          className="od-context-header fd-dashboard-resource-header"
-          title={<div className="od-context-title">
-            <EntityTitle
-              icon={workspaceView === "report" ? FileText : workspaceView === "dashboard" ? LayoutDashboard : Workflow}
-              eyebrow={workspaceView === "report" ? `REPORT · ${roleEyebrow}` : workspaceView === "dashboard" ? `DASHBOARD · ${roleEyebrow}` : "ANALYSIS · GOVERNED PATH"}
-              title={workspaceView === "report" ? `${roleLabel} Operational Briefing` : workspaceView === "dashboard" ? activeTabTitle ?? `${roleLabel} Operations` : "Risk Event Analysis Path"}
-              subtitle={workspaceView === "report"
-                ? `${adaptiveProfile.label} · narrative and governed evidence`
-                : workspaceView === "dashboard"
-                  ? `${selectedProject?.display_name ?? "Project"} / ${selectedWorkspace?.display_name ?? "Workspace"} · ${roleLabel}`
-                  : `${selectedWorkspace?.display_name ?? "Workspace"} · Object set → transform → validate → publish`}
-              trailing={<div className="fd-entity-title__trailing"><span className="od-domain-pack-name">{domainPack?.display_name ?? "Manufacturing Operations"}</span><StatusPill intent={dirty ? "warning" : "success"}>{dirty ? t("common.unsaved") : t("common.saved")}</StatusPill></div>}
-            />
-          </div>}
-          actions={<div className={`dashboard-scope-actions ${mobileScopeOpen ? "mobile-open" : ""}`}>
-            <button type="button" className="dashboard-mobile-scope-toggle" aria-expanded={mobileScopeOpen} aria-controls="dashboard-scope-controls" onClick={() => setMobileScopeOpen((current) => !current)}><Settings size={13} /> {t("dashboard.scope")}</button>
-            <div className="od-context-controls" id="dashboard-scope-controls">
+        {workspaceView === "dashboard" && !workspaceDetailsOpen ? (
+          <section className="dashboard-context-compact" aria-label={t("dashboard.scope")}>
+            <div className="dashboard-context-compact__summary">
+              <span>{adaptiveProfile.eyebrow}</span>
+              <strong>{roleLabel}</strong>
+              <small>{adaptiveProfile.primaryEntity} · {adaptiveProfile.primaryMetric}</small>
+            </div>
+            <div className="od-context-controls dashboard-context-compact__controls">
               <label>{t("common.project")}<select aria-label={t("common.project")} value={selectedProjectId} onChange={(event) => onProjectChange(event.target.value)}>{projects.map((project) => <option key={project.id} value={project.id}>{project.display_name}</option>)}</select></label>
               <label>{t("common.workspace")}<select aria-label={t("common.workspace")} value={selectedWorkspaceId} onChange={(event) => onWorkspaceChange(event.target.value)}>{workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.display_name}</option>)}</select></label>
               <label>{t("common.role")}<select aria-label={t("common.role")} value={activeRole} onChange={(event) => onActiveRoleChange(event.target.value as AppRole)}>{availableRoles.map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}</select></label>
             </div>
-          </div>}
-        />
+            <div className="dashboard-context-compact__meta">
+              <StatusPill intent={dirty ? "warning" : "success"}>{dirty ? t("common.unsaved") : t("common.saved")}</StatusPill>
+              {layoutMode ? <span className={`mode-badge ${layoutMode.includes("fallback") ? "fallback" : ""}`}>{layoutMode}</span> : null}
+              <button type="button" className="context-details-toggle" aria-expanded="false" onClick={() => setWorkspaceDetailsOpen(true)}><ChevronDown size={13} />{t("dashboard.showWorkspaceDetails")}</button>
+            </div>
+          </section>
+        ) : (
+          <>
+            <WorkbenchHeader
+              className="od-context-header fd-dashboard-resource-header"
+              title={<div className="od-context-title">
+                <EntityTitle
+                  icon={workspaceView === "report" ? FileText : workspaceView === "dashboard" ? LayoutDashboard : Workflow}
+                  eyebrow={workspaceView === "report" ? `REPORT · ${roleEyebrow}` : workspaceView === "dashboard" ? `DASHBOARD · ${roleEyebrow}` : "ANALYSIS · GOVERNED PATH"}
+                  title={workspaceView === "report" ? `${roleLabel} Operational Briefing` : workspaceView === "dashboard" ? activeTabTitle ?? `${roleLabel} Operations` : "Risk Event Analysis Path"}
+                  subtitle={workspaceView === "report"
+                    ? `${adaptiveProfile.label} · narrative and governed evidence`
+                    : workspaceView === "dashboard"
+                      ? `${selectedProject?.display_name ?? "Project"} / ${selectedWorkspace?.display_name ?? "Workspace"} · ${roleLabel}`
+                      : `${selectedWorkspace?.display_name ?? "Workspace"} · Object set → transform → validate → publish`}
+                  trailing={<div className="fd-entity-title__trailing"><span className="od-domain-pack-name">{domainPack?.display_name ?? "Manufacturing Operations"}</span><StatusPill intent={dirty ? "warning" : "success"}>{dirty ? t("common.unsaved") : t("common.saved")}</StatusPill></div>}
+                />
+              </div>}
+              actions={<div className={`dashboard-scope-actions ${mobileScopeOpen ? "mobile-open" : ""}`}>
+                <button type="button" className="dashboard-mobile-scope-toggle" aria-expanded={mobileScopeOpen} aria-controls="dashboard-scope-controls" onClick={() => setMobileScopeOpen((current) => !current)}><Settings size={13} /> {t("dashboard.scope")}</button>
+                <div className="od-context-controls" id="dashboard-scope-controls">
+                  <label>{t("common.project")}<select aria-label={t("common.project")} value={selectedProjectId} onChange={(event) => onProjectChange(event.target.value)}>{projects.map((project) => <option key={project.id} value={project.id}>{project.display_name}</option>)}</select></label>
+                  <label>{t("common.workspace")}<select aria-label={t("common.workspace")} value={selectedWorkspaceId} onChange={(event) => onWorkspaceChange(event.target.value)}>{workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.display_name}</option>)}</select></label>
+                  <label>{t("common.role")}<select aria-label={t("common.role")} value={activeRole} onChange={(event) => onActiveRoleChange(event.target.value as AppRole)}>{availableRoles.map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}</select></label>
+                </div>
+                {workspaceView === "dashboard" ? <button type="button" className="context-details-toggle" aria-expanded="true" onClick={() => setWorkspaceDetailsOpen(false)}><ChevronUp size={13} />{t("dashboard.hideWorkspaceDetails")}</button> : null}
+              </div>}
+            />
+
+            <section className={`adaptive-profile-strip profile-${adaptiveProfile.id}`}>
+              <div><span>{adaptiveProfile.eyebrow}</span><strong>{adaptiveProfile.label}</strong><small>{adaptiveProfile.description}</small></div>
+              <div><span>{t("dashboard.primaryEntity")}<strong>{adaptiveProfile.primaryEntity}</strong></span><span>{t("dashboard.primaryMetric")}<strong>{adaptiveProfile.primaryMetric}</strong></span><span>{t("dashboard.composition")}<strong>{adaptiveProfile.visualLanguage}</strong></span></div>
+            </section>
+
+            <section className="od-status-strip">
+              <div className="role-focus-list">{roleFocus.map((item) => <span key={item}>{item}</span>)}</div>
+              <div className="od-runtime-meta"><span>{t("dashboard.template")} v{templateVersion}</span><span>{t("dashboard.revision")} {preferenceRevision}</span><span className={preferenceRevision > 0 ? "personalized" : "role-default"}>{saving ? t("dashboard.savingPersonal") : preferenceRevision > 0 ? t("dashboard.personalized") : t("dashboard.roleDefault")}</span>{layoutMode ? <span className={`mode-badge ${layoutMode.includes("fallback") ? "fallback" : ""}`}>{layoutMode}</span> : null}</div>
+            </section>
+          </>
+        )}
 
         {draftRecovery}
-
-        <section className={`adaptive-profile-strip profile-${adaptiveProfile.id}`}>
-          <div><span>{adaptiveProfile.eyebrow}</span><strong>{adaptiveProfile.label}</strong><small>{adaptiveProfile.description}</small></div>
-          <div><span>{t("dashboard.primaryEntity")}<strong>{adaptiveProfile.primaryEntity}</strong></span><span>{t("dashboard.primaryMetric")}<strong>{adaptiveProfile.primaryMetric}</strong></span><span>{t("dashboard.composition")}<strong>{adaptiveProfile.visualLanguage}</strong></span></div>
-        </section>
-
-        <section className="od-status-strip">
-          <div className="role-focus-list">{roleFocus.map((item) => <span key={item}>{item}</span>)}</div>
-          <div className="od-runtime-meta"><span>{t("dashboard.template")} v{templateVersion}</span><span>{t("dashboard.revision")} {preferenceRevision}</span><span className={preferenceRevision > 0 ? "personalized" : "role-default"}>{saving ? t("dashboard.savingPersonal") : preferenceRevision > 0 ? t("dashboard.personalized") : t("dashboard.roleDefault")}</span>{layoutMode ? <span className={`mode-badge ${layoutMode.includes("fallback") ? "fallback" : ""}`}>{layoutMode}</span> : null}</div>
-        </section>
 
         {workspaceView === "dashboard" ? (
           <WorkbenchToolbar
