@@ -26,6 +26,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .postgresql_compat import postgres_repository_connection
 from .postgresql_repositories import is_postgresql
+from .observability import METRICS
 
 
 ArtifactBackend = Literal["local", "s3", "gcs", "azure"]
@@ -783,6 +784,12 @@ class ArtifactGovernanceService:
     def verify(self, artifact: ArtifactObject, *, actor_user_id: str) -> ArtifactObject:
         metadata = self.backend.head(artifact.object_key)
         if metadata is None:
+            METRICS.inc(
+                "ontology_artifact_verification_total",
+                labels={"result": "missing", "resource_type": artifact.resource_type},
+            )
+            if artifact.retention_class in {"regulated", "legal_hold"}:
+                METRICS.set_gauge("ontology_artifact_missing_regulated", 1)
             updated = self.repository.set_state(
                 organization_id=artifact.organization_id,
                 project_id=artifact.project_id,
@@ -803,6 +810,12 @@ class ArtifactGovernanceService:
             and metadata.size_bytes == artifact.size_bytes
             else "checksum_mismatch"
         )
+        METRICS.inc(
+            "ontology_artifact_verification_total",
+            labels={"result": state, "resource_type": artifact.resource_type},
+        )
+        if state == "checksum_mismatch":
+            METRICS.set_gauge("ontology_artifact_checksum_mismatch", 1)
         updated = self.repository.set_state(
             organization_id=artifact.organization_id,
             project_id=artifact.project_id,

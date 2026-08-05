@@ -43,10 +43,12 @@ import {
   getDeploymentReadiness,
   getDistributedRuntime,
   getArtifactGovernance,
+  getObservabilityReadiness,
   reconcileArtifacts,
   signArtifactDownload,
   verifyArtifact,
   type ArtifactGovernanceSnapshot,
+  type ObservabilityReadiness,
   operateDistributedJob,
   type DistributedRuntimeSnapshot,
   type DeploymentReadiness,
@@ -82,6 +84,7 @@ interface CommercialContext {
   deployment: DeploymentReadiness;
   distributed: DistributedRuntimeSnapshot;
   artifacts: ArtifactGovernanceSnapshot;
+  observability: ObservabilityReadiness;
 }
 
 function currentSurface(): CommercialSurfaceId {
@@ -163,8 +166,9 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       getDeploymentReadiness(projectId),
       getDistributedRuntime(projectId),
       getArtifactGovernance(projectId),
+      getObservabilityReadiness(projectId),
     ])
-      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts]) => {
+      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts, observability]) => {
         if (!controller.signal.aborted) setContext({
           project,
           workspaces,
@@ -175,6 +179,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
           deployment,
           distributed,
           artifacts,
+          observability,
         });
       })
       .catch((reason: unknown) => {
@@ -617,6 +622,49 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
                 {user.permissions.includes("governance.projection.retry") ? (
                   <button type="button" onClick={() => void runArtifactReconciliation()}>Run reconciliation preview</button>
                 ) : null}
+              </section>
+            </div>
+          ) : selected.id === "operations" ? (
+            <div className="commercial-v4-grid">
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Activity aria-hidden="true" /><span>Telemetry readiness</span></div>
+                <dl>
+                  <div><dt>Structured logs</dt><dd>{context.observability.structured_logging}</dd></div>
+                  <div><dt>Tracing</dt><dd>{String(context.observability.tracing.state)}</dd></div>
+                  <div><dt>Metrics endpoint</dt><dd>{String(context.observability.metrics.endpoint)}</dd></div>
+                  <div><dt>Metric series</dt><dd>{Number(context.observability.metrics.counter_series ?? 0) + Number(context.observability.metrics.histogram_series ?? 0)}</dd></div>
+                </dl>
+                <span className={`commercial-v4-state-badge is-${context.observability.state}`}>{context.observability.state.replace("_", " ")}</span>
+                {context.observability.blockers.map((blocker) => <p key={blocker} className="commercial-v4-policy-copy">{blocker}</p>)}
+              </section>
+              <section className="commercial-v4-panel commercial-v4-slo-list">
+                <div className="commercial-v4-panel-title"><Workflow aria-hidden="true" /><span>Service level objectives</span></div>
+                {context.observability.slos.map((slo) => {
+                  const budget = context.observability.error_budgets.find((item) => item.slo_id === slo.id);
+                  return (
+                    <article key={slo.id}>
+                      <span><strong>{slo.name}</strong><small>{slo.sli} · {slo.window_days}d</small></span>
+                      <em>{(slo.objective * 100).toFixed(2)}%</em>
+                      <b className={`is-${budget?.state ?? "healthy"}`}>{((budget?.remaining_fraction ?? 1) * 100).toFixed(1)}% budget</b>
+                    </article>
+                  );
+                })}
+              </section>
+              <section className="commercial-v4-panel commercial-v4-alert-list">
+                <div className="commercial-v4-panel-title"><CircleAlert aria-hidden="true" /><span>Alert policy</span></div>
+                {context.observability.alerts.map((alert) => (
+                  <article key={alert.id}>
+                    <span><strong>{alert.id}</strong><small>{alert.expression}</small></span>
+                    <em className={`is-${alert.severity}`}>{alert.severity} · {alert.duration}</em>
+                  </article>
+                ))}
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Database aria-hidden="true" /><span>Operations dashboards</span></div>
+                <div className="commercial-v4-chip-list">
+                  {context.observability.dashboards.map((dashboard) => <span key={dashboard}>{dashboard}</span>)}
+                </div>
+                <p className="commercial-v4-policy-copy">{context.observability.log_redaction}</p>
               </section>
             </div>
           ) : selected.id === "settings" ? (

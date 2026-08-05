@@ -218,6 +218,43 @@ export interface ArtifactGovernanceSnapshot {
   };
 }
 
+export interface ObservabilityReadiness {
+  state: "ready" | "degraded" | "not_configured" | "blocked";
+  structured_logging: string;
+  log_redaction: string;
+  tracing: Record<string, unknown>;
+  metrics: Record<string, unknown>;
+  slos: Array<{
+    id: string;
+    name: string;
+    objective: number;
+    window_days: number;
+    sli: string;
+    good_event: string;
+    total_event: string;
+    alert_burn_rates: number[];
+  }>;
+  error_budgets: Array<{
+    slo_id: string;
+    objective: number;
+    observed_success_ratio: number;
+    budget_fraction: number;
+    consumed_fraction: number;
+    remaining_fraction: number;
+    state: "healthy" | "at_risk" | "exhausted";
+  }>;
+  alerts: Array<{
+    id: string;
+    severity: "warning" | "critical";
+    expression: string;
+    duration: string;
+    runbook: string;
+    routing_key: string;
+  }>;
+  dashboards: string[];
+  blockers: string[];
+}
+
 export async function getProjectV4ApplicationDefinition(projectId: string): Promise<ProjectV4ApplicationDefinition> {
   const response = await fetch(
     `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/applications/v4`,
@@ -336,4 +373,14 @@ export function reconcileArtifacts(projectId: string, apply = false): Promise<No
     `/api/platform/projects/${encodeURIComponent(projectId)}/artifact-reconciliation?apply=${apply ? "true" : "false"}`,
     apply ? "Apply artifact reconciliation from Commercial V4" : "Preview artifact reconciliation from Commercial V4",
   );
+}
+
+export async function getObservabilityReadiness(projectId: string): Promise<ObservabilityReadiness> {
+  const response = await fetch(
+    `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/observability`,
+    { credentials: "include" },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message ?? `Observability readiness failed: ${response.status}`);
+  return payload as ObservabilityReadiness;
 }

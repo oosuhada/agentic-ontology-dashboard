@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from .postgresql_compat import postgres_repository_connection
 from .postgresql_repositories import is_postgresql
 from .security import RateLimitExceeded, RateLimitRule
+from .observability import METRICS
 
 
 JobType = Literal[
@@ -530,7 +531,12 @@ class DurableJobRepository:
                     values,
                 ).fetchone()
                 self._append_event(connection, postgresql=True, job=row, event_type="job.queued", payload={}, now=now)
-                return self._decode(row), True
+                decoded = self._decode(row)
+                METRICS.inc(
+                    "ontology_durable_jobs_enqueued_total",
+                    labels={"job_type": job_type},
+                )
+                return decoded, True
         with self._connect_sqlite() as connection:
             connection.execute("BEGIN IMMEDIATE")
             existing = connection.execute(
@@ -562,7 +568,12 @@ class DurableJobRepository:
             )
             row = dict(connection.execute("SELECT * FROM durable_jobs WHERE id=?", (job_id,)).fetchone())
             self._append_event(connection, postgresql=False, job=row, event_type="job.queued", payload={}, now=now)
-            return self._decode(row), True
+            decoded = self._decode(row)
+            METRICS.inc(
+                "ontology_durable_jobs_enqueued_total",
+                labels={"job_type": job_type},
+            )
+            return decoded, True
 
     def _recover_stale(self, connection, *, organization_id: str, project_id: str, now: datetime) -> None:
         stale = connection.execute(
@@ -659,7 +670,17 @@ class DurableJobRepository:
                     ),
                 ).fetchone()
                 self._append_event(connection, postgresql=True, job=claimed, event_type="job.claimed", payload={"worker_id": worker_id}, now=now)
-                return self._decode(claimed)
+                decoded = self._decode(claimed)
+                METRICS.inc(
+                    "ontology_durable_jobs_claimed_total",
+                    labels={"job_type": decoded.job_type},
+                )
+                METRICS.observe(
+                    "ontology_durable_job_queue_latency_seconds",
+                    max(0.0, (now - decoded.created_at).total_seconds()),
+                    labels={"job_type": decoded.job_type},
+                )
+                return decoded
         with self._connect_sqlite() as connection:
             connection.execute("BEGIN IMMEDIATE")
             self._recover_stale(connection, organization_id=organization_id, project_id=project_id, now=now)
@@ -697,7 +718,17 @@ class DurableJobRepository:
             )
             claimed = dict(connection.execute("SELECT * FROM durable_jobs WHERE id=?", (row["id"],)).fetchone())
             self._append_event(connection, postgresql=False, job=claimed, event_type="job.claimed", payload={"worker_id": worker_id}, now=now)
-            return self._decode(claimed)
+            decoded = self._decode(claimed)
+            METRICS.inc(
+                "ontology_durable_jobs_claimed_total",
+                labels={"job_type": decoded.job_type},
+            )
+            METRICS.observe(
+                "ontology_durable_job_queue_latency_seconds",
+                max(0.0, (now - decoded.created_at).total_seconds()),
+                labels={"job_type": decoded.job_type},
+            )
+            return decoded
 
     def heartbeat(self, job: DurableJob, *, lease_seconds: int = 60) -> DurableJob:
         if not job.lease_token:
@@ -854,7 +885,12 @@ class DurableJobRepository:
                 raise LeaseLost(job.id)
             row = dict(connection.execute("SELECT * FROM durable_jobs WHERE id=?", (job.id,)).fetchone())
             self._append_event(connection, postgresql=self.postgresql, job=row, event_type=f"job.{state}", payload={}, now=now)
-            return self._decode(row)
+            decoded = self._decode(row)
+            METRICS.inc(
+                "ontology_durable_jobs_completed_total",
+                labels={"job_type": decoded.job_type, "state": state},
+            )
+            return decoded
 
     def _connection(self, organization_id: str, project_id: str, *, immediate: bool = False):
         if self.postgresql:
@@ -904,11 +940,17 @@ class DurableJobRepository:
             (_parse_datetime(row["oldest"]) for row in rows if row["state"] in {"queued", "retry"}),
             default=None,
         )
-        return QueueMetrics(
+        metrics = QueueMetrics(
             **counts,
             stale_leases=int(stale["count"]),
             oldest_queued_seconds=0 if oldest is None else max(0, (now - oldest).total_seconds()),
         )
+        METRICS.set_gauge("ontology_durable_queued_jobs", metrics.queued + metrics.retry)
+        METRICS.set_gauge("ontology_durable_running_jobs", metrics.running + metrics.cancel_requested)
+        METRICS.set_gauge("ontology_durable_dead_letter_jobs", metrics.dead_letter)
+        METRICS.set_gauge("ontology_durable_stale_leases", metrics.stale_leases)
+        METRICS.set_gauge("ontology_durable_oldest_queued_seconds", metrics.oldest_queued_seconds)
+        return metrics
 
     def list_jobs(
         self,
