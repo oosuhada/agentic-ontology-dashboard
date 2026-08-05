@@ -6,6 +6,7 @@ import {
   getPredictiveMaintenanceRuntimeContext,
   getPredictiveMaintenanceVersions,
   predictiveMaintenanceReplayEventsUrl,
+  selectPredictiveMaintenanceVersion,
   startPredictiveMaintenanceReplay,
 } from "../../api";
 import type { AppRole } from "../../types";
@@ -257,11 +258,21 @@ export function PredictiveMaintenanceReplayPanel({
     }
   }
 
-  function changeDatasetVersion(nextVersionId: string) {
-    setSelectedVersionId(nextVersionId);
-    setSelectedAssetId("");
-    setReplay(null);
-    setObservations(null);
+  async function changeDatasetVersion(nextVersionId: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const nextVersions = await selectPredictiveMaintenanceVersion(projectId, workspaceId, nextVersionId);
+      setVersions(nextVersions);
+      setSelectedVersionId(nextVersionId);
+      setSelectedAssetId("");
+      setReplay(null);
+      setObservations(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Dataset Version 선택을 저장하지 못했습니다.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (unsupported) return null;
@@ -280,7 +291,7 @@ export function PredictiveMaintenanceReplayPanel({
               aria-label="Predictive maintenance Dataset Version"
               value={selectedVersionId}
               disabled={!versions?.items.length}
-              onChange={(event) => changeDatasetVersion(event.target.value)}
+              onChange={(event) => void changeDatasetVersion(event.target.value)}
             >
               {versions?.items.map((version) => (
                 <option key={version.dataset_version_id} value={version.dataset_version_id}>
@@ -298,6 +309,7 @@ export function PredictiveMaintenanceReplayPanel({
       {context ? (
         <>
           <div className="pm-replay-summary" aria-label="Dataset Version provenance">
+            <span><small>Dataset Version ID</small><code>{context.dataset_version_id}</code></span>
             <span><small>Source version</small>{context.source_version}</span>
             <span><small>Bundle checksum</small><code title={context.bundle_checksum_sha256}>{compactChecksum(context.bundle_checksum_sha256)}</code></span>
             <span><small>Model</small>{context.model_version ?? "snapshot compatibility"}</span>

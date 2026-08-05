@@ -53,6 +53,7 @@ import type {
 } from "./features/analysis/types";
 import type {
   PredictiveMaintenanceDatasetVersions,
+  PredictiveMaintenanceDashboardResponse,
   PredictiveMaintenanceObservationResponse,
   PredictiveMaintenanceReleaseOverview,
   PredictiveMaintenanceRuntimeContext,
@@ -407,6 +408,40 @@ export function getPredictiveMaintenanceVersions(
 ): Promise<PredictiveMaintenanceDatasetVersions> {
   return request<PredictiveMaintenanceDatasetVersions>(
     `${predictiveMaintenanceBase(projectId, workspaceId)}/versions`,
+    { signal },
+  );
+}
+
+export function selectPredictiveMaintenanceVersion(
+  projectId: string,
+  workspaceId: string,
+  datasetVersionId: string | null,
+): Promise<PredictiveMaintenanceDatasetVersions> {
+  return request<PredictiveMaintenanceDatasetVersions>(
+    `${predictiveMaintenanceBase(projectId, workspaceId)}/selection`,
+    { method: "PUT", body: JSON.stringify({ dataset_version_id: datasetVersionId }) },
+  );
+}
+
+export function getPredictiveMaintenanceDashboard(
+  projectId: string,
+  workspaceId: string,
+  input: {
+    dataset_version_id?: string;
+    selected_event_id?: string;
+    role?: "manager" | "engineer";
+    intent?: string;
+  } = {},
+  signal?: AbortSignal,
+): Promise<PredictiveMaintenanceDashboardResponse> {
+  const params = new URLSearchParams();
+  if (input.dataset_version_id) params.set("dataset_version_id", input.dataset_version_id);
+  if (input.selected_event_id) params.set("selected_event_id", input.selected_event_id);
+  if (input.role) params.set("role", input.role);
+  if (input.intent) params.set("intent", input.intent);
+  const query = params.size ? `?${params.toString()}` : "";
+  return request<PredictiveMaintenanceDashboardResponse>(
+    `${predictiveMaintenanceBase(projectId, workspaceId)}/dashboard${query}`,
     { signal },
   );
 }

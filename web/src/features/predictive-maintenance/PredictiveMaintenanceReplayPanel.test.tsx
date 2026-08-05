@@ -34,6 +34,8 @@ describe("PredictiveMaintenanceReplayPanel", () => {
       model_version: "independent-logreg-v3.1",
       result_artifact_schema_version: "result-artifact-v1.0",
       prediction_task: "binary_failure_within_horizon",
+      relational_status: "ready",
+      relational_record_count: 15,
       semantic_catalog_version: "predictive-maintenance-semantic-v3.1",
       governance: {
         release_identity: {},

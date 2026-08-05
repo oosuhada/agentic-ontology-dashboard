@@ -96,10 +96,12 @@ class OntologyDashboardPlannerService:
         legacy_service: ManufacturingPredictiveMaintenanceService,
         *,
         provider: LLMProvider | None = None,
+        ontology: OntologyService | None = None,
+        dashboards: DashboardService | None = None,
     ) -> None:
         self.legacy_service = legacy_service
-        self.ontology = OntologyService(legacy_service)
-        self.dashboards = DashboardService(str(legacy_service.repository.path))
+        self.ontology = ontology or OntologyService(legacy_service)
+        self.dashboards = dashboards or DashboardService(str(legacy_service.repository.path))
         self.provider = provider
 
     @staticmethod

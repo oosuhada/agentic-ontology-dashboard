@@ -344,10 +344,17 @@ def get_rate_limiter() -> RateLimiter:
 
 def get_ontology_planner_service(
     service: ManufacturingPredictiveMaintenanceService = Depends(get_service),
+    ontology: OntologyService = Depends(get_ontology_service),
+    dashboards: DashboardService = Depends(get_dashboard_service),
 ) -> OntologyDashboardPlannerService:
     provider_name = os.getenv("LLM_PROVIDER", "deterministic").strip().lower()
     provider = None if provider_name in {"", "none", "deterministic", "offline"} else configured_provider()
-    return OntologyDashboardPlannerService(service, provider=provider)
+    return OntologyDashboardPlannerService(
+        service,
+        provider=provider,
+        ontology=ontology,
+        dashboards=dashboards,
+    )
 
 
 def client_ip(request: Request) -> str:

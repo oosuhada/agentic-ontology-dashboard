@@ -8,11 +8,13 @@ import {
   getFieldWorkspace,
   getLayout,
   getModelConsole,
+  getPredictiveMaintenanceDashboard,
   getProjects,
   getProjectEvents,
   getProjectWorkspaces,
   getReport,
 } from "../../api";
+import type { PredictiveMaintenanceDashboardResponse } from "../predictive-maintenance/types";
 import type {
   AppRole,
   DomainPack,
@@ -112,11 +114,63 @@ export function useWorkspaceCatalog(
   };
 }
 
+export function usePredictiveMaintenanceDashboardSource(
+  projectId: string,
+  workspaceId: string,
+  selectedEventId: string,
+  intent: Intent,
+  role: Role,
+  onError: (message: string) => void,
+) {
+  const [data, setData] = useState<PredictiveMaintenanceDashboardResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [fallbackReason, setFallbackReason] = useState("");
+
+  useEffect(() => {
+    if (!projectId || !workspaceId || projectId !== "manufacturing-demo-project") {
+      setData(null);
+      setFallbackReason("");
+      return;
+    }
+    const controller = new AbortController();
+    setLoading(true);
+    getPredictiveMaintenanceDashboard(projectId, workspaceId, {
+      selected_event_id: selectedEventId || undefined,
+      role,
+      intent,
+    }, controller.signal)
+      .then((payload) => {
+        setData(payload);
+        setFallbackReason("");
+      })
+      .catch((reason: unknown) => {
+        if (controller.signal.aborted) return;
+        const status = typeof reason === "object" && reason !== null && "status" in reason
+          ? Number((reason as { status: number }).status)
+          : 0;
+        if (status === 404 || status === 409 || status === 503) {
+          setData(null);
+          setFallbackReason(reason instanceof Error ? reason.message : "PostgreSQL runtime unavailable");
+          return;
+        }
+        onError(reason instanceof Error ? reason.message : "V3.1 Dashboard source를 불러오지 못했습니다.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [intent, onError, projectId, role, selectedEventId, workspaceId]);
+
+  return { data, loading, fallbackReason };
+}
+
 export function useEventDetail(
   eventId: string,
   intent: Intent,
   role: Role,
   onError: (message: string) => void,
+  canonicalDetail?: PredictiveMaintenanceDashboardResponse["selected_event_detail"],
+  canonicalActive = false,
 ) {
   const [evidence, setEvidence] = useState<Evidence | null>(null);
   const [report, setReport] = useState<Report | null>(null);
@@ -126,6 +180,15 @@ export function useEventDetail(
 
   const load = useCallback(async (nextEventId: string, activeIntent: Intent) => {
     if (!nextEventId) return;
+    if (canonicalActive) {
+      if (canonicalDetail?.event_id === nextEventId) {
+        setEvidence(canonicalDetail.evidence);
+        setReport(canonicalDetail.report);
+        setLayout(canonicalDetail.layout);
+        setLastFollowUp(null);
+      }
+      return;
+    }
     setLoading(true);
     try {
       const [nextEvidence, nextReport, nextLayout] = await Promise.all([
@@ -142,7 +205,7 @@ export function useEventDetail(
     } finally {
       setLoading(false);
     }
-  }, [onError, role]);
+  }, [canonicalActive, canonicalDetail, onError, role]);
 
   useEffect(() => {
     void load(eventId, intent);

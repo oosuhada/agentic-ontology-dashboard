@@ -260,7 +260,9 @@ function traversalGraph(traversal: OntologyTraversal | null): { nodes: Node[]; e
   }, {});
   const nodes = Object.entries(grouped).flatMap(([levelValue, items]) => items.map((object, index): Node => {
     const level = Number(levelValue);
-    const eventId = object.object_type === "risk_event" ? object.id.split(":", 2)[1] : "";
+    const eventId = object.object_type === "risk_event"
+      ? String(object.properties.artifact_id ?? object.properties.event_id ?? "")
+      : "";
     return {
       id: object.id,
       position: { x: level * 225 + 20, y: index * 125 + 40 },
@@ -297,7 +299,7 @@ export function OntologyRelationshipBoard({ workspaceId, events, selectedEventId
     }
     setLoading(true);
     setError("");
-    traverseOntologyObject(`risk_event:${selected.event_id}`, {
+    traverseOntologyObject(selected.ontology_object_id ?? `risk_event:${selected.event_id}`, {
       workspace_id: workspaceId,
       direction: "both",
       depth: 2,

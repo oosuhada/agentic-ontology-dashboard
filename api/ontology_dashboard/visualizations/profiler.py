@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime
 from typing import Any
@@ -22,6 +23,15 @@ def _date_like(value: Any) -> bool:
 def _number_like(value: Any) -> bool:
     if isinstance(value, bool):
         return False
+
+
+def _sample_value(value: Any) -> str | int | float | bool:
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    try:
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    except (TypeError, ValueError):
+        return str(value)
     if isinstance(value, (int, float)):
         return True
     if not isinstance(value, str) or not value.strip():
@@ -86,7 +96,7 @@ def profile_rows(rows: list[dict[str, Any]], *, sample_limit: int = 500) -> list
                 cardinality_ratio=ratio,
                 min=comparable[0] if comparable else None,
                 max=comparable[-1] if comparable else None,
-                sample_values=present[:5],
+                sample_values=[_sample_value(value) for value in present[:5]],
             )
         )
     return profiles

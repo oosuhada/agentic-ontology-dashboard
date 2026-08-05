@@ -3,6 +3,7 @@ import type { EventSummary } from "../../types";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useI18n } from "../../ui/i18n/I18nProvider";
 import type { DashboardParameterDefinition, SavedView } from "./types";
+import type { PredictiveMaintenanceDashboardDataSource } from "../predictive-maintenance/types";
 
 export interface DashboardDataConnection {
   loading: boolean;
@@ -14,6 +15,8 @@ export interface DashboardDataConnection {
   sourceVersions: string[];
   externalConnection: boolean;
   error: string | null;
+  activeSource?: PredictiveMaintenanceDashboardDataSource | null;
+  fallbackReason?: string;
 }
 
 interface ContextPanelProps {
@@ -61,19 +64,20 @@ export function ContextPanel({
     const filter = parameterState.status_filter;
     return !filter || filter === "all" || event.status === filter;
   });
+  const activeSource = dataConnection.activeSource;
 
   return (
     <aside className="dashboard-context-panel">
       <section className="dashboard-data-connections">
         <div className="context-section-heading">
           <span className="section-label">Connected Resources</span>
-          <strong className={dataConnection.externalConnection ? "is-live" : "is-local"}>
-            {dataConnection.loading
+          <strong className={activeSource || dataConnection.externalConnection ? "is-live" : "is-local"}>
+            {dataConnection.loading && !activeSource
               ? "checking"
-              : dataConnection.error
-                ? "degraded"
-                : dataConnection.externalConnection
-                  ? "external"
+              : activeSource
+                ? "PostgreSQL"
+                : dataConnection.error
+                  ? "degraded"
                   : "local fixture"}
           </strong>
         </div>
@@ -94,15 +98,15 @@ export function ContextPanel({
             <small>ready projections</small>
           </article>
         </div>
-        <div className={`dashboard-source-disclosure ${dataConnection.error ? "has-error" : ""}`}>
+        <div className={`dashboard-source-disclosure ${dataConnection.error && !activeSource ? "has-error" : ""}`}>
           <div>
-            <strong>{dataConnection.externalConnection ? "External connector source" : "Manufacturing Gold Fixture Demo"}</strong>
+            <strong>{activeSource?.dataset_name ?? "Manufacturing Gold Fixture Demo"}</strong>
             <small>
-              {dataConnection.error
-                ? dataConnection.error
-                : dataConnection.externalConnection
-                  ? `${dataConnection.datasetNames.join(" + ")} · ${dataConnection.sourceTypes.join(", ")}`
-                  : `${dataConnection.datasetNames.join(" + ") || "Manufacturing Equipment Registry + Manufacturing Risk Events"} · ${dataConnection.sourceVersions.join(", ") || "gold-fixtures-2026-08-01"} · 현재 Dashboard source이며 AI4I 2020 Canonical V3.1 runtime과는 별도`}
+              {activeSource
+                ? `${activeSource.source_version} · ${activeSource.dataset_status === "published" ? "Published" : activeSource.dataset_status} · ${activeSource.release_ready ? "release ready" : "release checks pending"} · PostgreSQL Result Artifact · ${activeSource.result_artifact_count.toLocaleString()} artifacts · ${activeSource.prediction_timeline_count.toLocaleString()} timeline rows · relational ${activeSource.relational_status} · graph ${activeSource.graph.status} · ${activeSource.model_version ?? "model unavailable"} · ${activeSource.selection_reason.replaceAll("_", " ")}`
+                : dataConnection.error
+                  ? dataConnection.error
+                  : `${dataConnection.datasetNames.join(" + ") || "Manufacturing Equipment Registry + Manufacturing Risk Events"} · ${dataConnection.sourceVersions.join(", ") || "gold-fixtures-2026-08-01"} · legacy/offline fallback${dataConnection.fallbackReason ? ` · ${dataConnection.fallbackReason}` : ""}`}
             </small>
           </div>
           <button type="button" onClick={onOpenDatasets}>{t("common.inspect")} <ExternalLink size={11} /></button>

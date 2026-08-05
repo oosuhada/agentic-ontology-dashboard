@@ -58,7 +58,12 @@ import {
 import type { DashboardDraftResponse } from "../planner/types";
 import { primaryRole, ROLE_LANDING } from "./roleLanding";
 import { PredictiveMaintenanceReplayPanel } from "../predictive-maintenance/PredictiveMaintenanceReplayPanel";
-import { useEventDetail, useRoleWorkspace, useWorkspaceCatalog } from "./useManufacturingData";
+import {
+  useEventDetail,
+  usePredictiveMaintenanceDashboardSource,
+  useRoleWorkspace,
+  useWorkspaceCatalog,
+} from "./useManufacturingData";
 import { useDashboardEditor } from "./useDashboardEditor";
 import { VisualizationSwitcher } from "../dashboard/visualization/VisualizationSwitcher";
 import { visualizationSettings } from "../dashboard/visualization/visualizationProfile";
@@ -159,7 +164,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     }
   }, [setActiveProject]);
   const {
-    events,
+    events: fixtureEvents,
     projects,
     workspaces,
     domainPacks,
@@ -174,9 +179,29 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     activateProject,
     setError,
   );
+  const {
+    data: predictiveMaintenanceDashboard,
+    loading: predictiveMaintenanceDashboardLoading,
+    fallbackReason: predictiveMaintenanceFallbackReason,
+  } = usePredictiveMaintenanceDashboardSource(
+    selectedProjectId,
+    selectedWorkspaceId,
+    selectedEventId,
+    intent,
+    role,
+    setError,
+  );
+  const events = predictiveMaintenanceDashboard?.events ?? fixtureEvents;
+  const canonicalDashboardActive = Boolean(predictiveMaintenanceDashboard);
+  useEffect(() => {
+    const canonicalEventId = predictiveMaintenanceDashboard?.selected_event_id;
+    if (canonicalEventId && canonicalEventId !== selectedEventId) {
+      setSelectedEventId(canonicalEventId);
+    }
+  }, [predictiveMaintenanceDashboard?.selected_event_id, selectedEventId, setSelectedEventId]);
   const projectActionsConfigured = selectedProjectId === "manufacturing-demo-project";
-  const canRecordDecision = hasDecisionPermission && projectActionsConfigured;
-  const canRecordNote = hasNotePermission && projectActionsConfigured;
+  const canRecordDecision = hasDecisionPermission && projectActionsConfigured && !canonicalDashboardActive;
+  const canRecordNote = hasNotePermission && projectActionsConfigured && !canonicalDashboardActive;
   const {
     evidence,
     report,
@@ -187,7 +212,14 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     setReport,
     setLayout,
     setLastFollowUp,
-  } = useEventDetail(selectedEventId, intent, role, setError);
+  } = useEventDetail(
+    selectedEventId,
+    intent,
+    role,
+    setError,
+    predictiveMaintenanceDashboard?.selected_event_detail,
+    canonicalDashboardActive,
+  );
   const {
     data: roleWorkspaceData,
     loading: roleWorkspaceLoading,
@@ -1098,7 +1130,12 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       savedViews={savedViews}
       selectedSavedViewId={selectedSavedViewId}
       activeSelectionCount={selectionFilters.length}
-      dataConnection={dataConnection}
+      dataConnection={{
+        ...dataConnection,
+        loading: dataConnection.loading || predictiveMaintenanceDashboardLoading,
+        activeSource: predictiveMaintenanceDashboard?.data_source ?? null,
+        fallbackReason: predictiveMaintenanceFallbackReason,
+      }}
       onSelectEvent={(eventId) => handleSelectEvent("context-panel", eventId)}
       onOpenDatasets={() => navigate(datasetCatalogPath(selectedProjectId))}
       onClearSelections={() => setSelectionFilters((current) => clearSelectionFilters(current))}

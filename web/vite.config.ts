@@ -8,6 +8,22 @@ const githubPagesBase = process.env.GITHUB_PAGES === "1"
 export default defineConfig({
   base: githubPagesBase,
   plugins: [react()],
+  // ManufacturingApp is route-lazy, so Vite's initial source scan does not
+  // always discover its heavy UI dependencies before the first browser load.
+  // Pre-bundle them during cold starts to avoid transient 504 Outdated
+  // Optimize Dep responses on the public tunnel.
+  optimizeDeps: {
+    include: [
+      "@blueprintjs/core",
+      "@tanstack/react-table",
+      "@tanstack/react-virtual",
+      "@xyflow/react",
+      "echarts",
+      "echarts-for-react",
+      "lucide-react",
+      "react-grid-layout",
+    ],
+  },
   server: {
     host: "127.0.0.1",
     port: 3100,

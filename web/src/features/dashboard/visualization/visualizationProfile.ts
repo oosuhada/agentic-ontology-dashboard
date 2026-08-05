@@ -22,6 +22,17 @@ function identifierLike(id: string, values: unknown[]) {
     || (values.length > 4 && new Set(values.map(String)).size / values.length > 0.95 && values.every((value) => typeof value === "string"));
 }
 
+function profileSampleValue(value: unknown): string | number | boolean {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
 export function profileRows(rows: Row[]): VisualizationFieldProfile[] {
   const sample = rows.slice(0, 500);
   const fields = Array.from(new Set(sample.flatMap((row) => Object.keys(row))));
@@ -58,7 +69,7 @@ export function profileRows(rows: Row[]): VisualizationFieldProfile[] {
       cardinality_ratio: ratio,
       min: comparable.length ? comparable[0] : undefined,
       max: comparable.length ? comparable[comparable.length - 1] : undefined,
-      sample_values: present.slice(0, 5) as Array<string | number | boolean>,
+      sample_values: present.slice(0, 5).map(profileSampleValue),
     };
   });
 }

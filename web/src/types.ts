@@ -153,6 +153,9 @@ export interface EventSummary {
   confidence: string;
   predicted_failure_type: string;
   recommended_decision: string;
+  observed_at?: string;
+  dataset_version_id?: string;
+  ontology_object_id?: string | null;
 }
 
 export interface Factor {

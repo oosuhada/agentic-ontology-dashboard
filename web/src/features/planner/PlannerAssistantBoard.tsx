@@ -85,7 +85,7 @@ export function PlannerAssistantBoard({
   }
 
   return (
-    <section className="card planner-assistant-card">
+    <section className="card planner-assistant-card" data-workspace-id={workspaceId}>
       <div className="planner-tool-tabs" role="tablist" aria-label="Ontology Planner tools">
         <button type="button" className={tool === "query" ? "active" : ""} onClick={() => setTool("query")}>Object Query</button>
         <button type="button" className={tool === "boards" ? "active" : ""} onClick={() => setTool("boards")}>Board 추천</button>

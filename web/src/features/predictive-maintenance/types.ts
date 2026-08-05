@@ -1,3 +1,5 @@
+import type { Evidence, EventSummary, Layout, Report } from "../../types";
+
 export type GraphReplayStatus = "pending" | "indexing" | "ready" | "failed" | "unavailable";
 
 export interface PredictiveMaintenanceRuntimeContext {
@@ -16,6 +18,8 @@ export interface PredictiveMaintenanceRuntimeContext {
   model_version: string | null;
   result_artifact_schema_version: string | null;
   prediction_task: "binary_failure_within_horizon" | null;
+  relational_status: GraphReplayStatus;
+  relational_record_count: number;
   semantic_catalog_version: string;
   governance: {
     release_identity: Record<string, unknown>;
@@ -62,6 +66,8 @@ export interface PredictiveMaintenanceDatasetVersionOption {
   row_counts: Record<string, number>;
   result_artifact_count: number;
   prediction_timeline_count: number;
+  relational_status: GraphReplayStatus;
+  relational_record_count: number;
   model_version: string | null;
   result_artifact_schema_version: string | null;
   prediction_task: "binary_failure_within_horizon" | null;
@@ -77,8 +83,56 @@ export interface PredictiveMaintenanceDatasetVersions {
   workspace_id: string;
   items: PredictiveMaintenanceDatasetVersionOption[];
   default_dataset_version_id: string | null;
+  selection_mode: "automatic" | "explicit";
+  selection_reason:
+    | "canonical_v3_1_release_ready"
+    | "latest_published_predictive_maintenance"
+    | "latest_predictive_maintenance"
+    | "explicit_user_selection"
+    | "no_runtime_dataset";
   immutable_versioning: true;
   rollback_supported: boolean;
+}
+
+export interface PredictiveMaintenanceDashboardDataSource {
+  dataset_id: string;
+  dataset_name: string;
+  dataset_version_id: string;
+  source_version: string;
+  model_version: string | null;
+  result_artifact_schema_version: string | null;
+  prediction_task: "binary_failure_within_horizon" | null;
+  bundle_checksum_sha256: string;
+  record_count: number;
+  row_counts: Record<string, number>;
+  result_artifact_count: number;
+  prediction_timeline_count: number;
+  relational_status: "pending" | "indexing" | "ready" | "failed" | "unavailable";
+  relational_record_count: number;
+  dataset_status: string;
+  release_ready: boolean;
+  selection_mode: "automatic" | "explicit";
+  selection_reason: string;
+  source_kind: "postgresql_result_artifact";
+  graph: PredictiveMaintenanceRuntimeContext["graph"];
+}
+
+export interface PredictiveMaintenanceDashboardResponse {
+  data_source: PredictiveMaintenanceDashboardDataSource;
+  context: PredictiveMaintenanceRuntimeContext;
+  versions: PredictiveMaintenanceDatasetVersions;
+  events: EventSummary[];
+  selected_event_id: string | null;
+  selected_event_detail: {
+    event_id: string;
+    evidence: Evidence;
+    report: Report;
+    layout: Layout;
+    maintenance_events: Array<Record<string, unknown>>;
+  } | null;
+  fallback_available: true;
+  fallback_name: "Manufacturing Gold Fixture Demo";
+  replay_source: "postgresql_prediction_timeline";
 }
 
 export interface GovernedProductResultSummary {
