@@ -48,6 +48,13 @@ class PostgreSQLOntologyInstanceRepository:
         link_items = [item for item in links if item.workspace_id == workspace_id]
         now = self._now()
         with self._connection() as connection:
+            # Board queries can arrive concurrently and each query asks the
+            # adapter to refresh this snapshot. Serialize replacements for the
+            # same Project/workspace/source so delete+insert remains atomic.
+            connection.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                (f"{self.project_id}:{workspace_id}:{source_system}",),
+            )
             workspace = connection.execute(
                 """
                 SELECT 1 FROM workspaces

@@ -17,6 +17,7 @@ from ..dependencies import (
 )
 from ..identity import IdentityService, Principal
 from ..predictive_maintenance_runtime import (
+    DatasetVersionSelectionRequest,
     PredictiveMaintenanceRuntimeService,
     ReplayControlRequest,
     ReplayStartRequest,
@@ -40,12 +41,30 @@ def require_scope(
     identity.require_workspace(principal, workspace_id)
 
 
+def selected_dataset_version(
+    *,
+    service: PredictiveMaintenanceRuntimeService,
+    principal: Principal,
+    project_id: str,
+    workspace_id: str,
+    requested: str | None,
+) -> str | None:
+    if requested:
+        return requested
+    return service.versions(
+        organization_id=principal.organization_id,
+        project_id=project_id,
+        workspace_id=workspace_id,
+        user_id=principal.user_id,
+    ).default_dataset_version_id
+
+
 @router.get("/context")
 def runtime_context(
     project_id: str,
     workspace_id: str,
     dataset_version_id: str | None = Query(default=None, max_length=160),
-    principal: Principal = Depends(require_permission("datasets.read")),
+    principal: Principal = Depends(require_permission("events.read")),
     identity: IdentityService = Depends(get_identity_service),
     service: PredictiveMaintenanceRuntimeService = Depends(
         get_predictive_maintenance_runtime_service
@@ -62,7 +81,14 @@ def runtime_context(
             organization_id=principal.organization_id,
             project_id=project_id,
             workspace_id=workspace_id,
-            dataset_version_id=dataset_version_id,
+            dataset_version_id=selected_dataset_version(
+                service=service,
+                principal=principal,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                requested=dataset_version_id,
+            ),
+            user_id=principal.user_id,
         ).model_dump(mode="json")
     except KeyError as error:
         raise HTTPException(status_code=404, detail=f"Dataset Version not found: {error.args[0]}") from error
@@ -72,7 +98,7 @@ def runtime_context(
 def runtime_versions(
     project_id: str,
     workspace_id: str,
-    principal: Principal = Depends(require_permission("datasets.read")),
+    principal: Principal = Depends(require_permission("events.read")),
     identity: IdentityService = Depends(get_identity_service),
     service: PredictiveMaintenanceRuntimeService = Depends(
         get_predictive_maintenance_runtime_service
@@ -88,7 +114,79 @@ def runtime_versions(
         organization_id=principal.organization_id,
         project_id=project_id,
         workspace_id=workspace_id,
+        user_id=principal.user_id,
     ).model_dump(mode="json")
+
+
+@router.put("/selection")
+def select_runtime_version(
+    project_id: str,
+    workspace_id: str,
+    payload: DatasetVersionSelectionRequest,
+    principal: Principal = Depends(require_permission("events.read")),
+    _: None = Depends(require_csrf),
+    identity: IdentityService = Depends(get_identity_service),
+    service: PredictiveMaintenanceRuntimeService = Depends(
+        get_predictive_maintenance_runtime_service
+    ),
+):
+    require_scope(
+        principal=principal,
+        identity=identity,
+        project_id=project_id,
+        workspace_id=workspace_id,
+    )
+    try:
+        return service.select_version(
+            organization_id=principal.organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            user_id=principal.user_id,
+            dataset_version_id=payload.dataset_version_id,
+        ).model_dump(mode="json")
+    except KeyError as error:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Dataset Version not found in this Project and Workspace: {error.args[0]}",
+        ) from error
+
+
+@router.get("/dashboard")
+def dashboard_source(
+    project_id: str,
+    workspace_id: str,
+    dataset_version_id: str | None = Query(default=None, max_length=160),
+    selected_event_id: str | None = Query(default=None, max_length=320),
+    role: str = Query(default="manager", pattern="^(manager|engineer)$"),
+    intent: str = Query(
+        default="overview",
+        pattern="^(overview|explain-risk|compare|summarize-manager|detail-engineer|recommend-check|show-model-details)$",
+    ),
+    principal: Principal = Depends(require_permission("events.read")),
+    identity: IdentityService = Depends(get_identity_service),
+    service: PredictiveMaintenanceRuntimeService = Depends(
+        get_predictive_maintenance_runtime_service
+    ),
+):
+    require_scope(
+        principal=principal,
+        identity=identity,
+        project_id=project_id,
+        workspace_id=workspace_id,
+    )
+    try:
+        return service.dashboard(
+            organization_id=principal.organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            user_id=principal.user_id,
+            dataset_version_id=dataset_version_id,
+            selected_event_id=selected_event_id,
+            role=role,
+            intent=intent,
+        ).model_dump(mode="json")
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail=f"Dataset Version not found: {error.args[0]}") from error
 
 
 @router.get("/release")
@@ -113,7 +211,14 @@ def release_overview(
             organization_id=principal.organization_id,
             project_id=project_id,
             workspace_id=workspace_id,
-            dataset_version_id=dataset_version_id,
+            dataset_version_id=selected_dataset_version(
+                service=service,
+                principal=principal,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                requested=dataset_version_id,
+            ),
+            user_id=principal.user_id,
         ).model_dump(mode="json")
     except KeyError as error:
         raise HTTPException(status_code=404, detail=f"Dataset Version not found: {error.args[0]}") from error
@@ -133,7 +238,7 @@ def latest_product_results(
     ),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=500),
-    principal: Principal = Depends(require_permission("datasets.read")),
+    principal: Principal = Depends(require_permission("events.read")),
     identity: IdentityService = Depends(get_identity_service),
     service: PredictiveMaintenanceRuntimeService = Depends(
         get_predictive_maintenance_runtime_service
@@ -149,7 +254,13 @@ def latest_product_results(
         organization_id=principal.organization_id,
         project_id=project_id,
         workspace_id=workspace_id,
-        dataset_version_id=dataset_version_id,
+        dataset_version_id=selected_dataset_version(
+            service=service,
+            principal=principal,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            requested=dataset_version_id,
+        ),
         asset_id=asset_id,
         site_id=site_id,
         cell_id=cell_id,
@@ -166,7 +277,7 @@ def snapshot_drilldown(
     workspace_id: str,
     prediction_id: str,
     dataset_version_id: str | None = Query(default=None, max_length=160),
-    principal: Principal = Depends(require_permission("datasets.read")),
+    principal: Principal = Depends(require_permission("events.read")),
     identity: IdentityService = Depends(get_identity_service),
     service: PredictiveMaintenanceRuntimeService = Depends(
         get_predictive_maintenance_runtime_service
@@ -183,7 +294,13 @@ def snapshot_drilldown(
             organization_id=principal.organization_id,
             project_id=project_id,
             workspace_id=workspace_id,
-            dataset_version_id=dataset_version_id,
+            dataset_version_id=selected_dataset_version(
+                service=service,
+                principal=principal,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                requested=dataset_version_id,
+            ),
             prediction_id=prediction_id,
         ).model_dump(mode="json")
     except KeyError as error:
@@ -200,7 +317,7 @@ def prediction_timeline(
     end: datetime | None = Query(default=None),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=500, ge=1, le=5000),
-    principal: Principal = Depends(require_permission("datasets.read")),
+    principal: Principal = Depends(require_permission("events.read")),
     identity: IdentityService = Depends(get_identity_service),
     service: PredictiveMaintenanceRuntimeService = Depends(
         get_predictive_maintenance_runtime_service
@@ -216,7 +333,13 @@ def prediction_timeline(
         organization_id=principal.organization_id,
         project_id=project_id,
         workspace_id=workspace_id,
-        dataset_version_id=dataset_version_id,
+        dataset_version_id=selected_dataset_version(
+            service=service,
+            principal=principal,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            requested=dataset_version_id,
+        ),
         asset_id=asset_id,
         start=start,
         end=end,
@@ -239,7 +362,7 @@ def observation_window(
     grain: str = Query(default="raw", pattern="^(raw|10m|1h)$"),
     derived_measure: list[str] = Query(default=[]),
     limit: int = Query(default=1000, ge=1, le=5000),
-    principal: Principal = Depends(require_permission("datasets.read")),
+    principal: Principal = Depends(require_permission("events.read")),
     identity: IdentityService = Depends(get_identity_service),
     service: PredictiveMaintenanceRuntimeService = Depends(
         get_predictive_maintenance_runtime_service
@@ -262,7 +385,13 @@ def observation_window(
         organization_id=principal.organization_id,
         project_id=project_id,
         workspace_id=workspace_id,
-        dataset_version_id=dataset_version_id,
+        dataset_version_id=selected_dataset_version(
+            service=service,
+            principal=principal,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            requested=dataset_version_id,
+        ),
         start=start,
         end=end,
         asset_id=asset_id,
@@ -280,7 +409,7 @@ def start_replay(
     project_id: str,
     workspace_id: str,
     payload: ReplayStartRequest,
-    principal: Principal = Depends(require_permission("datasets.read")),
+    principal: Principal = Depends(require_permission("events.read")),
     _: None = Depends(require_csrf),
     identity: IdentityService = Depends(get_identity_service),
     service: PredictiveMaintenanceRuntimeService = Depends(
@@ -298,7 +427,13 @@ def start_replay(
         project_id=project_id,
         workspace_id=workspace_id,
         user_id=principal.user_id,
-        dataset_version_id=payload.dataset_version_id,
+        dataset_version_id=selected_dataset_version(
+            service=service,
+            principal=principal,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            requested=payload.dataset_version_id,
+        ),
         start_time=payload.start_time,
         speed=payload.speed_minutes_per_second,
     ).model_dump(mode="json")
@@ -309,7 +444,7 @@ def replay_snapshot(
     project_id: str,
     workspace_id: str,
     session_id: str,
-    principal: Principal = Depends(require_permission("datasets.read")),
+    principal: Principal = Depends(require_permission("events.read")),
     identity: IdentityService = Depends(get_identity_service),
     service: PredictiveMaintenanceRuntimeService = Depends(
         get_predictive_maintenance_runtime_service
@@ -339,7 +474,7 @@ def control_replay(
     session_id: str,
     action: str,
     payload: ReplayControlRequest,
-    principal: Principal = Depends(require_permission("datasets.read")),
+    principal: Principal = Depends(require_permission("events.read")),
     _: None = Depends(require_csrf),
     identity: IdentityService = Depends(get_identity_service),
     service: PredictiveMaintenanceRuntimeService = Depends(
@@ -371,7 +506,7 @@ async def replay_events(
     project_id: str,
     workspace_id: str,
     session_id: str,
-    principal: Principal = Depends(require_permission("datasets.read")),
+    principal: Principal = Depends(require_permission("events.read")),
     identity: IdentityService = Depends(get_identity_service),
     service: PredictiveMaintenanceRuntimeService = Depends(
         get_predictive_maintenance_runtime_service

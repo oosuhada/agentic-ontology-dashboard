@@ -65,7 +65,7 @@ class RuntimeIdentity:
             display_name="Runtime User",
             status="active",
             roles=["process_engineer"],
-            permissions=["datasets.read", "governance.read"],
+            permissions=["events.read", "governance.read"],
             workspace_scopes=["workspace-test"],
             project_scopes=["project-test"],
             project_roles={"project-test": ["process_engineer"]},
@@ -543,6 +543,13 @@ def test_v2_v3_runtime_versions_and_release_overview_are_immutable(
         v3_root,
         manifest_id="pm-runtime-versions-v3",
     )
+    import psycopg
+
+    with psycopg.connect(postgresql_database) as connection:
+        connection.execute(
+            "UPDATE dataset_versions SET status='published' WHERE id IN (%s,%s)",
+            (v2_ingestion.dataset_version_id, v3_ingestion.dataset_version_id),
+        )
     service = _runtime(postgresql_database)
 
     versions = service.versions(
@@ -552,6 +559,9 @@ def test_v2_v3_runtime_versions_and_release_overview_are_immutable(
     )
     assert versions.rollback_supported is True
     assert versions.immutable_versioning is True
+    assert versions.default_dataset_version_id == v3_ingestion.dataset_version_id
+    assert versions.selection_mode == "automatic"
+    assert versions.selection_reason == "canonical_v3_1_release_ready"
     assert {item.dataset_version_id for item in versions.items} == {
         v2_ingestion.dataset_version_id,
         v3_ingestion.dataset_version_id,
@@ -563,6 +573,52 @@ def test_v2_v3_runtime_versions_and_release_overview_are_immutable(
     assert v3.result_artifact_schema_version == "result-artifact-v1.0"
     assert v3.prediction_task == "binary_failure_within_horizon"
     assert v3.release_ready is True
+
+    explicit = service.select_version(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        user_id="runtime-user",
+        dataset_version_id=v2_ingestion.dataset_version_id,
+    )
+    assert explicit.default_dataset_version_id == v2_ingestion.dataset_version_id
+    assert explicit.selection_mode == "explicit"
+    assert explicit.selection_reason == "explicit_user_selection"
+    other_user = service.versions(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        user_id="runtime-user-other",
+    )
+    assert other_user.default_dataset_version_id == v3_ingestion.dataset_version_id
+    with pytest.raises(KeyError):
+        service.select_version(
+            organization_id="org-test",
+            project_id="project-other",
+            workspace_id="workspace-other",
+            user_id="runtime-user",
+            dataset_version_id=v3_ingestion.dataset_version_id,
+        )
+
+    dashboard = service.dashboard(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        user_id="runtime-user-other",
+        dataset_version_id=None,
+        selected_event_id=None,
+        role="engineer",
+        intent="overview",
+    )
+    assert dashboard.data_source.dataset_version_id == v3_ingestion.dataset_version_id
+    assert dashboard.data_source.source_version == "canonical-ai4i-physics-v3.1"
+    assert dashboard.data_source.model_version == "independent-logreg-v3.1"
+    assert dashboard.data_source.result_artifact_count == 2
+    assert dashboard.events
+    assert dashboard.selected_event_detail is not None
+    assert dashboard.selected_event_detail.evidence["lineage"]["dataset_version_id"] == (
+        v3_ingestion.dataset_version_id
+    )
 
     overview = service.release_overview(
         organization_id="org-test",

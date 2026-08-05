@@ -63,6 +63,8 @@ class PredictiveMaintenanceRuntimeRepository:
             parameters.append(dataset_version_id)
         query = f"""
             SELECT v.*,d.display_name AS dataset_name,d.source_type,
+                   COALESCE(rel.status,'unavailable') AS relational_status,
+                   COALESCE(rel.record_count,0) AS relational_record_count,
                    COALESCE(g.status,'unavailable') AS graph_status,
                    COALESCE(g.record_count,0) AS graph_record_count,
                    g.last_error AS graph_last_error,
@@ -87,6 +89,8 @@ class PredictiveMaintenanceRuntimeRepository:
                      AS runtime_prediction_task
             FROM dataset_versions v
             JOIN datasets d ON d.id=v.dataset_id
+            LEFT JOIN store_projections rel
+              ON rel.dataset_version_id=v.id AND rel.store_kind='relational'
             LEFT JOIN store_projections g
               ON g.dataset_version_id=v.id AND g.store_kind='graph'
             WHERE {' AND '.join(clauses)}
@@ -108,6 +112,8 @@ class PredictiveMaintenanceRuntimeRepository:
     ) -> list[dict[str, Any]]:
         query = """
             SELECT v.*,d.display_name AS dataset_name,d.source_type,
+                   COALESCE(rel.status,'unavailable') AS relational_status,
+                   COALESCE(rel.record_count,0) AS relational_record_count,
                    COALESCE(g.status,'unavailable') AS graph_status,
                    COALESCE(g.record_count,0) AS graph_record_count,
                    g.last_error AS graph_last_error,
@@ -132,6 +138,8 @@ class PredictiveMaintenanceRuntimeRepository:
                      AS runtime_prediction_task
             FROM dataset_versions v
             JOIN datasets d ON d.id=v.dataset_id
+            LEFT JOIN store_projections rel
+              ON rel.dataset_version_id=v.id AND rel.store_kind='relational'
             LEFT JOIN store_projections g
               ON g.dataset_version_id=v.id AND g.store_kind='graph'
             WHERE v.organization_id=%s
@@ -148,6 +156,127 @@ class PredictiveMaintenanceRuntimeRepository:
                 (organization_id, project_id, workspace_id),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def selected_version_for_user(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        user_id: str,
+    ) -> str | None:
+        with self._connection(organization_id, project_id) as connection:
+            row = connection.execute(
+                """
+                SELECT s.dataset_version_id
+                FROM pm_workspace_dataset_selections s
+                JOIN dataset_versions v ON v.id=s.dataset_version_id
+                WHERE s.organization_id=%s
+                  AND s.project_id=%s
+                  AND s.workspace_id=%s
+                  AND s.user_id=%s
+                  AND v.organization_id=s.organization_id
+                  AND v.project_id=s.project_id
+                  AND v.workspace_id=s.workspace_id
+                  AND EXISTS (
+                    SELECT 1 FROM pm_assets a
+                    WHERE a.dataset_version_id=s.dataset_version_id
+                  )
+                """,
+                (organization_id, project_id, workspace_id, user_id),
+            ).fetchone()
+        return None if row is None else str(row["dataset_version_id"])
+
+    def save_selected_version(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        user_id: str,
+        dataset_version_id: str | None,
+    ) -> None:
+        with self._connection(organization_id, project_id) as connection:
+            if dataset_version_id is None:
+                connection.execute(
+                    """
+                    DELETE FROM pm_workspace_dataset_selections
+                    WHERE organization_id=%s AND project_id=%s
+                      AND workspace_id=%s AND user_id=%s
+                    """,
+                    (organization_id, project_id, workspace_id, user_id),
+                )
+                return
+            exists = connection.execute(
+                """
+                SELECT 1 FROM dataset_versions v
+                WHERE v.id=%s AND v.organization_id=%s AND v.project_id=%s
+                  AND v.workspace_id=%s
+                  AND EXISTS (
+                    SELECT 1 FROM pm_assets a WHERE a.dataset_version_id=v.id
+                  )
+                """,
+                (dataset_version_id, organization_id, project_id, workspace_id),
+            ).fetchone()
+            if exists is None:
+                raise KeyError(dataset_version_id)
+            connection.execute(
+                """
+                INSERT INTO pm_workspace_dataset_selections(
+                    organization_id,project_id,workspace_id,user_id,
+                    dataset_version_id,selection_mode,created_at,updated_at
+                ) VALUES (%s,%s,%s,%s,%s,'explicit',now(),now())
+                ON CONFLICT (organization_id,project_id,workspace_id,user_id)
+                DO UPDATE SET dataset_version_id=EXCLUDED.dataset_version_id,
+                              selection_mode='explicit',updated_at=now()
+                """,
+                (
+                    organization_id,
+                    project_id,
+                    workspace_id,
+                    user_id,
+                    dataset_version_id,
+                ),
+            )
+
+    def dashboard_support_rows(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        dataset_version_id: str,
+    ) -> tuple[dict[str, list[dict[str, Any]]], dict[str, str]]:
+        with self._connection(organization_id, project_id) as connection:
+            maintenance_rows = connection.execute(
+                """
+                SELECT maintenance_id,asset_id,maintenance_type,started_at,
+                       completed_at,tool_replaced,source_event_id,source_sha256
+                FROM pm_maintenance_events
+                WHERE organization_id=%s AND project_id=%s AND workspace_id=%s
+                  AND dataset_version_id=%s
+                ORDER BY asset_id,completed_at DESC
+                """,
+                (organization_id, project_id, workspace_id, dataset_version_id),
+            ).fetchall()
+            ontology_rows = connection.execute(
+                """
+                SELECT object_id,payload_json->'properties'->>'asset_id' AS asset_id
+                FROM ontology_objects
+                WHERE organization_id=%s AND project_id=%s AND workspace_id=%s
+                  AND dataset_version_id=%s AND object_type='risk_event'
+                """,
+                (organization_id, project_id, workspace_id, dataset_version_id),
+            ).fetchall()
+        maintenance: dict[str, list[dict[str, Any]]] = {}
+        for row in maintenance_rows:
+            maintenance.setdefault(str(row["asset_id"]), []).append(dict(row))
+        ontology = {
+            str(row["asset_id"]): str(row["object_id"])
+            for row in ontology_rows
+            if row.get("asset_id")
+        }
+        return maintenance, ontology
 
     def role_checksums(
         self,

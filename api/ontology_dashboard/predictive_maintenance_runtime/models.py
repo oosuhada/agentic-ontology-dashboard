@@ -74,6 +74,10 @@ class DatasetVersionRuntimeContext(StrictModel):
     model_version: str | None = None
     result_artifact_schema_version: str | None = None
     prediction_task: Literal["binary_failure_within_horizon"] | None = None
+    relational_status: Literal["pending", "indexing", "ready", "failed", "unavailable"] = (
+        "unavailable"
+    )
+    relational_record_count: int = Field(default=0, ge=0)
     semantic_catalog_version: str = "predictive-maintenance-semantic-compat-v1"
     governance: GovernanceProvenance
     graph: GraphReadiness
@@ -92,6 +96,10 @@ class DatasetVersionOption(StrictModel):
     row_counts: dict[str, int] = Field(default_factory=dict)
     result_artifact_count: int = Field(default=0, ge=0)
     prediction_timeline_count: int = Field(default=0, ge=0)
+    relational_status: Literal["pending", "indexing", "ready", "failed", "unavailable"] = (
+        "unavailable"
+    )
+    relational_record_count: int = Field(default=0, ge=0)
     model_version: str | None = None
     result_artifact_schema_version: str | None = None
     prediction_task: Literal["binary_failure_within_horizon"] | None = None
@@ -107,8 +115,92 @@ class DatasetVersionOptions(StrictModel):
     workspace_id: str
     items: list[DatasetVersionOption]
     default_dataset_version_id: str | None = None
+    selection_mode: Literal["automatic", "explicit"] = "automatic"
+    selection_reason: Literal[
+        "canonical_v3_1_release_ready",
+        "latest_published_predictive_maintenance",
+        "latest_predictive_maintenance",
+        "explicit_user_selection",
+        "no_runtime_dataset",
+    ] = "no_runtime_dataset"
     immutable_versioning: Literal[True] = True
     rollback_supported: bool
+
+
+class DatasetVersionSelectionRequest(StrictModel):
+    dataset_version_id: str | None = Field(default=None, max_length=160)
+
+
+class DashboardDataSource(StrictModel):
+    dataset_id: str
+    dataset_name: str
+    dataset_version_id: str
+    source_version: str
+    model_version: str | None = None
+    result_artifact_schema_version: str | None = None
+    prediction_task: Literal["binary_failure_within_horizon"] | None = None
+    bundle_checksum_sha256: str = Field(pattern=SHA256_PATTERN)
+    record_count: int = Field(ge=0)
+    row_counts: dict[str, int] = Field(default_factory=dict)
+    result_artifact_count: int = Field(default=0, ge=0)
+    prediction_timeline_count: int = Field(default=0, ge=0)
+    relational_status: Literal["pending", "indexing", "ready", "failed", "unavailable"]
+    relational_record_count: int = Field(default=0, ge=0)
+    dataset_status: str
+    release_ready: bool
+    selection_mode: Literal["automatic", "explicit"]
+    selection_reason: str
+    source_kind: Literal["postgresql_result_artifact"] = "postgresql_result_artifact"
+    graph: GraphReadiness
+
+
+class DashboardEquipment(StrictModel):
+    equipment_id: str
+    display_name: str
+    line: str
+    criticality: Literal["low", "medium", "high"]
+    assigned_engineer: str
+    last_maintenance_date: str
+    estimated_downtime_minutes: int = Field(ge=0)
+    spare_part_available: bool | None = None
+
+
+class DashboardEventSummary(StrictModel):
+    event_id: str
+    scenario_id: str
+    ontology_object_id: str | None = None
+    equipment: DashboardEquipment
+    status: str
+    failure_probability: float | None = Field(default=None, ge=0, le=1)
+    confidence: str
+    predicted_failure_type: str
+    recommended_decision: str
+    observed_at: datetime
+    dataset_version_id: str
+
+
+class DashboardEventDetail(StrictModel):
+    event_id: str
+    evidence: dict[str, Any]
+    report: dict[str, Any]
+    layout: dict[str, Any]
+    maintenance_events: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class PredictiveMaintenanceDashboardResponse(StrictModel):
+    data_source: DashboardDataSource
+    context: DatasetVersionRuntimeContext
+    versions: DatasetVersionOptions
+    events: list[DashboardEventSummary]
+    selected_event_id: str | None = None
+    selected_event_detail: DashboardEventDetail | None = None
+    fallback_available: Literal[True] = True
+    fallback_name: Literal["Manufacturing Gold Fixture Demo"] = (
+        "Manufacturing Gold Fixture Demo"
+    )
+    replay_source: Literal["postgresql_prediction_timeline"] = (
+        "postgresql_prediction_timeline"
+    )
 
 
 class PredictiveMaintenanceReleaseOverview(StrictModel):

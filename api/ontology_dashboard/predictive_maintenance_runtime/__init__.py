@@ -1,6 +1,7 @@
 """Governed Result Artifact and PostgreSQL replay vertical."""
 
 from .models import (
+    DatasetVersionSelectionRequest,
     DatasetVersionOption,
     DatasetVersionOptions,
     DatasetVersionRuntimeContext,
@@ -18,6 +19,7 @@ __all__ = [
     "DatasetVersionOption",
     "DatasetVersionOptions",
     "DatasetVersionRuntimeContext",
+    "DatasetVersionSelectionRequest",
     "GovernedProductResult",
     "ObservationQueryResponse",
     "PredictiveMaintenanceReleaseOverview",

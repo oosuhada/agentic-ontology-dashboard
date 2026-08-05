@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from ..adapters.models import (
@@ -15,6 +15,10 @@ from ..adapters.models import (
     RecommendedAction,
 )
 from .models import (
+    DashboardDataSource,
+    DashboardEquipment,
+    DashboardEventDetail,
+    DashboardEventSummary,
     DatasetVersionOption,
     DatasetVersionOptions,
     DatasetVersionRuntimeContext,
@@ -23,6 +27,7 @@ from .models import (
     GraphReadiness,
     ObservationQueryResponse,
     PolicyRecommendation,
+    PredictiveMaintenanceDashboardResponse,
     ProductFactor,
     ProductResultPage,
     ProductResultProvenance,
@@ -35,7 +40,7 @@ from .models import (
     SnapshotDrilldown,
     TimelinePrediction,
 )
-from .repository import PredictiveMaintenanceRuntimeRepository
+from .repository import ALLOWED_DERIVED_MEASURES, PredictiveMaintenanceRuntimeRepository
 
 
 V3_1_SOURCE_VERSION = "canonical-ai4i-physics-v3.1"
@@ -182,7 +187,18 @@ class PredictiveMaintenanceRuntimeService:
         project_id: str,
         workspace_id: str,
         dataset_version_id: str | None,
+        user_id: str | None = None,
     ) -> DatasetVersionRuntimeContext:
+        if dataset_version_id is None:
+            selected = self.versions(
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                user_id=user_id,
+            ).default_dataset_version_id
+            if selected is None:
+                raise KeyError("default predictive-maintenance Dataset Version")
+            dataset_version_id = selected
         row = self.repository.resolve_version(
             organization_id=organization_id,
             project_id=project_id,
@@ -211,6 +227,8 @@ class PredictiveMaintenanceRuntimeService:
             model_version=model_version,
             result_artifact_schema_version=result_schema,
             prediction_task=prediction_task,
+            relational_status=str(row.get("relational_status") or "unavailable"),
+            relational_record_count=int(row.get("relational_record_count") or 0),
             semantic_catalog_version=(
                 "predictive-maintenance-semantic-v3.1"
                 if source_version == V3_1_SOURCE_VERSION
@@ -271,6 +289,7 @@ class PredictiveMaintenanceRuntimeService:
         organization_id: str,
         project_id: str,
         workspace_id: str,
+        user_id: str | None = None,
     ) -> DatasetVersionOptions:
         rows = self.repository.list_versions(
             organization_id=organization_id,
@@ -298,6 +317,8 @@ class PredictiveMaintenanceRuntimeService:
                     },
                     result_artifact_count=int(row.get("result_artifact_count") or 0),
                     prediction_timeline_count=int(row.get("prediction_timeline_count") or 0),
+                    relational_status=str(row.get("relational_status") or "unavailable"),
+                    relational_record_count=int(row.get("relational_record_count") or 0),
                     model_version=model_version,
                     result_artifact_schema_version=result_schema,
                     prediction_task=prediction_task,
@@ -307,13 +328,80 @@ class PredictiveMaintenanceRuntimeService:
                     is_v3_1=str(row["source_version"]) == V3_1_SOURCE_VERSION,
                 )
             )
+        item_ids = {item.dataset_version_id for item in items}
+        explicit = (
+            self.repository.selected_version_for_user(
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                user_id=user_id,
+            )
+            if user_id
+            else None
+        )
+        if explicit in item_ids:
+            selected_id = explicit
+            selection_mode = "explicit"
+            selection_reason = "explicit_user_selection"
+        else:
+            canonical = next(
+                (
+                    item
+                    for item in items
+                    if item.is_v3_1
+                    and item.release_ready
+                    and item.dataset_status == "published"
+                ),
+                None,
+            )
+            published = next(
+                (item for item in items if item.dataset_status == "published"),
+                None,
+            )
+            selected = canonical or published or (items[0] if items else None)
+            selected_id = selected.dataset_version_id if selected else None
+            selection_mode = "automatic"
+            selection_reason = (
+                "canonical_v3_1_release_ready"
+                if canonical is not None
+                else "latest_published_predictive_maintenance"
+                if published is not None
+                else "latest_predictive_maintenance"
+                if selected is not None
+                else "no_runtime_dataset"
+            )
         return DatasetVersionOptions(
             organization_id=organization_id,
             project_id=project_id,
             workspace_id=workspace_id,
             items=items,
-            default_dataset_version_id=(items[0].dataset_version_id if items else None),
+            default_dataset_version_id=selected_id,
+            selection_mode=selection_mode,
+            selection_reason=selection_reason,
             rollback_supported=len(items) > 1,
+        )
+
+    def select_version(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        user_id: str,
+        dataset_version_id: str | None,
+    ) -> DatasetVersionOptions:
+        self.repository.save_selected_version(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            user_id=user_id,
+            dataset_version_id=dataset_version_id,
+        )
+        return self.versions(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            user_id=user_id,
         )
 
     def release_overview(
@@ -323,17 +411,20 @@ class PredictiveMaintenanceRuntimeService:
         project_id: str,
         workspace_id: str,
         dataset_version_id: str | None,
+        user_id: str | None = None,
     ) -> PredictiveMaintenanceReleaseOverview:
         active = self.context(
             organization_id=organization_id,
             project_id=project_id,
             workspace_id=workspace_id,
             dataset_version_id=dataset_version_id,
+            user_id=user_id,
         )
         versions = self.versions(
             organization_id=organization_id,
             project_id=project_id,
             workspace_id=workspace_id,
+            user_id=user_id,
         )
         active_option = next(
             (item for item in versions.items if item.dataset_version_id == active.dataset_version_id),
@@ -669,6 +760,421 @@ class PredictiveMaintenanceRuntimeService:
             offset=offset,
             limit=limit,
             latest_product_contract=source_contract,
+        )
+
+    @staticmethod
+    def _dashboard_event_id(result: GovernedProductResult) -> str:
+        return result.artifact_id or result.provenance.prediction_id
+
+    @staticmethod
+    def _dashboard_equipment(
+        result: GovernedProductResult,
+        maintenance: list[dict[str, Any]],
+    ) -> DashboardEquipment:
+        last_maintenance = maintenance[0]["completed_at"] if maintenance else None
+        downtime_by_status = {
+            "critical": 240,
+            "warning": 120,
+            "attention": 60,
+            "normal": 30,
+        }
+        criticality = (
+            "high"
+            if result.status_grade in {"critical", "warning"}
+            else "medium"
+            if result.status_grade == "attention"
+            else "low"
+        )
+        return DashboardEquipment(
+            equipment_id=result.asset_id,
+            display_name=f"{result.asset_type.upper()} · {result.asset_id}",
+            line=f"{result.site_id} / {result.cell_id}",
+            criticality=criticality,
+            assigned_engineer="Unassigned · policy review",
+            last_maintenance_date=(
+                last_maintenance.isoformat() if last_maintenance else "No recorded maintenance"
+            ),
+            estimated_downtime_minutes=downtime_by_status[result.status_grade],
+            spare_part_available=None,
+        )
+
+    @staticmethod
+    def _dashboard_observation_payload(observation: SensorObservation) -> dict[str, Any]:
+        measurements = observation.measurements
+        return {
+            "timestamp": observation.observed_at.isoformat(),
+            "product_type": str(measurements.get("product_type") or observation.asset_type),
+            "air_temperature_k": measurements.get("air_temperature_k"),
+            "process_temperature_k": measurements.get("process_temperature_k"),
+            "rotational_speed_rpm": measurements.get("rotational_speed_rpm"),
+            "torque_nm": measurements.get("torque_nm"),
+            "tool_wear_min": measurements.get("tool_wear_min"),
+            "asset_id": observation.asset_id,
+            "asset_type": observation.asset_type,
+            "site_id": observation.site_id,
+            "cell_id": observation.cell_id,
+            "is_operating": observation.is_operating,
+            "operating_state": observation.operating_state,
+            **measurements,
+            **observation.derived_measures,
+        }
+
+    def _dashboard_detail(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        context: DatasetVersionRuntimeContext,
+        result: GovernedProductResult,
+        equipment: DashboardEquipment,
+        maintenance: list[dict[str, Any]],
+        role: str,
+        intent: str,
+    ) -> DashboardEventDetail:
+        event_id = self._dashboard_event_id(result)
+        window_start = result.observed_at - timedelta(hours=6)
+        observation_response = self.observations(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            dataset_version_id=context.dataset_version_id,
+            start=window_start,
+            end=result.observed_at,
+            asset_id=result.asset_id,
+            site_id=None,
+            cell_id=None,
+            asset_type=None,
+            grain="10m",
+            derived_measures=ALLOWED_DERIVED_MEASURES,
+            limit=72,
+        )
+        history = [
+            self._dashboard_observation_payload(item)
+            for item in observation_response.observations
+        ]
+        observation = history[-1] if history else {
+            "timestamp": result.observed_at.isoformat(),
+            "product_type": result.asset_type,
+            "air_temperature_k": None,
+            "process_temperature_k": None,
+            "rotational_speed_rpm": None,
+            "torque_nm": None,
+            "tool_wear_min": None,
+        }
+        recommendation = result.recommended_action
+        action = recommendation.action if recommendation else "Review governed prediction"
+        confidence = f"{result.confidence * 100:.1f}% · calibrated"
+        factor_units = {
+            "air_temperature_k": "K",
+            "process_temperature_k": "K",
+            "rotational_speed_rpm": "rpm",
+            "torque_nm": "Nm",
+            "tool_wear_min": "min",
+        }
+        factors = [
+            {
+                "evidence_field_id": f"factor:{item.feature}",
+                "feature": item.feature,
+                "display_name": item.feature.replace("_", " ").title(),
+                "value": item.feature_value,
+                "unit": factor_units.get(item.feature, "model unit"),
+                "normal_range": "See governed model contract",
+                "direction": item.direction,
+                "contribution": item.signed_contribution,
+                "source_type": "result_artifact_factor",
+            }
+            for item in result.top_factors
+        ]
+        maintenance_payload = [
+            {
+                **item,
+                "started_at": item["started_at"].isoformat(),
+                "completed_at": item["completed_at"].isoformat(),
+            }
+            for item in maintenance
+        ]
+        source_refs = [
+            f"dataset-version:{context.dataset_version_id}",
+            f"result-artifact:{event_id}",
+            *[f"maintenance:{item['maintenance_id']}" for item in maintenance[:5]],
+        ]
+        evidence = {
+            "evidence_id": f"pm-evidence:{event_id}",
+            "event_id": event_id,
+            "scenario_id": f"{result.asset_type}:{result.site_id}:{result.cell_id}",
+            "equipment": equipment.model_dump(mode="json"),
+            "model": {
+                "model_version": result.provenance.model_version,
+                "policy_version": "result-artifact-policy-v1",
+                "mode": "postgresql_result_artifact",
+            },
+            "status": result.status_grade,
+            "recommended_decision": action,
+            "confidence": confidence,
+            "failure_probability": result.failure_probability,
+            "threshold": 0.5,
+            "predicted_failure_type": result.predicted_failure_type,
+            "observation": observation,
+            "history": history,
+            "detected_interval": {
+                "start": window_start.isoformat(),
+                "end": result.observed_at.isoformat(),
+            },
+            "top_factors": factors,
+            "maintenance_context": {
+                "provider": "PostgreSQL canonical maintenance events",
+                "version": context.source_version,
+                "source_type": "canonical_maintenance_evidence",
+                "source_refs": source_refs,
+                "checklist": [
+                    "Review the governed Top-3 factors",
+                    "Confirm the latest canonical sensor window",
+                    "Check maintenance evidence before approval",
+                ],
+                "recommended_actions": [action],
+            },
+            "data_quality_warnings": [],
+            "lineage": {
+                "project_id": project_id,
+                "workspace_id": workspace_id,
+                "dataset_id": context.dataset_id,
+                "dataset_version_id": context.dataset_version_id,
+                "source_version": context.source_version,
+                "bundle_checksum_sha256": context.bundle_checksum_sha256,
+                "model_version": result.provenance.model_version,
+                "result_schema": result.provenance.schema_version,
+                "prediction_task": result.provenance.prediction_task,
+                "prediction_id": result.provenance.prediction_id,
+                "prediction_result_id": result.provenance.prediction_result_id,
+                "replay_timestamp": result.observed_at.isoformat(),
+            },
+            "generated_at": result.observed_at.isoformat(),
+        }
+        report = {
+            "report_id": f"pm-report:{event_id}:{role}",
+            "event_id": event_id,
+            "role": role,
+            "mode": "deterministic_result_artifact",
+            "headline": f"{result.asset_id} · {result.status_grade} failure risk",
+            "summary": (
+                f"Governed Result Artifact reports {result.failure_probability * 100:.1f}% "
+                f"binary failure risk within {result.prediction_horizon_hours} hours. "
+                "A human must review the policy recommendation before execution."
+            ),
+            "status": result.status_grade,
+            "confidence": confidence,
+            "recommended_decision": action,
+            "sections": [
+                {
+                    "section_id": "risk",
+                    "title": "Risk and factors",
+                    "body": ", ".join(
+                        f"{item.feature} {item.direction}" for item in result.top_factors
+                    ),
+                    "evidence_field_ids": [item["evidence_field_id"] for item in factors],
+                },
+                {
+                    "section_id": "maintenance",
+                    "title": "Maintenance history",
+                    "body": f"{len(maintenance)} canonical maintenance events are linked to this asset.",
+                    "evidence_field_ids": source_refs[2:],
+                },
+                {
+                    "section_id": "provenance",
+                    "title": "Release provenance",
+                    "body": (
+                        f"{context.source_version} · {result.provenance.model_version} · "
+                        f"{result.provenance.schema_version}"
+                    ),
+                    "evidence_field_ids": source_refs[:2],
+                },
+            ],
+            "actions": [{
+                "action_id": f"review:{event_id}",
+                "label": action,
+                "kind": "policy_recommendation",
+                "requires_human_approval": True,
+                "source_refs": source_refs,
+            }],
+            "citations": source_refs,
+            "limitations": [
+                "The model predicts generic binary failure risk, not an AI4I failure mode.",
+                "Policy recommendations are not approved or executed WorkOrders.",
+                "Replay uses immutable observations and precomputed predictions.",
+            ],
+            "generated_at": result.observed_at.isoformat(),
+        }
+        block_types = [
+            "StatusSummary",
+            "RiskKpi",
+            "PriorityList",
+            "SensorLineChart",
+            "FactorContribution",
+            "EvidenceTable",
+            "RecommendedActions",
+            "EngineerChecklist",
+            "ModelDetails",
+            "ConversationThread",
+        ]
+        layout = {
+            "layout_id": f"pm-layout:{event_id}:{role}:{intent}",
+            "event_id": event_id,
+            "role": role,
+            "intent": intent,
+            "mode": "dataset_version_aware_server_adapter",
+            "blocks": [
+                {
+                    "block_id": f"pm:{index}:{block_type}",
+                    "type": block_type,
+                    "title": block_type.replace("Contribution", " contribution"),
+                    "order": index,
+                    "emphasis": "primary" if index < 3 else "secondary",
+                    "data_fields": [],
+                    "collapsed": False,
+                }
+                for index, block_type in enumerate(block_types)
+            ],
+            "generated_at": result.observed_at.isoformat(),
+        }
+        return DashboardEventDetail(
+            event_id=event_id,
+            evidence=evidence,
+            report=report,
+            layout=layout,
+            maintenance_events=maintenance_payload,
+        )
+
+    def dashboard(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        user_id: str,
+        dataset_version_id: str | None,
+        selected_event_id: str | None,
+        role: str,
+        intent: str,
+    ) -> PredictiveMaintenanceDashboardResponse:
+        versions = self.versions(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            user_id=user_id,
+        )
+        active_id = dataset_version_id or versions.default_dataset_version_id
+        if active_id is None:
+            raise KeyError("default predictive-maintenance Dataset Version")
+        results = self.latest_results(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            dataset_version_id=active_id,
+            limit=500,
+        )
+        context = results.context
+        option = next(
+            item for item in versions.items if item.dataset_version_id == context.dataset_version_id
+        )
+        maintenance_by_asset, ontology_by_asset = self.repository.dashboard_support_rows(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            dataset_version_id=context.dataset_version_id,
+        )
+        events: list[DashboardEventSummary] = []
+        equipment_by_event: dict[str, DashboardEquipment] = {}
+        result_by_event: dict[str, GovernedProductResult] = {}
+        for result in results.items:
+            event_id = self._dashboard_event_id(result)
+            maintenance = maintenance_by_asset.get(result.asset_id, [])
+            equipment = self._dashboard_equipment(result, maintenance)
+            events.append(
+                DashboardEventSummary(
+                    event_id=event_id,
+                    scenario_id=f"{result.asset_type}:{result.site_id}:{result.cell_id}",
+                    ontology_object_id=ontology_by_asset.get(result.asset_id),
+                    equipment=equipment,
+                    status=result.status_grade,
+                    failure_probability=result.failure_probability,
+                    confidence=f"{result.confidence * 100:.1f}% · calibrated",
+                    predicted_failure_type=result.predicted_failure_type,
+                    recommended_decision=(
+                        result.recommended_action.action
+                        if result.recommended_action
+                        else "Review governed prediction"
+                    ),
+                    observed_at=result.observed_at,
+                    dataset_version_id=context.dataset_version_id,
+                )
+            )
+            equipment_by_event[event_id] = equipment
+            result_by_event[event_id] = result
+        events.sort(
+            key=lambda item: (
+                {"critical": 0, "warning": 1, "attention": 2, "normal": 3}.get(
+                    item.status, 4
+                ),
+                -(item.failure_probability or 0),
+            )
+        )
+        selected_id = (
+            selected_event_id
+            if selected_event_id in result_by_event
+            else events[0].event_id
+            if events
+            else None
+        )
+        detail = None
+        if selected_id:
+            selected_result = result_by_event[selected_id]
+            detail = self._dashboard_detail(
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                context=context,
+                result=selected_result,
+                equipment=equipment_by_event[selected_id],
+                maintenance=maintenance_by_asset.get(selected_result.asset_id, []),
+                role=role,
+                intent=intent,
+            )
+        return PredictiveMaintenanceDashboardResponse(
+            data_source=DashboardDataSource(
+                dataset_id=context.dataset_id,
+                dataset_name=option.dataset_name,
+                dataset_version_id=context.dataset_version_id,
+                source_version=context.source_version,
+                model_version=context.model_version,
+                result_artifact_schema_version=context.result_artifact_schema_version,
+                prediction_task=context.prediction_task,
+                bundle_checksum_sha256=context.bundle_checksum_sha256,
+                record_count=context.record_count,
+                row_counts=context.row_counts,
+                result_artifact_count=option.result_artifact_count,
+                prediction_timeline_count=option.prediction_timeline_count,
+                relational_status=context.relational_status,
+                relational_record_count=context.relational_record_count,
+                dataset_status=context.dataset_status,
+                release_ready=option.release_ready,
+                selection_mode=(
+                    versions.selection_mode
+                    if context.dataset_version_id == versions.default_dataset_version_id
+                    else "explicit"
+                ),
+                selection_reason=(
+                    versions.selection_reason
+                    if context.dataset_version_id == versions.default_dataset_version_id
+                    else "request_dataset_version"
+                ),
+                graph=context.graph,
+            ),
+            context=context,
+            versions=versions,
+            events=events,
+            selected_event_id=selected_id,
+            selected_event_detail=detail,
         )
 
     def snapshot_drilldown(

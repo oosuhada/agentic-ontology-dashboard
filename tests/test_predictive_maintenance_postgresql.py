@@ -17,6 +17,7 @@ from ontology_dashboard.adapters import (
 from ontology_dashboard.migrations import migrate
 from ontology_dashboard.modeling.models import DatasetIntakeProfile, canonical_checksum
 from ontology_dashboard.modeling.repository import ModelingRepository
+from ontology_dashboard.postgresql_pool import close_pools
 from tests.test_predictive_maintenance_bundle_adapter import (
     build_manifest,
     create_small_package,
@@ -56,7 +57,7 @@ def postgresql_database():
     dsn = _dsn_for_database(database)
     try:
         applied = migrate(dsn)
-        assert applied[-1] == "0017_adaptive_model_registry"
+        assert applied[-1] == "0018_predictive_maintenance_dataset_selection"
         assert migrate(dsn) == []
         import psycopg
 
@@ -75,10 +76,14 @@ def postgresql_database():
                 ) VALUES
                     ('workspace-test','org-test','project-test','workspace-test','Workspace Test','predictive-maintenance'),
                     ('workspace-other','org-test','project-other','workspace-other','Workspace Other','predictive-maintenance');
+                INSERT INTO users(id,organization_id,email,display_name,status) VALUES
+                    ('runtime-user','org-test','runtime@example.com','Runtime User','active'),
+                    ('runtime-user-other','org-test','runtime-other@example.com','Runtime Other','active');
                 """
             )
         yield dsn
     finally:
+        close_pools()
         subprocess.run(["dropdb", "--if-exists", database], check=False)
 
 

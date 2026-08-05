@@ -92,70 +92,50 @@ class PostgreSQLDashboardRepository(DashboardRepository):
                 scope = self._scope(connection, template.workspace_id)
                 existing = connection.execute(
                     """
-                    SELECT id,current_version FROM dashboard_templates
-                    WHERE organization_id=? AND project_id=? AND workspace_id=? AND role_code=?
+                    INSERT INTO dashboard_templates (
+                        id,organization_id,project_id,workspace_id,role_code,display_name,
+                        current_version,created_at,updated_at
+                    ) VALUES (?,?,?,?,?,?,?,?,?)
+                    ON CONFLICT (project_id,workspace_id,role_code) DO UPDATE SET
+                        display_name=EXCLUDED.display_name,
+                        current_version=GREATEST(
+                            dashboard_templates.current_version,
+                            EXCLUDED.current_version
+                        ),
+                        updated_at=EXCLUDED.updated_at
+                    RETURNING id,current_version
                     """,
                     (
+                        template.template_id,
                         scope.organization_id,
                         scope.project_id,
                         template.workspace_id,
                         template.role_code,
+                        template.display_name,
+                        template.version,
+                        now,
+                        now,
                     ),
                 ).fetchone()
-                if existing is None:
-                    connection.execute(
-                        """
-                        INSERT INTO dashboard_templates (
-                            id,organization_id,project_id,workspace_id,role_code,display_name,
-                            current_version,created_at,updated_at
-                        ) VALUES (?,?,?,?,?,?,?,?,?)
-                        """,
-                        (
-                            template.template_id,
-                            scope.organization_id,
-                            scope.project_id,
-                            template.workspace_id,
-                            template.role_code,
-                            template.display_name,
-                            template.version,
-                            now,
-                            now,
-                        ),
-                    )
-                    template_id = template.template_id
-                else:
-                    template_id = existing["id"]
-                seeded_version = connection.execute(
-                    "SELECT 1 FROM dashboard_template_versions WHERE template_id=? AND version=?",
-                    (template_id, template.version),
-                ).fetchone()
-                if seeded_version is None:
-                    payload = template.model_copy(update={"template_id": template_id})
-                    connection.execute(
-                        """
-                        INSERT INTO dashboard_template_versions (
-                            id,template_id,version,status,payload_json,created_by,created_at
-                        ) VALUES (?,?,?,?,?,?,?)
-                        """,
-                        (
-                            str(uuid.uuid4()),
-                            template_id,
-                            template.version,
-                            template.status,
-                            payload.model_dump_json(),
-                            template.created_by,
-                            template.created_at,
-                        ),
-                    )
-                if existing is not None and int(existing["current_version"]) < template.version:
-                    connection.execute(
-                        """
-                        UPDATE dashboard_templates
-                        SET display_name=?,current_version=?,updated_at=?
-                        WHERE id=?
-                        """,
-                        (template.display_name, template.version, now, template_id),
-                    )
+                template_id = existing["id"]
+                payload = template.model_copy(update={"template_id": template_id})
+                connection.execute(
+                    """
+                    INSERT INTO dashboard_template_versions (
+                        id,template_id,version,status,payload_json,created_by,created_at
+                    ) VALUES (?,?,?,?,?,?,?)
+                    ON CONFLICT (template_id,version) DO NOTHING
+                    """,
+                    (
+                        str(uuid.uuid4()),
+                        template_id,
+                        template.version,
+                        template.status,
+                        payload.model_dump_json(),
+                        template.created_by,
+                        template.created_at,
+                    ),
+                )
 
     def get_share(self, *, token: str) -> dict[str, Any] | None:
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
