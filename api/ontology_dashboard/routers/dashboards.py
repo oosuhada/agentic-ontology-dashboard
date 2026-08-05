@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query, Response
 
+from ..contracts import AppLocale, Role
 from ..dashboard_models import (
     DashboardBoardQueryRequest,
     DashboardPreferenceRestoreRequest,
@@ -37,12 +38,19 @@ router = APIRouter(tags=["dashboards"])
 def get_report_draft(
     workspace_id: str,
     event_id: str,
+    role: Role = Query(default="engineer"),
+    locale: AppLocale = Query(default="ko-KR"),
     principal: Principal = Depends(require_permission("events.read")),
     identity: IdentityService = Depends(get_identity_service),
     dashboards: DashboardService = Depends(get_dashboard_service),
 ):
     identity.require_workspace(principal, workspace_id)
-    draft = dashboards.get_report_draft(workspace_id=workspace_id, event_id=event_id)
+    draft = dashboards.get_report_draft(
+        workspace_id=workspace_id,
+        event_id=event_id,
+        role=role,
+        locale=locale,
+    )
     return {"draft": draft.model_dump(mode="json") if draft is not None else None}
 
 

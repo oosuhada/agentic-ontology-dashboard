@@ -225,10 +225,15 @@ export interface ReportDraftRecord {
   project_id: string;
   workspace_id: string;
   event_id: string;
+  role: "manager" | "engineer";
+  locale: "ko-KR" | "en-US";
   revision: number;
   headline: string;
   summary: string;
   sections: ReportDraftSection[];
+  content_origin: "generated" | "edited" | "translated";
+  source_locale: "ko-KR" | "en-US" | null;
+  source_revision: number | null;
   updated_by: string;
   updated_at: string;
 }

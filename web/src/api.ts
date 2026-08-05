@@ -434,6 +434,7 @@ export function getPredictiveMaintenanceDashboard(
     selected_event_id?: string;
     role?: "manager" | "engineer";
     intent?: string;
+    locale?: "ko-KR" | "en-US";
   } = {},
   signal?: AbortSignal,
 ): Promise<PredictiveMaintenanceDashboardResponse> {
@@ -442,6 +443,7 @@ export function getPredictiveMaintenanceDashboard(
   if (input.selected_event_id) params.set("selected_event_id", input.selected_event_id);
   if (input.role) params.set("role", input.role);
   if (input.intent) params.set("intent", input.intent);
+  if (input.locale) params.set("locale", input.locale);
   const query = params.size ? `?${params.toString()}` : "";
   return request<PredictiveMaintenanceDashboardResponse>(
     `${predictiveMaintenanceBase(projectId, workspaceId)}/dashboard${query}`,
@@ -824,18 +826,29 @@ export function getEvidence(eventId: string): Promise<Evidence> {
   return request<Evidence>(`/api/events/${eventId}/evidence`);
 }
 
-export async function getReport(eventId: string, role: Role, useLlm = true): Promise<Report> {
+export async function getReport(
+  eventId: string,
+  role: Role,
+  useLlm = true,
+  locale: "ko-KR" | "en-US" = "ko-KR",
+): Promise<Report> {
   const payload = await request<{ report: Report }>(`/api/events/${eventId}/report`, {
     method: "POST",
-    body: JSON.stringify({ role, use_llm: useLlm }),
+    body: JSON.stringify({ role, locale, use_llm: useLlm }),
   });
   return payload.report;
 }
 
-export async function getLayout(eventId: string, role: Role, intent: Intent, useLlm = true): Promise<Layout> {
+export async function getLayout(
+  eventId: string,
+  role: Role,
+  intent: Intent,
+  useLlm = true,
+  locale: "ko-KR" | "en-US" = "ko-KR",
+): Promise<Layout> {
   const payload = await request<{ layout: Layout }>(`/api/events/${eventId}/layout`, {
     method: "POST",
-    body: JSON.stringify({ role, intent, use_llm: useLlm }),
+    body: JSON.stringify({ role, locale, intent, use_llm: useLlm }),
   });
   return payload.layout;
 }
@@ -854,10 +867,15 @@ export function addNote(eventId: string, actor: string, body: string) {
   });
 }
 
-export function followUp(eventId: string, role: Role, question: string): Promise<FollowUp> {
+export function followUp(
+  eventId: string,
+  role: Role,
+  question: string,
+  locale: "ko-KR" | "en-US" = "ko-KR",
+): Promise<FollowUp> {
   return request<FollowUp>(`/api/events/${eventId}/follow-up`, {
     method: "POST",
-    body: JSON.stringify({ role, question }),
+    body: JSON.stringify({ role, locale, question }),
   });
 }
 
@@ -950,18 +968,29 @@ export function restoreDashboardDefaults(workspaceId: string): Promise<ResolvedD
   });
 }
 
-export async function getReportDraft(workspaceId: string, eventId: string): Promise<ReportDraftRecord | null> {
-  const payload = await request<{ draft: ReportDraftRecord | null }>(`/api/reports/draft?workspace_id=${encodeURIComponent(workspaceId)}&event_id=${encodeURIComponent(eventId)}`);
+export async function getReportDraft(
+  workspaceId: string,
+  eventId: string,
+  role: Role,
+  locale: "ko-KR" | "en-US",
+): Promise<ReportDraftRecord | null> {
+  const params = new URLSearchParams({ workspace_id: workspaceId, event_id: eventId, role, locale });
+  const payload = await request<{ draft: ReportDraftRecord | null }>(`/api/reports/draft?${params.toString()}`);
   return payload.draft;
 }
 
 export function saveReportDraft(input: {
   workspace_id: string;
   event_id: string;
+  role: Role;
+  locale: "ko-KR" | "en-US";
   base_revision: number;
   headline: string;
   summary: string;
   sections: ReportDraftSection[];
+  content_origin?: "generated" | "edited" | "translated";
+  source_locale?: "ko-KR" | "en-US" | null;
+  source_revision?: number | null;
 }): Promise<ReportDraftRecord> {
   return request<ReportDraftRecord>("/api/reports/draft", {
     method: "PUT",

@@ -8,7 +8,7 @@ from typing import Any, Protocol
 import httpx
 from jsonschema import Draft202012Validator
 
-from .contracts import GroundedReport, Role
+from .contracts import AppLocale, GroundedReport, Role
 from .reports import render_report
 
 
@@ -100,9 +100,16 @@ class ReportAgent:
         self.provider = provider or OpenAICompatibleProvider()
         self.report_schema = json.loads((self.root / "schemas" / "report.schema.json").read_text(encoding="utf-8"))
 
-    def _prompt(self, role: Role) -> str:
+    def _prompt(self, role: Role, locale: AppLocale) -> str:
         name = "manager-report.md" if role == "manager" else "engineer-report.md"
-        return (self.root / "prompts" / name).read_text(encoding="utf-8")
+        base = (self.root / "prompts" / name).read_text(encoding="utf-8")
+        language = "Korean" if locale == "ko-KR" else "English"
+        return (
+            f"{base}\n\n"
+            f"OUTPUT LANGUAGE CONTRACT: Write every human-readable field in {language}. "
+            f"Set locale to '{locale}'. Keep IDs, evidence references, model versions, schema versions, "
+            "units, and source tokens unchanged."
+        )
 
     def _validate_schema(self, payload: dict[str, Any]) -> None:
         errors = sorted(Draft202012Validator(self.report_schema).iter_errors(payload), key=lambda item: list(item.absolute_path))
@@ -128,9 +135,17 @@ class ReportAgent:
         refs.update(f"data_quality_warnings.{index}" for index, _ in enumerate(evidence["data_quality_warnings"]))
         return refs
 
-    def _validate_grounding(self, report: GroundedReport, evidence: dict[str, Any], role: Role) -> None:
+    def _validate_grounding(
+        self,
+        report: GroundedReport,
+        evidence: dict[str, Any],
+        role: Role,
+        locale: AppLocale,
+    ) -> None:
         if report.event_id != evidence["event_id"] or report.role != role:
             raise ValueError("LLM report event or role does not match request")
+        if report.locale != locale:
+            raise ValueError("LLM report locale does not match request")
         if report.status != evidence["status"]:
             raise ValueError("LLM report changed the accepted status")
         if report.recommended_decision != evidence["recommended_decision"]:
@@ -152,26 +167,31 @@ class ReportAgent:
         evidence: dict[str, Any],
         role: Role,
         *,
+        locale: AppLocale,
         use_llm: bool,
         provider_available: bool,
     ) -> tuple[GroundedReport, dict[str, Any]]:
         if not use_llm:
-            return render_report(evidence, role, mode="deterministic"), {"provider": "none", "fallback": False}
+            return render_report(evidence, role, locale=locale, mode="deterministic"), {"provider": "none", "fallback": False}
         if not provider_available:
-            return render_report(evidence, role, mode="deterministic_fallback"), {
+            return render_report(evidence, role, locale=locale, mode="deterministic_fallback"), {
                 "provider": getattr(self.provider, "name", "unknown"),
                 "fallback": True,
                 "reason": "fixture_provider_disabled",
             }
         try:
-            payload = self.provider.generate_json(self._prompt(role), {"evidence": evidence, "role": role})
+            payload = self.provider.generate_json(
+                self._prompt(role, locale),
+                {"evidence": evidence, "role": role, "locale": locale},
+            )
             payload["mode"] = "llm"
+            payload["locale"] = locale
             self._validate_schema(payload)
             report = GroundedReport.model_validate(payload)
-            self._validate_grounding(report, evidence, role)
+            self._validate_grounding(report, evidence, role, locale)
             return report, {"provider": self.provider.name, "fallback": False}
         except Exception as exc:  # provider, timeout, parser, schema, and grounding failures all fail closed
-            return render_report(evidence, role, mode="deterministic_fallback"), {
+            return render_report(evidence, role, locale=locale, mode="deterministic_fallback"), {
                 "provider": getattr(self.provider, "name", "unknown"),
                 "fallback": True,
                 "reason": type(exc).__name__,

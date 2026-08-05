@@ -609,6 +609,7 @@ def test_v2_v3_runtime_versions_and_release_overview_are_immutable(
         selected_event_id=None,
         role="engineer",
         intent="overview",
+        locale="ko-KR",
     )
     assert dashboard.data_source.dataset_version_id == v3_ingestion.dataset_version_id
     assert dashboard.data_source.source_version == "canonical-ai4i-physics-v3.1"
@@ -618,6 +619,27 @@ def test_v2_v3_runtime_versions_and_release_overview_are_immutable(
     assert dashboard.selected_event_detail is not None
     assert dashboard.selected_event_detail.evidence["lineage"]["dataset_version_id"] == (
         v3_ingestion.dataset_version_id
+    )
+    assert dashboard.selected_event_detail.report["locale"] == "ko-KR"
+    assert "고장 위험" in dashboard.selected_event_detail.report["headline"]
+
+    english_dashboard = service.dashboard(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        user_id="runtime-user-other",
+        dataset_version_id=None,
+        selected_event_id=dashboard.selected_event_id,
+        role="engineer",
+        intent="overview",
+        locale="en-US",
+    )
+    assert english_dashboard.selected_event_detail is not None
+    assert english_dashboard.selected_event_detail.report["locale"] == "en-US"
+    assert "failure risk" in english_dashboard.selected_event_detail.report["headline"]
+    assert (
+        dashboard.selected_event_detail.report["report_id"]
+        != english_dashboard.selected_event_detail.report["report_id"]
     )
 
     overview = service.release_overview(

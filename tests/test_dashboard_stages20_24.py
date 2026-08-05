@@ -167,6 +167,69 @@ def test_shared_report_draft_is_editable_by_practitioner_and_readable_by_manager
     assert denied.status_code == 403
 
 
+def test_report_drafts_are_isolated_by_role_and_locale(client: TestClient) -> None:
+    login(client, "engineer@ontology.local", "Engineer!2026")
+    headers = csrf_headers(client)
+    base = {
+        "workspace_id": WORKSPACE,
+        "event_id": "EVT-LOCALE-001",
+        "role": "engineer",
+        "base_revision": 0,
+        "summary": "locale-specific summary",
+        "sections": [
+            {
+                "section_id": "finding",
+                "title": "Finding",
+                "body": "Locale-specific body",
+                "evidence_field_ids": ["failure_probability"],
+            }
+        ],
+    }
+    korean = client.put(
+        "/api/reports/draft",
+        headers=headers,
+        json={**base, "locale": "ko-KR", "headline": "한국어 리포트"},
+    )
+    assert korean.status_code == 200, korean.text
+    english = client.put(
+        "/api/reports/draft",
+        headers=headers,
+        json={**base, "locale": "en-US", "headline": "English report"},
+    )
+    assert english.status_code == 200, english.text
+
+    korean_get = client.get(
+        "/api/reports/draft",
+        params={
+            "workspace_id": WORKSPACE,
+            "event_id": "EVT-LOCALE-001",
+            "role": "engineer",
+            "locale": "ko-KR",
+        },
+    )
+    english_get = client.get(
+        "/api/reports/draft",
+        params={
+            "workspace_id": WORKSPACE,
+            "event_id": "EVT-LOCALE-001",
+            "role": "engineer",
+            "locale": "en-US",
+        },
+    )
+    manager_get = client.get(
+        "/api/reports/draft",
+        params={
+            "workspace_id": WORKSPACE,
+            "event_id": "EVT-LOCALE-001",
+            "role": "manager",
+            "locale": "ko-KR",
+        },
+    )
+    assert korean_get.json()["draft"]["headline"] == "한국어 리포트"
+    assert english_get.json()["draft"]["headline"] == "English report"
+    assert manager_get.json()["draft"] is None
+
+
 def test_personalization_persists_is_isolated_and_restores_defaults(client: TestClient) -> None:
     login(client, "manager@ontology.local", "Manager!2026")
     original = resolved(client)

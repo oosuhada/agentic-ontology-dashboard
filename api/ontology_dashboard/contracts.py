@@ -7,6 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 Role = Literal["manager", "engineer"]
+AppLocale = Literal["ko-KR", "en-US"]
 Intent = Literal[
     "overview",
     "explain-risk",
@@ -42,6 +43,7 @@ class GroundedReport(StrictModel):
     report_id: str
     event_id: str
     role: Role
+    locale: AppLocale = "ko-KR"
     mode: Literal["deterministic", "llm", "deterministic_fallback"]
     headline: str
     summary: str
@@ -93,11 +95,13 @@ class UILayout(StrictModel):
 
 class ReportRequest(StrictModel):
     role: Role
+    locale: AppLocale = "ko-KR"
     use_llm: bool = True
 
 
 class LayoutRequest(StrictModel):
     role: Role
+    locale: AppLocale = "ko-KR"
     intent: Intent = "overview"
     use_llm: bool = True
 
@@ -115,6 +119,7 @@ class NoteRequest(StrictModel):
 
 class FollowUpRequest(StrictModel):
     role: Role
+    locale: AppLocale = "ko-KR"
     question: str = Field(min_length=1, max_length=1000)
 
 

@@ -159,6 +159,7 @@ class ManufacturingPredictiveMaintenanceService:
         report, trace = self.report_agent.generate(
             evidence,
             request.role,
+            locale=request.locale,
             use_llm=request.use_llm,
             provider_available=fixture["runtime"]["llm_available"],
         )
@@ -166,7 +167,7 @@ class ManufacturingPredictiveMaintenanceService:
             event_id,
             "report.generated",
             evidence["model"]["model_version"],
-            {"report_id": report.report_id, "role": request.role, **trace},
+            {"report_id": report.report_id, "role": request.role, "locale": request.locale, **trace},
         )
         return report, trace
 
@@ -176,6 +177,7 @@ class ManufacturingPredictiveMaintenanceService:
         report, report_trace = self.report_agent.generate(
             evidence,
             request.role,
+            locale=request.locale,
             use_llm=request.use_llm,
             provider_available=fixture["runtime"]["llm_available"],
         )
@@ -216,6 +218,7 @@ class ManufacturingPredictiveMaintenanceService:
         report, report_trace = self.report_agent.generate(
             evidence,
             request.role,
+            locale=request.locale,
             use_llm=False,
             provider_available=False,
         )
@@ -227,7 +230,7 @@ class ManufacturingPredictiveMaintenanceService:
             use_llm=False,
             provider_available=False,
         )
-        answer = deterministic_answer(intent, evidence, routed.supported)
+        answer = deterministic_answer(intent, evidence, routed.supported, request.locale)
         thread_id = f"THR-{event_id}-{request.role}"
         record = self.repository.add_conversation(
             thread_id,

@@ -205,6 +205,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     selectedEventId,
     intent,
     role,
+    locale,
     setError,
   );
   const events = predictiveMaintenanceDashboard?.events ?? fixtureEvents;
@@ -232,6 +233,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     selectedEventId,
     intent,
     role,
+    locale,
     setError,
     predictiveMaintenanceDashboard?.selected_event_detail,
     canonicalDashboardActive,
@@ -925,7 +927,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     if (!evidence) return;
     setError("");
     try {
-      const response = await followUp(evidence.event_id, role, question);
+      const response = await followUp(evidence.event_id, role, question, locale);
       setLastFollowUp(response);
       setIntent(response.intent);
       setReport(response.report);

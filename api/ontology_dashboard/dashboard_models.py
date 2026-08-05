@@ -7,6 +7,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 BoardCategory = Literal["suggested", "observe", "explore", "explain", "act", "audit", "build"]
 BoardWidth = int
 ParameterValueType = Literal["string", "number", "integer", "boolean", "datetime", "object", "array"]
+ReportRole = Literal["manager", "engineer"]
+ReportLocale = Literal["ko-KR", "en-US"]
+ReportContentOrigin = Literal["generated", "edited", "translated"]
 
 
 class StrictModel(BaseModel):
@@ -147,10 +150,15 @@ class ReportDraftSection(StrictModel):
 class ReportDraftSaveRequest(StrictModel):
     workspace_id: str
     event_id: str = Field(min_length=1, max_length=160)
+    role: ReportRole = "engineer"
+    locale: ReportLocale = "ko-KR"
     base_revision: int = Field(default=0, ge=0)
     headline: str = Field(min_length=1, max_length=240)
     summary: str = Field(min_length=1, max_length=12000)
     sections: list[ReportDraftSection]
+    content_origin: ReportContentOrigin = "edited"
+    source_locale: ReportLocale | None = None
+    source_revision: int | None = Field(default=None, ge=1)
 
 
 class ReportDraftRecord(StrictModel):
@@ -159,10 +167,15 @@ class ReportDraftRecord(StrictModel):
     project_id: str
     workspace_id: str
     event_id: str
+    role: ReportRole
+    locale: ReportLocale
     revision: int
     headline: str
     summary: str
     sections: list[ReportDraftSection]
+    content_origin: ReportContentOrigin
+    source_locale: ReportLocale | None = None
+    source_revision: int | None = None
     updated_by: str
     updated_at: str
 
