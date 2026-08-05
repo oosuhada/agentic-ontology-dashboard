@@ -4,6 +4,7 @@ export type CapabilityState = "ready" | "planned" | "blocked" | "not_configured"
 export type CommercialSurfaceId =
   | "overview"
   | "identity"
+  | "deployment"
   | "objects"
   | "analysis"
   | "models"
@@ -61,6 +62,13 @@ const V4_SURFACES: readonly ApplicationSurfaceDefinition[] = [
     description: "OIDC, group mapping, SCIM, MFA, service identity and session lifecycle readiness.",
     state: "ready",
     phase: 21,
+  },
+  {
+    id: "deployment",
+    label: "Deployment",
+    description: "Production topology, probes, ingress, migration and release readiness.",
+    state: "ready",
+    phase: 22,
   },
   {
     id: "objects",

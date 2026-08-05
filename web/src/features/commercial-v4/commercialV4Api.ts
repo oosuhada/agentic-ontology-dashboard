@@ -84,6 +84,20 @@ export interface EnterpriseIdentityReadiness {
   break_glass: Record<string, unknown>;
 }
 
+export interface DeploymentReadiness {
+  state: "ready" | "blocked" | "degraded";
+  environment: string;
+  topology: string[];
+  probes: Record<string, string>;
+  routes: string[];
+  ingress: Record<string, unknown>;
+  containers: Record<string, unknown>;
+  migration: Record<string, unknown>;
+  resources: Record<string, Record<string, string>>;
+  release_strategy: string;
+  blockers: string[];
+}
+
 export async function getProjectV4ApplicationDefinition(projectId: string): Promise<ProjectV4ApplicationDefinition> {
   const response = await fetch(
     `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/applications/v4`,
@@ -114,4 +128,14 @@ export async function getEnterpriseIdentityReadiness(projectId: string): Promise
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload?.error?.message ?? `Enterprise identity readiness failed: ${response.status}`);
   return payload as EnterpriseIdentityReadiness;
+}
+
+export async function getDeploymentReadiness(projectId: string): Promise<DeploymentReadiness> {
+  const response = await fetch(
+    `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/deployment-readiness`,
+    { credentials: "include" },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message ?? `Deployment readiness failed: ${response.status}`);
+  return payload as DeploymentReadiness;
 }

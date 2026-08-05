@@ -1,0 +1,171 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ontology-dashboard
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ontology-dashboard-migration
+  namespace: ontology-dashboard
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: ontology-dashboard-runtime
+      containers:
+        - name: migration
+          image: ghcr.io/oosuhada/ontology-dashboard-api:RELEASE_SHA
+          command: ["python", "-m", "ontology_dashboard.bootstrap"]
+          envFrom:
+            - configMapRef: {name: ontology-dashboard-config}
+            - secretRef: {name: ontology-dashboard-secrets}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities: {drop: ["ALL"]}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 256Mi}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ontology-dashboard-api
+  namespace: ontology-dashboard
+  annotations:
+    ontology-dashboard.oosu.dev/versioned-routes: >-
+      /app/projects/manufacturing-demo-project,
+      /app/projects/manufacturing-demo-project/blueprint,
+      /app/projects/manufacturing-demo-project/blueprint-v2,
+      /app/projects/manufacturing-demo-project/blueprint-v4
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
+  selector: {matchLabels: {app: ontology-dashboard-api}}
+  template:
+    metadata: {labels: {app: ontology-dashboard-api}}
+    spec:
+      serviceAccountName: ontology-dashboard-runtime
+      terminationGracePeriodSeconds: 45
+      containers:
+        - name: api
+          image: ghcr.io/oosuhada/ontology-dashboard-api:RELEASE_SHA
+          ports: [{name: http, containerPort: 8000}]
+          envFrom:
+            - configMapRef: {name: ontology-dashboard-config}
+            - secretRef: {name: ontology-dashboard-secrets}
+          startupProbe:
+            httpGet: {path: /health/startup, port: http}
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: {path: /health/ready, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /health/live, port: http}
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {cpu: "1", memory: 1Gi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities: {drop: ["ALL"]}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 512Mi}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ontology-dashboard-web
+  namespace: ontology-dashboard
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: ontology-dashboard-web}}
+  template:
+    metadata: {labels: {app: ontology-dashboard-web}}
+    spec:
+      containers:
+        - name: web
+          image: ghcr.io/oosuhada/ontology-dashboard-web:RELEASE_SHA
+          ports: [{name: http, containerPort: 8080}]
+          readinessProbe: {httpGet: {path: /health/live, port: http}}
+          livenessProbe: {httpGet: {path: /health/live, port: http}}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 250m, memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 101
+            capabilities: {drop: ["ALL"]}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+            - {name: cache, mountPath: /var/cache/nginx}
+      volumes:
+        - {name: tmp, emptyDir: {sizeLimit: 64Mi}}
+        - {name: cache, emptyDir: {sizeLimit: 64Mi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ontology-dashboard-workers
+  namespace: ontology-dashboard
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: ontology-dashboard-workers}}
+  template:
+    metadata: {labels: {app: ontology-dashboard-workers}}
+    spec:
+      serviceAccountName: ontology-dashboard-runtime
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: outbox-automation
+          image: ghcr.io/oosuhada/ontology-dashboard-api:RELEASE_SHA
+          command: ["python", "-m", "ontology_dashboard.worker"]
+          envFrom:
+            - configMapRef: {name: ontology-dashboard-config}
+            - secretRef: {name: ontology-dashboard-secrets}
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {cpu: "2", memory: 2Gi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities: {drop: ["ALL"]}
+          volumeMounts: [{name: tmp, mountPath: /tmp}]
+      volumes: [{name: tmp, emptyDir: {sizeLimit: 1Gi}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: api, namespace: ontology-dashboard}
+spec:
+  selector: {app: ontology-dashboard-api}
+  ports: [{name: http, port: 8000, targetPort: http}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: web, namespace: ontology-dashboard}
+spec:
+  selector: {app: ontology-dashboard-web}
+  ports: [{name: http, port: 8080, targetPort: http}]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: ontology-dashboard-runtime, namespace: ontology-dashboard}

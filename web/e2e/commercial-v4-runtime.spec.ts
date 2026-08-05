@@ -25,6 +25,11 @@ test("preserves V1 through V3 and exposes an independent Commercial V4 compositi
   await expect(page.getByText("Enterprise OIDC", { exact: true })).toBeVisible();
   await expect(page.getByText("not configured", { exact: true })).toBeVisible();
 
+  await page.getByRole("button", { name: /Deployment/ }).click();
+  await expect(page.getByText("Production topology", { exact: true })).toBeVisible();
+  await expect(page.getByText("/health/ready", { exact: true })).toBeVisible();
+  await expect(page.getByText("/app/projects/manufacturing-demo-project/blueprint-v4", { exact: true })).toBeVisible();
+
   await page.goto("/app/projects/manufacturing-demo-project");
   await expect(page.getByRole("heading", { name: "운영 매니저 운영 브리핑" })).toBeVisible();
   await expect(page.locator('[data-application-version="v4"]')).toHaveCount(0);

@@ -120,6 +120,8 @@
 .commercial-v4-identity-providers em.is-not_configured, .commercial-v4-identity-providers em.is-blocked { color: var(--v4-planned); }
 .commercial-v4-chip-list { display: flex; flex-wrap: wrap; gap: 5px; }
 .commercial-v4-chip-list span { padding: 4px 7px; border: 1px solid var(--v4-border); border-radius: 999px; color: var(--v4-muted); font-size: 9px; }
+.commercial-v4-route-contract { display: grid; gap: 7px; }
+.commercial-v4-route-contract code { display: block; padding: 7px 9px; border-radius: 4px; background: #14212a; color: var(--v4-accent); font-size: 9px; overflow-wrap: anywhere; }
 
 .commercial-v4-feature-state { min-height: 320px; margin-top: 16px; display: grid; place-content: center; justify-items: center; gap: 9px; text-align: center; }
 .commercial-v4-feature-state > svg { width: 34px; height: 34px; color: var(--v4-accent); }

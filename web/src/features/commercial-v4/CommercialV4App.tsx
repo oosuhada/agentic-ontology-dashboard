@@ -6,6 +6,7 @@ import {
   ChevronRight,
   CircleAlert,
   Database,
+  Container,
   FileClock,
   GitBranch,
   LockKeyhole,
@@ -37,6 +38,8 @@ import {
   getProjectV4ApplicationDefinition,
   getPersistenceReadiness,
   getEnterpriseIdentityReadiness,
+  getDeploymentReadiness,
+  type DeploymentReadiness,
   type EnterpriseIdentityReadiness,
   type PersistenceReadiness,
   type ProjectV4ApplicationDefinition,
@@ -46,6 +49,7 @@ import "./commercial-v4.css";
 const ICONS = {
   overview: Activity,
   identity: Users,
+  deployment: Container,
   objects: Boxes,
   analysis: Workflow,
   models: BrainCircuit,
@@ -63,6 +67,7 @@ interface CommercialContext {
   application: ProjectV4ApplicationDefinition;
   persistence: PersistenceReadiness;
   identity: EnterpriseIdentityReadiness;
+  deployment: DeploymentReadiness;
 }
 
 function currentSurface(): CommercialSurfaceId {
@@ -140,8 +145,9 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       getProjectV4ApplicationDefinition(projectId),
       getPersistenceReadiness(projectId),
       getEnterpriseIdentityReadiness(projectId),
+      getDeploymentReadiness(projectId),
     ])
-      .then(([project, workspaces, datasets, application, persistence, identity]) => {
+      .then(([project, workspaces, datasets, application, persistence, identity, deployment]) => {
         if (!controller.signal.aborted) setContext({
           project,
           workspaces,
@@ -149,6 +155,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
           application,
           persistence,
           identity,
+          deployment,
         });
       })
       .catch((reason: unknown) => {
@@ -410,6 +417,35 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
                   <div><dt>Session rotation</dt><dd>{String(context.identity.session.rotation)}</dd></div>
                   <div><dt>Cross-instance revoke</dt><dd>{String(context.identity.session.cross_instance)}</dd></div>
                 </dl>
+              </section>
+            </div>
+          ) : selected.id === "deployment" ? (
+            <div className="commercial-v4-grid">
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Container aria-hidden="true" /><span>Production topology</span></div>
+                <div className="commercial-v4-chip-list">
+                  {context.deployment.topology.map((service) => <span key={service}>{service}</span>)}
+                </div>
+                <p className="commercial-v4-policy-copy">{context.deployment.release_strategy}</p>
+                <span className={`commercial-v4-state-badge is-${context.deployment.state}`}>{context.deployment.state}</span>
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Activity aria-hidden="true" /><span>Probe contract</span></div>
+                <dl>
+                  {Object.entries(context.deployment.probes).map(([name, path]) => (
+                    <div key={name}><dt>{name}</dt><dd>{path}</dd></div>
+                  ))}
+                </dl>
+              </section>
+              <section className="commercial-v4-panel commercial-v4-route-contract">
+                <div className="commercial-v4-panel-title"><GitBranch aria-hidden="true" /><span>Versioned deep links</span></div>
+                {context.deployment.routes.map((route) => <code key={route}>{route}</code>)}
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><CircleAlert aria-hidden="true" /><span>Environment blockers</span></div>
+                {context.deployment.blockers.length ? context.deployment.blockers.map((blocker) => (
+                  <p key={blocker} className="commercial-v4-policy-copy">{blocker}</p>
+                )) : <p className="commercial-v4-policy-copy">No deployment blockers reported.</p>}
               </section>
             </div>
           ) : selected.id === "settings" ? (

@@ -45,6 +45,7 @@ from .domain_packs.models import (
     ProjectApplicationDefinition,
 )
 from .enterprise_identity import EnterpriseIdentityReadiness
+from .deployment import DeploymentReadiness, ProcessProbe, ReadinessProbe, StartupProbe
 from .export_models import ExportCheckpoint
 from .governance.models import GovernanceAgentRunDetail, ProjectionRetryResult
 from .identity_models import DisplayPreferenceUpdateRequest, Principal
@@ -537,6 +538,9 @@ def _qname(endpoint: Any) -> str:
 
 _EXPLICIT_MODELS: dict[str, Any] = {
     "ontology_dashboard.routers.system.health": HealthResponse,
+    "ontology_dashboard.routers.system.health_live": ProcessProbe,
+    "ontology_dashboard.routers.system.health_startup": StartupProbe,
+    "ontology_dashboard.routers.system.health_ready": ReadinessProbe,
     "ontology_dashboard.routers.system.polyglot_health": PolyglotHealthResponse,
     "ontology_dashboard.routers.system.openapi_contract": dict[str, Any],
     "ontology_dashboard.routers.auth.register": RegisterResponse,
@@ -576,6 +580,7 @@ _EXPLICIT_MODELS: dict[str, Any] = {
     "ontology_dashboard.routers.platform.project_v4_application": ProjectApplicationDefinition,
     "ontology_dashboard.routers.platform.project_persistence_readiness": PersistenceReadiness,
     "ontology_dashboard.routers.platform.project_enterprise_identity": EnterpriseIdentityReadiness,
+    "ontology_dashboard.routers.platform.project_deployment_readiness": DeploymentReadiness,
     "ontology_dashboard.routers.dashboards.get_report_draft": ReportDraftResponse,
     "ontology_dashboard.routers.dashboards.dashboard_template_versions": ItemsResponse[dict[str, Any]],
     "ontology_dashboard.routers.dashboards.request_dashboard_template_publish": WorkflowRequestResponse,
