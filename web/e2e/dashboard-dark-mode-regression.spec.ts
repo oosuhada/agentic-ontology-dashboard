@@ -108,7 +108,14 @@ test("Engineer Planner Assistant inputs, tabs, notices, and results stay dark", 
   test.setTimeout(90_000);
   await login(page, "engineer@ontology.local", "Engineer!2026");
   await page.goto(projectRoute);
-  const planner = page.locator(".planner-assistant-card");
+  await expect(page.getByRole("combobox", { name: "Workspace" })).toHaveValue(
+    "manufacturing-demo",
+    { timeout: 60_000 },
+  );
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(1_000);
+  await expect(page.getByRole("combobox", { name: "Workspace" })).toHaveValue("manufacturing-demo");
+  const planner = page.locator(".planner-assistant-card:visible").first();
   const tabs = page.locator(".dashboard-tabs button");
   for (let index = 0; index < await tabs.count(); index += 1) {
     if (await planner.isVisible()) break;
@@ -116,6 +123,7 @@ test("Engineer Planner Assistant inputs, tabs, notices, and results stay dark", 
     await page.waitForTimeout(250);
   }
   await expect(planner).toBeVisible({ timeout: 60_000 });
+  await expect(planner).toHaveAttribute("data-workspace-id", "manufacturing-demo");
   await planner.getByRole("button", { name: "Draft 생성", exact: true }).click();
   await expect(planner.locator(".planner-result")).toBeVisible({ timeout: 30_000 });
   expectDarkSurfaces(await surfaceMetrics(page, [
@@ -135,5 +143,95 @@ test("Engineer Planner Assistant inputs, tabs, notices, and results stay dark", 
       animations: "disabled",
       caret: "hide",
     });
+  }
+});
+
+test("ML Validator empty, table, tabs, and form controls stay dark", async ({ page }) => {
+  test.setTimeout(90_000);
+  await login(page, "datascientist@ontology.local", "DataScience!2026");
+  await page.goto(
+    "/app/projects/manufacturing-demo-project/workspaces/manufacturing-demo/modeling",
+  );
+  await expect(page.locator(".mlv-empty-state")).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  expectDarkSurfaces(await surfaceMetrics(page, [
+    ".mlv-shell",
+    ".mlv-header",
+    ".mlv-empty-state",
+    ".mlv-panel",
+    ".mlv-toolbar",
+    ".mlv-toolbar button[aria-selected='true']",
+    ".mlv-toolbar select",
+    ".mlv-metrics article",
+    ".mlv-table thead",
+    ".mlv-table th",
+  ]));
+  const disabled = page.locator(".mlv-panel button:disabled");
+  if (await disabled.count()) {
+    await expect(disabled.first()).toBeVisible();
+    const opacity = await disabled.first().evaluate((element) => Number(getComputedStyle(element).opacity));
+    expect(opacity).toBeGreaterThanOrEqual(0.4);
+  }
+});
+
+test("Dataset, Ontology, Governance, and Analysis workbenches keep dark surfaces", async ({ page }) => {
+  test.setTimeout(150_000);
+  await login(page, "fde@ontology.local", "FDE!2026");
+
+  const routes: Array<{ path: string; ready: string; surfaces: string[] }> = [
+    {
+      path: "/app/projects/manufacturing-demo-project/datasets",
+      ready: ".dataset-catalog-page",
+      surfaces: [
+        ".dataset-catalog-page",
+        ".dataset-catalog-list-pane",
+        ".dataset-catalog-detail-pane",
+        ".dataset-catalog-toolbar",
+      ],
+    },
+    {
+      path: "/app/projects/manufacturing-demo-project/workspaces/manufacturing-demo/ontology",
+      ready: ".ontology-workbench-page",
+      surfaces: [
+        ".ontology-workbench-page",
+        ".ontology-query-toolbar",
+        ".ontology-object-rail",
+        ".ontology-primary-view",
+      ],
+    },
+    {
+      path: "/app/projects/manufacturing-demo-project/workspaces/manufacturing-demo/governance",
+      ready: ".governance-workbench-page",
+      surfaces: [
+        ".governance-workbench-page",
+        ".governance-tabs",
+        ".governance-overview",
+        ".governance-panel",
+      ],
+    },
+    {
+      path: "/app/analysis/risk-event-portfolio",
+      ready: ".analysis-workbench",
+      surfaces: [
+        ".analysis-workbench",
+        ".analysis-notice",
+        ".analysis-projection-toolbar",
+        ".analysis-projection-layout",
+      ],
+    },
+  ];
+
+  for (const route of routes) {
+    await page.goto(route.path);
+    await expect(page.locator(route.ready)).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    expectDarkSurfaces(await surfaceMetrics(page, route.surfaces));
+    const geometry = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      viewportWidth: window.innerWidth,
+    }));
+    expect(geometry.scrollWidth, `horizontal overflow at ${route.path}`).toBeLessThanOrEqual(
+      geometry.viewportWidth + 1,
+    );
   }
 });
