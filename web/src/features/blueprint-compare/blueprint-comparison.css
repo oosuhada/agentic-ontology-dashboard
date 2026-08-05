@@ -43,7 +43,8 @@
 .comparison-characteristics { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 13px 11px; border-bottom: 1px solid #30404d; }
 
 .comparison-frame-stage { position: relative; width: 100%; min-height: 180px; overflow: hidden; background: #0a0f14; }
-.comparison-frame-stage iframe { position: absolute; inset: 0 auto auto 0; display: block; border: 0; transform-origin: top left; background: #10161d; }
+.comparison-frame-stage iframe { position: absolute; inset: 0 auto auto 0; display: block; border: 0; opacity: 0; transform-origin: top left; background: #10161d; transition: opacity .16s ease; pointer-events: none; }
+.comparison-frame-stage iframe.is-ready { opacity: 1; pointer-events: auto; }
 .comparison-frame-loading { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; color: #8a9ba8; font-size: 12px; }
 .comparison-frame-loading .bp6-icon { animation: comparison-spin 1s linear infinite; }
 @keyframes comparison-spin { to { transform: rotate(360deg); } }

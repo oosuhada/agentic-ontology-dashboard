@@ -19,6 +19,8 @@ import {
   blueprintV2ProjectPath,
   projectDashboardPath,
 } from "../../routing";
+import type { AuthUser } from "../../types";
+import { useAuth } from "../auth/AuthContext";
 import "./blueprint-comparison.css";
 
 type VersionId = "original" | "v1" | "v2";
@@ -96,7 +98,27 @@ const RUBRIC = [
   },
 ] as const;
 
+type ComparisonHostWindow = Window & {
+  __ONTOLOGY_COMPARISON_USER__?: AuthUser | null;
+};
+
+const READY_SELECTORS: Record<VersionId, string> = {
+  original: ".ontology-dashboard-shell, .fd-route-shell",
+  v1: ".blueprint-preview:not(.blueprint-loading) .bp-workbench-shell",
+  v2: ".blueprint-v2:not(.blueprint-v2-loading) .bpv2-shell",
+};
+
+function embeddedComparisonPath(path: string) {
+  const url = new URL(path, window.location.origin);
+  url.searchParams.set("comparison_embed", "1");
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 export function BlueprintComparisonPage({ projectId }: BlueprintComparisonPageProps) {
+  const { user } = useAuth();
+  // Same-origin comparison frames inherit the already validated parent identity.
+  // This avoids 15 independent /auth/me bootstrap requests and login fallbacks.
+  (window as ComparisonHostWindow).__ONTOLOGY_COMPARISON_USER__ = user;
   const [layout, setLayout] = useState<LayoutId>("triple");
   const [viewportId, setViewportId] = useState<ViewportId>("desktop");
   const [reloadKey, setReloadKey] = useState(0);
@@ -305,7 +327,7 @@ export function BlueprintComparisonPage({ projectId }: BlueprintComparisonPagePr
           </ButtonGroup>
         </div>
 
-        {scenarios.map((scenario, scenarioIndex) => (
+        {scenarios.map((scenario) => (
           <article key={scenario.id} id={`comparison-${scenario.id}`} className="comparison-scenario-section">
             <div className="comparison-scenario-heading">
               <div>
@@ -327,7 +349,7 @@ export function BlueprintComparisonPage({ projectId }: BlueprintComparisonPagePr
                   viewport={viewport}
                   selected={false}
                   onSelect={() => setSelectedCandidate(version.id)}
-                  defer={scenarioIndex > 0}
+                  defer
                   titlePrefix={scenario.title}
                 />
               ))}
@@ -412,9 +434,13 @@ function LivePreview({
   titlePrefix?: string;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [scale, setScale] = useState(0.4);
-  const [loaded, setLoaded] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
+  const [loadSignal, setLoadSignal] = useState(0);
   const [active, setActive] = useState(!defer);
+  const embeddedPath = embeddedComparisonPath(version.path);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -435,10 +461,36 @@ function LivePreview({
         setActive(true);
         observer.disconnect();
       }
-    }, { rootMargin: "360px 0px" });
+    }, { rootMargin: "40px 0px", threshold: 0.15 });
     observer.observe(stage);
     return () => observer.disconnect();
   }, [active, defer]);
+
+  useEffect(() => {
+    if (!active || loadSignal === 0) return;
+    setReady(false);
+    setTimedOut(false);
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      try {
+        const document = iframeRef.current?.contentDocument;
+        if (document?.querySelector(READY_SELECTORS[version.id])) {
+          setReady(true);
+          setTimedOut(false);
+          window.clearInterval(timer);
+          return;
+        }
+      } catch {
+        // Same-origin is required; keep the protected loading surface if unavailable.
+      }
+      if (attempts >= 100) {
+        setTimedOut(true);
+        window.clearInterval(timer);
+      }
+    }, 200);
+    return () => window.clearInterval(timer);
+  }, [active, loadSignal, version.id, embeddedPath]);
 
   return (
     <Card className={`comparison-preview-card ${selected ? "is-selected" : ""}`} elevation={selected ? 3 : 1}>
@@ -463,15 +515,23 @@ function LivePreview({
         className="comparison-frame-stage"
         style={{ height: Math.round(viewport.height * scale) }}
       >
-        {!loaded ? <div className="comparison-frame-loading"><Icon icon={active ? "refresh" : "download"} /><span>{active ? "실제 화면 불러오는 중" : "아래로 이동하면 실제 화면 로드"}</span></div> : null}
+        {!ready ? (
+          <div className="comparison-frame-loading">
+            <Icon icon={active && !timedOut ? "refresh" : "download"} />
+            <span>{!active ? "아래로 이동하면 비교 화면 로드" : timedOut ? "비교 화면 준비가 지연되고 있습니다" : "인증된 비교 화면 준비 중"}</span>
+            {timedOut ? <Button small icon="refresh" onClick={() => setLoadSignal((value) => value + 1)}>다시 확인</Button> : null}
+          </div>
+        ) : null}
         {active ? (
           <iframe
+            ref={iframeRef}
             title={titlePrefix ? `${titlePrefix} · ${version.label} live preview` : `${version.label} live preview`}
-            src={version.path}
+            src={embeddedPath}
             width={viewport.width}
             height={viewport.height}
             loading={defer ? "lazy" : "eager"}
-            onLoad={() => setLoaded(true)}
+            onLoad={() => setLoadSignal((value) => value + 1)}
+            className={ready ? "is-ready" : ""}
             style={{ transform: `scale(${scale})` }}
           />
         ) : null}

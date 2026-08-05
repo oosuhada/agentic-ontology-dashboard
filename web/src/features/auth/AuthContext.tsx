@@ -20,9 +20,25 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 const AUTH_BOOTSTRAP_TIMEOUT_MS = 6_000;
 
+type ComparisonHostWindow = Window & {
+  __ONTOLOGY_COMPARISON_USER__?: AuthUser | null;
+};
+
+function inheritedComparisonUser(): AuthUser | null {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("comparison_embed") !== "1" || window.parent === window) return null;
+  try {
+    if (window.parent.location.origin !== window.location.origin) return null;
+    return (window.parent as ComparisonHostWindow).__ONTOLOGY_COMPARISON_USER__ ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const embeddedUser = inheritedComparisonUser();
+  const [user, setUser] = useState<AuthUser | null>(() => embeddedUser);
+  const [loading, setLoading] = useState(() => !embeddedUser);
 
   async function refresh(): Promise<AuthUser | null> {
     try {
@@ -37,6 +53,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
+    const inherited = inheritedComparisonUser();
+    if (inherited) {
+      setUser(inherited);
+      setLoading(false);
+      return;
+    }
     let active = true;
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), AUTH_BOOTSTRAP_TIMEOUT_MS);

@@ -16,6 +16,7 @@ test("renders three live project versions and supports pair comparison", async (
   const primaryGrid = page.locator(".blueprint-comparison-page > .comparison-live-grid");
   await expect(primaryGrid.locator(".comparison-preview-card")).toHaveCount(3);
   await expect(primaryGrid.locator("iframe")).toHaveCount(3);
+  await expect(primaryGrid.locator('iframe[src*="comparison_embed=1"]')).toHaveCount(3);
 
   const titles = await primaryGrid.locator("iframe").evaluateAll((frames) => frames.map((frame) => frame.getAttribute("title")));
   expect(titles).toEqual([
@@ -27,6 +28,10 @@ test("renders three live project versions and supports pair comparison", async (
   await expect(page.frameLocator('iframe[title="기존 Dashboard live preview"]').locator("body")).toBeVisible();
   await expect(page.frameLocator('iframe[title="Blueprint V1 live preview"]').locator(".blueprint-preview")).toBeVisible();
   await expect(page.frameLocator('iframe[title="Blueprint V2 live preview"]').locator(".blueprint-v2")).toBeVisible();
+  await expect(page.frameLocator('iframe[title="기존 Dashboard live preview"]').getByLabel("이메일")).toHaveCount(0);
+  await expect(page.frameLocator('iframe[title="Blueprint V1 live preview"]').getByLabel("이메일")).toHaveCount(0);
+  await expect(page.frameLocator('iframe[title="Blueprint V2 live preview"]').getByLabel("이메일")).toHaveCount(0);
+  await expect(primaryGrid.locator("iframe.is-ready")).toHaveCount(3);
 
   await expect(page.locator(".comparison-scenario-section")).toHaveCount(4);
   await expect(page.getByRole("heading", { name: "첫 화면과 운영 개요 비교" })).toBeVisible();
