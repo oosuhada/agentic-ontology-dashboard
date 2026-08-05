@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { StatusBadge } from "../../components/StatusBadge";
 import { agentPath, navigate } from "../../routing";
 import { OntologyLifecycleLoader } from "../../ui/foundry/OntologyLifecycleLoader";
+import { useI18n } from "../../ui/i18n/I18nProvider";
 import type {
   AppRole,
   BlockType,
@@ -17,6 +18,7 @@ import type { DashboardDraftResponse } from "../planner/types";
 import type { RoleWorkspaceData } from "../roles/types";
 import { ServerFilteredEventScope } from "./ServerFilteredEventScope";
 import type { BoardCatalogDefinition, BoardVisualizationRuntime, DashboardBoard, SelectionFilter } from "./types";
+import { localizedBoardTitle } from "./dashboardLocalization";
 
 const BlockRenderer = lazy(() => import("../../components").then((module) => ({ default: module.BlockRenderer })));
 const PlannerAssistantBoard = lazy(() => import("../planner/PlannerAssistantBoard").then((module) => ({ default: module.PlannerAssistantBoard })));
@@ -38,7 +40,8 @@ const ROLE_RENDERERS = new Set([
 ]);
 
 function LazyBoard({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<OntologyLifecycleLoader variant="board" operation="Loading board module" />}>{children}</Suspense>;
+  const { t } = useI18n();
+  return <Suspense fallback={<OntologyLifecycleLoader variant="board" operation={t("dashboard.loadingBoardModule")} />}>{children}</Suspense>;
 }
 
 const LEGACY_RENDERERS = new Set<BlockType>([
@@ -138,6 +141,8 @@ export function DashboardBoardRenderer({
   onAsk,
   lastFollowUp,
 }: DashboardBoardRendererProps) {
+  const { t } = useI18n();
+  const boardTitle = localizedBoardTitle(board, t);
   if (definition.renderer === "PlannerAssistant") {
     return (
       <LazyBoard><PlannerAssistantBoard
@@ -166,11 +171,11 @@ export function DashboardBoardRenderer({
   if (LEGACY_RENDERERS.has(definition.renderer as BlockType)) {
     const existing = layout.blocks.find((item) => item.type === definition.renderer);
     const block: UIBlock = existing
-      ? { ...existing, block_id: board.id, title: board.title, order: board.order + 1 }
+      ? { ...existing, block_id: board.id, title: boardTitle, order: board.order + 1 }
       : {
           block_id: board.id,
           type: definition.renderer as BlockType,
-          title: board.title,
+          title: boardTitle,
           order: board.order + 1,
           emphasis: board.width === 12 ? "primary" : "secondary",
           data_fields: [],
@@ -316,7 +321,7 @@ export function DashboardBoardRenderer({
       const selected = events.find((event) => event.event_id === selectedEventId);
       return (
         <section className="card platform-board-card">
-          <h2>{board.title}</h2>
+          <h2>{boardTitle}</h2>
           {selected ? (
             <>
               <div className="platform-object-heading"><strong>{selected.equipment.display_name}</strong><StatusBadge status={selected.status} /></div>
@@ -327,33 +332,33 @@ export function DashboardBoardRenderer({
                 <dt>Engineer</dt><dd>{selected.equipment.assigned_engineer}</dd>
               </dl>
             </>
-          ) : <p>선택된 object가 없습니다.</p>}
+          ) : <p>{t("dashboard.noSelectedObject")}</p>}
         </section>
       );
     }
     case "ParameterSummary":
       return (
         <section className="card platform-board-card">
-          <h2>{board.title}</h2>
+          <h2>{boardTitle}</h2>
           <div className="parameter-board-grid">
             {Object.entries(parameterState).map(([key, value]) => (
               <div key={key}><span>{key}</span><code>{String(value ?? "-")}</code></div>
             ))}
           </div>
-          <p className="affected-summary"><strong>{affectedCount}</strong> downstream boards가 현재 parameter 변경의 영향을 받습니다.</p>
+          <p className="affected-summary">{t("dashboard.downstreamAffected", { count: affectedCount })}</p>
         </section>
       );
     case "AuditTrace":
       return (
         <section className="card platform-board-card">
-          <h2>{board.title}</h2>
+          <h2>{boardTitle}</h2>
           <ol className="trace-flow">
-            <li><span>Object</span><strong>risk_event:{evidence.event_id}</strong></li>
-            <li><span>Evidence</span><strong>{evidence.evidence_id}</strong></li>
-            <li><span>Model·Policy</span><strong>{evidence.model.model_version} · {evidence.model.policy_version}</strong></li>
-            <li><span>Human Action</span><strong>{evidence.recommended_decision}</strong></li>
+            <li><span>{t("dashboard.auditObject")}</span><strong>risk_event:{evidence.event_id}</strong></li>
+            <li><span>{t("dashboard.auditEvidence")}</span><strong>{evidence.evidence_id}</strong></li>
+            <li><span>{t("dashboard.auditModelPolicy")}</span><strong>{evidence.model.model_version} · {evidence.model.policy_version}</strong></li>
+            <li><span>{t("dashboard.auditHumanAction")}</span><strong>{evidence.recommended_decision}</strong></li>
           </ol>
-          <small>Action invocation과 audit ID는 Object action history API에서 재구성됩니다.</small>
+          <small>{t("dashboard.auditTraceDetail")}</small>
           <button
             type="button"
             className="secondary agent-drilldown-button"
@@ -363,47 +368,47 @@ export function DashboardBoardRenderer({
               objectId: evidence.event_id,
             }))}
           >
-            Agent Evidence에서 추적
+            {t("dashboard.traceInAgent")}
           </button>
         </section>
       );
     case "IntegrationHealth":
       return (
         <section className="card platform-board-card">
-          <h2>{board.title}</h2>
+          <h2>{boardTitle}</h2>
           <div className="health-list">
-            <div><span>Manufacturing adapter</span><strong className="health-ok">Connected</strong></div>
-            <div><span>Evidence context</span><strong>{evidence.maintenance_context.provider}</strong></div>
-            <div><span>Report provider</span><strong>{report.mode}</strong></div>
-            <div><span>Layout planner</span><strong>{layout.mode}</strong></div>
+            <div><span>{t("dashboard.manufacturingAdapter")}</span><strong className="health-ok">{t("dashboard.connected")}</strong></div>
+            <div><span>{t("dashboard.evidenceContext")}</span><strong>{evidence.maintenance_context.provider}</strong></div>
+            <div><span>{t("dashboard.reportProvider")}</span><strong>{report.mode}</strong></div>
+            <div><span>{t("dashboard.layoutPlanner")}</span><strong>{layout.mode}</strong></div>
           </div>
         </section>
       );
     case "ModelHealth":
       return (
         <section className="card platform-board-card">
-          <h2>{board.title}</h2>
+          <h2>{boardTitle}</h2>
           <div className="metric-grid">
-            <div className="metric"><span>Model</span><strong>{evidence.model.model_version}</strong></div>
-            <div className="metric"><span>Policy</span><strong>{evidence.model.policy_version}</strong></div>
-            <div className="metric"><span>Confidence</span><strong>{evidence.confidence}</strong></div>
-            <div className="metric"><span>Quality issues</span><strong>{evidence.data_quality_warnings.length}</strong></div>
+            <div className="metric"><span>{t("dashboard.modelLabel")}</span><strong>{evidence.model.model_version}</strong></div>
+            <div className="metric"><span>{t("dashboard.policyLabel")}</span><strong>{evidence.model.policy_version}</strong></div>
+            <div className="metric"><span>{t("dashboard.confidenceLabel")}</span><strong>{evidence.confidence}</strong></div>
+            <div className="metric"><span>{t("dashboard.qualityIssues")}</span><strong>{evidence.data_quality_warnings.length}</strong></div>
           </div>
         </section>
       );
     case "TextBoard":
       return (
         <section className="card platform-board-card text-board-card">
-          <h2>{board.title}</h2>
+          <h2>{boardTitle}</h2>
           <p>{String(board.settings.text ?? "")}</p>
-          <small>Plain text only · HTML과 script는 저장 단계에서 거부됩니다.</small>
+          <small>{t("dashboard.plainTextOnly")}</small>
         </section>
       );
     default:
       return (
         <section className="card platform-board-card">
-          <h2>{board.title}</h2>
-          <p>등록된 renderer가 아직 연결되지 않았습니다.</p>
+          <h2>{boardTitle}</h2>
+          <p>{t("dashboard.rendererMissing")}</p>
           <code>{definition.renderer}</code>
         </section>
       );

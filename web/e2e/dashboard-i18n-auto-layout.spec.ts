@@ -44,6 +44,11 @@ test("locale switch updates the dashboard chrome and content-aware AI layout can
 
   await login(page);
 
+  await expect(page.getByText("설비 신뢰성 운영", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "신뢰성 운영", exact: true })).toBeVisible();
+  await expect(page.locator(".dashboard-board-title strong", { hasText: "운영 KPI 요약" }).first()).toBeVisible();
+  await expect(page.getByText("표시 중인 Object", { exact: true })).toBeVisible();
+
   await page.locator(".od-display-menu > summary").click();
   await page.getByRole("button", { name: "English", exact: true }).click();
   await page.locator(".od-display-menu > summary").click();
@@ -52,6 +57,8 @@ test("locale switch updates the dashboard chrome and content-aware AI layout can
   await expect(page.getByText("Parameters and filters", { exact: true })).toBeVisible();
   await expect(page.getByText("Automatically compose the workspace around equipment risk, production-line impact, failure type, and inspection decisions.", { exact: true })).toBeVisible();
   await expect(page.getByText("Risk trend + contributing factors + equipment relationships + inspection actions", { exact: true })).toBeVisible();
+  await expect(page.locator(".dashboard-board-title strong", { hasText: "Operations KPI Strip" }).first()).toBeVisible();
+  await expect(page.getByText("Visible objects", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   const autoFit = page.getByRole("button", { name: "Auto-fit current tab", exact: true });
@@ -79,15 +86,11 @@ test("locale switch updates the dashboard chrome and content-aware AI layout can
   });
   expect(overlapCount).toBe(0);
 
-  const restoreStatus = await page.evaluate(async () => {
-    const csrf = document.cookie.split(";").map((item) => item.trim()).find((item) => item.startsWith("ontology_csrf="))?.split("=").slice(1).join("=") ?? "";
-    const response = await fetch("/api/dashboards/preferences/restore", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": decodeURIComponent(csrf) },
-      body: JSON.stringify({ workspace_id: "manufacturing-demo" }),
-    });
-    return response.status;
-  });
-  expect(restoreStatus).toBe(200);
+  page.once("dialog", (dialog) => dialog.accept());
+  const restoreResponse = page.waitForResponse((response) => (
+    response.url().includes("/api/dashboards/preferences/restore")
+    && response.request().method() === "POST"
+  ));
+  await page.getByTitle("Restore role defaults").evaluate((button: HTMLButtonElement) => button.click());
+  expect((await restoreResponse).status()).toBe(200);
 });

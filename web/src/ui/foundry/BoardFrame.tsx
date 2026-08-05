@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight, Copy, Eye, EyeOff, GripVertical, Maximize2, Minimize2, MoreHorizontal, Star, Trash2 } from "lucide-react";
 import { forwardRef, type CSSProperties, type ReactNode } from "react";
 import type { DashboardBoard, DashboardMode } from "../../features/dashboard/types";
+import { localizedBoardTitle } from "../../features/dashboard/dashboardLocalization";
 import { useI18n } from "../i18n/I18nProvider";
 
 interface BoardFrameProps {
@@ -48,6 +49,7 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
 }, ref) {
   const { t } = useI18n();
   const layoutMode = typeof board.settings.layout_mode === "string" ? board.settings.layout_mode : "manual";
+  const title = localizedBoardTitle(board, t);
   return (
     <article
       ref={ref}
@@ -82,7 +84,7 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
         <button
           type="button"
           className="dashboard-board-drag-handle"
-          aria-label={`${board.title} ${t("dashboard.moveBoard")}`}
+          aria-label={`${title} ${t("dashboard.moveBoard")}`}
           title={mode === "edit" ? t("dashboard.dragToMove") : t("dashboard.viewMode")}
           disabled={mode !== "edit"}
         >
@@ -90,7 +92,7 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
         </button>
         <div className="dashboard-board-title fd-board-frame__title">
           <span>{board.custom ? t("dashboard.personalBoard").toUpperCase() : t("dashboard.governedBoard").toUpperCase()}</span>
-          <strong>{board.title}</strong>
+          <strong>{title}</strong>
         </div>
         <div className="dashboard-board-actions fd-board-frame__actions">
           {mode === "edit" ? <span className={`layout-mode-chip mode-${layoutMode}`}>{layoutMode === "ai" ? t("dashboard.layoutModeAi") : layoutMode === "auto" ? t("dashboard.layoutModeAuto") : t("dashboard.layoutModeManual")}</span> : null}
@@ -99,7 +101,7 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
           {mode === "view" && onToggleCollapsed ? (
             <button
               type="button"
-              aria-label={collapsed ? `${board.title} ${t("dashboard.expandBoard")}` : `${board.title} ${t("dashboard.collapseBoard")}`}
+              aria-label={collapsed ? `${title} ${t("dashboard.expandBoard")}` : `${title} ${t("dashboard.collapseBoard")}`}
               aria-expanded={!collapsed}
               title={collapsed ? t("dashboard.expandBoard") : t("dashboard.collapseBoard")}
               onClick={(event) => { event.stopPropagation(); onToggleCollapsed(); }}
@@ -111,7 +113,7 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
             <button
               type="button"
               className={`dashboard-board-favorite ${favorite ? "active" : ""}`}
-              aria-label={favorite ? `${board.title} ${t("dashboard.unfavorite")}` : `${board.title} ${t("dashboard.favorite")}`}
+              aria-label={favorite ? `${title} ${t("dashboard.unfavorite")}` : `${title} ${t("dashboard.favorite")}`}
               aria-pressed={favorite}
               title={favorite ? t("dashboard.unfavorite") : t("dashboard.favorite")}
               onClick={(event) => {
@@ -124,7 +126,7 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
           ) : null}
           <button
             type="button"
-            aria-label={fullscreen ? t("dashboard.closeFullscreen") : `${board.title} ${t("dashboard.fullscreen")}`}
+            aria-label={fullscreen ? t("dashboard.closeFullscreen") : `${title} ${t("dashboard.fullscreen")}`}
             title={fullscreen ? t("dashboard.closeFullscreen") : t("dashboard.fullscreen")}
             onClick={(event) => {
               event.stopPropagation();
@@ -135,8 +137,8 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
           </button>
           {mode === "edit" ? (
             <details className="dashboard-board-more" onClick={(event) => event.stopPropagation()}>
-              <summary aria-label={`${board.title} ${t("dashboard.moreActions")}`} title={t("dashboard.moreActions")}><MoreHorizontal size={14} /></summary>
-              <div role="menu" aria-label={`${board.title} ${t("dashboard.moreActions")}`}>
+              <summary aria-label={`${title} ${t("dashboard.moreActions")}`} title={t("dashboard.moreActions")}><MoreHorizontal size={14} /></summary>
+              <div role="menu" aria-label={`${title} ${t("dashboard.moreActions")}`}>
                 <button type="button" role="menuitem" onClick={(event) => { onToggleFavorite(); event.currentTarget.closest("details")?.removeAttribute("open"); }}><Star size={13} fill={favorite ? "currentColor" : "none"} />{favorite ? t("dashboard.unfavorite") : t("dashboard.favorite")}</button>
                 <button type="button" role="menuitem" onClick={(event) => { onToggleHidden(); event.currentTarget.closest("details")?.removeAttribute("open"); }}>{board.hidden ? <Eye size={13} /> : <EyeOff size={13} />}{board.hidden ? t("common.show") : t("common.hide")}</button>
                 <button type="button" role="menuitem" onClick={(event) => { onDuplicate(); event.currentTarget.closest("details")?.removeAttribute("open"); }}><Copy size={13} />{t("common.duplicate")}</button>

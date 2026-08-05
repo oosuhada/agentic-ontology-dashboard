@@ -45,6 +45,7 @@ import { agentPath, datasetCatalogPath, governancePath, navigate, ontologyPath, 
 import type { AppRole, AuthUser, DomainPack, Project, Workspace } from "../../types";
 import type { DashboardMode, DashboardTab } from "./types";
 import type { AdaptiveExperienceProfile } from "../manufacturing/adaptiveExperience";
+import { localizeAdaptiveTabTitle } from "../manufacturing/localizedExperience";
 
 export type WorkspaceView = "report" | "dashboard" | "analysis";
 
@@ -242,6 +243,7 @@ export function DashboardShell({
   const selectedProject = useMemo(() => projects.find((project) => project.id === selectedProjectId), [projects, selectedProjectId]);
   const selectedWorkspace = useMemo(() => workspaces.find((workspace) => workspace.id === selectedWorkspaceId), [selectedWorkspaceId, workspaces]);
   const activeTab = useMemo(() => tabs.find((tab) => tab.id === activeTabId), [activeTabId, tabs]);
+  const activeTabTitle = activeTab ? localizeAdaptiveTabTitle(activeTab.title, t) : null;
 
   useEffect(() => {
     setWorkspaceView(initialWorkspaceView);
@@ -341,7 +343,7 @@ export function DashboardShell({
           <div className="od-breadcrumbs">
             <span>{selectedProject?.display_name ?? "Project"}</span><ChevronRight size={12} />
             <span>{selectedWorkspace?.display_name ?? "Workspace"}</span><ChevronRight size={12} />
-            <strong>{workspaceView === "report" ? t("dashboard.operationalReport") : workspaceView === "dashboard" ? activeTab?.title ?? t("common.dashboard") : t("dashboard.analysisPath")}</strong>
+            <strong>{workspaceView === "report" ? t("dashboard.operationalReport") : workspaceView === "dashboard" ? activeTabTitle ?? t("common.dashboard") : t("dashboard.analysisPath")}</strong>
           </div>
           <button type="button" className="od-global-search" onClick={() => setCommandOpen(true)}><Search size={14} /><span>{t("nav.search")}</span><kbd>⌘K</kbd></button>
           <div className="od-topbar-actions">
@@ -358,7 +360,7 @@ export function DashboardShell({
             <EntityTitle
               icon={workspaceView === "report" ? FileText : workspaceView === "dashboard" ? LayoutDashboard : Workflow}
               eyebrow={workspaceView === "report" ? `REPORT · ${roleEyebrow}` : workspaceView === "dashboard" ? `DASHBOARD · ${roleEyebrow}` : "ANALYSIS · GOVERNED PATH"}
-              title={workspaceView === "report" ? `${roleLabel} Operational Briefing` : workspaceView === "dashboard" ? activeTab?.title ?? `${roleLabel} Operations` : "Risk Event Analysis Path"}
+              title={workspaceView === "report" ? `${roleLabel} Operational Briefing` : workspaceView === "dashboard" ? activeTabTitle ?? `${roleLabel} Operations` : "Risk Event Analysis Path"}
               subtitle={workspaceView === "report"
                 ? `${adaptiveProfile.label} · narrative and governed evidence`
                 : workspaceView === "dashboard"
@@ -411,7 +413,7 @@ export function DashboardShell({
                   }}
                   onClick={() => onActiveTabChange(tab.id)}
                 >
-                  {tab.title}{tab.custom ? <small>{t("dashboard.personal").toUpperCase()}</small> : null}
+                  {localizeAdaptiveTabTitle(tab.title, t)}{tab.custom ? <small>{t("dashboard.personal").toUpperCase()}</small> : null}
                 </button>
               ))}
               {mode === "edit" ? <button type="button" className="add-tab-button" onClick={onAddTab}><Plus size={13} /> {t("dashboard.newTabLabel")}</button> : null}

@@ -2,6 +2,7 @@ import { Database, ExternalLink, PlugZap, Rows3 } from "lucide-react";
 import type { EventSummary } from "../../types";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useI18n } from "../../ui/i18n/I18nProvider";
+import type { MessageKey } from "../../ui/i18n/messages";
 import type { DashboardParameterDefinition, SavedView } from "./types";
 import type { PredictiveMaintenanceDashboardDataSource } from "../predictive-maintenance/types";
 
@@ -38,6 +39,25 @@ interface ContextPanelProps {
   onDeleteSavedView: () => void;
 }
 
+const STATUS_OPTION_KEYS: Record<string, MessageKey> = {
+  all: "status.all",
+  critical: "status.critical",
+  warning: "status.warning",
+  attention: "status.attention",
+  data_quality_hold: "status.dataQualityHold",
+  normal: "status.normal",
+};
+
+const INTENT_OPTION_KEYS: Record<string, MessageKey> = {
+  overview: "intent.overview",
+  "explain-risk": "intent.explainRisk",
+  compare: "intent.compare",
+  "summarize-manager": "intent.summarizeManager",
+  "detail-engineer": "intent.detailEngineer",
+  "recommend-check": "intent.recommendCheck",
+  "show-model-details": "intent.showModelDetails",
+};
+
 export function ContextPanel({
   events,
   selectedEventId,
@@ -57,6 +77,10 @@ export function ContextPanel({
   onDeleteSavedView,
 }: ContextPanelProps) {
   const { t, locale } = useI18n();
+  const optionLabel = (value: string) => {
+    const key = STATUS_OPTION_KEYS[value] ?? INTENT_OPTION_KEYS[value];
+    return key ? t(key) : value;
+  };
   const selected = events.find((event) => event.event_id === selectedEventId);
   const statusDefinition = parameterDefinitions.find((item) => item.id === "status_filter");
   const intentDefinition = parameterDefinitions.find((item) => item.id === "intent");
@@ -122,8 +146,8 @@ export function ContextPanel({
             <div><strong>{selected.equipment.display_name}</strong><StatusBadge status={selected.status} /></div>
             <small>{selected.scenario_id} · {selected.equipment.line}</small>
             <dl>
-              <dt>Equipment</dt><dd>{selected.equipment.equipment_id}</dd>
-              <dt>Risk Event</dt><dd>{selected.event_id}</dd>
+              <dt>{t("dashboard.equipment")}</dt><dd>{selected.equipment.equipment_id}</dd>
+              <dt>{t("dashboard.riskEvent")}</dt><dd>{selected.event_id}</dd>
               <dt>{t("dashboard.assignee")}</dt><dd>{selected.equipment.assigned_engineer}</dd>
             </dl>
           </div>
@@ -142,7 +166,7 @@ export function ContextPanel({
             onChange={(event) => onParameterChange("status_filter", event.target.value)}
           >
             {(statusDefinition?.options ?? ["all"]).map((option) => (
-              <option key={String(option)} value={String(option)}>{String(option)}</option>
+              <option key={String(option)} value={String(option)}>{optionLabel(String(option))}</option>
             ))}
           </select>
         </label>
@@ -156,7 +180,7 @@ export function ContextPanel({
                 className={String(parameterState.status_filter ?? "all") === value ? "active" : ""}
                 onClick={() => onParameterChange("status_filter", value)}
               >
-                {value}
+                {optionLabel(value)}
               </button>
             );
           })}
@@ -168,7 +192,7 @@ export function ContextPanel({
             onChange={(event) => onParameterChange("intent", event.target.value)}
           >
             {(intentDefinition?.options ?? ["overview"]).map((option) => (
-              <option key={String(option)} value={String(option)}>{String(option)}</option>
+              <option key={String(option)} value={String(option)}>{optionLabel(String(option))}</option>
             ))}
           </select>
         </label>
@@ -182,7 +206,7 @@ export function ContextPanel({
           {parameterDefinitions.map((definition) => (
             <div key={definition.id}>
               <span>{definition.display_name}</span>
-              <code>{String(parameterState[definition.id] ?? definition.default_value ?? "-")}</code>
+              <code>{optionLabel(String(parameterState[definition.id] ?? definition.default_value ?? "-"))}</code>
             </div>
           ))}
         </div>
