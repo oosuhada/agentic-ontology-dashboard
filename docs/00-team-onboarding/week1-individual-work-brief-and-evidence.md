@@ -17,10 +17,10 @@ Historical Replay를 함께 확인할 수 있도록 연결했습니다.
 
 ### 실행 화면
 
-- [기존 Team Share](https://dashboard.oosu.dev/team-share)
-- [최신 통합 프로토타입 Story](https://dashboard.oosu.dev/team-share-adaptive)
-- [독립 HTML 공유본](https://dashboard.oosu.dev/team-share-adaptive.html)
 - [실제 Project Dashboard](https://dashboard.oosu.dev/app/projects/manufacturing-demo-project)
+- [최신 통합 프로토타입 Story](https://dashboard.oosu.dev/team-share-adaptive)
+- [기존 Team Share](https://dashboard.oosu.dev/team-share)
+- [독립 HTML 공유본](https://dashboard.oosu.dev/team-share-adaptive.html)
 - [ML Validator](https://dashboard.oosu.dev/app/projects/manufacturing-demo-project/workspaces/manufacturing-demo/modeling)
 - [Ontology Dashboard API 문서](https://dashboard.oosu.dev/docs)
 
@@ -82,9 +82,7 @@ SHA-256 값은 다음과 같습니다.
 
 ### 실행 화면
 
-- [V3.1 Project Dashboard](https://dashboard.oosu.dev/app/projects/manufacturing-demo-project)
-- [V3.1 통합 Story](https://dashboard.oosu.dev/team-share-adaptive)
-- [V3.1 독립 HTML](https://dashboard.oosu.dev/team-share-adaptive.html)
+- [Canonical V3.1 데이터셋 변경·검증 Story](https://canonical-v3-1.oosu.dev)
 
 독립 HTML 배포본에서는 다음 식별 정보를 확인할 수 있습니다.
 
@@ -171,7 +169,7 @@ Streamlit AppTest에서 예외 없이 9개의 Plotly 차트가 렌더링되는 �
 | 작업 | 실행 화면 | GitHub |
 |---|---|---|
 | Palantir UX/UI 통합 프로토타입 | [통합 Story](https://dashboard.oosu.dev/team-share-adaptive) | [구현 브랜치](https://github.com/oosuhada/agentic-ontology-dashboard/tree/feature/predictive-maintenance-adaptive-modeling) |
-| Canonical V3.1 데이터 패키지 | [Project Dashboard](https://dashboard.oosu.dev/app/projects/manufacturing-demo-project) | [GitHub Release](https://github.com/oosuhada/agentic-ontology-dashboard/releases/tag/predictive-maintenance-canonical-v3.1-20260805) |
+| Canonical V3.1 데이터 패키지 | [데이터셋 변경·검증 Story](https://canonical-v3-1.oosu.dev) | [GitHub Release](https://github.com/oosuhada/agentic-ontology-dashboard/releases/tag/predictive-maintenance-canonical-v3.1-20260805) |
 | FastAPI vs Flask | [비교 화면](https://fastapi-flask.oosu.dev) | [실험 브랜치](https://github.com/oosuhada/agentic-ontology-dashboard/tree/experiment/week1-streamlit-plotly-framework-comparison) |
 | Plotly·Streamlit | [Dashboard](https://plotly-streamlit.oosu.dev/dashboard) | [실험 브랜치](https://github.com/oosuhada/text2cypher-factory-rca/tree/experiment/streamlit-plotly-dashboard) |
 

@@ -96,3 +96,11 @@ PYTHONPATH=experiments/week1_prototype \
 - Flask는 비교용 최소 구현이며 제품 백엔드로 병행 운영하지 않는다.
 - Canonical V3.1 원본 파일은 읽기 전용으로 사용한다.
 
+## Canonical V3.1 데이터셋 설명 페이지
+
+데이터셋 변경 배경, Azure PdM 분석 결과, Canonical V3.1 구조, 검증 결과와
+남은 제약을 설명하는 독립 HTML은 다음 경로에 있습니다.
+
+- 소스: `experiments/week1_prototype/canonical_v3_1_story/index.html`
+- 공개 주소: <https://canonical-v3-1.oosu.dev>
+
