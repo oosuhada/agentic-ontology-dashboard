@@ -45,6 +45,9 @@ import {
   getArtifactGovernance,
   getObservabilityReadiness,
   getConnectorSnapshot,
+  getOntologyPrimitives,
+  previewGovernedAction,
+  executeRiskFunction,
   runConnector,
   reconcileArtifacts,
   signArtifactDownload,
@@ -52,6 +55,7 @@ import {
   type ArtifactGovernanceSnapshot,
   type ObservabilityReadiness,
   type ConnectorSnapshot,
+  type OntologyPrimitiveSnapshot,
   operateDistributedJob,
   type DistributedRuntimeSnapshot,
   type DeploymentReadiness,
@@ -91,6 +95,7 @@ interface CommercialContext {
   artifacts: ArtifactGovernanceSnapshot;
   observability: ObservabilityReadiness;
   connectors: ConnectorSnapshot;
+  primitives: OntologyPrimitiveSnapshot;
 }
 
 function currentSurface(): CommercialSurfaceId {
@@ -174,8 +179,9 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       getArtifactGovernance(projectId),
       getObservabilityReadiness(projectId),
       getConnectorSnapshot(projectId),
+      getOntologyPrimitives(projectId),
     ])
-      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts, observability, connectors]) => {
+      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts, observability, connectors, primitives]) => {
         if (!controller.signal.aborted) setContext({
           project,
           workspaces,
@@ -188,6 +194,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
           artifacts,
           observability,
           connectors,
+          primitives,
         });
       })
       .catch((reason: unknown) => {
@@ -288,6 +295,30 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       setContext((current) => current ? { ...current, connectors } : current);
     } catch (reason) {
       setOperationMessage(reason instanceof Error ? reason.message : "Connector ingestion failed.");
+    }
+  }
+
+  async function previewAction() {
+    setOperationMessage("");
+    try {
+      const preview = await previewGovernedAction(projectId);
+      setOperationMessage(
+        preview.valid
+          ? `Action preview valid for ${preview.target_count} assets · approval required: ${preview.approval_required}.`
+          : `Action preview blocked: ${preview.validation_errors.join(", ")}`,
+      );
+    } catch (reason) {
+      setOperationMessage(reason instanceof Error ? reason.message : "Action preview failed.");
+    }
+  }
+
+  async function executeFunction() {
+    setOperationMessage("");
+    try {
+      const execution = await executeRiskFunction(projectId);
+      setOperationMessage(`Function ${execution.state}: risk ${execution.output.risk_score} (${execution.output.band}).`);
+    } catch (reason) {
+      setOperationMessage(reason instanceof Error ? reason.message : "Function execution failed.");
     }
   }
 
@@ -727,6 +758,44 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
                     <article key={provider}><span><strong>{provider}</strong><small>{status.credential_reference ? "secret reference configured" : "no credential reference"}</small></span><em className={`is-${status.state}`}>{status.state.replace("_", " ")}</em></article>
                   ))}
                 </div>
+              </section>
+            </div>
+          ) : selected.id === "actions" ? (
+            <div className="commercial-v4-grid">
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><GitBranch aria-hidden="true" /><span>Ontology Interfaces</span></div>
+                {context.primitives.interfaces.map((item) => (
+                  <article key={`${item.id}:${item.version}`} className="commercial-v4-primitive-card">
+                    <strong>{item.display_name} · v{item.version}</strong>
+                    <small>{Object.keys(item.property_contract).join(" · ")}</small>
+                    <div>{item.implementations.map((implementation) => <span key={implementation.object_type_id}>{implementation.object_type_id}</span>)}</div>
+                  </article>
+                ))}
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><LockKeyhole aria-hidden="true" /><span>Generated Action</span></div>
+                {context.primitives.actions.map((action) => (
+                  <article key={`${action.id}:${action.version}`} className="commercial-v4-primitive-card">
+                    <strong>{action.display_name}</strong>
+                    <small>{action.execution_mode} · {action.approval_required ? "approval required" : "direct"}</small>
+                    <button type="button" onClick={() => void previewAction()}>Preview action</button>
+                  </article>
+                ))}
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><BrainCircuit aria-hidden="true" /><span>Governed Functions</span></div>
+                {context.primitives.functions.map((fn) => (
+                  <article key={`${fn.id}:${fn.version}`} className="commercial-v4-primitive-card">
+                    <strong>{fn.display_name}</strong>
+                    <small>{fn.network_policy} · timeout {fn.timeout_ms} ms</small>
+                    <button type="button" onClick={() => void executeFunction()}>Run function</button>
+                  </article>
+                ))}
+                {operationMessage ? <p role="status" className="commercial-v4-policy-copy">{operationMessage}</p> : null}
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><CircleAlert aria-hidden="true" /><span>Runtime guarantees</span></div>
+                {Object.entries(context.primitives.guarantees).map(([name, value]) => <p key={name} className="commercial-v4-policy-copy"><strong>{name}</strong>: {value}</p>)}
               </section>
             </div>
           ) : selected.id === "settings" ? (

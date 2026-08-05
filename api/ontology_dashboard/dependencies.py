@@ -34,6 +34,7 @@ from .modeling import ModelingService
 from .migrations import migrate
 from .planner import OntologyDashboardPlannerService
 from .ontology_service import OntologyService
+from .ontology_primitives import OntologyPrimitiveRepository
 from .orchestration import AgentRunRepository, MultiStoreOrchestrator
 from .orchestration.ports import Project3GraphPort, Project3VectorPort, RelationalOntologyPort
 from .postgresql_ontology_repository import PostgreSQLOntologyInstanceRepository
@@ -222,6 +223,12 @@ def get_connector_service(
         jobs=jobs,
         adapters={"fixture": FixtureConnectorAdapter()},
     )
+
+
+@lru_cache(maxsize=1)
+def get_ontology_primitive_repository() -> OntologyPrimitiveRepository:
+    ensure_database_migrations()
+    return OntologyPrimitiveRepository(database_target())
 
 
 def get_dashboard_service(

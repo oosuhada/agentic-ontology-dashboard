@@ -165,6 +165,12 @@
 .commercial-v4-connector-list em.is-ready { color: var(--v4-ready); }
 .commercial-v4-connector-list em.is-error, .commercial-v4-connector-list em.is-blocked { color: var(--v4-blocked); }
 .commercial-v4-connector-list button { min-height: 26px; padding: 0 8px; font-size: 9px; }
+.commercial-v4-primitive-card { display: grid; gap: 7px; padding: 10px; background: var(--v4-panel-muted); border-radius: 4px; }
+.commercial-v4-primitive-card + .commercial-v4-primitive-card { margin-top: 8px; }
+.commercial-v4-primitive-card small { color: var(--v4-muted); }
+.commercial-v4-primitive-card div { display: flex; flex-wrap: wrap; gap: 5px; }
+.commercial-v4-primitive-card div span { padding: 3px 6px; border: 1px solid var(--v4-border); border-radius: 999px; font-size: 8px; }
+.commercial-v4-primitive-card button { justify-self: start; min-height: 28px; padding: 0 9px; }
 
 .commercial-v4-feature-state { min-height: 320px; margin-top: 16px; display: grid; place-content: center; justify-items: center; gap: 9px; text-align: center; }
 .commercial-v4-feature-state > svg { width: 34px; height: 34px; color: var(--v4-accent); }

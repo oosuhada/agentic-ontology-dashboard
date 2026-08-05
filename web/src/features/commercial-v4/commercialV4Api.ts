@@ -293,6 +293,41 @@ export interface ConnectorSnapshot {
   quarantine_count: number;
 }
 
+export interface OntologyPrimitiveSnapshot {
+  interfaces: Array<{
+    id: string;
+    version: number;
+    display_name: string;
+    status: string;
+    property_contract: Record<string, string>;
+    capability_contract: string[];
+    implementations: Array<{ object_type_id: string; property_mapping: Record<string, string> }>;
+  }>;
+  actions: Array<{
+    id: string;
+    version: number;
+    display_name: string;
+    target_interface_id: string;
+    parameter_schema: Record<string, unknown>;
+    execution_mode: string;
+    approval_required: boolean;
+    required_permission: string;
+    status: string;
+  }>;
+  functions: Array<{
+    id: string;
+    version: number;
+    display_name: string;
+    input_schema: Record<string, string>;
+    output_schema: Record<string, string>;
+    runtime_checksum: string;
+    timeout_ms: number;
+    network_policy: string;
+    status: string;
+  }>;
+  guarantees: Record<string, string>;
+}
+
 export async function getProjectV4ApplicationDefinition(projectId: string): Promise<ProjectV4ApplicationDefinition> {
   const response = await fetch(
     `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/applications/v4`,
@@ -380,12 +415,16 @@ export async function getArtifactGovernance(projectId: string): Promise<Artifact
   return payload as ArtifactGovernanceSnapshot;
 }
 
-async function artifactOperatorRequest<T>(url: string, purpose: string): Promise<T> {
+async function artifactOperatorRequest<T>(
+  url: string,
+  purpose: string,
+  requestPayload: Record<string, unknown> = {},
+): Promise<T> {
   const response = await fetch(`${API_BASE}${url}`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
-    body: JSON.stringify({ purpose }),
+    body: JSON.stringify({ purpose, ...requestPayload }),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload?.error?.message ?? payload?.detail ?? `Artifact operation failed: ${response.status}`);
@@ -437,5 +476,48 @@ export function runConnector(projectId: string, connectorId: string): Promise<{ 
   return artifactOperatorRequest(
     `/api/platform/projects/${encodeURIComponent(projectId)}/connectors/${encodeURIComponent(connectorId)}/run`,
     "Run connector ingestion from Commercial V4",
+  );
+}
+
+export async function getOntologyPrimitives(projectId: string): Promise<OntologyPrimitiveSnapshot> {
+  const response = await fetch(
+    `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/ontology-primitives`,
+    { credentials: "include" },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message ?? `Ontology primitives failed: ${response.status}`);
+  return payload as OntologyPrimitiveSnapshot;
+}
+
+export function previewGovernedAction(projectId: string): Promise<{
+  valid: boolean;
+  target_count: number;
+  approval_required: boolean;
+  validation_errors: string[];
+}> {
+  return artifactOperatorRequest(
+    `/api/platform/projects/${encodeURIComponent(projectId)}/actions/preview`,
+    "Preview governed Asset inspection action",
+    {
+      action_id: "request-asset-inspection",
+      object_ids: ["equipment:M-001", "compressor:C-01"],
+      parameters: { priority: "high", due_date: "2026-08-10" },
+      reason: "Commercial V4 governed action preview",
+    },
+  );
+}
+
+export function executeRiskFunction(projectId: string): Promise<{
+  state: string;
+  output: { risk_score: number; band: string };
+  runtime_checksum: string;
+}> {
+  return artifactOperatorRequest(
+    `/api/platform/projects/${encodeURIComponent(projectId)}/functions/execute`,
+    "Execute governed Asset risk function",
+    {
+      function_id: "asset-risk-metric",
+      inputs: { failure_probability: 0.81, criticality: 1.0 },
+    },
   );
 }

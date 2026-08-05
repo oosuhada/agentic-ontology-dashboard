@@ -57,7 +57,7 @@ def postgresql_database():
     dsn = _dsn_for_database(database)
     try:
         applied = migrate(dsn)
-        assert applied[-1] == "0023_production_connectors_ingestion"
+        assert applied[-1] == "0024_ontology_interfaces_actions_functions"
         assert migrate(dsn) == []
         import psycopg
 

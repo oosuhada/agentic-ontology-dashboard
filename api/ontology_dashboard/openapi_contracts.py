@@ -75,6 +75,7 @@ from .ontology import (
     ObjectRecord,
     ObjectTypeDefinition,
 )
+from .ontology_primitives import ActionPreview, FunctionExecution, PrimitiveSnapshot
 from .orchestration.models import AgentRunResponse
 from .predictive_maintenance_runtime.models import (
     DatasetVersionRuntimeContext,
@@ -596,6 +597,9 @@ _EXPLICIT_MODELS: dict[str, Any] = {
     "ontology_dashboard.routers.platform.project_distributed_runtime": DistributedRuntimeSnapshot,
     "ontology_dashboard.routers.platform.project_connectors": ConnectorSnapshot,
     "ontology_dashboard.routers.platform.run_project_connector": ConnectorRunQueuedResponse,
+    "ontology_dashboard.routers.platform.project_ontology_primitives": PrimitiveSnapshot,
+    "ontology_dashboard.routers.platform.preview_project_action": ActionPreview,
+    "ontology_dashboard.routers.platform.execute_project_function": FunctionExecution,
     "ontology_dashboard.routers.platform.project_distributed_job_events": DurableJobEventPage,
     "ontology_dashboard.routers.platform.cancel_distributed_job": DurableJob,
     "ontology_dashboard.routers.platform.replay_distributed_job": DurableJob,

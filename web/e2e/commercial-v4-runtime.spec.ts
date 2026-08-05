@@ -54,6 +54,14 @@ test("preserves V1 through V3 and exposes an independent Commercial V4 compositi
   await page.getByRole("button", { name: "Run ingestion", exact: true }).click();
   await expect(page.getByText(/Connector ingestion queued as job-/)).toBeVisible();
 
+  await page.getByRole("button", { name: /Actions & functions/ }).click();
+  await expect(page.getByText("Ontology Interfaces", { exact: true })).toBeVisible();
+  await expect(page.getByText("Request asset inspection", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Preview action", exact: true }).click();
+  await expect(page.getByText(/Action preview valid for 2 assets/)).toBeVisible();
+  await page.getByRole("button", { name: "Run function", exact: true }).click();
+  await expect(page.getByText(/Function succeeded: risk/)).toBeVisible();
+
   await page.goto("/app/projects/manufacturing-demo-project");
   await expect(page.getByRole("heading", { name: "운영 매니저 운영 브리핑" })).toBeVisible();
   await expect(page.locator('[data-application-version="v4"]')).toHaveCount(0);

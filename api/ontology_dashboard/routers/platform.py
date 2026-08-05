@@ -9,6 +9,7 @@ from ..dependencies import (
     get_connector_repository,
     get_connector_service,
     get_durable_job_repository,
+    get_ontology_primitive_repository,
     get_project_service,
     require_csrf,
     require_permission,
@@ -31,6 +32,14 @@ from ..domain_packs import ProjectApplicationDefinition, list_domain_packs, reso
 from ..enterprise_identity import enterprise_identity_readiness
 from ..deployment import deployment_readiness
 from ..identity import Principal
+from ..ontology_primitives import (
+    ActionPreview,
+    ActionPreviewRequest,
+    FunctionExecution,
+    FunctionExecutionRequest,
+    OntologyPrimitiveRepository,
+    PrimitiveSnapshot,
+)
 from ..projects import ProjectService
 from ..persistence_readiness import persistence_readiness
 
@@ -157,6 +166,58 @@ def run_project_connector(
         raise HTTPException(status_code=404, detail="connector not found")
     job_id = service.enqueue(definition, actor=principal.user_id)
     return {"job_id": job_id, "state": "queued", "reason": request.reason}
+
+
+@router.get("/projects/{project_id}/ontology-primitives")
+def project_ontology_primitives(
+    project_id: str,
+    principal: Principal = Depends(require_permission("ontology.registry.read")),
+    projects: ProjectService = Depends(get_project_service),
+    repository: OntologyPrimitiveRepository = Depends(get_ontology_primitive_repository),
+) -> PrimitiveSnapshot:
+    projects.get_for_principal(principal, project_id)
+    repository.ensure_samples(principal.organization_id, project_id, principal.user_id)
+    return repository.snapshot(principal.organization_id, project_id)
+
+
+@router.post("/projects/{project_id}/actions/preview")
+def preview_project_action(
+    project_id: str,
+    request: ActionPreviewRequest,
+    principal: Principal = Depends(require_permission("ontology.actions.execute")),
+    _: None = Depends(require_csrf),
+    projects: ProjectService = Depends(get_project_service),
+    repository: OntologyPrimitiveRepository = Depends(get_ontology_primitive_repository),
+) -> ActionPreview:
+    projects.get_for_principal(principal, project_id)
+    repository.ensure_samples(principal.organization_id, project_id, principal.user_id)
+    try:
+        return repository.preview_action(
+            principal.organization_id, project_id, request, principal.user_id
+        )
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.post("/projects/{project_id}/functions/execute")
+def execute_project_function(
+    project_id: str,
+    request: FunctionExecutionRequest,
+    principal: Principal = Depends(require_permission("ontology.objects.read")),
+    _: None = Depends(require_csrf),
+    projects: ProjectService = Depends(get_project_service),
+    repository: OntologyPrimitiveRepository = Depends(get_ontology_primitive_repository),
+) -> FunctionExecution:
+    projects.get_for_principal(principal, project_id)
+    repository.ensure_samples(principal.organization_id, project_id, principal.user_id)
+    try:
+        return repository.execute_function(
+            principal.organization_id, project_id, request, principal.user_id
+        )
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @router.get("/projects/{project_id}/distributed-job-events")
