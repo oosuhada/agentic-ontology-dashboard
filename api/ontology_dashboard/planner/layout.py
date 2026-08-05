@@ -8,7 +8,7 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
-from ..contracts import GroundedReport, Intent, Role, UIBlock, UILayout
+from ..contracts import AppLocale, GroundedReport, Intent, Role, UIBlock, UILayout
 from ..llm import LLMProvider
 
 BLOCK_REGISTRY: dict[str, tuple[str, list[str]]] = {
@@ -26,6 +26,24 @@ BLOCK_REGISTRY: dict[str, tuple[str, list[str]]] = {
     "DataQualityWarning": ("데이터 품질 경고", ["data_quality_warnings"]),
     "ModelDetails": ("모델·정책 상세", ["model", "threshold", "lineage"]),
     "ConversationThread": ("후속 질문", ["event_id", "evidence_id"]),
+}
+
+
+BLOCK_TITLES_EN: dict[str, str] = {
+    "StatusSummary": "Current status",
+    "RiskKpi": "Risk indicators",
+    "PriorityList": "Equipment priority",
+    "ImpactSummary": "Estimated operational impact",
+    "ManagerDecisionCard": "Recommended decision",
+    "SensorLineChart": "Sensor trends",
+    "AnomalyTimeline": "Anomaly interval",
+    "FactorContribution": "Primary risk evidence",
+    "EvidenceTable": "Evidence details",
+    "RecommendedActions": "Recommended actions",
+    "EngineerChecklist": "Inspection checklist",
+    "DataQualityWarning": "Data quality warning",
+    "ModelDetails": "Model and policy details",
+    "ConversationThread": "Follow-up questions",
 }
 
 MANAGER_DEFAULT = [
@@ -89,17 +107,20 @@ class LayoutPlanner:
         role: Role,
         intent: Intent,
         *,
+        locale: AppLocale = "ko-KR",
         mode: str,
     ) -> UILayout:
         blocks: list[UIBlock] = []
         for index, block_type in enumerate(self._ordered_types(evidence, role, intent), start=1):
             title, fields = BLOCK_REGISTRY[block_type]
+            if locale == "en-US":
+                title = BLOCK_TITLES_EN[block_type]
             if (
                 block_type == "DataQualityWarning"
                 and evidence["confidence"] == "low"
                 and not evidence["data_quality_warnings"]
             ):
-                title = "저신뢰 결과 경고"
+                title = "Low-confidence result warning" if locale == "en-US" else "저신뢰 결과 경고"
             blocks.append(
                 UIBlock(
                     block_id=f"block.{index}.{block_type}",
@@ -112,9 +133,10 @@ class LayoutPlanner:
                 )
             )
         layout = UILayout(
-            layout_id=f"LAY-{evidence['event_id']}-{role}-{intent}",
+            layout_id=f"LAY-{evidence['event_id']}-{role}-{intent}-{locale}",
             event_id=evidence["event_id"],
             role=role,
+            locale=locale,
             intent=intent,
             mode=mode,  # type: ignore[arg-type]
             blocks=blocks,
@@ -151,16 +173,17 @@ class LayoutPlanner:
         role: Role,
         intent: Intent,
         *,
+        locale: AppLocale = "ko-KR",
         use_llm: bool,
         provider_available: bool,
     ) -> tuple[UILayout, dict[str, Any]]:
         if not use_llm:
-            return self.deterministic(evidence, role, intent, mode="deterministic"), {
+            return self.deterministic(evidence, role, intent, locale=locale, mode="deterministic"), {
                 "fallback": False,
                 "provider": "none",
             }
         if not provider_available or self.provider is None:
-            return self.deterministic(evidence, role, intent, mode="deterministic_fallback"), {
+            return self.deterministic(evidence, role, intent, locale=locale, mode="deterministic_fallback"), {
                 "fallback": True,
                 "provider": getattr(self.provider, "name", "none"),
                 "reason": "planner_unavailable",
@@ -172,16 +195,19 @@ class LayoutPlanner:
                 {
                     "role": role,
                     "intent": intent,
+                    "locale": locale,
+                    "output_language": "Korean" if locale == "ko-KR" else "English",
                     "evidence": evidence,
                     "report": report.model_dump(mode="json"),
                 },
             )
             payload["mode"] = "llm"
+            payload["locale"] = locale
             layout = UILayout.model_validate(payload)
             self.validate(layout, evidence)
             return layout, {"fallback": False, "provider": self.provider.name}
         except Exception as exc:
-            return self.deterministic(evidence, role, intent, mode="deterministic_fallback"), {
+            return self.deterministic(evidence, role, intent, locale=locale, mode="deterministic_fallback"), {
                 "fallback": True,
                 "provider": getattr(self.provider, "name", "unknown"),
                 "reason": type(exc).__name__,

@@ -257,6 +257,7 @@ export interface Layout {
   layout_id: string;
   event_id: string;
   role: Role;
+  locale: "ko-KR" | "en-US";
   intent: Intent;
   mode: string;
   blocks: UIBlock[];

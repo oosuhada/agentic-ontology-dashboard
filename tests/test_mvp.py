@@ -131,8 +131,24 @@ def test_reports_are_generated_as_separate_locale_variants(service: FactorySigna
     assert korean.report_id != english.report_id
     assert "근거 분석" in korean.headline
     assert "evidence analysis" in english.headline
+    assert "절삭 설비" in korean.headline
+    assert "Cutting Machine" in english.headline
     assert any(section.title == "점검 체크리스트" for section in korean.sections)
     assert any(section.title == "Inspection checklist" for section in english.sections)
+
+    korean_layout, _ = service.layout(
+        "EVT-GS-002",
+        LayoutRequest(role="engineer", locale="ko-KR", intent="overview", use_llm=False),
+    )
+    english_layout, _ = service.layout(
+        "EVT-GS-002",
+        LayoutRequest(role="engineer", locale="en-US", intent="overview", use_llm=False),
+    )
+    assert korean_layout.blocks[0].title == "센서 변화"
+    assert english_layout.blocks[0].title == "Sensor trends"
+    assert korean_layout.locale == "ko-KR"
+    assert english_layout.locale == "en-US"
+    assert korean_layout.layout_id != english_layout.layout_id
 
 
 def test_llm_and_planner_offline_fallback(service: FactorySignalService) -> None:

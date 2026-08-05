@@ -4,12 +4,13 @@
   "title": "Governed UI Block Layout",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "layout_id", "event_id", "role", "intent", "mode", "blocks", "generated_at"],
+  "required": ["schema_version", "layout_id", "event_id", "role", "locale", "intent", "mode", "blocks", "generated_at"],
   "properties": {
     "schema_version": {"const": "1.0"},
     "layout_id": {"type": "string"},
     "event_id": {"type": "string"},
     "role": {"enum": ["manager", "engineer"]},
+    "locale": {"enum": ["ko-KR", "en-US"]},
     "intent": {"enum": ["overview", "explain-risk", "compare", "summarize-manager", "detail-engineer", "recommend-check", "show-model-details"]},
     "mode": {"enum": ["deterministic", "llm", "deterministic_fallback"]},
     "blocks": {
