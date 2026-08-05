@@ -73,8 +73,11 @@ The Azure and MetroPT fixtures prove multi-project abstraction and user flow. Th
 
 ### Remaining local architecture debt
 
-- remaining physical modules under `api/factory_signal_board/` still depend on the temporary `ontology_dashboard.__path__` extension
-- the executable composition root has moved, but the remaining service/model/repository modules must be relocated in controlled slices before deleting the path extension
+- import graph inventory and the foundation/identity compatibility slice are complete
+- `context`, `contracts`, `security`, identity models/repository/service, audit repository, and the manufacturing demo service now load physically from `api/ontology_dashboard/`
+- matching legacy files are thin re-export shims guarded by executable architecture tests
+- Dashboard, Analysis, Export/Workflow, and the remaining Ontology compatibility slices still depend on the temporary `ontology_dashboard.__path__` extension
+- the namespace path extension is removed only after all remaining service/model/repository modules are relocated and package/runtime verification passes
 
 ### Externally blocked backend work
 
@@ -220,3 +223,5 @@ Production environment verifier          BLOCKED EXTERNAL CAPABILITIES REPORTED
 ```
 
 Do not repeat already completed Workbench, pagination, Analysis lifecycle, WorkOrder, Dataset materialization, Project 3 typed boundary, Dashboard recovery or server-first cross-filter work.
+
+The next physical relocation slice is Dashboard. The detailed import matrix and compatibility status are recorded in `docs/physical-namespace-relocation-inventory.md`.

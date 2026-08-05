@@ -480,6 +480,8 @@ migration status
 
 ## Step 3.2 — Slice A: Foundation and Identity
 
+Status: `DONE` on 2026-08-02. The eight implementations now live under `api/ontology_dashboard/`, their legacy files are thin re-export shims, canonical import provenance and repository object identity are tested, and `scripts/preflight.py` points to canonical source files. See `docs/physical-namespace-relocation-inventory.md`.
+
 후보 파일:
 
 ```text
@@ -515,6 +517,8 @@ PYTHONPATH=api:ml/src .venv/bin/python -m pytest -q \
 ```
 
 ## Step 3.3 — Slice B: Dashboard
+
+Status: `NEXT`.
 
 후보 파일:
 
