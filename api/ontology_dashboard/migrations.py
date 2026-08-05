@@ -76,6 +76,28 @@ def _migrate_sqlite(path: Path) -> list[str]:
                 )
                 for table in operational_tables:
                     ensure_scope_columns(connection, table=table)
+            if version == "0019_tenant_transaction_convergence":
+                # Older pilot databases may have the Action table from the
+                # repository initializer rather than a formal migration. The
+                # new migration owns that schema from this point forward and
+                # upgrades existing tables additively.
+                action_columns = {
+                    row[1]
+                    for row in connection.execute(
+                        "PRAGMA table_info(ontology_action_invocations)"
+                    ).fetchall()
+                }
+                recovery_columns = {
+                    "recovery_state": "TEXT NOT NULL DEFAULT 'none'",
+                    "attempt_count": "INTEGER NOT NULL DEFAULT 0",
+                    "last_error_at": "TEXT",
+                    "outbox_event_id": "TEXT",
+                }
+                for name, ddl in recovery_columns.items():
+                    if name not in action_columns:
+                        connection.execute(
+                            f"ALTER TABLE ontology_action_invocations ADD COLUMN {name} {ddl}"
+                        )
             connection.execute(
                 "INSERT INTO schema_migrations (version,applied_at) VALUES (?,?)",
                 (version, datetime.now(timezone.utc).isoformat()),

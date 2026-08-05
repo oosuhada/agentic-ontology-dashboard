@@ -31,6 +31,7 @@ def test_migrations_are_idempotent_and_create_outbox(tmp_path: Path) -> None:
             "0010_analysis_run_lifecycle",
             "0011_adaptive_modeling_foundation",
             "0012_adaptive_model_registry",
+            "0019_tenant_transaction_convergence",
         ]
     assert second == []
 

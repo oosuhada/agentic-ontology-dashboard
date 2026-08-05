@@ -39,6 +39,8 @@ test("keeps the V4 manifest usable on a mobile viewport", async ({ page }) => {
   await login(page, "/app/projects/manufacturing-demo-project/blueprint-v4?surface=settings");
   await expect(page.locator('[data-application-version="v4"]')).toBeVisible();
   await expect(page.getByText("Version-scoped runtime", { exact: true })).toBeVisible();
+  await expect(page.getByText("Tenant persistence readiness", { exact: true })).toBeVisible();
+  await expect(page.getByText("Production PostgreSQL required", { exact: true })).toBeVisible();
   const widths = await page.evaluate(() => ({
     scroll: document.documentElement.scrollWidth,
     client: document.documentElement.clientWidth,

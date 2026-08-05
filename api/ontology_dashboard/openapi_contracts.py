@@ -73,6 +73,7 @@ from .predictive_maintenance_runtime.models import (
     ReplaySessionSnapshot,
     TimelinePrediction,
 )
+from .persistence_readiness import PersistenceReadiness
 from .projects.models import Project
 
 
@@ -572,6 +573,7 @@ _EXPLICIT_MODELS: dict[str, Any] = {
     "ontology_dashboard.routers.projects.list_project_events": ItemsResponse[dict[str, Any]],
     "ontology_dashboard.routers.platform.domain_pack_catalog": ItemsResponse[PlatformDomainPackDefinition],
     "ontology_dashboard.routers.platform.project_v4_application": ProjectApplicationDefinition,
+    "ontology_dashboard.routers.platform.project_persistence_readiness": PersistenceReadiness,
     "ontology_dashboard.routers.dashboards.get_report_draft": ReportDraftResponse,
     "ontology_dashboard.routers.dashboards.dashboard_template_versions": ItemsResponse[dict[str, Any]],
     "ontology_dashboard.routers.dashboards.request_dashboard_template_publish": WorkflowRequestResponse,

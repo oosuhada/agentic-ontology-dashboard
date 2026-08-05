@@ -11,6 +11,9 @@ from ontology_dashboard.project_context import SQLiteProjectContextResolver, ens
 
 
 InvocationState = Literal["running", "succeeded", "failed"]
+RecoveryState = Literal[
+    "none", "retryable", "compensation_required", "reconciled", "dead_letter"
+]
 
 
 class OntologyActionRepository:
@@ -53,6 +56,10 @@ class OntologyActionRepository:
                     audit_id TEXT,
                     created_at TEXT NOT NULL,
                     completed_at TEXT,
+                    recovery_state TEXT NOT NULL DEFAULT 'none',
+                    attempt_count INTEGER NOT NULL DEFAULT 0,
+                    last_error_at TEXT,
+                    outbox_event_id TEXT,
                     UNIQUE (workspace_id, actor_user_id, idempotency_key)
                 );
                 CREATE INDEX IF NOT EXISTS idx_ontology_invocation_object
@@ -173,7 +180,8 @@ class OntologyActionRepository:
             connection.execute(
                 """
                 UPDATE ontology_action_invocations
-                SET state='succeeded', result_json=?, error_json=NULL, audit_id=?, completed_at=?
+                SET state='succeeded', result_json=?, error_json=NULL, audit_id=?, completed_at=?,
+                    recovery_state='reconciled'
                 WHERE id=? AND project_id=?
                 """,
                 (
@@ -193,21 +201,57 @@ class OntologyActionRepository:
             raise RuntimeError("completed ontology Action invocation could not be loaded")
         return record
 
-    def fail(self, invocation_id: str, *, project_id: str, code: str, message: str) -> None:
+    def fail(
+        self,
+        invocation_id: str,
+        *,
+        project_id: str,
+        code: str,
+        message: str,
+        recovery_state: RecoveryState = "retryable",
+    ) -> None:
         with self._connect() as connection:
             connection.execute(
                 """
                 UPDATE ontology_action_invocations
-                SET state='failed', error_json=?, completed_at=?
+                SET state='failed', error_json=?, completed_at=?, recovery_state=?,
+                    attempt_count=attempt_count+1, last_error_at=?
                 WHERE id=? AND project_id=?
                 """,
                 (
                     json.dumps({"code": code, "message": message}, ensure_ascii=False, sort_keys=True),
                     self._now(),
+                    recovery_state,
+                    self._now(),
                     invocation_id,
                     project_id,
                 ),
             )
+
+    def mark_recovery_state(
+        self,
+        invocation_id: str,
+        *,
+        project_id: str,
+        recovery_state: RecoveryState,
+    ) -> dict[str, Any]:
+        with self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE ontology_action_invocations
+                SET recovery_state=?
+                WHERE id=? AND project_id=?
+                """,
+                (recovery_state, invocation_id, project_id),
+            )
+            row = connection.execute(
+                "SELECT * FROM ontology_action_invocations WHERE id=? AND project_id=?",
+                (invocation_id, project_id),
+            ).fetchone()
+        record = self._decode(row)
+        if record is None:
+            raise RuntimeError("ontology Action recovery state could not be loaded")
+        return record
 
     def list_for_object(self, *, workspace_id: str, object_id: str) -> list[dict[str, Any]]:
         with self._connect() as connection:

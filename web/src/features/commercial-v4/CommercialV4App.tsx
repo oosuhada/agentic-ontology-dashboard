@@ -34,6 +34,8 @@ import {
 } from "../../platform/application/applicationState";
 import {
   getProjectV4ApplicationDefinition,
+  getPersistenceReadiness,
+  type PersistenceReadiness,
   type ProjectV4ApplicationDefinition,
 } from "./commercialV4Api";
 import "./commercial-v4.css";
@@ -55,6 +57,7 @@ interface CommercialContext {
   workspaces: Workspace[];
   datasets: DatasetCatalogItem[];
   application: ProjectV4ApplicationDefinition;
+  persistence: PersistenceReadiness;
 }
 
 function currentSurface(): CommercialSurfaceId {
@@ -130,9 +133,16 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       getProjectWorkspaces(projectId),
       getDatasetCatalogPage({ project_id: projectId, offset: 0, limit: 8 }),
       getProjectV4ApplicationDefinition(projectId),
+      getPersistenceReadiness(projectId),
     ])
-      .then(([project, workspaces, datasets, application]) => {
-        if (!controller.signal.aborted) setContext({ project, workspaces, datasets: datasets.items, application });
+      .then(([project, workspaces, datasets, application, persistence]) => {
+        if (!controller.signal.aborted) setContext({
+          project,
+          workspaces,
+          datasets: datasets.items,
+          application,
+          persistence,
+        });
       })
       .catch((reason: unknown) => {
         if (controller.signal.aborted) return;
@@ -365,6 +375,27 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
                 <div className="commercial-v4-panel-title"><GitBranch aria-hidden="true" /><span>Release policy</span></div>
                 <p className="commercial-v4-policy-copy">V4 does not replace the Original, Blueprint V1 or Blueprint V2 applications. Default-route promotion is a separate release decision after cross-version regression evidence.</p>
                 <button type="button" onClick={() => navigate(`/app/projects/${encodeURIComponent(projectId)}`)}>Open Original application</button>
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Database aria-hidden="true" /><span>Tenant persistence readiness</span></div>
+                <dl>
+                  <div><dt>Production DB</dt><dd>{context.persistence.canonical_database}</dd></div>
+                  <div><dt>Active runtime</dt><dd>{context.persistence.active_database}</dd></div>
+                  <div><dt>Identity repository</dt><dd>{context.persistence.identity_repository}</dd></div>
+                  <div><dt>RLS groups</dt><dd>{context.persistence.rls_coverage.length}</dd></div>
+                  <div><dt>Pool</dt><dd>{context.persistence.pool.min_size}–{context.persistence.pool.max_size}</dd></div>
+                </dl>
+                <span className={`commercial-v4-state-badge is-${context.persistence.state}`}>
+                  {context.persistence.state === "ready" ? "Production ready" : "Production PostgreSQL required"}
+                </span>
+                {context.persistence.blockers.map((blocker) => <p key={blocker} className="commercial-v4-policy-copy">{blocker}</p>)}
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><LockKeyhole aria-hidden="true" /><span>Transaction & recovery contract</span></div>
+                <ol className="commercial-v4-contract-list">
+                  {context.persistence.transaction_boundary.map((step) => <li key={step}>{step}</li>)}
+                </ol>
+                <p className="commercial-v4-policy-copy">Recovery: {context.persistence.action_recovery_states.join(" · ")}</p>
               </section>
             </div>
           ) : (

@@ -39,6 +39,28 @@ export interface ProjectV4ApplicationDefinition {
   configuration_source: "project_metadata" | "default_platform";
 }
 
+export interface PersistenceReadiness {
+  state: "ready" | "blocked" | "degraded";
+  canonical_database: "postgresql";
+  active_database: "postgresql" | "sqlite";
+  production_fail_fast: boolean;
+  identity_repository: string;
+  rls_scope_binding: string;
+  identity_bypass: string;
+  transaction_boundary: string[];
+  action_recovery_states: string[];
+  rls_coverage: Array<{
+    category: string;
+    tables: string[];
+    scope: "organization" | "project" | "global";
+    operations: string[];
+    migration: string;
+    state: "covered" | "not_applicable";
+  }>;
+  pool: { min_size: number; max_size: number; timeout_seconds: number };
+  blockers: string[];
+}
+
 export async function getProjectV4ApplicationDefinition(projectId: string): Promise<ProjectV4ApplicationDefinition> {
   const response = await fetch(
     `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/applications/v4`,
@@ -49,4 +71,14 @@ export async function getProjectV4ApplicationDefinition(projectId: string): Prom
     throw new Error(payload?.error?.message ?? `V4 application definition failed: ${response.status}`);
   }
   return payload as ProjectV4ApplicationDefinition;
+}
+
+export async function getPersistenceReadiness(projectId: string): Promise<PersistenceReadiness> {
+  const response = await fetch(
+    `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/persistence-readiness`,
+    { credentials: "include" },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message ?? `Persistence readiness failed: ${response.status}`);
+  return payload as PersistenceReadiness;
 }
