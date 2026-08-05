@@ -1,11 +1,16 @@
-const STATUS_LABEL: Record<string, string> = {
-  normal: "정상",
-  attention: "관심",
-  warning: "경고",
-  critical: "긴급 검토",
-  data_quality_hold: "데이터 확인",
+import { useI18n } from "../ui/i18n/I18nProvider";
+import type { MessageKey } from "../ui/i18n/messages";
+
+const STATUS_LABEL: Record<string, MessageKey> = {
+  normal: "status.normal",
+  attention: "status.attention",
+  warning: "status.warning",
+  critical: "status.critical",
+  data_quality_hold: "status.dataQualityHold",
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  return <span className={`status-badge status-${status}`}>{STATUS_LABEL[status] ?? status}</span>;
+  const { t } = useI18n();
+  const key = STATUS_LABEL[status];
+  return <span className={`status-badge status-${status}`}>{key ? t(key) : status}</span>;
 }

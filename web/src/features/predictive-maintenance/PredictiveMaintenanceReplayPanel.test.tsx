@@ -1,5 +1,7 @@
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { I18nProvider } from "../../ui/i18n/I18nProvider";
+import type { PredictiveMaintenanceRuntimeContext } from "./types";
 import {
   countStatusGrades,
   graphStatusLabel,
@@ -11,15 +13,17 @@ import {
 describe("PredictiveMaintenanceReplayPanel", () => {
   it("renders a small replay vertical without confusing graph readiness", () => {
     const html = renderToString(
-      <PredictiveMaintenanceReplayPanel projectId="project-test" workspaceId="workspace-test" />,
+      <I18nProvider>
+        <PredictiveMaintenanceReplayPanel projectId="project-test" workspaceId="workspace-test" />
+      </I18nProvider>,
     );
     expect(html).toContain("Dataset Version · Result Artifact · Replay");
-    expect(html).toContain("Simulation time");
-    expect(html).toContain("Source freshness");
+    expect(html).toContain("Simulation 시각");
+    expect(html).toContain("Source 최신 시각");
   });
 
   it("treats graph failure as supplemental to PostgreSQL replay", () => {
-    expect(graphStatusLabel({
+    const context: PredictiveMaintenanceRuntimeContext = {
       organization_id: "org",
       project_id: "project",
       workspace_id: "workspace",
@@ -69,7 +73,9 @@ describe("PredictiveMaintenanceReplayPanel", () => {
         updated_at: null,
         required_for_runtime: false,
       },
-    })).toContain("PostgreSQL runtime available");
+    };
+    expect(graphStatusLabel(context)).toContain("PostgreSQL runtime available");
+    expect(graphStatusLabel(context, "ko-KR")).toContain("PostgreSQL Runtime 사용 가능");
   });
 
   it("keeps role views and status aggregation deterministic", () => {

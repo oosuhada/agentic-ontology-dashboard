@@ -12,6 +12,7 @@ import {
 import type { DashboardBoard, DashboardMode, DashboardTab } from "./types";
 import { useDashboardArrangeMode } from "./dashboardArrange";
 import { legacyBoardToGridLayout } from "./gridLayout";
+import { localizedBoardTitle } from "./dashboardLocalization";
 import type { BoardContentMetric } from "./layoutOptimizer";
 
 export interface DashboardGridCanvasProps {
@@ -214,7 +215,7 @@ export function DashboardGridCanvas({
               event.target.value = "";
             }}>
               <option value="">—</option>
-              {visibleBoards.map((board) => <option key={board.id} value={board.id}>{board.title}</option>)}
+              {visibleBoards.map((board) => <option key={board.id} value={board.id}>{localizedBoardTitle(board, t)}</option>)}
             </select>
           </label>
         </div>

@@ -29,10 +29,9 @@ def _external_package_root(name: str, env_name: str) -> Path:
         candidates.append(Path(configured).expanduser())
     candidates.append(ROOT.parent / name)
 
-    # A managed Git worktree lives under ~/.devspace/worktrees, so ROOT.parent
-    # is not the directory that contains the canonical packages.  Resolve the
-    # main checkout from the worktree's .git pointer and use its parent as the
-    # stable sibling-package location.
+    # Managed Git worktrees live under ~/.devspace/worktrees, not beside the
+    # canonical packages. Resolve the main checkout from the .git pointer and
+    # use its parent as the stable sibling-package location.
     git_pointer = ROOT / ".git"
     if git_pointer.is_file():
         prefix = "gitdir:"

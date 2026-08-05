@@ -21,14 +21,29 @@ const ROLE_KEYS: Record<AppRole, {
 };
 
 const PROFILE_KEYS: Record<AdaptiveProfileId, {
+  label: MessageKey;
+  eyebrow: MessageKey;
+  primaryEntity: MessageKey;
+  primaryMetric: MessageKey;
   description: MessageKey;
   visual: MessageKey;
   reports: [MessageKey, MessageKey, MessageKey];
 }> = {
-  "factory-reliability": { description: "profile.factory.description", visual: "profile.factory.visual", reports: ["profile.factory.report1", "profile.factory.report2", "profile.factory.report3"] },
-  "fleet-maintenance": { description: "profile.fleet.description", visual: "profile.fleet.visual", reports: ["profile.fleet.report1", "profile.fleet.report2", "profile.fleet.report3"] },
-  "compressor-monitoring": { description: "profile.compressor.description", visual: "profile.compressor.visual", reports: ["profile.compressor.report1", "profile.compressor.report2", "profile.compressor.report3"] },
-  "generic-operations": { description: "profile.generic.description", visual: "profile.generic.visual", reports: ["profile.generic.report1", "profile.generic.report2", "profile.generic.report3"] },
+  "factory-reliability": { label: "profile.factory.label", eyebrow: "profile.factory.eyebrow", primaryEntity: "profile.factory.primaryEntity", primaryMetric: "profile.factory.primaryMetric", description: "profile.factory.description", visual: "profile.factory.visual", reports: ["profile.factory.report1", "profile.factory.report2", "profile.factory.report3"] },
+  "fleet-maintenance": { label: "profile.fleet.label", eyebrow: "profile.fleet.eyebrow", primaryEntity: "profile.fleet.primaryEntity", primaryMetric: "profile.fleet.primaryMetric", description: "profile.fleet.description", visual: "profile.fleet.visual", reports: ["profile.fleet.report1", "profile.fleet.report2", "profile.fleet.report3"] },
+  "compressor-monitoring": { label: "profile.compressor.label", eyebrow: "profile.compressor.eyebrow", primaryEntity: "profile.compressor.primaryEntity", primaryMetric: "profile.compressor.primaryMetric", description: "profile.compressor.description", visual: "profile.compressor.visual", reports: ["profile.compressor.report1", "profile.compressor.report2", "profile.compressor.report3"] },
+  "generic-operations": { label: "profile.generic.label", eyebrow: "profile.generic.eyebrow", primaryEntity: "profile.generic.primaryEntity", primaryMetric: "profile.generic.primaryMetric", description: "profile.generic.description", visual: "profile.generic.visual", reports: ["profile.generic.report1", "profile.generic.report2", "profile.generic.report3"] },
+};
+
+const ADAPTIVE_TAB_KEYS: Record<string, MessageKey> = {
+  "Reliability Command": "dashboard.tab.reliabilityCommand",
+  "Evidence & Maintenance": "dashboard.tab.evidenceMaintenance",
+  "Fleet Briefing": "dashboard.tab.fleetBriefing",
+  "Service & Route Impact": "dashboard.tab.serviceRouteImpact",
+  "Condition Monitoring": "dashboard.tab.conditionMonitoring",
+  "Anomaly & Prevention": "dashboard.tab.anomalyPrevention",
+  "Adaptive Overview": "dashboard.tab.adaptiveOverview",
+  "Data Evidence": "dashboard.tab.dataEvidence",
 };
 
 export function localizeRoleLanding(role: AppRole, landing: RoleLanding, t: Translate): RoleLanding {
@@ -50,6 +65,10 @@ export function localizeAdaptiveProfile(
   const keys = PROFILE_KEYS[profile.id];
   return {
     ...profile,
+    label: t(keys.label),
+    eyebrow: t(keys.eyebrow),
+    primaryEntity: t(keys.primaryEntity),
+    primaryMetric: t(keys.primaryMetric),
     description: t(keys.description),
     visualLanguage: t(keys.visual),
     reportSections: keys.reports.map((key) => t(key)),
@@ -62,4 +81,9 @@ export function localizeAdaptiveProfile(
         })
       : t("profile.datasetResolving"),
   };
+}
+
+export function localizeAdaptiveTabTitle(title: string, t: Translate): string {
+  const key = ADAPTIVE_TAB_KEYS[title];
+  return key ? t(key) : title;
 }

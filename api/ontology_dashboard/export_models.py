@@ -29,6 +29,8 @@ class ExportRequest(BaseModel):
 
 class ExportCheckpoint(BaseModel):
     id: str
+    organization_id: str
+    project_id: str
     workspace_id: str
     scope: ExportScope
     format: ExportFormat

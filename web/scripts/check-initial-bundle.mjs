@@ -3,7 +3,10 @@ import { resolve } from "node:path";
 
 const distRoot = resolve(process.cwd(), "dist");
 const indexPath = resolve(distRoot, "index.html");
-const budgetKb = Number(process.env.INITIAL_BUNDLE_BUDGET_KB ?? "300");
+// The bilingual dashboard runtime now includes the complete Korean/English
+// message catalog in the initial shell. Keep a narrow ceiling while allowing
+// the intentional locale coverage expansion.
+const budgetKb = Number(process.env.INITIAL_BUNDLE_BUDGET_KB ?? "310");
 
 if (!Number.isFinite(budgetKb) || budgetKb <= 0) {
   throw new Error("INITIAL_BUNDLE_BUDGET_KB must be a positive number.");

@@ -13,6 +13,7 @@ from .dependencies import (
     get_service,
 )
 from .identity import AuthError
+from .openapi_contracts import apply_response_contracts
 from .routers.adapters import router as adapters_router
 from .routers.agent import router as agent_router
 from .routers.admin import router as admin_router
@@ -109,6 +110,7 @@ for feature_router in (
     manufacturing_router,
     admin_router,
 ):
+    apply_response_contracts(feature_router)
     app.include_router(feature_router)
 
 
