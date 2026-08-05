@@ -10,6 +10,8 @@ export interface DashboardDataConnection {
   recordCount: number;
   relationalReadyCount: number;
   sourceTypes: string[];
+  datasetNames: string[];
+  sourceVersions: string[];
   externalConnection: boolean;
   error: string | null;
 }
@@ -94,13 +96,13 @@ export function ContextPanel({
         </div>
         <div className={`dashboard-source-disclosure ${dataConnection.error ? "has-error" : ""}`}>
           <div>
-            <strong>{dataConnection.externalConnection ? "External connector source" : "Local demonstration source"}</strong>
+            <strong>{dataConnection.externalConnection ? "External connector source" : "Manufacturing Gold Fixture Demo"}</strong>
             <small>
               {dataConnection.error
                 ? dataConnection.error
                 : dataConnection.externalConnection
-                  ? dataConnection.sourceTypes.join(", ")
-                  : "Gold fixture snapshot · immutable Dataset versions · 외부 설비 connector 미연결"}
+                  ? `${dataConnection.datasetNames.join(" + ")} · ${dataConnection.sourceTypes.join(", ")}`
+                  : `${dataConnection.datasetNames.join(" + ") || "Manufacturing Equipment Registry + Manufacturing Risk Events"} · ${dataConnection.sourceVersions.join(", ") || "gold-fixtures-2026-08-01"} · 현재 Dashboard source이며 AI4I 2020 Canonical V3.1 runtime과는 별도`}
             </small>
           </div>
           <button type="button" onClick={onOpenDatasets}>{t("common.inspect")} <ExternalLink size={11} /></button>

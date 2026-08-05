@@ -777,6 +777,79 @@ kbd { border: 1px solid var(--od-border); border-bottom-width: 2px; border-radiu
 .od-callout { border: 1px solid var(--od-border); border-radius: 4px; padding: 6px 8px; font-size: 7px; }
 .od-callout.intent-danger { border-color: color-mix(in srgb,var(--od-danger) 35%,var(--od-border)); color: var(--od-danger); background: color-mix(in srgb,var(--od-danger) 7%,transparent); }
 
+/* Dark-theme containment for legacy board renderers.
+   These boards still reuse the older global `.card`, input and pill classes,
+   so keep every visible surface inside the governed runtime on OD tokens. */
+:root[data-theme="dark"] .board-runtime-body,
+:root[data-theme="dark"] .server-filtered-event-scope,
+:root[data-theme="dark"] .planner-assistant-card {
+  color: var(--od-text);
+  background: var(--od-surface-raised);
+}
+:root[data-theme="dark"] .board-runtime-body > .card,
+:root[data-theme="dark"] .board-runtime-body > details.card,
+:root[data-theme="dark"] .board-runtime-body .card,
+:root[data-theme="dark"] .server-filtered-event-scope > .card,
+:root[data-theme="dark"] .server-filtered-event-scope > .advanced-board,
+:root[data-theme="dark"] .planner-assistant-card {
+  border-color: var(--od-border);
+  color: var(--od-text);
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-theme="dark"] .planner-tool-tabs button,
+:root[data-theme="dark"] .planner-prompt-row textarea,
+:root[data-theme="dark"] .planner-prompt-row select,
+:root[data-theme="dark"] .planner-result > code,
+:root[data-theme="dark"] .planner-object-grid article,
+:root[data-theme="dark"] .planner-object-grid pre,
+:root[data-theme="dark"] .planner-recommendation-list article,
+:root[data-theme="dark"] .grounded-summary,
+:root[data-theme="dark"] .grounded-claim-list article,
+:root[data-theme="dark"] .planner-draft-tabs article {
+  border-color: var(--od-border);
+  color: var(--od-text);
+  background: var(--od-surface-muted);
+}
+:root[data-theme="dark"] .planner-tool-tabs button.active {
+  border-color: var(--od-accent);
+  color: #f3efff;
+  background: var(--od-accent-soft);
+}
+:root[data-theme="dark"] .planner-prompt-row > label,
+:root[data-theme="dark"] .planner-result-heading small,
+:root[data-theme="dark"] .planner-object-grid article > span,
+:root[data-theme="dark"] .planner-recommendation-list article > small,
+:root[data-theme="dark"] .planner-recommendation-list article p,
+:root[data-theme="dark"] .grounded-claim-list code,
+:root[data-theme="dark"] .planner-draft-tabs small,
+:root[data-theme="dark"] .planner-approval-note {
+  color: var(--od-text-muted);
+}
+:root[data-theme="dark"] .planner-safety-note {
+  border-left-color: var(--od-purple);
+  color: var(--od-text);
+  background: color-mix(in srgb, var(--od-purple) 14%, var(--od-surface-muted));
+}
+:root[data-theme="dark"] .planner-safety-note strong { color: #c9bcff; }
+:root[data-theme="dark"] .planner-safety-note span { color: var(--od-text-muted); }
+:root[data-theme="dark"] .planner-error {
+  color: #ff9f9f;
+  background: color-mix(in srgb, var(--od-danger) 14%, var(--od-surface-muted));
+}
+:root[data-theme="dark"] .planner-mode {
+  color: #9fe3b1;
+  background: color-mix(in srgb, var(--od-success) 14%, var(--od-surface-muted));
+}
+:root[data-theme="dark"] .planner-mode.fallback {
+  color: #f1c06a;
+  background: color-mix(in srgb, var(--od-warning) 14%, var(--od-surface-muted));
+}
+:root[data-theme="dark"] .planner-recommendation-list article > span {
+  color: var(--od-text-muted);
+  background: var(--od-surface);
+}
+
 @media (max-width: 1140px) {
   :root { --od-sidebar-width: 190px; }
   .dashboard-workspace-layout, .dashboard-workspace-layout.with-inspector { grid-template-columns: 220px minmax(0,1fr); }

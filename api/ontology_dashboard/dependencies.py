@@ -11,7 +11,7 @@ from threading import Lock
 from typing import Callable
 
 from argon2 import PasswordHasher
-from fastapi import Depends, Request, Response
+from fastapi import Depends, HTTPException, Request, Response, status
 
 from .adapters.service import AdapterService
 from .adapters.prediction_repository import PredictionResultRepository
@@ -273,7 +273,13 @@ def get_predictive_maintenance_runtime_service() -> PredictiveMaintenanceRuntime
     target = database_target()
     migrate(target)
     if not is_postgresql(target):
-        raise RuntimeError("predictive-maintenance Result Artifact/replay APIs require PostgreSQL")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "UCI AI4I 2020 Manufacturing Predictive Maintenance — "
+                "Physics & Maintenance Canonical V3.1 runtime requires PostgreSQL"
+            ),
+        )
     return PredictiveMaintenanceRuntimeService(
         PredictiveMaintenanceRuntimeRepository(target)
     )

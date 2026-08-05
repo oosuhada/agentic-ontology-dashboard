@@ -64,7 +64,7 @@ test("capture V3.1 runtime and replay without transient loaders", async ({ page 
   await login(page, "fde@ontology.local", "FDE!2026");
   await page.goto(`/app/projects/${SHARE_PROJECT}`);
   await waitForCaptureReady(page, ".pm-replay-panel");
-  await expect(page.getByText("Predictive maintenance V3.1 runtime", { exact: true })).toBeVisible();
+  await expect(page.getByText("UCI AI4I 2020 Manufacturing Predictive Maintenance — Physics & Maintenance Canonical V3.1", { exact: true })).toBeVisible();
   await expect(page.getByText("Graph ready · 2,160 records", { exact: true })).toBeVisible();
   await capture(page, "01-v3-runtime-dashboard.png");
 

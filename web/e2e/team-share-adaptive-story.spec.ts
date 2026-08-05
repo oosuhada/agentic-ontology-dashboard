@@ -5,7 +5,7 @@ const captureRoot = "public/team-share-adaptive-assets";
 async function waitForStoryReady(page: import("@playwright/test").Page) {
   await expect(page.getByRole("heading", { name: /가입과 역할별 업무부터/ })).toBeVisible({ timeout: 30_000 });
   await expect(page.locator(".adaptive-share-integrity strong")).toHaveText("team-share-adaptive-complete-integrity-20260805");
-  await expect(page.locator(".adaptive-share-capture-card")).toHaveCount(16);
+  await expect(page.locator(".adaptive-share-capture-card")).toHaveCount(17);
   await page.waitForFunction(() => Array.from(document.images).every((image) => image.complete && image.naturalWidth > 0));
   await page.waitForFunction(() => {
     const visible = (element: Element) => {
@@ -33,7 +33,30 @@ test("legacy team share remains unchanged and complete adaptive story is indepen
   await page.goto("/team-share-adaptive");
   await waitForStoryReady(page);
   await expect(page.getByRole("link", { name: "2026-08-04 기록", exact: true })).toHaveAttribute("href", "/team-share");
+  await expect(page.locator(".adaptive-share-actions a.primary")).toHaveAttribute(
+    "href",
+    "/app/projects/manufacturing-demo-project/workspaces/manufacturing-demo/modeling",
+  );
   await expect(page.getByRole("link", { name: /독립 HTML 열기/ })).toHaveAttribute("href", "/team-share-adaptive.html");
+  await expect(page.getByText("Manufacturing Gold Fixture Demo — Equipment Registry + Risk Events", { exact: true })).toBeVisible();
+  await expect(page.getByText("UCI AI4I 2020 Manufacturing Predictive Maintenance — Physics & Maintenance Canonical V3.1", { exact: true }).first()).toBeVisible();
+  const sectionHeaderLayout = await page.locator("#foundation > header").evaluate((header) => {
+    const heading = header.querySelector("h2");
+    const description = header.querySelector("p");
+    if (!heading || !description) return null;
+    const headingRect = heading.getBoundingClientRect();
+    const descriptionRect = description.getBoundingClientRect();
+    return {
+      display: getComputedStyle(header).display,
+      headingBottom: headingRect.bottom,
+      descriptionTop: descriptionRect.top,
+      leftDelta: Math.abs(headingRect.left - descriptionRect.left),
+    };
+  });
+  expect(sectionHeaderLayout).not.toBeNull();
+  expect(sectionHeaderLayout?.display).toBe("block");
+  expect(sectionHeaderLayout?.descriptionTop ?? 0).toBeGreaterThanOrEqual(sectionHeaderLayout?.headingBottom ?? 0);
+  expect(sectionHeaderLayout?.leftDelta ?? 999).toBeLessThanOrEqual(1);
   await page.screenshot({ path: `${captureRoot}/00-team-share-adaptive-story.png`, fullPage: true, animations: "disabled", caret: "hide" });
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -45,7 +68,7 @@ test("legacy team share remains unchanged and complete adaptive story is indepen
 
   await page.goto("/team-share-adaptive.html");
   await expect(page.getByRole("heading", { name: /가입과 역할별 업무부터/ })).toBeVisible();
-  await expect(page.locator("main img")).toHaveCount(6);
+  await expect(page.locator("main img")).toHaveCount(7);
   await page.waitForFunction(() => Array.from(document.querySelectorAll<HTMLImageElement>('img[data-local="true"]')).every((image) => image.complete && image.naturalWidth > 0));
   await expect(page.getByRole("link", { name: "2026-08-04 기록 보기" })).toHaveAttribute("href", "/team-share");
 });

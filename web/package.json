@@ -16,11 +16,11 @@
     "test:e2e:overhaul": "playwright test e2e/workbench-final-overhaul.spec.ts",
     "capture:team-share": "CAPTURE_TEAM_SHARE=1 playwright test e2e/team-share-captures.spec.ts --project=chromium",
     "capture:team-share-story": "CAPTURE_TEAM_SHARE=1 playwright test e2e/team-share-story.spec.ts e2e/team-share-responsive.spec.ts --project=chromium",
-    "capture:team-share-adaptive": "CAPTURE_TEAM_SHARE_ADAPTIVE=1 playwright test e2e/team-share-adaptive-captures.spec.ts e2e/team-share-adaptive-story.spec.ts --project=chromium",
+    "capture:team-share-adaptive": "CAPTURE_TEAM_SHARE_ADAPTIVE=1 playwright test e2e/team-share-adaptive-captures.spec.ts e2e/dashboard-dark-mode-regression.spec.ts e2e/team-share-adaptive-story.spec.ts --project=chromium",
     "check:docs": "python3 ../scripts/check_docs_structure.py",
     "check:backend-core": "cd .. && PYTHONPATH=api:ml/src .venv/bin/pytest -q tests/test_auth_rbac.py tests/test_dashboard_stages20_24.py",
     "verify:team-share": "npm run check:docs && npm run check:backend-core && npm run lint && npm run test && npm run build && playwright test e2e/team-share-story.spec.ts e2e/team-share-responsive.spec.ts --project=chromium",
-    "verify:team-share-adaptive": "npm run lint && npm run test && npm run build && playwright test e2e/team-share-adaptive-story.spec.ts --project=chromium",
+    "verify:team-share-adaptive": "npm run lint && npm run test && npm run build && playwright test e2e/team-share-adaptive-story.spec.ts e2e/dashboard-dark-mode-regression.spec.ts --project=chromium",
     "clean:local": "python3 ../scripts/clean_local_artifacts.py",
     "test:visual:overhaul": "python3 ../scripts/check_palantir_overhaul_visuals.py --candidate-root test-results/palantir-overhaul-candidate --require-candidate",
     "lint": "tsc --noEmit"

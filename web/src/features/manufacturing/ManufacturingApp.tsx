@@ -219,6 +219,8 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     recordCount: 0,
     relationalReadyCount: 0,
     sourceTypes: [],
+    datasetNames: [],
+    sourceVersions: [],
     externalConnection: false,
     error: null,
   });
@@ -272,12 +274,16 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
         if (cancelled) return;
         setDatasetItems(page.items);
         const sourceTypes = [...new Set(page.items.map((item) => item.source_type))].sort();
+        const datasetNames = page.items.map((item) => item.display_name);
+        const sourceVersions = [...new Set(page.items.map((item) => item.latest_source_version).filter(Boolean) as string[])].sort();
         setDataConnection({
           loading: false,
           datasetCount: page.total,
           recordCount: page.items.reduce((sum, item) => sum + item.record_count, 0),
           relationalReadyCount: page.items.filter((item) => item.projection_health.relational === "ready").length,
           sourceTypes,
+          datasetNames,
+          sourceVersions,
           externalConnection: sourceTypes.some((source) => source !== "local_fixture"),
           error: null,
         });
@@ -299,6 +305,8 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
           recordCount: 0,
           relationalReadyCount: 0,
           sourceTypes: [],
+          datasetNames: [],
+          sourceVersions: [],
           externalConnection: false,
           error: reason instanceof Error ? reason.message : "Dataset connection status unavailable",
         });

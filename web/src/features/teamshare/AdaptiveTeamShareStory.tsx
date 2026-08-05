@@ -34,6 +34,8 @@ import ontologySelection from "../../../../docs/00-team-onboarding/assets/screen
 const CAPTURE_ROOT = "/team-share-adaptive-assets";
 const VERIFIED_TAG = "team-share-adaptive-complete-integrity-20260805";
 const APP_ROUTE = "/app/projects/manufacturing-demo-project/workspaces/manufacturing-demo/modeling";
+const GOLD_FIXTURE_DATASET_NAME = "Manufacturing Gold Fixture Demo — Equipment Registry + Risk Events";
+const AI4I_V3_1_DATASET_NAME = "UCI AI4I 2020 Manufacturing Predictive Maintenance — Physics & Maintenance Canonical V3.1";
 
 interface Capture {
   id: string;
@@ -156,11 +158,11 @@ const workbenchCaptures: Capture[] = [
 const upgradeCaptures: Capture[] = [
   {
     id: "runtime",
-    eyebrow: "CANONICAL V3.1 RUNTIME",
-    title: "Dataset Version과 Result Artifact가 운영 Dashboard에 연결됩니다",
-    description: "V2/V3.1 버전 선택, provenance, release evidence, 최신 위험 자산과 PostgreSQL 기반 replay를 한 화면에서 확인합니다.",
+    eyebrow: "UCI AI4I 2020 · CANONICAL V3.1 RUNTIME",
+    title: "AI4I 2020 기반 예지보전 Dataset Version과 Result Artifact를 연결합니다",
+    description: `${AI4I_V3_1_DATASET_NAME}의 provenance, release evidence, 최신 위험 자산과 PostgreSQL 기반 replay를 한 화면에서 확인합니다.`,
     image: `${CAPTURE_ROOT}/01-v3-runtime-dashboard.png`,
-    alt: "Predictive Maintenance V3.1 운영 Dashboard",
+    alt: "UCI AI4I 2020 Manufacturing Predictive Maintenance Canonical V3.1 운영 Dashboard",
     status: "65/65 canonical release checks",
   },
   {
@@ -199,6 +201,15 @@ const upgradeCaptures: Capture[] = [
     alt: "ML Validator Workbench mobile",
     status: "desktop · tablet · mobile",
   },
+  {
+    id: "dark-mode",
+    eyebrow: "DARK MODE USABILITY REGRESSION",
+    title: "Board runtime과 Planner 내부까지 동일한 dark tokens를 적용합니다",
+    description: "board-runtime-body, server-filtered-event-scope, Planner 입력·탭·안내·결과 카드의 실효 배경 luminance와 4.5:1 텍스트 대비를 실제 역할 화면에서 검증합니다.",
+    image: `${CAPTURE_ROOT}/06-dashboard-dark-mode.png`,
+    alt: "Ontology Dashboard dark mode runtime and Planner Assistant",
+    status: "effective luminance < 0.18 · contrast ≥ 4.5:1",
+  },
 ];
 
 const completed = [
@@ -206,7 +217,7 @@ const completed = [
   "역할별 Report-first·Dashboard-first landing",
   "Dataset 적응형 Board Catalog와 사용자 개인화",
   "Analysis Canvas·Dependency Graph·Ontology ObjectSet",
-  "Canonical V3.1 package·Dataset Version·Result Artifact",
+  "UCI AI4I 2020 Physics & Maintenance Canonical V3.1 package·Dataset Version·Result Artifact",
   "CSV·TSV·XLSX governed intake와 immutable Dataset Version",
   "Ontology Mapping·Feature Recipe·Feature Dataset lineage",
   "Chronological experiment와 validation-only selection",
@@ -251,9 +262,9 @@ export function AdaptiveTeamShareStory() {
   return (
     <main className="adaptive-share-page">
       <header className="adaptive-share-header">
-        <a className="adaptive-share-brand" href="#overview"><span>OD</span><div><strong>Ontology Dashboard</strong><small>Complete project + V3.1/Adaptive Modeling</small></div></a>
+        <a className="adaptive-share-brand" href="#overview"><span>OD</span><div><strong>Ontology Dashboard</strong><small>Complete project + AI4I 2020 V3.1/Adaptive Modeling</small></div></a>
         <nav aria-label="Complete team share sections">
-          <a href="#foundation">Foundation</a><a href="#adaptive">Adaptive UI</a><a href="#workbenches">Workbenches</a><a href="#runtime">V3.1</a><a href="#modeling">Modeling</a><a href="#status">Status</a>
+          <a href="#foundation">Foundation</a><a href="#adaptive">Adaptive UI</a><a href="#workbenches">Workbenches</a><a href="#runtime">AI4I V3.1</a><a href="#modeling">Modeling</a><a href="#status">Status</a>
         </nav>
         <div><a href="/team-share">2026-08-04 기록</a><a className="primary" href={APP_ROUTE}>앱 열기 <ArrowRight size={13} /></a></div>
       </header>
@@ -261,10 +272,10 @@ export function AdaptiveTeamShareStory() {
       <section className="adaptive-share-hero" id="overview">
         <div>
           <span className="adaptive-share-kicker"><Sparkles size={14} /> COMPLETE PROJECT STORY · VERIFIED 2026-08-05</span>
-          <h1>가입과 역할별 업무부터<br />V3.1 모델 승인까지 한 페이지에서</h1>
-          <p>Ontology Dashboard의 기존 선행 프로토타입과 이후 추가된 Predictive Maintenance V3.1·Adaptive Modeling을 하나의 제품 흐름으로 통합했습니다. 이 페이지 하나만 읽어도 프로젝트 목적, 사용자 경험, 데이터·온톨로지·분석·시각화·모델 governance와 현재 한계를 파악할 수 있습니다.</p>
-          <div className="adaptive-share-actions"><a className="primary" href="#foundation">전체 프로젝트 보기 <ArrowRight size={14} /></a><a href="/team-share-adaptive.html">독립 HTML 열기 <ExternalLink size={13} /></a></div>
-          <div className="adaptive-share-integrity"><ShieldCheck size={14} /><strong>{VERIFIED_TAG}</strong><span>16 verified feature captures</span><span>loader-free screenshots</span></div>
+          <h1>가입과 역할별 업무부터<br />AI4I 2020 V3.1 모델 승인까지</h1>
+          <p>Ontology Dashboard의 기존 선행 프로토타입과 이후 추가된 {AI4I_V3_1_DATASET_NAME}·Adaptive Modeling을 하나의 제품 흐름으로 통합했습니다. 이 페이지 하나만 읽어도 프로젝트 목적, 사용자 경험, 데이터·온톨로지·분석·시각화·모델 governance와 현재 한계를 파악할 수 있습니다.</p>
+          <div className="adaptive-share-actions"><a className="primary" href={APP_ROUTE}>실제 앱 열기 <ArrowRight size={14} /></a><a href="/team-share-adaptive.html">독립 HTML 열기 <ExternalLink size={13} /></a></div>
+          <div className="adaptive-share-integrity"><ShieldCheck size={14} /><strong>{VERIFIED_TAG}</strong><span>17 verified feature captures</span><span>loader-free screenshots</span></div>
         </div>
         <div className="adaptive-share-product-map" aria-label="Ontology Dashboard complete product flow">
           <article><Users /><strong>Identity & Role</strong><small>approval · RBAC · scope</small></article><ArrowRight />
@@ -277,8 +288,8 @@ export function AdaptiveTeamShareStory() {
         <div className="adaptive-share-metrics">
           <span><strong>8</strong><small>업무 역할</small></span>
           <span><strong>3</strong><small>Dataset 적응형 사례</small></span>
-          <span><strong>16</strong><small>통합 기능 캡처</small></span>
-          <span><strong>65/65</strong><small>Canonical V3.1 verifier</small></span>
+          <span><strong>17</strong><small>통합 기능 캡처</small></span>
+          <span><strong>65/65</strong><small>AI4I 2020 Canonical V3.1 verifier</small></span>
         </div>
       </section>
 
@@ -300,6 +311,18 @@ export function AdaptiveTeamShareStory() {
         <div className="adaptive-share-feature-grid two-by-two">
           {adaptiveCaptures.map((capture) => <CaptureCard key={capture.id} capture={capture} onOpen={setSelected} />)}
         </div>
+        <div className="adaptive-share-data-boundary" aria-label="Default project and AI4I V3.1 data boundary">
+          <article>
+            <span>DEFAULT PROJECT DATA</span>
+            <strong>{GOLD_FIXTURE_DATASET_NAME}</strong>
+            <p>`/app/projects/manufacturing-demo-project`의 기본 Dashboard와 Ontology는 local fixture 2개, 총 15개 versioned rows를 사용합니다.</p>
+          </article>
+          <article>
+            <span>POSTGRESQL RESULT ARTIFACT RUNTIME</span>
+            <strong>{AI4I_V3_1_DATASET_NAME}</strong>
+            <p>V3.1 Result Artifact·prediction timeline·replay는 PostgreSQL이 연결된 경우에만 별도 runtime panel로 표시됩니다.</p>
+          </article>
+        </div>
         <div className="adaptive-share-chain"><span>Dataset schema</span><ArrowRight /><span>Semantic signals</span><ArrowRight /><span>Board selection</span><ArrowRight /><span>Role layout</span><ArrowRight /><span>Personal preference</span></div>
       </section>
 
@@ -311,7 +334,7 @@ export function AdaptiveTeamShareStory() {
       </section>
 
       <section className="adaptive-share-section alt" id="runtime">
-        <header><span>04 · PREDICTIVE MAINTENANCE V3.1</span><h2>운영 Dashboard와 replay가 같은 immutable Dataset Version을 가리킵니다</h2><p>버전, checksum, model, task, Result Artifact schema와 graph readiness를 분리해 표시하며, 현재 결과와 과거 replay를 혼동하지 않습니다.</p></header>
+        <header><span>04 · UCI AI4I 2020 PREDICTIVE MAINTENANCE</span><h2>Physics & Maintenance Canonical V3.1과 replay가 같은 immutable Dataset Version을 가리킵니다</h2><p>AI4I 2020 기반 Dataset의 버전, checksum, model, task, Result Artifact schema와 graph readiness를 분리해 표시하며, 현재 결과와 과거 replay를 혼동하지 않습니다.</p></header>
         <div className="adaptive-share-feature-grid">
           {upgradeCaptures.slice(0, 2).map((capture) => <CaptureCard key={capture.id} capture={capture} onOpen={setSelected} />)}
         </div>

@@ -11,7 +11,7 @@ http://127.0.0.1:3100/team-share-adaptive
 https://dashboard.oosu.dev/team-share-adaptive
 ```
 
-이 화면은 로그인 없이 기존 선행 프로토타입 전체와 Predictive Maintenance V3.1·Adaptive Modeling 업그레이드를 한 페이지에서 볼 수 있는 최신 HTML Story다.
+이 화면은 로그인 없이 기존 선행 프로토타입 전체와 **UCI AI4I 2020 Manufacturing Predictive Maintenance — Physics & Maintenance Canonical V3.1**·Adaptive Modeling 업그레이드를 한 페이지에서 볼 수 있는 최신 HTML Story다.
 
 ![Latest complete team share story](../../web/public/team-share-adaptive-assets/00-team-share-adaptive-story.png)
 

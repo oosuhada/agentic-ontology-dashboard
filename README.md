@@ -10,6 +10,10 @@
 > 독립 HTML 공유본: `http://127.0.0.1:3100/team-share-adaptive.html`
 > 2026-08-04 이전 Story 기록: `http://127.0.0.1:3100/team-share`
 >
+> 기본 `manufacturing-demo-project` 데이터: **Manufacturing Gold Fixture Demo — Equipment Registry + Risk Events**
+>
+> 별도 PostgreSQL Runtime 데이터: **UCI AI4I 2020 Manufacturing Predictive Maintenance — Physics & Maintenance Canonical V3.1**
+>
 > 전체 문서 지도: [`docs/README.md`](./docs/README.md)
 
 ## 구현 상태

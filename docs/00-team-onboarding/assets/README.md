@@ -7,10 +7,10 @@
 
 - 캡처 생성: `cd web && CAPTURE_TEAM_SHARE=1 npx playwright test e2e/team-share-captures.spec.ts`
 - Story 캡처 생성: `cd web && npm run capture:team-share-story`
-- 최신 V3.1·Adaptive Modeling 캡처: `cd web && npm run capture:team-share-adaptive`
+- 최신 AI4I 2020 V3.1·Adaptive Modeling·다크모드 캡처: `cd web && npm run capture:team-share-adaptive`
 - 최신 Story 데스크톱·모바일: `cd web && npm run capture:team-share-adaptive-story`
 - 최신 화면 설명 문서: [`../10-adaptive-modeling-release-tour.md`](../10-adaptive-modeling-release-tour.md)
-- V3.1 + Adaptive Modeling 비교 캡처와 Story 생성: `cd web && npm run capture:team-share-adaptive`
+- AI4I 2020 V3.1 + Adaptive Modeling 전체 캡처와 Story 생성: `cd web && npm run capture:team-share-adaptive`
 - 화면 크기: 1440 × 1000, light theme
 - 데이터: Playwright 격리 SQLite 데이터베이스와 demo seed
 - 비밀번호나 실제 개인정보는 캡처하지 않는다.
@@ -31,6 +31,7 @@ Story 자산:
 - 최신 인터랙티브 경로: `/team-share-adaptive`
 - 최신 독립 HTML: `/team-share-adaptive.html`
 - 최신 자산 폴더: `web/public/team-share-adaptive-assets/`
-- 최신 Story는 기존 기능 11장과 V3.1·Adaptive Modeling 기능 5장을 합친 완결형 프로젝트 투어다.
+- 최신 Story는 기존 기능 11장과 AI4I 2020 V3.1·Adaptive Modeling·다크모드 기능 6장을 합친 완결형 프로젝트 투어다.
+- `06-dashboard-dark-mode.png`: runtime·server-filtered scope·Planner Assistant의 실제 dark surface와 대비 검증 화면
 - 최신 검증 태그: `team-share-adaptive-complete-integrity-20260805`
 - 캡처는 loader, skeleton, refreshing, `aria-busy=true`, 미완성 image/font 상태가 모두 사라진 뒤 생성한다.

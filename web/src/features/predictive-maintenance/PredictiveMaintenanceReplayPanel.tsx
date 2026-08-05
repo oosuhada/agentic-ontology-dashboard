@@ -27,6 +27,8 @@ interface PredictiveMaintenanceReplayPanelProps {
 type StatusGrade = GovernedProductResultSummary["status_grade"];
 
 const STATUS_ORDER: StatusGrade[] = ["critical", "warning", "attention", "normal"];
+export const AI4I_V3_1_DATASET_NAME = "UCI AI4I 2020 Manufacturing Predictive Maintenance — Physics & Maintenance Canonical V3.1";
+const AI4I_V2_DATASET_NAME = "UCI AI4I 2020 Manufacturing Predictive Maintenance — Canonical V2 compatibility snapshot";
 
 function timeLabel(value: string | null | undefined): string {
   if (!value) return "—";
@@ -67,7 +69,12 @@ function resultWindow(result: GovernedProductResultSummary): { start: string; en
 function selectedVersionLabel(versions: PredictiveMaintenanceDatasetVersions | null, id: string): string {
   const item = versions?.items.find((version) => version.dataset_version_id === id);
   if (!item) return id;
-  return `${item.source_version} · v${item.version_number}${item.is_latest ? " · latest" : ""}`;
+  const datasetName = item.is_v3_1
+    ? AI4I_V3_1_DATASET_NAME
+    : item.source_version.includes("ai4i")
+      ? AI4I_V2_DATASET_NAME
+      : item.dataset_name;
+  return `${datasetName} · ${item.source_version} · v${item.version_number}${item.is_latest ? " · latest" : ""}`;
 }
 
 function recommendationSummary(items: GovernedProductResultSummary[]): Array<[string, number]> {
@@ -119,7 +126,7 @@ export function PredictiveMaintenanceReplayPanel({
         const status = typeof reason === "object" && reason !== null && "status" in reason
           ? Number((reason as { status: number }).status)
           : 0;
-        if (status === 404 || status === 409) {
+        if (status === 404 || status === 409 || status === 503) {
           setUnsupported(true);
           return;
         }
@@ -263,8 +270,8 @@ export function PredictiveMaintenanceReplayPanel({
     <section className={`pm-replay-panel pm-runtime-mode-${runtimeMode}`} aria-label="Predictive maintenance runtime">
       <header>
         <div>
-          <span className="eyebrow">Dataset Version · Result Artifact · Replay</span>
-          <strong>Predictive maintenance V3.1 runtime</strong>
+          <span className="eyebrow">UCI AI4I 2020 · Dataset Version · Result Artifact · Replay</span>
+          <strong>{AI4I_V3_1_DATASET_NAME}</strong>
         </div>
         <div className="pm-runtime-header-actions">
           <label>

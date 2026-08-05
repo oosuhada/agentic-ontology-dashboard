@@ -8,7 +8,7 @@
 >
 > 2026-08-04 이전 Story 기록: `https://dashboard.oosu.dev/team-share`
 
-이 문서는 **Ontology Dashboard의 기존 선행 프로토타입 전체와 이후 추가된 Predictive Maintenance Canonical V3.1·Adaptive Modeling을 하나의 제품 흐름으로 설명하는 최신 통합 화면 투어**다.
+이 문서는 **Ontology Dashboard의 기존 선행 프로토타입 전체와 이후 추가된 UCI AI4I 2020 Manufacturing Predictive Maintenance — Physics & Maintenance Canonical V3.1·Adaptive Modeling을 하나의 제품 흐름으로 설명하는 최신 통합 화면 투어**다.
 
 이 문서와 `/team-share-adaptive`만 읽어도 다음을 파악할 수 있도록 구성한다.
 
@@ -18,7 +18,8 @@
 - Dataset에 따라 Dashboard가 달라지는 방식
 - 사용자별 개인화
 - Analysis와 Ontology의 역할
-- Predictive Maintenance V3.1 Dataset Version과 Result Artifact
+- UCI AI4I 2020 Manufacturing Predictive Maintenance — Physics & Maintenance Canonical V3.1 Dataset Version과 Result Artifact
+- 기본 `manufacturing-demo-project` Gold Fixture 데이터와 AI4I 2020 V3.1 Runtime의 구분
 - Historical replay의 의미
 - ML 실험, threshold, lineage와 Model Registry
 - release 요청·승인·활성화·rollback의 역할 분리
@@ -64,9 +65,10 @@ Identity & Role
 4. Factory·Fleet·Compressor Dataset 적응형 UI
 5. Analysis Canvas·Dependency Graph
 6. Ontology ObjectSet과 linked traversal
-7. Canonical V3.1 runtime과 Result Artifact replay
+7. UCI AI4I 2020 Physics & Maintenance Canonical V3.1 runtime과 Result Artifact replay
 8. ML Validator와 Model release governance
-9. 완료·검토·추가 작업
+9. Runtime·server-filtered board·Planner Assistant 다크모드 사용성
+10. 완료·검토·추가 작업
 
 ## 캡처 신뢰성 기준
 
@@ -247,6 +249,41 @@ Dataset schema
 → Personal preference
 ```
 
+### 기본 Project 데이터와 AI4I 2020 V3.1 Runtime은 별도다
+
+`https://dashboard.oosu.dev/app/projects/manufacturing-demo-project`에 처음 접속했을 때 기본 Dashboard와 Ontology가 사용하는 데이터는 다음 local demonstration dataset이다.
+
+```text
+Manufacturing Gold Fixture Demo — Equipment Registry + Risk Events
+```
+
+실제 Dataset Catalog 구성:
+
+| Dataset | Source version | Rows | Source type |
+|---|---|---:|---|
+| Manufacturing Equipment Registry | `gold-fixtures-2026-08-01` | 7 | `local_fixture` |
+| Manufacturing Risk Events | `gold-fixtures-2026-08-01` | 8 | `local_fixture` |
+
+따라서 현재 기본 Project 화면은 **AI4I 2020 V3.1 데이터를 기본 source로 사용하는 화면이 아니다.** 총 15개 versioned Gold Fixture row로 Dashboard·Ontology·role workflow를 시연한다.
+
+아래 데이터는 별도의 PostgreSQL Result Artifact Runtime이다.
+
+```text
+UCI AI4I 2020 Manufacturing Predictive Maintenance
+— Physics & Maintenance Canonical V3.1
+```
+
+이 Runtime은 다음을 제공한다.
+
+- immutable Dataset Version
+- Result Artifact
+- prediction timeline
+- Historical replay
+- release evidence
+- graph projection readiness
+
+현재 Cloudflare 개발 서버에는 `ONTOLOGY_DASHBOARD_DATABASE_URL`이 설정되지 않아 이 PostgreSQL Runtime이 활성화되지 않는다. UI는 기본 Gold Fixture Dashboard와 이를 혼동하지 않으며, Runtime capability가 없을 때 500 오류 화면 대신 unavailable 상태로 처리한다.
+
 ---
 
 ## 4. Analysis와 Ontology Workbench
@@ -285,11 +322,18 @@ Dataset schema
 
 ---
 
-## 5. Predictive Maintenance Canonical V3.1 Runtime
+## 5. UCI AI4I 2020 Manufacturing Predictive Maintenance Runtime
 
 ### Dataset Version과 Result Artifact
 
-![Predictive Maintenance V3.1 runtime Dashboard](../../web/public/team-share-adaptive-assets/01-v3-runtime-dashboard.png)
+![UCI AI4I 2020 Manufacturing Predictive Maintenance Physics and Maintenance Canonical V3.1 runtime Dashboard](../../web/public/team-share-adaptive-assets/01-v3-runtime-dashboard.png)
+
+정식 데이터 표시명:
+
+```text
+UCI AI4I 2020 Manufacturing Predictive Maintenance
+— Physics & Maintenance Canonical V3.1
+```
 
 화면에서 확인하는 계약:
 
@@ -434,6 +478,30 @@ candidate → approved → active → retired
 - loading·empty·error·blocked 상태
 - Model Registry action 모바일 배치
 
+### Dashboard 다크모드 사용성 회귀
+
+![Dashboard runtime과 Planner Assistant 다크모드](../../web/public/team-share-adaptive-assets/06-dashboard-dark-mode.png)
+
+다크모드는 외곽 shell만 어둡게 바꾸는 것으로 완료하지 않는다. 실제 역할 화면에서 다음 내부 surface를 검사한다.
+
+- `.board-runtime-body`
+- `.server-filtered-event-scope`
+- `.server-filtered-event-scope > .advanced-board`
+- `.planner-assistant-card`
+- Planner active tab
+- Planner textarea·select
+- governed planning 안내
+- Planner result code·Object·recommendation card
+
+자동 검증 기준:
+
+```text
+effective background luminance < 0.18
+foreground contrast ratio >= 4.5:1
+```
+
+배경색이 투명한 요소는 해당 요소의 색상값만 확인하지 않고, 모든 ancestor background를 alpha compositing해 실제 화면에서 보이는 실효 배경색을 계산한다.
+
 ---
 
 ## 현재 완료 상태
@@ -444,15 +512,16 @@ candidate → approved → active → retired
 | 역할별 Report-first·Dashboard-first experience | 완료 |
 | Dataset 적응형 Dashboard·개인화 | 완료 |
 | Analysis·Ontology Workbench | 완료 |
-| Canonical V3.1 package·Result Artifact | 완료 |
+| UCI AI4I 2020 Physics & Maintenance Canonical V3.1 package·Result Artifact 구현 | 완료 |
 | Dataset Version selector·rollback | 완료 |
-| PostgreSQL runtime·prediction replay | 완료 |
+| Cloudflare 개발 서버의 PostgreSQL V3.1 runtime 연결 | blocked — database URL 미설정 |
 | Dataset Intake·Manifest approval | 완료 |
 | Ontology Mapping approval | 완료 |
 | Feature Recipe·Feature Dataset | 완료 |
 | Experiment worker·recovery | 완료 |
 | Model Registry·activation·rollback | 완료 |
 | ML Validator desktop·tablet·mobile | 완료 |
+| Dashboard runtime·server-filtered scope·Planner dark mode | 완료 |
 | Local release verifier | 완료 |
 | Strict production infrastructure | blocked |
 
@@ -472,6 +541,7 @@ candidate → approved → active → retired
 ### 제품·운영 추가 작업
 
 - Live demo Dataset·Mapping·Recipe·Experiment seed
+- Cloudflare 개발 서버에 AI4I 2020 V3.1 PostgreSQL Runtime 연결
 - Source upload·Mapping·Recipe 통합 Modeling Studio
 - daemon worker와 heartbeat registry
 - S3 또는 GCS artifact store
@@ -493,14 +563,14 @@ candidate → approved → active → retired
 
 ## 캡처 재생성
 
-V3.1·ML Validator 기능 화면 5장:
+AI4I 2020 V3.1·ML Validator·다크모드 기능 화면 6장:
 
 ```bash
 cd web
 npm run capture:team-share-adaptive
 ```
 
-기존 화면 11장과 최신 5장을 포함한 통합 Story desktop·mobile:
+기존 화면 11장과 최신 6장을 포함한 통합 Story desktop·mobile:
 
 ```bash
 cd web
@@ -517,9 +587,10 @@ npm run verify:team-share-adaptive
 전체 검증은 다음을 포함한다.
 
 - 기존 `/team-share` integrity tag 보존
-- 최신 `/team-share-adaptive`에 16개 feature capture 포함
+- 최신 `/team-share-adaptive`에 17개 feature capture 포함
 - 독립 `/team-share-adaptive.html` 렌더
 - 통합 Story desktop·mobile 캡처
+- dark surface 실효 luminance와 WCAG contrast 계산
 - TypeScript
 - frontend unit tests
 - production build
