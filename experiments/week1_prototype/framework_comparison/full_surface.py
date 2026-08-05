@@ -29,6 +29,9 @@ from flask import Flask, jsonify, request
 
 
 HTTP_METHODS = ("get", "post", "put", "patch", "delete", "options", "head")
+REPRESENTATIVE_BENCHMARK_PATH = Path(__file__).with_name(
+    "representative_dashboard_benchmark.json"
+)
 KNOWN_PATH_VALUES = {
     "project_id": "manufacturing-demo-project",
     "workspace_id": "manufacturing-demo",
@@ -307,6 +310,20 @@ def build_full_surface_report() -> dict[str, Any]:
     flask_probe = probe_flask_mirror(schema)
     unauthenticated_probe = probe_fastapi_surface(authenticated=False)
     authenticated_probe = probe_fastapi_surface(authenticated=True)
+    representative = (
+        json.loads(REPRESENTATIVE_BENCHMARK_PATH.read_text(encoding="utf-8"))
+        if REPRESENTATIVE_BENCHMARK_PATH.exists()
+        else {
+            "status": "not-generated",
+            "implementation": {
+                "fastapi_adapter_loc": 0,
+                "flask_adapter_loc": 0,
+            },
+            "parity": {"responses_equal": False},
+            "results": {},
+            "performance_scores": {"FastAPI": 0.0, "Flask": 0.0},
+        }
+    )
     operation_count = summary["operation_count"]
     request_validation_count = sum(
         bool(
@@ -324,13 +341,13 @@ def build_full_surface_report() -> dict[str, Any]:
             "fastapi_score": 5,
             "flask_score": 3,
             "observed_result": (
-                f"FastAPI에서는 typed router·Pydantic·의존성 주입 구조로 {operation_count}개 "
-                "HTTP 작업을 구성하고 테스트했습니다. Flask는 최소 /health와 "
-                f"{flask_probe['registered_operation_count']}개 라우트 미러를 더 간단하게 "
-                "구성했지만, 전체 업무 모듈 구조는 이번 실험에서 구현하지 않았습니다."
+                "동일 제조 Dashboard API adapter를 실제 구현한 결과 FastAPI는 "
+                f"{representative['implementation']['fastapi_adapter_loc']} LOC, Flask는 "
+                f"수동 query parser를 포함해 {representative['implementation']['flask_adapter_loc']} LOC였습니다. "
+                f"FastAPI 전체 제품은 별도로 {operation_count}개 업무 작업을 실행합니다."
             ),
-            "fastapi_reason": "타입·검증·문서 구조가 함께 제공되어 큰 API를 일관된 방식으로 확장하기 쉬웠습니다.",
-            "flask_reason": "시작은 단순하고 자유롭지만 큰 API에서는 확장 도구와 프로젝트 규칙을 별도로 조합해야 합니다.",
+            "fastapi_reason": "동일 기능에서 query 제약과 응답 계약을 route 선언에 함께 표현해 adapter 코드가 더 짧았습니다.",
+            "flask_reason": "route 자체는 단순하지만 동일한 입력 제약을 맞추기 위해 수동 parser와 오류 응답 코드가 추가됐습니다.",
         },
         {
             "id": "contract_automation",
@@ -353,35 +370,42 @@ def build_full_surface_report() -> dict[str, Any]:
             "title": "요청·응답 검증과 오류 안전성",
             "weight": 25,
             "fastapi_score": 5,
-            "flask_score": 2,
+            "flask_score": 4,
             "observed_result": (
-                f"FastAPI는 요청 검증 대상 {request_validation_count}개와 JSON 응답 런타임 검증 "
-                f"{summary['json_success_schema_operation_count']}개를 적용했고, 인증 전수 프로브에서 "
-                f"처리되지 않은 5xx는 {authenticated_probe['unhandled_server_error_count']}건이었습니다. "
-                "Flask 미러는 라우팅만 검증했습니다."
+                "대표 Dashboard API에서 정상 응답 JSON은 완전히 일치했고 잘못된 limit 요청은 "
+                "양쪽 모두 422를 반환했습니다. FastAPI는 Query constraint와 response_model로 "
+                "자동 검증했고 Flask는 같은 결과를 수동 parser로 구현했습니다. 전체 FastAPI에서는 "
+                f"요청 검증 {request_validation_count}개, JSON 응답 검증 "
+                f"{summary['json_success_schema_operation_count']}개, 미처리 5xx "
+                f"{authenticated_probe['unhandled_server_error_count']}건을 확인했습니다."
             ),
             "fastapi_reason": "잘못된 입력과 구현·응답 계약 불일치를 실행 중에 바로 탐지합니다.",
-            "flask_reason": "라우트 등록은 정상이나 업무 응답 검증은 구현하지 않아 동일 수준을 확인할 수 없습니다.",
+            "flask_reason": "대표 API의 입력 오류는 동일하게 처리했지만 query·응답 검증을 route마다 수동 연결해야 합니다.",
         },
         {
-            "id": "minimal_lightness",
-            "title": "최소 API 경량성과 단순 응답 속도",
+            "id": "representative_performance",
+            "title": "대표 업무 API 성능과 경량성",
             "weight": 25,
-            "fastapi_score": 2,
-            "flask_score": 5,
+            "fastapi_score": representative["performance_scores"]["FastAPI"],
+            "flask_score": representative["performance_scores"]["Flask"],
             "observed_result": (
-                "동일 GET /health 인프로세스 측정에서 FastAPI p50 0.7603ms·p95 1.7285ms, "
-                "Flask p50 0.0766ms·p95 0.1235ms였습니다."
+                "동일 제조 Dashboard API를 별도 HTTP 프로세스로 500회 순차·500회 동시성 10으로 "
+                f"측정했습니다. 동시성 10 기준 FastAPI p95 "
+                f"{representative['results']['FastAPI']['concurrent']['p95_ms']}ms·"
+                f"{representative['results']['FastAPI']['concurrent']['throughput_rps']} RPS, Flask p95 "
+                f"{representative['results']['Flask']['concurrent']['p95_ms']}ms·"
+                f"{representative['results']['Flask']['concurrent']['throughput_rps']} RPS였고 양쪽 오류율은 0%였습니다."
             ),
-            "fastapi_reason": "Pydantic 검증과 프레임워크 기능 때문에 최소 응답 오버헤드가 더 컸습니다.",
-            "flask_reason": "단순 라우팅과 작은 응답에서는 더 가볍고 빨랐습니다.",
+            "fastapi_reason": "순차 p50·처리량은 근소하게 앞섰지만 3라운드 종합 성능 점수는 Flask보다 약간 낮았습니다.",
+            "flask_reason": "3라운드 중앙값에서 순차 p95와 동시성 10의 p95·처리량이 근소하게 앞섰습니다.",
         },
     ]
 
-    def weighted_total(framework: str) -> int:
+    def weighted_total(framework: str) -> float:
         score_key = f"{framework}_score"
         return round(
-            sum(item["weight"] * item[score_key] / 5 for item in evaluation_criteria)
+            sum(item["weight"] * item[score_key] / 5 for item in evaluation_criteria),
+            2,
         )
 
     fastapi_total = weighted_total("fastapi")
@@ -425,26 +449,28 @@ def build_full_surface_report() -> dict[str, Any]:
             "manual_business_setup_operation_count": operation_count,
         },
         "schema_summary": summary,
+        "representative_dashboard": representative,
         "conclusion": {
             "selected_framework": "FastAPI",
             "reason": (
-                f"개발 완성도·계약 자동화·검증 안정성·경량성 네 항목을 각각 25%로 "
-                f"동일하게 평가했습니다. Flask는 단순 /health 속도와 가벼운 시작에서 "
-                f"우세했지만, FastAPI는 큰 API를 구조화하고 계약·검증을 자동화하는 항목에서 "
-                f"앞서 FastAPI {fastapi_total}점, Flask {flask_total}점으로 FastAPI를 선택했습니다. "
+                f"개발 생산성·계약 자동화·검증 안정성·대표 업무 API 성능 네 항목을 각각 25%로 "
+                f"동일하게 평가했습니다. 동일 제조 Dashboard API를 양쪽에 실제 구현한 결과까지 반영했으며, "
+                f"Flask는 대표 업무 API 성능에서 근소하게 앞섰지만, FastAPI는 adapter 코드량·"
+                f"계약 자동화·검증에서 앞서 FastAPI {fastapi_total}점, Flask {flask_total}점으로 "
+                "FastAPI를 선택했습니다. "
                 "이번 결론은 기존 코드를 옮기는 비용이 아니라 새 제품을 구축할 때의 개발 방식과 "
                 "기본 제공 기능을 기준으로 한 판단입니다."
             ),
             "limitation": (
-                "Flask 결과는 bare Flask의 기본 제공 범위와 라우팅 가능성을 확인한 "
-                "실험입니다. Flask로 동일한 전체 업무 애플리케이션을 별도로 구현하지 "
-                "않았으므로 제품 수준 성능과 유지보수성까지 완전 대칭 비교한 결과는 아닙니다."
+                "대표 제조 Dashboard API는 FastAPI와 Flask에 동일하게 구현했지만, 전체 172개 "
+                "제품 업무 작업을 Flask로 다시 구현한 것은 아닙니다. 성능 값은 로컬 Mac loopback과 "
+                "각 프레임워크의 로컬 서버 stack을 포함한 측정이며 운영 환경 성능을 보장하지 않습니다."
             ),
             "selection_basis": [
                 {
-                    "title": "실제 업무 구현",
-                    "fastapi": "172개 실제 업무 핸들러 실행",
-                    "flask": "0개 실제 업무 핸들러 · 라우트 미러만 등록",
+                    "title": "대표 업무 API 대칭 구현",
+                    "fastapi": "제조 Dashboard API + 자동 query·응답 검증",
+                    "flask": "같은 Dashboard API + 수동 query 검증",
                 },
                 {
                     "title": "성공 응답 계약",
@@ -464,9 +490,15 @@ def build_full_surface_report() -> dict[str, Any]:
                     "flask": "기본 구성 0개 · 확장 라이브러리와 수동 연결 필요",
                 },
                 {
-                    "title": "선정에서 제외한 기준",
-                    "fastapi": "/health 로컬 지연시간은 참고값으로만 유지",
-                    "flask": "단일 응답이 더 가벼워도 전체 제품 선정 근거로 사용하지 않음",
+                    "title": "실제 HTTP 성능",
+                    "fastapi": (
+                        f"동시성 10 p95 {representative['results']['FastAPI']['concurrent']['p95_ms']}ms · "
+                        f"{representative['results']['FastAPI']['concurrent']['throughput_rps']} RPS"
+                    ),
+                    "flask": (
+                        f"동시성 10 p95 {representative['results']['Flask']['concurrent']['p95_ms']}ms · "
+                        f"{representative['results']['Flask']['concurrent']['throughput_rps']} RPS"
+                    ),
                 },
             ],
             "evaluation": {
@@ -492,7 +524,7 @@ def build_full_surface_report() -> dict[str, Any]:
                         f"요청 검증 대상 {request_validation_count}개",
                         f"JSON 응답 런타임 검증 {summary['json_success_schema_operation_count']}개",
                         f"인증 전수 프로브 처리되지 않은 5xx {authenticated_probe['unhandled_server_error_count']}건",
-                        "GET /health p50 0.7603ms · p95 1.7285ms",
+                        f"대표 Dashboard 성능 점수 {representative['performance_scores']['FastAPI']}/5",
                     ],
                     "advantages": [
                         "typed router·의존성 주입·Pydantic을 이용해 큰 API 구조를 일관되게 구성할 수 있습니다.",
@@ -500,25 +532,25 @@ def build_full_surface_report() -> dict[str, Any]:
                         "잘못된 입력과 응답 계약 불일치를 런타임에서 탐지합니다.",
                     ],
                     "disadvantages": [
-                        "단순 /health 응답에서는 Flask보다 오버헤드가 컸습니다.",
+                        "대표 Dashboard 성능 종합점수는 Flask보다 약간 낮았습니다.",
                         "Pydantic 모델과 타입 계약을 지속적으로 관리해야 합니다.",
                     ],
                 },
                 "flask": {
                     "tested_results": [
                         f"라우트 미러 {flask_probe['registered_operation_count']}개 등록 성공",
-                        "실제 업무 핸들러 0개",
+                        "대표 제조 Dashboard 업무 API 1개 실제 구현",
                         "기본 구성 자동 OpenAPI·요청 검증·응답 Schema 0개",
-                        "GET /health p50 0.0766ms · p95 0.1235ms",
+                        f"대표 Dashboard 성능 점수 {representative['performance_scores']['Flask']}/5",
                     ],
                     "advantages": [
-                        "단순 endpoint 구현이 작고 최소 응답이 더 빨랐습니다.",
+                        "대표 Dashboard의 3라운드 종합 성능 점수가 FastAPI보다 근소하게 높았습니다.",
                         "필요한 기능만 선택해 붙이는 유연성이 있습니다.",
                     ],
                     "disadvantages": [
                         "큰 API에서는 프로젝트 구조와 확장 도구 조합을 별도로 설계해야 합니다.",
                         "OpenAPI·Schema·요청 및 응답 검증은 기본 제공되지 않아 별도 구성이 필요합니다.",
-                        "이번 실험에서는 Flask 전체 업무 애플리케이션을 구현하지 않아 제품 수준 동작은 직접 비교하지 못했습니다.",
+                        "대표 API 외 전체 업무 애플리케이션은 구현하지 않아 172개 전체의 성능은 직접 비교하지 못했습니다.",
                     ],
                 },
             },

@@ -4,17 +4,25 @@ from __future__ import annotations
 
 import json
 import urllib.error
+import urllib.parse
 import urllib.request
 from html import escape
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from .contracts import HEALTH_PAYLOAD, HealthResponse
+from .representative_dashboard import (
+    ManufacturingDashboardResponse,
+    build_manufacturing_dashboard,
+)
 
 
 FULL_SURFACE_SNAPSHOT_PATH = Path(__file__).with_name("full_surface_snapshot.json")
+REPRESENTATIVE_BENCHMARK_PATH = Path(__file__).with_name(
+    "representative_dashboard_benchmark.json"
+)
 
 
 def _load_full_surface_snapshot() -> dict:
@@ -52,6 +60,20 @@ def _load_full_surface_snapshot() -> dict:
 
 
 FULL_SURFACE_SNAPSHOT = _load_full_surface_snapshot()
+
+
+def _load_representative_benchmark() -> dict:
+    if not REPRESENTATIVE_BENCHMARK_PATH.exists():
+        return {
+            "status": "not-generated",
+            "endpoint": "/benchmark/manufacturing-dashboard",
+            "parity": {"responses_equal": False},
+            "results": {},
+        }
+    return json.loads(REPRESENTATIVE_BENCHMARK_PATH.read_text(encoding="utf-8"))
+
+
+REPRESENTATIVE_BENCHMARK = _load_representative_benchmark()
 
 
 COMPARISON_SNAPSHOT = {
@@ -147,10 +169,28 @@ def health() -> HealthResponse:
     return HealthResponse(**HEALTH_PAYLOAD)
 
 
+@app.get(
+    "/benchmark/manufacturing-dashboard",
+    response_model=ManufacturingDashboardResponse,
+    tags=["representative-benchmark"],
+)
+def manufacturing_dashboard(
+    risk_threshold: float = Query(default=0.0, ge=0.0, le=1.0),
+    limit: int = Query(default=8, ge=1, le=100),
+    line: str | None = None,
+) -> ManufacturingDashboardResponse:
+    return build_manufacturing_dashboard(
+        risk_threshold=risk_threshold,
+        limit=limit,
+        line=line,
+    )
+
+
 @app.get("/comparison.json", tags=["comparison"])
 def comparison_json() -> dict:
     return {
         "baseline": _baseline_comparison_payload(),
+        "representative_dashboard": REPRESENTATIVE_BENCHMARK,
         "full_surface": FULL_SURFACE_SNAPSHOT,
     }
 
@@ -160,12 +200,42 @@ def full_comparison_json() -> dict:
     return FULL_SURFACE_SNAPSHOT
 
 
+@app.get("/representative-benchmark.json", tags=["comparison"])
+def representative_benchmark_json() -> dict:
+    return REPRESENTATIVE_BENCHMARK
+
+
 @app.get("/flask-health", tags=["comparison"])
 def flask_health_proxy() -> JSONResponse:
     """Expose the locally running Flask experiment through the report origin."""
 
     try:
         with urllib.request.urlopen("http://127.0.0.1:5111/health", timeout=1.5) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+            return JSONResponse(payload, status_code=response.status)
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as error:
+        return JSONResponse(
+            {"status": "unavailable", "framework": "Flask", "detail": str(error)},
+            status_code=503,
+        )
+
+
+@app.get("/flask-dashboard", tags=["representative-benchmark"])
+def flask_dashboard_proxy(
+    risk_threshold: float = Query(default=0.0, ge=0.0, le=1.0),
+    limit: int = Query(default=8, ge=1, le=100),
+    line: str | None = None,
+) -> JSONResponse:
+    query = urllib.parse.urlencode(
+        {
+            "risk_threshold": risk_threshold,
+            "limit": limit,
+            **({"line": line} if line else {}),
+        }
+    )
+    url = f"http://127.0.0.1:5111/benchmark/manufacturing-dashboard?{query}"
+    try:
+        with urllib.request.urlopen(url, timeout=2.0) as response:
             payload = json.loads(response.read().decode("utf-8"))
             return JSONResponse(payload, status_code=response.status)
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as error:
@@ -206,7 +276,7 @@ def _full_surface_rows() -> str:
         {
             "framework": "FastAPI",
             "surface": f"{scope['path_count']}개 경로 / {scope['operation_count']}개 작업",
-            "business": f"실제 업무 핸들러 {scope['operation_count']}개",
+            "business": f"전체 제품 업무 핸들러 {scope['operation_count']}개",
             "openapi": fastapi["automatic_openapi_operation_count"],
             "validation": fastapi["automatic_request_validation_operation_count"],
             "response": (
@@ -224,7 +294,7 @@ def _full_surface_rows() -> str:
         {
             "framework": "Flask",
             "surface": f"{scope['path_count']}개 경로 / {flask['registered_operation_count']}개 작업",
-            "business": f"실제 업무 핸들러 {flask['business_handler_operation_count']}개",
+            "business": f"전체 제품 업무 핸들러 {flask['business_handler_operation_count']}개",
             "openapi": flask["automatic_openapi_operation_count"],
             "validation": flask["automatic_request_validation_operation_count"],
             "response": flask["automatic_response_schema_operation_count"],
@@ -321,6 +391,49 @@ def _weighted_score_rows() -> str:
     return "".join(rows)
 
 
+def _representative_performance_rows() -> str:
+    results = REPRESENTATIVE_BENCHMARK.get("results", {})
+    scores = REPRESENTATIVE_BENCHMARK.get("performance_scores", {})
+    rows: list[str] = []
+    for framework in ("FastAPI", "Flask"):
+        item = results.get(framework, {})
+        sequential = item.get("sequential", {})
+        concurrent = item.get("concurrent", {})
+        rows.append(
+            "<tr>"
+            f"<td><strong>{framework}</strong></td>"
+            f"<td>{sequential.get('p50_ms', '—')}ms</td>"
+            f"<td>{sequential.get('p95_ms', '—')}ms</td>"
+            f"<td>{sequential.get('throughput_rps', '—')}</td>"
+            f"<td>{concurrent.get('p50_ms', '—')}ms</td>"
+            f"<td>{concurrent.get('p95_ms', '—')}ms</td>"
+            f"<td>{concurrent.get('p99_ms', '—')}ms</td>"
+            f"<td>{concurrent.get('throughput_rps', '—')}</td>"
+            f"<td>{concurrent.get('error_rate_percent', '—')}%</td>"
+            f"<td><strong>{scores.get(framework, '—')}/5</strong></td>"
+            "</tr>"
+        )
+    return "".join(rows)
+
+
+def _representative_implementation_rows() -> str:
+    implementation = REPRESENTATIVE_BENCHMARK.get("implementation", {})
+    return (
+        "<tr>"
+        "<td><strong>FastAPI</strong></td>"
+        f"<td>{implementation.get('fastapi_adapter_loc', '—')} LOC</td>"
+        f"<td>{escape(str(implementation.get('fastapi_validation', '—')))}</td>"
+        "<td>자동 OpenAPI·요청 제약·응답 모델</td>"
+        "</tr>"
+        "<tr>"
+        "<td><strong>Flask</strong></td>"
+        f"<td>{implementation.get('flask_adapter_loc', '—')} LOC</td>"
+        f"<td>{escape(str(implementation.get('flask_validation', '—')))}</td>"
+        "<td>수동 query parser·422 오류 처리</td>"
+        "</tr>"
+    )
+
+
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def comparison_page() -> HTMLResponse:
     source = COMPARISON_SNAPSHOT["source"]
@@ -329,6 +442,9 @@ def comparison_page() -> HTMLResponse:
     authenticated = fastapi_surface["authenticated_probe"]
     evaluation = FULL_SURFACE_SNAPSHOT["conclusion"]["evaluation"]
     totals = evaluation["totals"]
+    representative = REPRESENTATIVE_BENCHMARK
+    representative_parity = representative.get("parity", {})
+    representative_environment = representative.get("environment", {})
     status_summary = " · ".join(
         f"{status} {count}건"
         for status, count in authenticated["status_counts"].items()
@@ -372,6 +488,14 @@ def comparison_page() -> HTMLResponse:
     .score-card.fastapi strong {{ color:var(--accent); }}
     .score-card.flask strong {{ color:var(--blue); }}
     .weight-note {{ border-left:3px solid var(--accent); background:rgba(103,232,199,.06); padding:14px 16px; margin:12px 0 18px; color:#c7d5df; }}
+    .scope-note {{ border:1px solid #3f5264; background:linear-gradient(135deg,rgba(121,168,255,.10),rgba(13,24,34,.9)); border-radius:16px; padding:20px; margin:24px 0 34px; }}
+    .scope-note strong {{ color:var(--blue); }}
+    .benchmark-grid {{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:16px 0 18px; }}
+    .benchmark-card {{ border:1px solid var(--line); border-radius:14px; padding:18px; background:#0a141d; }}
+    .benchmark-card span {{ display:block; color:var(--muted); font-size:13px; }}
+    .benchmark-card strong {{ display:block; margin-top:5px; font-size:25px; }}
+    .benchmark-card.fast strong {{ color:var(--accent); }}
+    .benchmark-card.flask strong {{ color:var(--blue); }}
     .card strong {{ display:block; font-size:26px; margin-top:7px; }}
     .card span {{ color:var(--muted); }}
     .live {{ display:inline-flex; align-items:center; gap:7px; font-weight:800; }}
@@ -398,19 +522,22 @@ def comparison_page() -> HTMLResponse:
     pre {{ overflow:auto; padding:16px; border-radius:12px; background:#050b10; color:#c6f7ea; border:1px solid var(--line); }}
     .note {{ color:var(--muted); font-size:13px; margin-top:16px; }}
     footer {{ color:var(--muted); margin-top:34px; font-size:13px; }}
-    @media (max-width:800px) {{ .grid,.framework-grid,.decision-model,.pros-cons {{ grid-template-columns:1fr; }} main {{ padding-top:30px; }} }}
+    @media (max-width:800px) {{ .grid,.framework-grid,.decision-model,.pros-cons,.benchmark-grid {{ grid-template-columns:1fr; }} main {{ padding-top:30px; }} }}
   </style>
 </head>
 <body>
 <main>
   <div class="eyebrow">WEEK 1 · 프레임워크 비교</div>
   <h1>FastAPI vs Flask<br/>전체 MVP 구현 기준 비교</h1>
-  <p class="lead">초기 <code>GET /health</code> 최소 비교를 기준선으로만 남기고, 현재 Ontology Dashboard MVP의 <strong>{scope['path_count']}개 OpenAPI 경로·{scope['operation_count']}개 HTTP 작업 전체</strong>를 비교 대상으로 확장했습니다. FastAPI와 bare Flask의 개발 구조, 계약 자동화, 검증 안정성, 경량성을 같은 비중으로 평가했습니다.</p>
+  <p class="lead">현재 페이지는 두 층을 분리해 보여줍니다. 제조 Dashboard 대표 API 1개는 FastAPI와 Flask에 <strong>실제로 동일 구현</strong>해 기능·성능을 대칭 비교했고, 전체 <strong>{scope['path_count']}개 OpenAPI 경로·{scope['operation_count']}개 HTTP 작업</strong>은 FastAPI 제품 구현 현황과 Flask route mirror 범위를 구분해 표시합니다.</p>
   <div class="actions">
     <a class="button primary" href="https://dashboard.oosu.dev/docs">실제 서비스 162경로 Swagger</a>
     <a class="button" href="/docs">비교 화면 Swagger</a>
     <a class="button" href="/health">FastAPI /health</a>
     <a class="button" href="/flask-health">Flask /health 프록시</a>
+    <a class="button" href="/benchmark/manufacturing-dashboard">FastAPI 대표 Dashboard API</a>
+    <a class="button" href="/flask-dashboard">Flask 대표 Dashboard API</a>
+    <a class="button" href="/representative-benchmark.json">대표 API 실측 JSON</a>
     <a class="button" href="/full-comparison.json">162경로 전수 비교 JSON</a>
     <a class="button" href="/comparison.json">전체 비교 JSON</a>
   </div>
@@ -422,15 +549,43 @@ def comparison_page() -> HTMLResponse:
     <article class="card"><span>기준선 실험</span><strong>GET /health</strong><div class="live"><i id="fast-dot" class="dot"></i><span id="fast-live">FastAPI 확인 중</span></div><div class="live"><i id="flask-dot" class="dot"></i><span id="flask-live">Flask 확인 중</span></div></article>
   </section>
 
-  <h2>1. 프레임워크별 실제 테스트 결과와 장단점</h2>
-  <p class="lead">먼저 각 프레임워크에서 실제로 확인한 결과를 분리했습니다. Flask의 전체 제품 로직을 구현한 것이 아니므로, Flask 점수는 <strong>bare Flask의 기본 제공 범위와 새 제품을 구성할 때 필요한 추가 설정</strong>을 기준으로 평가했습니다.</p>
+  <section class="scope-note">
+    <strong>비교 범위 구분</strong><br/>
+    대표 제조 Dashboard API는 같은 GS fixture, 같은 risk snapshot, 같은 집계 함수를 양쪽에 연결한 실제 대칭 비교입니다. 반면 전체 172개 작업은 FastAPI에만 제품 업무 로직이 있고 Flask에는 route mirror만 있으므로, 전체 성능을 양쪽이 모두 구현한 것처럼 표현하지 않습니다.
+  </section>
+
+  <h2>1. 동일 제조 Dashboard API 실제 양방향 구현</h2>
+  <p class="lead"><code>/app/projects/manufacturing-demo-project</code> 첫 화면을 대표해 위험 이벤트 8개, 센서 시계열 {representative_parity.get('sensor_points', '—')}개, 라인별 위험 집계와 권장 조치를 반환하는 API를 양쪽에 구현했습니다.</p>
+  <section class="benchmark-grid">
+    <article class="benchmark-card"><span>응답 계약 일치</span><strong>{'완전 일치' if representative_parity.get('responses_equal') else '확인 필요'}</strong></article>
+    <article class="benchmark-card"><span>대표 데이터</span><strong>{representative_parity.get('visible_events', '—')} events</strong><span>{representative_parity.get('sensor_points', '—')} sensor points</span></article>
+    <article class="benchmark-card fast"><span>FastAPI 동시 처리량</span><strong>{representative.get('results', {}).get('FastAPI', {}).get('concurrent', {}).get('throughput_rps', '—')} RPS</strong></article>
+    <article class="benchmark-card flask"><span>Flask 동시 처리량</span><strong>{representative.get('results', {}).get('Flask', {}).get('concurrent', {}).get('throughput_rps', '—')} RPS</strong></article>
+  </section>
+  <section class="table-wrap">
+    <table>
+      <thead><tr><th>프레임워크</th><th>순차 p50</th><th>순차 p95</th><th>순차 RPS</th><th>동시 p50</th><th>동시 p95</th><th>동시 p99</th><th>동시 RPS</th><th>오류율</th><th>성능 점수</th></tr></thead>
+      <tbody>{_representative_performance_rows()}</tbody>
+    </table>
+  </section>
+  <p class="section-note">각 서버를 별도 프로세스로 실행하고 순차 {representative.get('results', {}).get('FastAPI', {}).get('sequential', {}).get('requests_per_round', '—')}회 × {representative.get('results', {}).get('FastAPI', {}).get('sequential', {}).get('round_count', '—')}라운드, 동시성 10도 같은 횟수로 로컬 HTTP 요청했습니다. 실행 순서는 FastAPI 우선·Flask 우선을 번갈아 적용했고, 두 서버 모두 매 요청 새 연결을 사용했습니다. 환경: {escape(str(representative_environment.get('platform', '—')))} · Python {escape(str(representative_environment.get('python', '—')))}.</p>
+  <section class="table-wrap">
+    <table>
+      <thead><tr><th>프레임워크</th><th>Adapter 코드량</th><th>검증 방식</th><th>추가 구현</th></tr></thead>
+      <tbody>{_representative_implementation_rows()}</tbody>
+    </table>
+  </section>
+  <p class="section-note">FastAPI는 순차 p50과 순차 처리량에서 근소하게 앞섰고, Flask는 순차 p95와 동시성 10의 p50·p95·처리량에서 앞섰습니다. 네 성능 지표를 동일 비중으로 계산한 종합점수는 FastAPI {representative.get('performance_scores', {}).get('FastAPI', '—')}/5, Flask {representative.get('performance_scores', {}).get('Flask', '—')}/5입니다. 운영 환경 벤치마크가 아니라 로컬 framework·server stack 비교이며 원격 DB와 외부 모델 호출은 제외했습니다.</p>
+
+  <h2>2. 프레임워크별 실제 테스트 결과와 장단점</h2>
+  <p class="lead">대표 API는 양쪽 모두 실제 구현했습니다. 전체 제품 수준에서는 FastAPI 172개 업무 작업과 Flask 1개 대표 업무 API + 172개 route mirror를 구분해 평가합니다.</p>
   <section class="framework-grid">{_framework_summary_cards()}</section>
 
-  <h2>2. 어떤 요소에 더 큰 비중을 뒀는가</h2>
-  <div class="weight-note"><strong>네 항목을 동일하게 평가했습니다.</strong> 개발 완성도·API 계약 자동화·검증 안정성·경량성에 각각 {evaluation['equal_weight_per_criterion']}%를 배정했습니다. 모든 프로젝트에 FastAPI가 더 낫다는 뜻은 아니며, 이번 실험에서 확인한 기본 제공 범위와 개발 방식에 대한 비교입니다.</div>
+  <h2>3. 어떤 요소에 더 큰 비중을 뒀는가</h2>
+  <div class="weight-note"><strong>네 항목을 동일하게 평가했습니다.</strong> 개발 생산성·API 계약 자동화·검증 안정성·대표 업무 API 성능에 각각 {evaluation['equal_weight_per_criterion']}%를 배정했습니다. 성능 점수는 동시성 10의 p95와 처리량을 같은 비중으로 정규화했습니다.</div>
   <section class="decision-model">
     <article class="score-card fastapi"><span>FastAPI 가중 합계</span><strong>{totals['fastapi']} / 100</strong><span>개발 구조·계약·검증에서 우세</span></article>
-    <article class="score-card flask"><span>Flask 가중 합계</span><strong>{totals['flask']} / 100</strong><span>최소 API 경량성에서 우세</span></article>
+    <article class="score-card flask"><span>Flask 가중 합계</span><strong>{totals['flask']} / 100</strong><span>대표 업무 API 성능에서 근소 우세</span></article>
   </section>
   <section class="table-wrap">
     <table class="score-table">
@@ -439,7 +594,8 @@ def comparison_page() -> HTMLResponse:
     </table>
   </section>
 
-  <h2>3. 전체 162개 경로·172개 작업의 원본 수치</h2>
+  <h2>4. FastAPI 전체 제품 구현 현황과 Flask 구성 범위</h2>
+  <p class="section-note">아래 표는 전체 제품 성능의 대칭 비교가 아닙니다. FastAPI의 실제 제품 구현 범위와 Flask에서 같은 URL 구조가 등록되는지, 추가로 어떤 기능을 구성해야 하는지 보여주는 범위 분석입니다.</p>
   <section class="table-wrap">
     <table>
       <thead><tr><th>프레임워크</th><th>API 표면</th><th>업무 핸들러</th><th>자동 OpenAPI</th><th>요청 자동 검증</th><th>성공 응답 계약</th><th>응답 런타임 검증</th><th>전수 프로브</th><th>추가 업무 구성</th></tr></thead>
@@ -447,8 +603,8 @@ def comparison_page() -> HTMLResponse:
     </table>
   </section>
 
-  <h2>4. 참고: 동일 `/health` 최소 응답 비교</h2>
-  <p class="section-note">마지막 점수는 <code>/health</code>만의 별도 점수가 아니라, 2번 평가표의 네 점수를 동일 비중으로 산술평균한 종합점수입니다.</p>
+  <h2>5. 참고: 동일 `/health` 최소 응답 비교</h2>
+  <p class="section-note"><code>/health</code>는 최소 framework overhead를 살펴보는 이전 기준선입니다. 최종 성능 평가는 위의 제조 Dashboard 실제 HTTP 측정을 사용합니다. 마지막 열은 3번 평가표의 네 점수를 평균한 종합점수입니다.</p>
   <section class="table-wrap">
     <table>
       <thead><tr><th>프레임워크</th><th>HTTP</th><th>응답 일치</th><th>OpenAPI</th><th>응답 Schema</th><th>코드 줄 수</th><th>p50*</th><th>p95*</th><th>종합 평균*</th></tr></thead>
@@ -460,9 +616,9 @@ def comparison_page() -> HTMLResponse:
     <div class="eyebrow">최종 선정</div>
     <h2>최종 선택: FastAPI</h2>
     <p>{escape(FULL_SURFACE_SNAPSHOT['conclusion']['reason'])}</p>
-    <p><strong>Flask가 우세한 부분:</strong> 단순 endpoint의 가벼움과 로컬 인프로세스 응답 속도입니다.</p>
-    <p><strong>FastAPI가 우세한 부분:</strong> 큰 API의 구조화, 코드와 Swagger가 공유하는 계약 자동화, 요청·응답 오류를 조기에 발견하는 검증 안정성입니다. 네 항목의 가중치는 모두 동일합니다.</p>
-    <p class="note">{escape(FULL_SURFACE_SNAPSHOT['conclusion']['limitation'])} <code>/health</code> 지연시간은 운영 성능 결론이 아니라 최소 API 경량성 항목의 실험 근거로만 사용했습니다.</p>
+    <p><strong>Flask가 우세한 부분:</strong> 대표 Dashboard의 종합 성능 점수와 작은 framework의 단순성입니다.</p>
+    <p><strong>FastAPI가 우세한 부분:</strong> 대표 Dashboard의 adapter 코드량, 자동 계약·검증과 전체 제품 구조화입니다.</p>
+    <p class="note">{escape(FULL_SURFACE_SNAPSHOT['conclusion']['limitation'])}</p>
   </section>
 
   <footer>소스 · {source['repository']} · {source['branch']} · 최초 실험 커밋 {source['commit']}</footer>

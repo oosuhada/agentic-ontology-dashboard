@@ -67,16 +67,19 @@ def test_every_fastapi_operation_is_probed_with_authenticated_admin() -> None:
     assert report["expected_503_count"] == 10
 
 
-def test_weighted_selection_keeps_flask_lightness_advantage_visible() -> None:
+def test_weighted_selection_uses_the_symmetric_dashboard_benchmark() -> None:
     report = build_full_surface_report()
     evaluation = report["conclusion"]["evaluation"]
     by_id = {item["id"]: item for item in evaluation["criteria"]}
 
-    assert evaluation["totals"] == {"fastapi": 85, "flask": 60}
-    assert by_id["minimal_lightness"]["flask_score"] == 5
-    assert by_id["minimal_lightness"]["fastapi_score"] == 2
+    assert evaluation["totals"] == {"fastapi": 98.9, "flask": 69.7}
+    assert by_id["representative_performance"]["flask_score"] == 4.94
+    assert by_id["representative_performance"]["fastapi_score"] == 4.78
     assert by_id["development_productivity"]["weight"] == 25
     assert by_id["development_productivity"]["flask_score"] == 3
+    assert report["representative_dashboard"]["parity"]["responses_equal"] is True
+    assert report["representative_dashboard"]["implementation"]["fastapi_adapter_loc"] == 15
+    assert report["representative_dashboard"]["implementation"]["flask_adapter_loc"] == 33
     assert report["conclusion"]["framework_summaries"]["fastapi"]["disadvantages"]
     assert report["conclusion"]["framework_summaries"]["flask"]["advantages"]
 

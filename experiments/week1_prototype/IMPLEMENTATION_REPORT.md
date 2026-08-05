@@ -99,7 +99,8 @@ Authentication 10개 작업이다.
 | 항목 | FastAPI 실제 앱 | bare Flask route mirror |
 |---|---:|---:|
 | 등록 HTTP 작업 | 172 | 172 |
-| 실제 business handler | 172 | 0 |
+| 전체 제품 business handler | 172 | 0 |
+| 대표 제조 Dashboard business handler | 1 | 1 |
 | 자동 OpenAPI 작업 | 172 | 0 |
 | 자동 요청·파라미터 검증 대상 | 147 | 0 |
 | JSON 성공 응답 Schema·런타임 검증 | 168 | 0 |
@@ -114,6 +115,41 @@ Flask route mirror는 172개 경로가 bare Flask에서도 등록 가능한지�
 가장하지 않는다. 동일 수준의 Flask 제품을 새로 구축하려면 handler 구조,
 validation, OpenAPI와 문서화 규칙을 별도로 선택하고 연결해야 한다.
 
+### 동일 제조 Dashboard API 실제 대칭 비교
+
+`/app/projects/manufacturing-demo-project` 첫 화면을 대표하는 API를 FastAPI와
+Flask에 동일하게 구현했다.
+
+```http
+GET /benchmark/manufacturing-dashboard?risk_threshold=0.0&limit=8
+```
+
+두 adapter는 GS-001~GS-008 fixture, product risk snapshot, 집계 함수와 Pydantic
+응답 모델을 공유한다. 정상 응답은 위험 이벤트 8개와 센서 시계열 31개를
+포함하며 파싱된 JSON과 canonical SHA-256이 완전히 일치했다. `limit=0`은 양쪽
+모두 422를 반환했다.
+
+| 항목 | FastAPI | Flask |
+|---|---:|---:|
+| Adapter 코드량 | 15 LOC | 33 LOC |
+| Query 검증 | `Query` constraint 자동 적용 | 수동 parser |
+| 응답 검증 | Pydantic `response_model` | 공유 Pydantic payload 후 `jsonify` |
+| 자동 OpenAPI | 제공 | 기본 미제공 |
+
+각 서버를 별도 프로세스로 실행하고 실행 순서를 번갈아가며 순차 300회와
+동시성 10의 300회를 각각 3라운드 측정했다. 아래 값은 라운드 중앙값이다.
+
+| Framework | 순차 p50 | 순차 p95 | 순차 RPS | 동시 p50 | 동시 p95 | 동시 p99 | 동시 RPS | 오류율 | 성능 점수 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| FastAPI | 4.4392ms | 6.8936ms | 207.34 | 13.3380ms | 28.1913ms | 32.3406ms | 626.24 | 0% | 4.78/5 |
+| Flask | 4.5172ms | 6.3509ms | 197.14 | 12.2540ms | 27.0817ms | 33.9609ms | 662.36 | 0% | 4.94/5 |
+
+FastAPI는 순차 p50과 순차 처리량이 근소하게 높았고, Flask는 순차 p95와 동시
+p50·p95·처리량에서 앞섰다. 순차 p95·처리량과 동시 p95·처리량을 동일 비중으로
+정규화한 결과 Flask가 성능 항목에서 근소하게 높은 점수를 받았다. 이 측정은
+로컬 Mac loopback과 Uvicorn·Werkzeug server stack을 포함하며 운영 환경
+벤치마크가 아니다.
+
 ### 동일 가중치 평가표
 
 이번 점수는 프레임워크의 절대 우열이 아니라 새 Ontology Dashboard MVP를
@@ -124,14 +160,14 @@ validation, OpenAPI와 문서화 규칙을 별도로 선택하고 연결해야 �
 |---|---:|---|---|
 | 개발 완성도와 구현 생산성 | 25% | **5/5 · 25점 반영**<br>typed router·Pydantic·의존성 주입으로 큰 API를 일관되게 구성 | **3/5 · 15점 반영**<br>시작은 단순하지만 큰 API의 구조와 확장 도구를 별도로 조합해야 함 |
 | API 계약과 문서 자동화 | 25% | **5/5 · 25점 반영**<br>OpenAPI 172개와 전체 성공 응답 계약 자동 생성 | **2/5 · 10점 반영**<br>확장 도구로 구현 가능하지만 bare Flask 기본 구성에는 없음 |
-| 요청·응답 검증과 오류 안전성 | 25% | **5/5 · 25점 반영**<br>요청 검증 147개, JSON 응답 검증 168개, 미처리 5xx 0건 | **2/5 · 10점 반영**<br>라우팅은 검증했지만 전체 업무 응답 검증은 미구현 |
-| 최소 API 경량성과 단순 응답 속도 | 25% | **2/5 · 10점 반영**<br>`/health` p50 0.7603ms | **5/5 · 25점 반영**<br>`/health` p50 0.0766ms |
-| **가중 합계** | **100%** | **85점 · 평균 4.25/5** | **60점 · 평균 3.00/5** |
+| 요청·응답 검증과 오류 안전성 | 25% | **5/5 · 25점 반영**<br>대표 API 자동 query·응답 검증, 전체 요청 검증 147개·응답 검증 168개 | **4/5 · 20점 반영**<br>대표 API는 같은 422를 반환하지만 수동 parser가 필요 |
+| 대표 업무 API 성능과 경량성 | 25% | **4.78/5 · 23.9점 반영**<br>순차 처리량 우세 | **4.94/5 · 24.7점 반영**<br>순차 p95와 동시 p95·처리량 우세 |
+| **가중 합계** | **100%** | **98.9점 · 평균 4.95/5** | **69.7점 · 평균 3.49/5** |
 
-Flask는 단순 endpoint의 경량성과 시작의 단순함에서 분명히 우세했다. 반면
-FastAPI는 큰 API를 구조화하고 계약·검증을 자동화하는 세 항목에서 앞섰다.
-따라서 Flask의 경량성 장점을 그대로 점수에 반영한 뒤에도 FastAPI가 85점,
-Flask가 60점이었고, 새 제품 구축 기준으로 FastAPI를 최종 선택했다.
+Flask는 대표 업무 API 성능에서 근소하게 우세했다. 반면 FastAPI는 동일
+adapter 코드량, 계약 자동화와 검증에서 앞섰다. Flask의 실제 성능 우위를
+그대로 점수에 반영한 뒤에도 FastAPI가 98.9점, Flask가 69.7점이었고, 새 제품
+구축 기준으로 FastAPI를 최종 선택했다.
 
 ### `/health` 기준선 마이크로 비교
 
@@ -162,8 +198,8 @@ GET /health
 
 | Framework | `/health` | Payload | Auto OpenAPI | Response schema | Endpoint LOC | p50 ms* | p95 ms* | 종합 평균* |
 |---|---:|---|---|---|---:|---:|---:|---:|
-| FastAPI | 200 | 일치 | 제공 | 선언·검증 | 3 | 0.7603 | 1.7285 | 4.25/5 |
-| Flask | 200 | 일치 | 기본 미제공 | 수동 처리 | 3 | 0.0766 | 0.1235 | 3.00/5 |
+| FastAPI | 200 | 일치 | 제공 | 선언·검증 | 3 | 0.7603 | 1.7285 | 4.95/5 |
+| Flask | 200 | 일치 | 기본 미제공 | 수동 처리 | 3 | 0.0766 | 0.1235 | 3.49/5 |
 
 \* 지연시간은 TestClient 기반 인프로세스 참고값이며, 운영 서버 성능 비교가 아니다.
 종합 평균은 위 네 평가 요소 점수의 동일 가중치 산술평균이다.
@@ -196,23 +232,27 @@ Flask에서도 extension과 별도 schema 코드를 추가하면 같은 기능�
 > 요청 검증 대상과 168개 JSON 응답 런타임 검증을 제공했고, binary·SSE 2개와
 > no-content 2개도 별도 성공 계약으로 문서화했습니다. 처리되지 않은 HTTP
 > 500은 0건이었습니다.
-> 반면 bare Flask는 172개 route를 등록할 수 있었지만 실제 handler와 계약을
-> 별도 구성해야 했습니다. 개발 완성도·계약 자동화·검증 안정성·경량성을 각각
-> 25%로 계산한 결과 FastAPI 85점, Flask 60점이었습니다. Flask의 단순 응답
-> 속도와 가벼운 시작은 장점으로 인정했지만, 큰 API를 구조화하고 계약과 검증을
-> 자동화하는 능력에서 FastAPI가 앞서 최종 선택했습니다.
+> 추가로 제조 Dashboard 대표 API를 FastAPI와 Flask에 동일하게 구현하고,
+> 순차·동시 HTTP 성능을 3라운드 측정했습니다. 응답과 오류 계약은 일치했고,
+> 성능 점수는 FastAPI 4.78점, Flask 4.94점으로 Flask가 근소하게 앞섰습니다.
+> 개발 생산성·계약 자동화·검증 안정성·대표 API 성능을 각각 25%로 계산한
+> 결과는 FastAPI 98.9점, Flask 69.7점이었습니다. Flask의 성능 우위를 그대로
+> 반영한 뒤에도 계약과 검증 자동화에서 FastAPI가 앞서 최종 선택했습니다.
 
 ## 4. 자동 테스트
 
 ```text
 전체 백엔드: 259 passed, 2 skipped
-Week 1 실험: 11 passed
+Week 1 실험: 14 passed
 ```
 
 검증 범위:
 
 - FastAPI·Flask `/health` HTTP 200
 - 양쪽 JSON payload 완전 일치
+- FastAPI·Flask 대표 제조 Dashboard 정상 JSON 완전 일치
+- 대표 API 잘못된 query 양쪽 422
+- 실제 HTTP 3라운드 성능 snapshot 계약
 - FastAPI OpenAPI response schema 생성
 - Flask 기본 구성에서 `/openapi.json` 404
 - 162개 OpenAPI 경로·172개 HTTP 작업 inventory

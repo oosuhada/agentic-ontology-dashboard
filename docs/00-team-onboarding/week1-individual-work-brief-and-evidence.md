@@ -115,13 +115,29 @@ Schema와 런타임 응답 검증, binary·SSE 계약 2개, no-content 계약 2�
 않았습니다. 동일 수준으로 새로 구축하려면 Flask 확장 도구와 프로젝트 규칙을
 별도로 선택하고 연결해야 합니다.
 
-Flask는 단일 API의 최소 실행과 로컬 인프로세스 응답에서 더 가벼웠습니다.
-반면 FastAPI는 별도 확장 없이 Pydantic 응답 Schema, 데이터 검증, OpenAPI와
-Swagger를 함께 제공했습니다.
+전체 172개 업무 로직을 Flask로 다시 구현하지 않은 한계를 보완하기 위해,
+제조 Dashboard 첫 화면을 대표하는 API 1개를 FastAPI와 Flask에 동일하게 실제
+구현했습니다. GS-001~GS-008 fixture, risk snapshot, 집계 함수와 응답 계약을
+공유했으며 정상 JSON은 완전히 일치하고 잘못된 `limit=0` 요청은 양쪽 모두
+422를 반환했습니다.
+
+별도 HTTP 프로세스를 실행하고 순차 300회와 동시성 10의 300회를 각각
+3라운드 측정했습니다. 실행 순서는 FastAPI 우선과 Flask 우선을 번갈아 적용했고,
+라운드 중앙값을 사용했습니다.
+
+| Framework | 순차 p50 | 순차 p95 | 순차 RPS | 동시 p50 | 동시 p95 | 동시 RPS | 오류율 | 성능 점수 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| FastAPI | 4.4392ms | 6.8936ms | 207.34 | 13.3380ms | 28.1913ms | 626.24 | 0% | 4.78/5 |
+| Flask | 4.5172ms | 6.3509ms | 197.14 | 12.2540ms | 27.0817ms | 662.36 | 0% | 4.94/5 |
+
+FastAPI는 순차 p50과 순차 처리량이 근소하게 높았고, Flask는 순차 p95와 동시
+p50·p95·처리량에서 앞섰습니다. 성능 항목은 Flask가 근소하게 우세한 것으로
+점수에 반영했습니다.
 
 따라서 최종 선정은 `/health` 한 개의 결과가 아니라 Dataset, Ontology,
 Analysis, Dashboard, Modeling, Predictive Maintenance Runtime을 포함한 전체
-162개 경로·172개 작업의 개발 구조, 계약 자동화, 검증 안정성과 경량성을
+162개 경로·172개 작업의 개발 구조, 계약 자동화, 검증 안정성과 대표 업무 API
+성능을
 기준으로 했습니다.
 
 네 평가 요소는 각각 25%로 동일하게 계산했습니다.
@@ -130,18 +146,22 @@ Analysis, Dashboard, Modeling, Predictive Maintenance Runtime을 포함한 전�
 |---|---:|---:|---:|
 | 개발 완성도와 구현 생산성 | 25% | 5/5 | 3/5 |
 | API 계약과 문서 자동화 | 25% | 5/5 | 2/5 |
-| 요청·응답 검증과 오류 안전성 | 25% | 5/5 | 2/5 |
-| 최소 API 경량성과 단순 응답 속도 | 25% | 2/5 | 5/5 |
-| **가중 합계** | **100%** | **85점** | **60점** |
+| 요청·응답 검증과 오류 안전성 | 25% | 5/5 | 4/5 |
+| 대표 업무 API 성능과 경량성 | 25% | 4.78/5 | 4.94/5 |
+| **가중 합계** | **100%** | **98.9점** | **69.7점** |
 
-Flask는 단순 `/health` 응답과 가벼운 시작에서 더 높은 점수를 받았습니다.
-FastAPI는 큰 API 구조화, 계약 자동화, 요청·응답 검증에서 앞섰습니다. 기존
-코드의 이식 비용은 평가에서 제외했고, 새 제품을 구축할 때 어떤 개발 방식이
-현재 요구사항에 더 적합한지를 기준으로 FastAPI를 최종 선택했습니다.
+Flask는 실제 대표 업무 API 성능에서 더 높은 점수를 받았습니다. FastAPI는
+동일 adapter 코드량, 계약 자동화와 요청·응답 검증에서 앞섰습니다. 기존 코드의
+이식 비용은 평가에서 제외했고, Flask의 성능 우위를 그대로 반영한 상태에서 새
+제품을 구축할 때 어떤 개발 방식이 현재 요구사항에 더 적합한지를 기준으로
+FastAPI를 최종 선택했습니다.
 
 ### 프레임워크 비교·검증 화면
 
 - [FastAPI vs Flask 비교 결과](https://fastapi-flask.oosu.dev)
+- [FastAPI 대표 Dashboard API](https://fastapi-flask.oosu.dev/benchmark/manufacturing-dashboard)
+- [Flask 대표 Dashboard API](https://fastapi-flask.oosu.dev/flask-dashboard)
+- [대표 Dashboard 실제 성능 JSON](https://fastapi-flask.oosu.dev/representative-benchmark.json)
 - [전체 162개 경로·172개 작업 비교 JSON](https://fastapi-flask.oosu.dev/full-comparison.json)
 - [실제 Ontology Dashboard 162경로 Swagger](https://dashboard.oosu.dev/docs)
 - [비교 화면 Swagger](https://fastapi-flask.oosu.dev/docs)
