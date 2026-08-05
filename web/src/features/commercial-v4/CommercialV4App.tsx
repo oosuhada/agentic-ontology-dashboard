@@ -49,6 +49,7 @@ import {
   getBranchingLineage,
   getApplicationRuntime,
   getSamplePipelinePlan,
+  getMLOpsSnapshot,
   globalObjectSearch,
   createBranchPreview,
   checkRestrictedDatasetPolicy,
@@ -65,6 +66,7 @@ import {
   type BranchingLineageSnapshot,
   type ApplicationRuntimeSnapshot,
   type PipelinePlan,
+  type MLOpsSnapshot,
   operateDistributedJob,
   type DistributedRuntimeSnapshot,
   type DeploymentReadiness,
@@ -108,6 +110,7 @@ interface CommercialContext {
   branching: BranchingLineageSnapshot;
   applicationRuntime: ApplicationRuntimeSnapshot;
   pipeline: PipelinePlan;
+  mlops: MLOpsSnapshot;
 }
 
 function currentSurface(): CommercialSurfaceId {
@@ -197,8 +200,9 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       getBranchingLineage(projectId),
       getApplicationRuntime(projectId),
       getSamplePipelinePlan(projectId),
+      getMLOpsSnapshot(projectId),
     ])
-      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts, observability, connectors, primitives, branching, applicationRuntime, pipeline]) => {
+      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts, observability, connectors, primitives, branching, applicationRuntime, pipeline, mlops]) => {
         if (!controller.signal.aborted) setContext({
           project,
           workspaces,
@@ -215,6 +219,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
           branching,
           applicationRuntime,
           pipeline,
+          mlops,
         });
       })
       .catch((reason: unknown) => {
@@ -811,6 +816,19 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
                     <article key={provider}><span><strong>{provider}</strong><small>{status.credential_reference ? "secret reference configured" : "no credential reference"}</small></span><em className={`is-${status.state}`}>{status.state.replace("_", " ")}</em></article>
                   ))}
                 </div>
+              </section>
+            </div>
+          ) : selected.id === "models" ? (
+            <div className="commercial-v4-grid">
+              {(["feature_view", "deployment", "drift", "retraining", "rollback", "explanation"] as const).map((section) => (
+                <section key={section} className="commercial-v4-panel">
+                  <div className="commercial-v4-panel-title"><BrainCircuit aria-hidden="true" /><span>{section.replace("_", " ")}</span></div>
+                  {Object.entries(context.mlops[section]).map(([name, value]) => <p key={name} className="commercial-v4-policy-copy"><strong>{name}</strong>: {Array.isArray(value) ? value.join(", ") : String(value)}</p>)}
+                </section>
+              ))}
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><CircleAlert aria-hidden="true" /><span>Model limitations</span></div>
+                {context.mlops.limitations.map((item) => <p key={item} className="commercial-v4-policy-copy">{item}</p>)}
               </section>
             </div>
           ) : selected.id === "analysis" ? (

@@ -56,6 +56,7 @@ from ..ontology_primitives import (
     PrimitiveSnapshot,
 )
 from ..pipeline_runtime import PipelinePlan, PipelinePlanRequest, plan_pipeline, sample_pipeline
+from ..mlops_runtime import DriftEvaluationRequest, MLOpsSnapshot, evaluate_drift, mlops_snapshot
 from ..projects import ProjectService
 from ..persistence_readiness import persistence_readiness
 
@@ -356,6 +357,28 @@ def project_pipeline_plan(
         return plan_pipeline(request)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@router.get("/projects/{project_id}/mlops")
+def project_mlops(
+    project_id: str,
+    principal: Principal = Depends(require_permission("ml.console.read")),
+    projects: ProjectService = Depends(get_project_service),
+) -> MLOpsSnapshot:
+    projects.get_for_principal(principal, project_id)
+    return mlops_snapshot()
+
+
+@router.post("/projects/{project_id}/mlops/drift/evaluate")
+def project_mlops_drift_evaluate(
+    project_id: str,
+    request: DriftEvaluationRequest,
+    principal: Principal = Depends(require_permission("ml.console.read")),
+    _: None = Depends(require_csrf),
+    projects: ProjectService = Depends(get_project_service),
+) -> dict[str, object]:
+    projects.get_for_principal(principal, project_id)
+    return evaluate_drift(request)
 
 
 @router.get("/projects/{project_id}/distributed-job-events")

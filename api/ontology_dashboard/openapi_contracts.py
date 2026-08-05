@@ -86,6 +86,7 @@ from .predictive_maintenance_runtime.models import (
 )
 from .persistence_readiness import PersistenceReadiness
 from .pipeline_runtime import PipelinePlan
+from .mlops_runtime import MLOpsSnapshot
 from .projects.models import Project
 
 
@@ -552,6 +553,18 @@ class GlobalSearchResponse(ContractModel):
     items: tuple[dict[str, Any], ...]
 
 
+class DriftEvaluationResponse(ContractModel):
+    metric: str
+    value: float
+    threshold: float
+    sample_size: int
+    minimum_sample_size: int
+    state: str
+    retraining_action: str
+    automatic_promotion: bool
+    delayed_labels_available: bool
+
+
 def _qname(endpoint: Any) -> str:
     return f"{endpoint.__module__}.{endpoint.__name__}"
 
@@ -615,6 +628,8 @@ _EXPLICIT_MODELS: dict[str, Any] = {
     "ontology_dashboard.routers.platform.project_global_search": GlobalSearchResponse,
     "ontology_dashboard.routers.platform.project_sample_pipeline_plan": PipelinePlan,
     "ontology_dashboard.routers.platform.project_pipeline_plan": PipelinePlan,
+    "ontology_dashboard.routers.platform.project_mlops": MLOpsSnapshot,
+    "ontology_dashboard.routers.platform.project_mlops_drift_evaluate": DriftEvaluationResponse,
     "ontology_dashboard.routers.platform.project_distributed_job_events": DurableJobEventPage,
     "ontology_dashboard.routers.platform.cancel_distributed_job": DurableJob,
     "ontology_dashboard.routers.platform.replay_distributed_job": DurableJob,

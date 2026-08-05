@@ -57,7 +57,7 @@ def postgresql_database():
     dsn = _dsn_for_database(database)
     try:
         applied = migrate(dsn)
-        assert applied[-1] == "0027_scalable_pipeline_analysis"
+        assert applied[-1] == "0028_continuous_mlops_runtime"
         assert migrate(dsn) == []
         import psycopg
 

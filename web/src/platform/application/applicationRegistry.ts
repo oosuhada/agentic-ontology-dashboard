@@ -125,9 +125,9 @@ const V4_SURFACES: readonly ApplicationSurfaceDefinition[] = [
   {
     id: "models",
     label: "Model operations",
-    description: "Existing ML Validator entry point; continuous MLOps controls arrive in Phase 31.",
+    description: "Feature views, drift review, champion/challenger deployment and governed rollback.",
     state: "ready",
-    phase: 18,
+    phase: 31,
     permission: "ml.console.read",
     launchPath: (context) => workspaceRoute(context, "/modeling"),
   },

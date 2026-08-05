@@ -397,6 +397,16 @@ export interface PipelinePlan {
   nodes: Array<{ id: string; type: string; state: string }>;
 }
 
+export interface MLOpsSnapshot {
+  feature_view: Record<string, unknown>;
+  deployment: Record<string, unknown>;
+  drift: Record<string, unknown>;
+  retraining: Record<string, unknown>;
+  rollback: Record<string, unknown>;
+  explanation: Record<string, unknown>;
+  limitations: string[];
+}
+
 export async function getProjectV4ApplicationDefinition(projectId: string): Promise<ProjectV4ApplicationDefinition> {
   const response = await fetch(
     `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/applications/v4`,
@@ -665,4 +675,11 @@ export async function getSamplePipelinePlan(projectId: string): Promise<Pipeline
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload?.error?.message ?? `Pipeline plan failed: ${response.status}`);
   return payload as PipelinePlan;
+}
+
+export async function getMLOpsSnapshot(projectId: string): Promise<MLOpsSnapshot> {
+  const response = await fetch(`${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/mlops`, { credentials: "include" });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message ?? `MLOps snapshot failed: ${response.status}`);
+  return payload as MLOpsSnapshot;
 }
