@@ -44,29 +44,39 @@ test("manager and executive-level roles land on a report and drill down to the d
   await expect(page.locator('.od-primary-nav button.active')).toContainText("Reports");
 });
 
-test("practitioner edits a shared report revision that a manager reads", async ({ page }) => {
+test("practitioner keeps independent Korean and English report revisions", async ({ page }) => {
   await login(page, "engineer@ontology.local", "Engineer!2026");
   await expect(page.locator(".dashboard-board-canvas")).toBeVisible({ timeout: 45_000 });
+  await page.locator(".od-display-menu > summary").click();
+  await page.getByRole("button", { name: "English", exact: true }).click();
+  await page.locator(".od-display-menu > summary").click();
   await page.getByRole("button", { name: "Reports", exact: true }).click();
   await expect(page.locator(".role-report-workbench")).toBeVisible();
   await page.getByRole("button", { name: "Edit report" }).click();
   await capture(page, "engineer-report-editor");
-  const headline = `Engineer-reviewed report ${Date.now()}`;
-  await page.locator(".role-report-headline-input").fill(headline);
-  await page.locator(".role-report-summary-input").fill("공정 엔지니어가 근거와 점검 결과를 검토한 공유 보고서입니다.");
+  const englishHeadline = `Engineer-reviewed English report ${Date.now()}`;
+  await page.locator(".role-report-headline-input").fill(englishHeadline);
+  await page.locator(".role-report-summary-input").fill("The engineer reviewed the governed evidence and inspection context.");
   await page.getByRole("button", { name: "Save report" }).click();
-  await expect(page.getByText(/공용 보고서 revision 1/)).toBeVisible();
+  await expect(page.getByText(/Saved English report revision 1/)).toBeVisible();
   await capture(page, "engineer-report-saved");
 
-  await logout(page);
-  await login(page, "manager@ontology.local", "Manager!2026");
-  await expect(page.locator(".role-report-workbench h1")).toHaveText(headline, { timeout: 45_000 });
-  await expect(page.getByRole("button", { name: "Edit report" })).toHaveCount(0);
+  await page.locator(".od-display-menu > summary").click();
+  await page.getByRole("button", { name: "한국어", exact: true }).click();
+  await page.locator(".od-display-menu > summary").click();
+  await expect(page.locator(".role-report-workbench h1")).not.toHaveText(englishHeadline, { timeout: 45_000 });
+  await expect(page.getByRole("button", { name: "리포트 편집" })).toBeVisible();
+  await page.getByRole("button", { name: "리포트 편집" }).click();
+  const koreanHeadline = `엔지니어 검토 한국어 리포트 ${Date.now()}`;
+  await page.locator(".role-report-headline-input").fill(koreanHeadline);
+  await page.locator(".role-report-summary-input").fill("공정 엔지니어가 관리형 근거와 점검 Context를 검토했습니다.");
+  await page.getByRole("button", { name: "리포트 저장" }).click();
+  await expect(page.getByText(/한국어 리포트 리비전 1/)).toBeVisible();
 
-  await logout(page);
-  await login(page, "engineer@ontology.local", "Engineer!2026");
-  await expect(page.locator(".dashboard-board-canvas")).toBeVisible({ timeout: 45_000 });
-  await expect(page.locator('.od-primary-nav button.active')).toContainText("Dashboards");
+  await page.locator(".od-display-menu > summary").click();
+  await page.getByRole("button", { name: "English", exact: true }).click();
+  await page.locator(".od-display-menu > summary").click();
+  await expect(page.locator(".role-report-workbench h1")).toHaveText(englishHeadline, { timeout: 45_000 });
 });
 
 test("project and dataset profile changes the workspace composition", async ({ page }) => {

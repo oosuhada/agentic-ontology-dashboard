@@ -104,7 +104,7 @@ def create_report(
     role = identity.legacy_dashboard_role(principal, request.role)
     report, trace = service.report(
         event_id,
-        ReportRequest(role=role, use_llm=request.use_llm),
+        ReportRequest(role=role, locale=request.locale, use_llm=request.use_llm),
     )
     return {"report": report.model_dump(mode="json"), "trace": trace}
 
@@ -121,7 +121,7 @@ def create_layout(
     role = identity.legacy_dashboard_role(principal, request.role)
     layout, trace = service.layout(
         event_id,
-        LayoutRequest(role=role, intent=request.intent, use_llm=request.use_llm),
+        LayoutRequest(role=role, locale=request.locale, intent=request.intent, use_llm=request.use_llm),
     )
     return {"layout": layout.model_dump(mode="json"), "trace": trace}
 
@@ -185,7 +185,7 @@ def follow_up(
 ):
     _require_active_event_project(principal, service, event_id)
     role = identity.legacy_dashboard_role(principal, request.role)
-    safe_request = FollowUpRequest(role=role, question=request.question)
+    safe_request = FollowUpRequest(role=role, locale=request.locale, question=request.question)
     return service.follow_up(event_id, safe_request).model_dump(mode="json")
 
 

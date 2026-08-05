@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .contracts import Intent
+from .contracts import AppLocale, Intent
 
 
 @dataclass(frozen=True)
@@ -49,7 +49,44 @@ class IntentRouter:
         return IntentResult("overview", False, "unsupported_question")
 
 
-def deterministic_answer(intent: Intent, evidence: dict, supported: bool) -> str:
+def deterministic_answer(
+    intent: Intent,
+    evidence: dict,
+    supported: bool,
+    locale: AppLocale = "ko-KR",
+) -> str:
+    if locale == "en-US":
+        if not supported:
+            return (
+                "I can answer questions about the current event's risk evidence, sensor comparison, role-specific summary, "
+                "inspection order, and model details. I do not perform equipment control, assert unsupported causes, "
+                "or answer outside the governed evidence scope."
+            )
+        if evidence["status"] == "data_quality_hold":
+            return "Risk assessment is on hold because of sensor-data quality issues. Validate or recollect the data first."
+        factors = evidence["top_factors"]
+        primary = factors[0] if factors else None
+        if intent == "explain-risk" and primary:
+            return (
+                f"The strongest evidence is {primary['display_name']} at {primary['value']:,.2f}{primary['unit']}. "
+                f"The governed reference range is {primary['normal_range']}; a field inspection is required to confirm the cause."
+            )
+        if intent == "compare":
+            return "The sensor chart and evidence table were reorganized to compare the current observation with prior fixture observations. No external normal-population statistics were used."
+        if intent == "summarize-manager":
+            return f"The current status is {evidence['status']}, and the recommended decision is {evidence['recommended_decision']}."
+        if intent == "detail-engineer":
+            return "The anomaly interval, sensor changes, contributing factors, and inspection checklist were reorganized in technical-detail order."
+        if intent == "recommend-check":
+            checks = evidence["maintenance_context"]["checklist"]
+            return "Recommended inspection order: " + " → ".join(checks)
+        if intent == "show-model-details":
+            return (
+                f"The model version is {evidence['model']['model_version']}, the policy version is "
+                f"{evidence['model']['policy_version']}, and the display threshold is {evidence['threshold']:.2f}."
+            )
+        return f"The current status is {evidence['status']} with confidence {evidence['confidence']}."
+
     if not supported:
         return (
             "현재 사건의 위험 근거, 센서 비교, 역할별 요약, 점검 순서와 모델 상세만 답할 수 있습니다. "

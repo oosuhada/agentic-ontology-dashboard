@@ -213,6 +213,7 @@ export interface Report {
   report_id: string;
   event_id: string;
   role: Role;
+  locale: "ko-KR" | "en-US";
   mode: string;
   headline: string;
   summary: string;

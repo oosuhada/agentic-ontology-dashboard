@@ -4,6 +4,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from ..contracts import AppLocale
 from ..adapters.models import (
     DataQuality,
     EvidenceSource,
@@ -47,6 +48,85 @@ V3_1_SOURCE_VERSION = "canonical-ai4i-physics-v3.1"
 V3_1_MODEL_VERSION = "independent-logreg-v3.1"
 V3_1_RESULT_SCHEMA = "result-artifact-v1.0"
 PREDICTION_TASK = "binary_failure_within_horizon"
+
+PM_STATUS_LABELS: dict[AppLocale, dict[str, str]] = {
+    "ko-KR": {"critical": "긴급 검토", "warning": "경고", "attention": "관찰", "normal": "정상"},
+    "en-US": {"critical": "Critical", "warning": "Warning", "attention": "Attention", "normal": "Normal"},
+}
+PM_ACTION_LABELS: dict[AppLocale, dict[str, str]] = {
+    "ko-KR": {
+        "continue_monitoring": "계속 모니터링",
+        "request_inspection": "현장 점검 요청",
+        "review_shutdown": "권한자 정지 검토",
+        "hold_for_data_check": "데이터 확인 전 판단 보류",
+        "Review governed prediction": "관리형 예측 결과 검토",
+    },
+    "en-US": {
+        "continue_monitoring": "Continue monitoring",
+        "request_inspection": "Request a field inspection",
+        "review_shutdown": "Review a shutdown with an authorized operator",
+        "hold_for_data_check": "Hold the decision until data is verified",
+        "Review governed prediction": "Review the governed prediction",
+    },
+}
+PM_FEATURE_LABELS: dict[AppLocale, dict[str, str]] = {
+    "ko-KR": {
+        "air_temperature_k": "공기 온도",
+        "process_temperature_k": "공정 온도",
+        "rotational_speed_rpm": "회전속도",
+        "torque_nm": "토크",
+        "tool_wear_min": "공구 마모",
+        "power_w": "기계 동력",
+        "temperature_gap_k": "공정·공기 온도 차이",
+        "overstrain_load": "공구 마모·토크 부하",
+        "rotation_raw_6h_mean": "6시간 회전속도 평균",
+        "rotation_raw_6h_abs_mean": "6시간 회전속도 절대평균",
+        "rotation_raw_6h_std": "6시간 회전속도 표준편차",
+    },
+    "en-US": {
+        "air_temperature_k": "Air temperature",
+        "process_temperature_k": "Process temperature",
+        "rotational_speed_rpm": "Rotational speed",
+        "torque_nm": "Torque",
+        "tool_wear_min": "Tool wear",
+        "power_w": "Mechanical power",
+        "temperature_gap_k": "Process-to-air temperature gap",
+        "overstrain_load": "Tool-wear torque load",
+        "rotation_raw_6h_mean": "6-hour rotational-speed mean",
+        "rotation_raw_6h_abs_mean": "6-hour rotational-speed absolute mean",
+        "rotation_raw_6h_std": "6-hour rotational-speed standard deviation",
+    },
+}
+PM_LAYOUT_TITLES: dict[AppLocale, dict[str, str]] = {
+    "ko-KR": {
+        "StatusSummary": "상태 요약",
+        "RiskKpi": "위험 KPI",
+        "PriorityList": "점검 우선순위",
+        "SensorLineChart": "센서 추세",
+        "FactorContribution": "주요 위험 요인",
+        "EvidenceTable": "근거 데이터",
+        "RecommendedActions": "권장 조치",
+        "EngineerChecklist": "엔지니어 점검표",
+        "ModelDetails": "모델 상세",
+        "ConversationThread": "업무 대화",
+    },
+    "en-US": {
+        "StatusSummary": "Status Summary",
+        "RiskKpi": "Risk KPI",
+        "PriorityList": "Inspection Priority",
+        "SensorLineChart": "Sensor Trend",
+        "FactorContribution": "Factor Contribution",
+        "EvidenceTable": "Evidence Data",
+        "RecommendedActions": "Recommended Actions",
+        "EngineerChecklist": "Engineer Checklist",
+        "ModelDetails": "Model Details",
+        "ConversationThread": "Work Conversation",
+    },
+}
+
+
+def _pm_label(mapping: dict[AppLocale, dict[str, str]], locale: AppLocale, value: str) -> str:
+    return mapping[locale].get(value, value.replace("_", " ").title() if locale == "en-US" else value)
 
 
 def _dict(value: Any) -> dict[str, Any]:
@@ -831,6 +911,7 @@ class PredictiveMaintenanceRuntimeService:
         maintenance: list[dict[str, Any]],
         role: str,
         intent: str,
+        locale: AppLocale,
     ) -> DashboardEventDetail:
         event_id = self._dashboard_event_id(result)
         window_start = result.observed_at - timedelta(hours=6)
@@ -864,7 +945,13 @@ class PredictiveMaintenanceRuntimeService:
         }
         recommendation = result.recommended_action
         action = recommendation.action if recommendation else "Review governed prediction"
-        confidence = f"{result.confidence * 100:.1f}% · calibrated"
+        action_label = _pm_label(PM_ACTION_LABELS, locale, action)
+        status_label = _pm_label(PM_STATUS_LABELS, locale, result.status_grade)
+        confidence = (
+            f"{result.confidence * 100:.1f}% · 보정됨"
+            if locale == "ko-KR"
+            else f"{result.confidence * 100:.1f}% · calibrated"
+        )
         factor_units = {
             "air_temperature_k": "K",
             "process_temperature_k": "K",
@@ -876,10 +963,10 @@ class PredictiveMaintenanceRuntimeService:
             {
                 "evidence_field_id": f"factor:{item.feature}",
                 "feature": item.feature,
-                "display_name": item.feature.replace("_", " ").title(),
+                "display_name": _pm_label(PM_FEATURE_LABELS, locale, item.feature),
                 "value": item.feature_value,
                 "unit": factor_units.get(item.feature, "model unit"),
-                "normal_range": "See governed model contract",
+                "normal_range": "관리형 모델 계약 참조" if locale == "ko-KR" else "See governed model contract",
                 "direction": item.direction,
                 "contribution": item.signed_contribution,
                 "source_type": "result_artifact_factor",
@@ -923,16 +1010,24 @@ class PredictiveMaintenanceRuntimeService:
             },
             "top_factors": factors,
             "maintenance_context": {
-                "provider": "PostgreSQL canonical maintenance events",
+                "provider": "PostgreSQL Canonical 정비 이력" if locale == "ko-KR" else "PostgreSQL canonical maintenance events",
                 "version": context.source_version,
                 "source_type": "canonical_maintenance_evidence",
                 "source_refs": source_refs,
-                "checklist": [
-                    "Review the governed Top-3 factors",
-                    "Confirm the latest canonical sensor window",
-                    "Check maintenance evidence before approval",
-                ],
-                "recommended_actions": [action],
+                "checklist": (
+                    [
+                        "관리형 상위 3개 위험 요인을 검토합니다",
+                        "최신 Canonical 센서 구간을 확인합니다",
+                        "승인 전에 정비 근거를 확인합니다",
+                    ]
+                    if locale == "ko-KR"
+                    else [
+                        "Review the governed Top-3 factors",
+                        "Confirm the latest canonical sensor window",
+                        "Check maintenance evidence before approval",
+                    ]
+                ),
+                "recommended_actions": [action_label],
             },
             "data_quality_warnings": [],
             "lineage": {
@@ -952,15 +1047,25 @@ class PredictiveMaintenanceRuntimeService:
             "generated_at": result.observed_at.isoformat(),
         }
         report = {
-            "report_id": f"pm-report:{event_id}:{role}",
+            "report_id": f"pm-report:{event_id}:{role}:{locale}",
             "event_id": event_id,
             "role": role,
+            "locale": locale,
             "mode": "deterministic_result_artifact",
-            "headline": f"{result.asset_id} · {result.status_grade} failure risk",
+            "headline": (
+                f"{result.asset_id} · {status_label} · 고장 위험"
+                if locale == "ko-KR"
+                else f"{result.asset_id} · {status_label} failure risk"
+            ),
             "summary": (
-                f"Governed Result Artifact reports {result.failure_probability * 100:.1f}% "
-                f"binary failure risk within {result.prediction_horizon_hours} hours. "
-                "A human must review the policy recommendation before execution."
+                f"관리형 Result Artifact는 {result.prediction_horizon_hours}시간 이내 이진 고장 위험을 "
+                f"{result.failure_probability * 100:.1f}%로 산출했습니다. 정책 권장 조치는 실행 전에 사람이 검토해야 합니다."
+                if locale == "ko-KR"
+                else (
+                    f"The governed Result Artifact reports {result.failure_probability * 100:.1f}% "
+                    f"binary failure risk within {result.prediction_horizon_hours} hours. "
+                    "A human must review the policy recommendation before execution."
+                )
             ),
             "status": result.status_grade,
             "confidence": confidence,
@@ -968,21 +1073,31 @@ class PredictiveMaintenanceRuntimeService:
             "sections": [
                 {
                     "section_id": "risk",
-                    "title": "Risk and factors",
+                    "title": "위험도와 주요 요인" if locale == "ko-KR" else "Risk and factors",
                     "body": ", ".join(
-                        f"{item.feature} {item.direction}" for item in result.top_factors
+                        (
+                            f"{_pm_label(PM_FEATURE_LABELS, locale, item.feature)} "
+                            f"{'위험 증가' if item.direction == 'risk_up' else '위험 감소'}"
+                            if locale == "ko-KR"
+                            else f"{_pm_label(PM_FEATURE_LABELS, locale, item.feature)} {item.direction.replace('_', ' ')}"
+                        )
+                        for item in result.top_factors
                     ),
                     "evidence_field_ids": [item["evidence_field_id"] for item in factors],
                 },
                 {
                     "section_id": "maintenance",
-                    "title": "Maintenance history",
-                    "body": f"{len(maintenance)} canonical maintenance events are linked to this asset.",
+                    "title": "정비 이력" if locale == "ko-KR" else "Maintenance history",
+                    "body": (
+                        f"이 자산에는 Canonical 정비 이벤트 {len(maintenance)}건이 연결되어 있습니다."
+                        if locale == "ko-KR"
+                        else f"{len(maintenance)} canonical maintenance events are linked to this asset."
+                    ),
                     "evidence_field_ids": source_refs[2:],
                 },
                 {
                     "section_id": "provenance",
-                    "title": "Release provenance",
+                    "title": "Release 출처" if locale == "ko-KR" else "Release provenance",
                     "body": (
                         f"{context.source_version} · {result.provenance.model_version} · "
                         f"{result.provenance.schema_version}"
@@ -992,17 +1107,25 @@ class PredictiveMaintenanceRuntimeService:
             ],
             "actions": [{
                 "action_id": f"review:{event_id}",
-                "label": action,
+                "label": action_label,
                 "kind": "policy_recommendation",
                 "requires_human_approval": True,
                 "source_refs": source_refs,
             }],
             "citations": source_refs,
-            "limitations": [
-                "The model predicts generic binary failure risk, not an AI4I failure mode.",
-                "Policy recommendations are not approved or executed WorkOrders.",
-                "Replay uses immutable observations and precomputed predictions.",
-            ],
+            "limitations": (
+                [
+                    "이 모델은 AI4I 고장 모드가 아니라 일반 이진 고장 위험을 예측합니다.",
+                    "정책 권장 조치는 승인되거나 실행된 WorkOrder가 아닙니다.",
+                    "Replay는 변경 불가능한 관측값과 사전 계산된 예측을 사용합니다.",
+                ]
+                if locale == "ko-KR"
+                else [
+                    "The model predicts generic binary failure risk, not an AI4I failure mode.",
+                    "Policy recommendations are not approved or executed WorkOrders.",
+                    "Replay uses immutable observations and precomputed predictions.",
+                ]
+            ),
             "generated_at": result.observed_at.isoformat(),
         }
         block_types = [
@@ -1018,7 +1141,7 @@ class PredictiveMaintenanceRuntimeService:
             "ConversationThread",
         ]
         layout = {
-            "layout_id": f"pm-layout:{event_id}:{role}:{intent}",
+            "layout_id": f"pm-layout:{event_id}:{role}:{intent}:{locale}",
             "event_id": event_id,
             "role": role,
             "intent": intent,
@@ -1027,7 +1150,7 @@ class PredictiveMaintenanceRuntimeService:
                 {
                     "block_id": f"pm:{index}:{block_type}",
                     "type": block_type,
-                    "title": block_type.replace("Contribution", " contribution"),
+                    "title": _pm_label(PM_LAYOUT_TITLES, locale, block_type),
                     "order": index,
                     "emphasis": "primary" if index < 3 else "secondary",
                     "data_fields": [],
@@ -1056,6 +1179,7 @@ class PredictiveMaintenanceRuntimeService:
         selected_event_id: str | None,
         role: str,
         intent: str,
+        locale: AppLocale = "ko-KR",
     ) -> PredictiveMaintenanceDashboardResponse:
         versions = self.versions(
             organization_id=organization_id,
@@ -1139,6 +1263,7 @@ class PredictiveMaintenanceRuntimeService:
                 maintenance=maintenance_by_asset.get(selected_result.asset_id, []),
                 role=role,
                 intent=intent,
+                locale=locale,
             )
         return PredictiveMaintenanceDashboardResponse(
             data_source=DashboardDataSource(

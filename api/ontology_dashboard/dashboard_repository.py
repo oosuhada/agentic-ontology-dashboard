@@ -125,6 +125,26 @@ class DashboardRepository:
                     updated_at TEXT NOT NULL,
                     UNIQUE (organization_id, project_id, workspace_id, event_id)
                 );
+                CREATE TABLE IF NOT EXISTS localized_report_drafts (
+                    id TEXT PRIMARY KEY,
+                    organization_id TEXT NOT NULL,
+                    project_id TEXT NOT NULL,
+                    workspace_id TEXT NOT NULL,
+                    event_id TEXT NOT NULL,
+                    role TEXT NOT NULL,
+                    locale TEXT NOT NULL,
+                    revision INTEGER NOT NULL,
+                    headline TEXT NOT NULL,
+                    summary TEXT NOT NULL,
+                    sections_json TEXT NOT NULL,
+                    content_origin TEXT NOT NULL,
+                    source_locale TEXT,
+                    source_revision INTEGER,
+                    updated_by TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    UNIQUE (organization_id, project_id, workspace_id, event_id, role, locale)
+                );
                 CREATE INDEX IF NOT EXISTS idx_dashboard_templates_scope
                     ON dashboard_templates(workspace_id, role_code);
                 CREATE INDEX IF NOT EXISTS idx_dashboard_preferences_user
@@ -135,6 +155,10 @@ class DashboardRepository:
                     ON dashboard_shares(token_hash);
                 CREATE INDEX IF NOT EXISTS idx_report_drafts_scope
                     ON report_drafts(organization_id, project_id, workspace_id, event_id);
+                CREATE INDEX IF NOT EXISTS idx_localized_report_drafts_scope
+                    ON localized_report_drafts(
+                        organization_id, project_id, workspace_id, event_id, role, locale
+                    );
                 """
             )
             for table in (
@@ -143,8 +167,41 @@ class DashboardRepository:
                 "dashboard_saved_views",
                 "dashboard_shares",
                 "report_drafts",
+                "localized_report_drafts",
             ):
                 ensure_scope_columns(connection, table=table)
+            legacy_rows = connection.execute("SELECT * FROM report_drafts").fetchall()
+            for row in legacy_rows:
+                text = f"{row['headline']} {row['summary']}"
+                locale = "ko-KR" if any("가" <= char <= "힣" for char in text) else "en-US"
+                connection.execute(
+                    """
+                    INSERT OR IGNORE INTO localized_report_drafts (
+                        id,organization_id,project_id,workspace_id,event_id,role,locale,revision,
+                        headline,summary,sections_json,content_origin,source_locale,source_revision,
+                        updated_by,created_at,updated_at
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    """,
+                    (
+                        f"localized:{row['id']}",
+                        row["organization_id"],
+                        row["project_id"],
+                        row["workspace_id"],
+                        row["event_id"],
+                        "engineer",
+                        locale,
+                        row["revision"],
+                        row["headline"],
+                        row["summary"],
+                        row["sections_json"],
+                        "edited",
+                        None,
+                        None,
+                        row["updated_by"],
+                        row["created_at"],
+                        row["updated_at"],
+                    ),
+                )
 
     def _scope(self, connection: sqlite3.Connection, workspace_id: str):
         return self.project_context.resolve(workspace_id, connection=connection)
@@ -230,15 +287,23 @@ class DashboardRepository:
                         (template.display_name, template.version, now, template_id),
                     )
 
-    def get_report_draft(self, *, workspace_id: str, event_id: str) -> dict[str, Any] | None:
+    def get_report_draft(
+        self,
+        *,
+        workspace_id: str,
+        event_id: str,
+        role: str,
+        locale: str,
+    ) -> dict[str, Any] | None:
         with self._connect() as connection:
             scope = self._scope(connection, workspace_id)
             row = connection.execute(
                 """
-                SELECT * FROM report_drafts
+                SELECT * FROM localized_report_drafts
                 WHERE organization_id=? AND project_id=? AND workspace_id=? AND event_id=?
+                  AND role=? AND locale=?
                 """,
-                (scope.organization_id, scope.project_id, workspace_id, event_id),
+                (scope.organization_id, scope.project_id, workspace_id, event_id, role, locale),
             ).fetchone()
         if row is None:
             return None
@@ -248,10 +313,15 @@ class DashboardRepository:
             "project_id": row["project_id"],
             "workspace_id": row["workspace_id"],
             "event_id": row["event_id"],
+            "role": row["role"],
+            "locale": row["locale"],
             "revision": int(row["revision"]),
             "headline": row["headline"],
             "summary": row["summary"],
             "sections": json.loads(row["sections_json"]),
+            "content_origin": row["content_origin"],
+            "source_locale": row["source_locale"],
+            "source_revision": int(row["source_revision"]) if row["source_revision"] is not None else None,
             "updated_by": row["updated_by"],
             "updated_at": row["updated_at"],
         }
@@ -261,10 +331,15 @@ class DashboardRepository:
         *,
         workspace_id: str,
         event_id: str,
+        role: str,
+        locale: str,
         base_revision: int,
         headline: str,
         summary: str,
         sections: list[dict[str, Any]],
+        content_origin: str,
+        source_locale: str | None,
+        source_revision: int | None,
         updated_by: str,
     ) -> dict[str, Any]:
         now = self._iso()
@@ -272,10 +347,11 @@ class DashboardRepository:
             scope = self._scope(connection, workspace_id)
             current = connection.execute(
                 """
-                SELECT id,revision,created_at FROM report_drafts
+                SELECT id,revision,created_at FROM localized_report_drafts
                 WHERE organization_id=? AND project_id=? AND workspace_id=? AND event_id=?
+                  AND role=? AND locale=?
                 """,
-                (scope.organization_id, scope.project_id, workspace_id, event_id),
+                (scope.organization_id, scope.project_id, workspace_id, event_id, role, locale),
             ).fetchone()
             current_revision = int(current["revision"]) if current is not None else 0
             if current_revision != base_revision:
@@ -285,15 +361,19 @@ class DashboardRepository:
             revision = current_revision + 1
             connection.execute(
                 """
-                INSERT INTO report_drafts (
-                    id,organization_id,project_id,workspace_id,event_id,revision,
-                    headline,summary,sections_json,updated_by,created_at,updated_at
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-                ON CONFLICT(organization_id,project_id,workspace_id,event_id) DO UPDATE SET
+                INSERT INTO localized_report_drafts (
+                    id,organization_id,project_id,workspace_id,event_id,role,locale,revision,
+                    headline,summary,sections_json,content_origin,source_locale,source_revision,
+                    updated_by,created_at,updated_at
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(organization_id,project_id,workspace_id,event_id,role,locale) DO UPDATE SET
                     revision=excluded.revision,
                     headline=excluded.headline,
                     summary=excluded.summary,
                     sections_json=excluded.sections_json,
+                    content_origin=excluded.content_origin,
+                    source_locale=excluded.source_locale,
+                    source_revision=excluded.source_revision,
                     updated_by=excluded.updated_by,
                     updated_at=excluded.updated_at
                 """,
@@ -303,16 +383,26 @@ class DashboardRepository:
                     scope.project_id,
                     workspace_id,
                     event_id,
+                    role,
+                    locale,
                     revision,
                     headline,
                     summary,
                     json.dumps(sections, ensure_ascii=False),
+                    content_origin,
+                    source_locale,
+                    source_revision,
                     updated_by,
                     created_at,
                     now,
                 ),
             )
-        saved = self.get_report_draft(workspace_id=workspace_id, event_id=event_id)
+        saved = self.get_report_draft(
+            workspace_id=workspace_id,
+            event_id=event_id,
+            role=role,
+            locale=locale,
+        )
         if saved is None:
             raise RuntimeError("saved report draft could not be loaded")
         return saved

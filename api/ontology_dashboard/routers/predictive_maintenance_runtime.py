@@ -9,6 +9,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 
+from ..contracts import AppLocale
 from ..dependencies import (
     get_identity_service,
     get_predictive_maintenance_runtime_service,
@@ -162,6 +163,7 @@ def dashboard_source(
         default="overview",
         pattern="^(overview|explain-risk|compare|summarize-manager|detail-engineer|recommend-check|show-model-details)$",
     ),
+    locale: AppLocale = Query(default="ko-KR"),
     principal: Principal = Depends(require_permission("events.read")),
     identity: IdentityService = Depends(get_identity_service),
     service: PredictiveMaintenanceRuntimeService = Depends(
@@ -184,6 +186,7 @@ def dashboard_source(
             selected_event_id=selected_event_id,
             role=role,
             intent=intent,
+            locale=locale,
         ).model_dump(mode="json")
     except KeyError as error:
         raise HTTPException(status_code=404, detail=f"Dataset Version not found: {error.args[0]}") from error

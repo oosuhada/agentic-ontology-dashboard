@@ -29,6 +29,7 @@ import type {
   Workspace,
 } from "../../types";
 import type { RoleWorkspaceData } from "../roles/types";
+import type { AppLocale } from "../../ui/i18n/messages";
 
 export function useWorkspaceCatalog(
   activeProjectId: string | null,
@@ -120,6 +121,7 @@ export function usePredictiveMaintenanceDashboardSource(
   selectedEventId: string,
   intent: Intent,
   role: Role,
+  locale: AppLocale,
   onError: (message: string) => void,
 ) {
   const [data, setData] = useState<PredictiveMaintenanceDashboardResponse | null>(null);
@@ -138,6 +140,7 @@ export function usePredictiveMaintenanceDashboardSource(
       selected_event_id: selectedEventId || undefined,
       role,
       intent,
+      locale,
     }, controller.signal)
       .then((payload) => {
         setData(payload);
@@ -159,7 +162,7 @@ export function usePredictiveMaintenanceDashboardSource(
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [intent, onError, projectId, role, selectedEventId, workspaceId]);
+  }, [intent, locale, onError, projectId, role, selectedEventId, workspaceId]);
 
   return { data, loading, fallbackReason };
 }
@@ -168,6 +171,7 @@ export function useEventDetail(
   eventId: string,
   intent: Intent,
   role: Role,
+  locale: AppLocale,
   onError: (message: string) => void,
   canonicalDetail?: PredictiveMaintenanceDashboardResponse["selected_event_detail"],
   canonicalActive = false,
@@ -193,8 +197,8 @@ export function useEventDetail(
     try {
       const [nextEvidence, nextReport, nextLayout] = await Promise.all([
         getEvidence(nextEventId),
-        getReport(nextEventId, role, true),
-        getLayout(nextEventId, role, activeIntent, true),
+        getReport(nextEventId, role, true, locale),
+        getLayout(nextEventId, role, activeIntent, true, locale),
       ]);
       setEvidence(nextEvidence);
       setReport(nextReport);
@@ -205,7 +209,7 @@ export function useEventDetail(
     } finally {
       setLoading(false);
     }
-  }, [canonicalActive, canonicalDetail, onError, role]);
+  }, [canonicalActive, canonicalDetail, locale, onError, role]);
 
   useEffect(() => {
     void load(eventId, intent);

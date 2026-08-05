@@ -117,6 +117,24 @@ def test_role_reports_are_grounded_and_different(service: FactorySignalService) 
     assert all(action.requires_human_approval for action in manager.actions)
 
 
+def test_reports_are_generated_as_separate_locale_variants(service: FactorySignalService) -> None:
+    korean, _ = service.report(
+        "EVT-GS-002",
+        ReportRequest(role="engineer", locale="ko-KR", use_llm=False),
+    )
+    english, _ = service.report(
+        "EVT-GS-002",
+        ReportRequest(role="engineer", locale="en-US", use_llm=False),
+    )
+    assert korean.locale == "ko-KR"
+    assert english.locale == "en-US"
+    assert korean.report_id != english.report_id
+    assert "근거 분석" in korean.headline
+    assert "evidence analysis" in english.headline
+    assert any(section.title == "점검 체크리스트" for section in korean.sections)
+    assert any(section.title == "Inspection checklist" for section in english.sections)
+
+
 def test_llm_and_planner_offline_fallback(service: FactorySignalService) -> None:
     report, report_trace = service.report("EVT-GS-008", ReportRequest(role="manager", use_llm=True))
     layout, layout_trace = service.layout(
@@ -252,6 +270,15 @@ def test_follow_up_reconfigures_layout_and_rejects_injection(client: TestClient)
     assert payload["intent"] == "explain-risk"
     assert payload["layout"]["blocks"][0]["type"] == "FactorContribution"
     assert "공구 마모" in payload["answer"]
+
+    english = client.post(
+        "/api/events/EVT-GS-002/follow-up",
+        headers=csrf_headers(client),
+        json={"role": "engineer", "locale": "en-US", "question": "Why is this risky?"},
+    ).json()
+    assert english["supported"] is True
+    assert english["report"]["locale"] == "en-US"
+    assert "strongest evidence" in english["answer"]
 
     login_as(client, "manager@ontology.local", "Manager!2026")
     unsafe = client.post(
