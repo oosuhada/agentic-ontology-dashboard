@@ -15,6 +15,19 @@ const DEMO_ACCOUNTS = [
   ["FDE", "fde@ontology.local", "FDE!2026"],
 ] as const;
 
+const PUBLIC_DEMO_HOSTS = new Set([
+  "dashboard.oosu.dev",
+  "127.0.0.1",
+  "localhost",
+]);
+
+function shouldShowDemoAccounts() {
+  const explicitFlag = import.meta.env.VITE_ENABLE_DEMO_ACCOUNTS;
+  if (explicitFlag === "1" || explicitFlag === "true") return true;
+  if (import.meta.env.DEV) return true;
+  return typeof window !== "undefined" && PUBLIC_DEMO_HOSTS.has(window.location.hostname);
+}
+
 export function LoginPage() {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
@@ -82,9 +95,9 @@ export function LoginPage() {
         </button>
       </form>
 
-      {import.meta.env.DEV ? (
+      {shouldShowDemoAccounts() ? (
         <details className="demo-account-picker">
-          <summary>개발·데모 계정 선택</summary>
+          <summary>역할별 데모 계정 선택</summary>
           <label>
             역할
             <select value={DEMO_ACCOUNTS.some((item) => item[1] === email) ? email : ""} onChange={(event) => selectDemo(event.target.value)}>
@@ -92,7 +105,7 @@ export function LoginPage() {
               {DEMO_ACCOUNTS.map(([label, accountEmail]) => <option key={accountEmail} value={accountEmail}>{label} · {accountEmail}</option>)}
             </select>
           </label>
-          <small>이 선택기는 development build에서만 표시됩니다.</small>
+          <small>공개 데모와 로컬 개발 환경에서 역할별 테스트 계정을 빠르게 입력합니다.</small>
         </details>
       ) : null}
 

@@ -17,6 +17,7 @@ import {
   Plus,
   Redo2,
   RotateCcw,
+  Rows3,
   Undo2,
   Save,
   Search,
@@ -68,6 +69,7 @@ interface DashboardShellProps {
   dirty: boolean;
   saving: boolean;
   exporting: boolean;
+  layoutOptimizing: boolean;
   notice: string;
   error: string;
   canManageTemplates: boolean;
@@ -95,6 +97,8 @@ interface DashboardShellProps {
   onRedo: () => void;
   onOpenCatalog: () => void;
   onAddTab: () => void;
+  onAutoFitLayout: () => void;
+  onAiOptimizeLayout: () => void;
   onSave: () => void;
   onRestore: () => void;
   onSaveView: () => void;
@@ -108,17 +112,6 @@ interface DashboardShellProps {
   onAdmin: () => void;
   onLogout: () => void;
 }
-
-const ROLE_LABELS: Record<AppRole, string> = {
-  tenant_admin: "조직 관리자",
-  executive_viewer: "임원 Viewer",
-  process_manager: "운영 매니저",
-  process_engineer: "도메인 엔지니어",
-  maintenance_technician: "현장 작업자",
-  quality_auditor: "품질·감사 Viewer",
-  ml_validator: "데이터 사이언티스트",
-  fde: "Forward Deployed Engineer",
-};
 
 const TEMPLATE_ROLES: AppRole[] = [
   "tenant_admin",
@@ -168,6 +161,7 @@ export function DashboardShell({
   dirty,
   saving,
   exporting,
+  layoutOptimizing,
   notice,
   error,
   canManageTemplates,
@@ -195,6 +189,8 @@ export function DashboardShell({
   onRedo,
   onOpenCatalog,
   onAddTab,
+  onAutoFitLayout,
+  onAiOptimizeLayout,
   onSave,
   onRestore,
   onSaveView,
@@ -221,6 +217,27 @@ export function DashboardShell({
   const isCompactWorkbench = useMediaQuery("(max-width: 980px)");
   const { t } = useI18n();
   const { preferences, setDensity } = useDisplayPreferences();
+  const roleLabels: Record<AppRole, string> = {
+    tenant_admin: t("role.tenant_admin"),
+    executive_viewer: t("role.executive_viewer"),
+    process_manager: t("role.process_manager"),
+    process_engineer: t("role.process_engineer"),
+    maintenance_technician: t("role.maintenance_technician"),
+    quality_auditor: t("role.quality_auditor"),
+    ml_validator: t("role.ml_validator"),
+    fde: t("role.fde"),
+  };
+  const localizedNavItems = NAV_ITEMS.map((item) => ({
+    ...item,
+    label: item.id === "home" ? t("nav.projectHome")
+      : item.id === "report" ? t("nav.reports")
+        : item.id === "dashboard" ? t("nav.dashboards")
+          : item.id === "analysis" ? t("nav.analysis")
+            : item.id === "agent" ? t("nav.agent")
+              : item.id === "ontology" ? t("nav.ontology")
+                : item.id === "datasets" ? t("nav.datasets")
+                  : t("nav.governance"),
+  }));
 
   const selectedProject = useMemo(() => projects.find((project) => project.id === selectedProjectId), [projects, selectedProjectId]);
   const selectedWorkspace = useMemo(() => workspaces.find((workspace) => workspace.id === selectedWorkspaceId), [selectedWorkspaceId, workspaces]);
@@ -302,7 +319,7 @@ export function DashboardShell({
   return (
     <div data-adaptive-profile={adaptiveProfile.id} className={`ontology-dashboard-shell od-product-shell mode-${mode} role-${user.landing_key} density-${preferences.density} workspace-${workspaceView} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <FoundryProductNavigation
-        items={NAV_ITEMS}
+        items={localizedNavItems}
         activeId={workspaceView}
         collapsed={sidebarCollapsed}
         mobileOpen={mobileNavOpen}
@@ -324,13 +341,13 @@ export function DashboardShell({
           <div className="od-breadcrumbs">
             <span>{selectedProject?.display_name ?? "Project"}</span><ChevronRight size={12} />
             <span>{selectedWorkspace?.display_name ?? "Workspace"}</span><ChevronRight size={12} />
-            <strong>{workspaceView === "report" ? "Operational Report" : workspaceView === "dashboard" ? activeTab?.title ?? "Dashboard" : "Analysis Path"}</strong>
+            <strong>{workspaceView === "report" ? t("dashboard.operationalReport") : workspaceView === "dashboard" ? activeTab?.title ?? t("common.dashboard") : t("dashboard.analysisPath")}</strong>
           </div>
           <button type="button" className="od-global-search" onClick={() => setCommandOpen(true)}><Search size={14} /><span>{t("nav.search")}</span><kbd>⌘K</kbd></button>
           <div className="od-topbar-actions">
             <DisplayMenu />
-            <button type="button" title="테마 전환" onClick={() => setTheme((current) => current === "light" ? "dark" : "light")}>{theme === "light" ? <Moon size={15} /> : <Sun size={15} />}</button>
-            <button type="button" title="알림"><Bell size={15} /><i /></button>
+            <button type="button" title={t("dashboard.theme")} onClick={() => setTheme((current) => current === "light" ? "dark" : "light")}>{theme === "light" ? <Moon size={15} /> : <Sun size={15} />}</button>
+            <button type="button" title={t("dashboard.notifications")}><Bell size={15} /><i /></button>
             <div className="od-user-identity"><span>{user.display_name.slice(0, 1).toUpperCase()}</span><div><strong>{user.display_name}</strong><small>{roleLabel}</small></div></div>
           </div>
         </header>
@@ -355,7 +372,7 @@ export function DashboardShell({
             <div className="od-context-controls" id="dashboard-scope-controls">
               <label>{t("common.project")}<select aria-label={t("common.project")} value={selectedProjectId} onChange={(event) => onProjectChange(event.target.value)}>{projects.map((project) => <option key={project.id} value={project.id}>{project.display_name}</option>)}</select></label>
               <label>{t("common.workspace")}<select aria-label={t("common.workspace")} value={selectedWorkspaceId} onChange={(event) => onWorkspaceChange(event.target.value)}>{workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.display_name}</option>)}</select></label>
-              <label>{t("common.role")}<select aria-label={t("common.role")} value={activeRole} onChange={(event) => onActiveRoleChange(event.target.value as AppRole)}>{availableRoles.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}</select></label>
+              <label>{t("common.role")}<select aria-label={t("common.role")} value={activeRole} onChange={(event) => onActiveRoleChange(event.target.value as AppRole)}>{availableRoles.map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}</select></label>
             </div>
           </div>}
         />
@@ -364,12 +381,12 @@ export function DashboardShell({
 
         <section className={`adaptive-profile-strip profile-${adaptiveProfile.id}`}>
           <div><span>{adaptiveProfile.eyebrow}</span><strong>{adaptiveProfile.label}</strong><small>{adaptiveProfile.description}</small></div>
-          <div><span>Primary entity<strong>{adaptiveProfile.primaryEntity}</strong></span><span>Primary metric<strong>{adaptiveProfile.primaryMetric}</strong></span><span>Composition<strong>{adaptiveProfile.visualLanguage}</strong></span></div>
+          <div><span>{t("dashboard.primaryEntity")}<strong>{adaptiveProfile.primaryEntity}</strong></span><span>{t("dashboard.primaryMetric")}<strong>{adaptiveProfile.primaryMetric}</strong></span><span>{t("dashboard.composition")}<strong>{adaptiveProfile.visualLanguage}</strong></span></div>
         </section>
 
         <section className="od-status-strip">
           <div className="role-focus-list">{roleFocus.map((item) => <span key={item}>{item}</span>)}</div>
-          <div className="od-runtime-meta"><span>Template v{templateVersion}</span><span>Revision {preferenceRevision}</span><span className={preferenceRevision > 0 ? "personalized" : "role-default"}>{saving ? "Saving personal layout" : preferenceRevision > 0 ? "Personalized for this user" : "Role default"}</span>{layoutMode ? <span className={`mode-badge ${layoutMode.includes("fallback") ? "fallback" : ""}`}>{layoutMode}</span> : null}</div>
+          <div className="od-runtime-meta"><span>{t("dashboard.template")} v{templateVersion}</span><span>{t("dashboard.revision")} {preferenceRevision}</span><span className={preferenceRevision > 0 ? "personalized" : "role-default"}>{saving ? t("dashboard.savingPersonal") : preferenceRevision > 0 ? t("dashboard.personalized") : t("dashboard.roleDefault")}</span>{layoutMode ? <span className={`mode-badge ${layoutMode.includes("fallback") ? "fallback" : ""}`}>{layoutMode}</span> : null}</div>
         </section>
 
         {workspaceView === "dashboard" ? (
@@ -397,7 +414,7 @@ export function DashboardShell({
                   {tab.title}{tab.custom ? <small>{t("dashboard.personal").toUpperCase()}</small> : null}
                 </button>
               ))}
-              {mode === "edit" ? <button type="button" className="add-tab-button" onClick={onAddTab}><Plus size={13} /> Tab</button> : null}
+              {mode === "edit" ? <button type="button" className="add-tab-button" onClick={onAddTab}><Plus size={13} /> {t("dashboard.newTabLabel")}</button> : null}
             </nav>}
             end={<div className="dashboard-edit-toolbar">
               <div className="view-edit-switch" role="group" aria-label={t("dashboard.mode")}>
@@ -408,6 +425,8 @@ export function DashboardShell({
                 <button type="button" className="icon-button" aria-label="Undo dashboard edit" title="실행 취소 (⌘Z)" disabled={!canUndo} onClick={onUndo}><Undo2 size={13} /></button>
                 <button type="button" className="icon-button" aria-label="Redo dashboard edit" title="다시 실행 (⌘⇧Z)" disabled={!canRedo} onClick={onRedo}><Redo2 size={13} /></button>
                 <button type="button" className="secondary" aria-label={t("dialog.boardCatalog")} onClick={onOpenCatalog}><Plus size={12} /> {t("dashboard.addBoard")}</button>
+                <button type="button" className="secondary" disabled={layoutOptimizing} onClick={onAutoFitLayout}><Rows3 size={12} /> {t("dashboard.autoFit")}</button>
+                <button type="button" className="secondary" disabled={layoutOptimizing} onClick={onAiOptimizeLayout}><Sparkles size={12} /> {layoutOptimizing ? t("dashboard.layoutOptimizing") : t("dashboard.aiOptimize")}</button>
               </> : null}
               <button type="button" className="secondary" aria-label={t("dashboard.saveView")} onClick={onSaveView}><Sparkles size={12} /> {t("dashboard.saveView")}</button>
               <button type="button" className="secondary" aria-label={t("common.share")} onClick={onShare}><Share2 size={12} /> {t("common.share")}</button>
@@ -419,14 +438,14 @@ export function DashboardShell({
         ) : null}
 
         {workspaceView === "dashboard" && canManageTemplates && mode === "edit" ? (
-          <section className="template-publish-bar"><div><strong>Governed Template Editor</strong><span>현재 canvas를 선택 역할의 새 template version으로 게시합니다.</span></div><select value={targetTemplateRole} onChange={(event) => onTargetTemplateRoleChange(event.target.value as AppRole)}>{TEMPLATE_ROLES.map((role) => <option key={role} value={role}>{role}</option>)}</select><button type="button" className="secondary" onClick={onPublishTemplate}>{templateActionLabel}</button></section>
+          <section className="template-publish-bar"><div><strong>{t("dashboard.templateEditor")}</strong><span>{t("dashboard.templateEditorDetail")}</span></div><select value={targetTemplateRole} onChange={(event) => onTargetTemplateRoleChange(event.target.value as AppRole)}>{TEMPLATE_ROLES.map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}</select><button type="button" className="secondary" onClick={onPublishTemplate}>{templateActionLabel}</button></section>
         ) : null}
 
         {workspaceView === "dashboard" && mode === "edit" ? (
           <nav className="dashboard-editor-lanes" aria-label="Dashboard editor regions">
-            <span><b>1</b><strong>Resources</strong><small>Context and filters</small></span>
-            <span><b>2</b><strong>Canvas</strong><small>12-column governed layout</small></span>
-            <span><b>3</b><strong>Inspector</strong><small>Board contract and settings</small></span>
+            <span><b>1</b><strong>{t("dashboard.resources")}</strong><small>{t("dashboard.resourcesDetail")}</small></span>
+            <span><b>2</b><strong>{t("dashboard.canvas")}</strong><small>{t("dashboard.canvasDetail")}</small></span>
+            <span><b>3</b><strong>{t("dashboard.inspector")}</strong><small>{t("dashboard.inspectorDetail")}</small></span>
           </nav>
         ) : null}
 

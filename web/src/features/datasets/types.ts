@@ -36,6 +36,9 @@ export interface DatasetFileItem {
   media_type: string;
   checksum_sha256: string;
   size_bytes: number | null;
+  role?: string | null;
+  format?: string | null;
+  schema_json?: Record<string, unknown>;
   created_at: string;
 }
 
@@ -53,7 +56,7 @@ export interface DatasetVersionItem {
   schema: Record<string, unknown>;
   profile: Record<string, unknown>;
   record_count: number;
-  status: "registered" | "profiling" | "projecting" | "ready" | "failed";
+  status: "registered" | "profiling" | "projecting" | "ready" | "published" | "failed";
   created_by: string | null;
   created_at: string;
 }
@@ -72,6 +75,8 @@ export interface DatasetProjectionItem {
   record_count: number;
   attempt_count: number;
   last_error: string | null;
+  provider_run_id?: string | null;
+  provider_metadata_json?: Record<string, unknown>;
   started_at: string | null;
   completed_at: string | null;
   updated_at: string;
@@ -113,6 +118,11 @@ export interface DatasetIngestionRunItem {
   source_record_count: number;
   accepted_record_count: number;
   quarantined_record_count: number;
+  dataset_id?: string | null;
+  dataset_version_id?: string | null;
+  bundle_checksum_sha256?: string | null;
+  validation_checksum_sha256?: string | null;
+  metrics_json?: Record<string, unknown>;
   error_message: string | null;
   started_at: string;
   completed_at: string | null;

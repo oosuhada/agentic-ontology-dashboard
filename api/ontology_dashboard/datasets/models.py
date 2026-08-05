@@ -11,7 +11,7 @@ StoreKind = Literal["relational", "graph", "vector"]
 ProjectionStatus = Literal["pending", "indexing", "ready", "failed"]
 ProjectionHealth = Literal["pending", "indexing", "ready", "failed", "missing"]
 DatasetStatus = Literal["draft", "active", "archived"]
-VersionStatus = Literal["registered", "profiling", "projecting", "ready", "failed"]
+VersionStatus = Literal["registered", "profiling", "projecting", "ready", "published", "failed"]
 
 
 class StrictModel(BaseModel):
@@ -109,6 +109,9 @@ class DatasetFileRecord(StrictModel):
     media_type: str
     checksum_sha256: str
     size_bytes: int | None = None
+    role: str | None = None
+    format: str | None = None
+    file_schema: dict[str, Any] = Field(default_factory=dict, alias="schema_json")
     created_at: datetime
 
 
@@ -145,6 +148,8 @@ class ProjectionRecord(StrictModel):
     record_count: int
     attempt_count: int
     last_error: str | None = None
+    provider_run_id: str | None = None
+    provider_metadata_json: dict[str, Any] = Field(default_factory=dict)
     started_at: datetime | None = None
     completed_at: datetime | None = None
     updated_at: datetime
@@ -199,6 +204,11 @@ class AdapterIngestionRunRecord(StrictModel):
     source_record_count: int
     accepted_record_count: int
     quarantined_record_count: int
+    dataset_id: str | None = None
+    dataset_version_id: str | None = None
+    bundle_checksum_sha256: str | None = None
+    validation_checksum_sha256: str | None = None
+    metrics_json: dict[str, Any] = Field(default_factory=dict)
     error_message: str | None = None
     started_at: datetime
     completed_at: datetime | None = None

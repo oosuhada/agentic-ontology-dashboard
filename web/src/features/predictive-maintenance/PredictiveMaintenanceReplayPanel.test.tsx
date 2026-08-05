@@ -4,6 +4,7 @@ import {
   countStatusGrades,
   graphStatusLabel,
   PredictiveMaintenanceReplayPanel,
+  replayTimestamp,
   roleRuntimeMode,
 } from "./PredictiveMaintenanceReplayPanel";
 
@@ -81,5 +82,13 @@ describe("PredictiveMaintenanceReplayPanel", () => {
       { status_grade: "warning" },
       { status_grade: "critical" },
     ] as never)).toEqual({ critical: 2, warning: 1, attention: 0, normal: 0 });
+  });
+
+  it("normalizes datetime-local replay controls to a timezone-aware contract", () => {
+    const timestamp = replayTimestamp("2026-08-15T12:00");
+    expect(timestamp).toMatch(/Z$/);
+    expect(Date.parse(timestamp ?? "")).toBe(Date.parse("2026-08-15T12:00"));
+    expect(replayTimestamp("")).toBeUndefined();
+    expect(replayTimestamp("not-a-time")).toBeUndefined();
   });
 });

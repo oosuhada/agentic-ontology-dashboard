@@ -458,6 +458,19 @@ kbd { border: 1px solid var(--od-border); border-bottom-width: 2px; border-radiu
 .context-event-nav > button:hover, .context-event-nav > button.active { border-color: var(--od-accent); color: var(--od-text); background: var(--od-accent-soft); }
 .context-field, .context-object-card dt, .platform-object-dl dt, .parameter-state-list span { color: var(--od-text-muted); }
 
+:root[data-theme="dark"] .priority-row {
+  border-color: var(--od-border);
+  color: var(--od-text);
+  background: var(--od-surface);
+}
+:root[data-theme="dark"] .priority-row:hover,
+:root[data-theme="dark"] .priority-row.selected {
+  border-color: var(--od-accent);
+  color: var(--od-text);
+  background: var(--od-accent-soft);
+}
+:root[data-theme="dark"] .priority-row .priority-main small { color: var(--od-text-muted); }
+
 .dashboard-canvas-region { min-width: 0; }
 .dashboard-board-canvas.rgl-canvas { display: block; min-height: 520px; }
 .dashboard-board-canvas .react-grid-layout { min-height: 520px; }

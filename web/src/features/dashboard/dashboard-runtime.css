@@ -69,8 +69,11 @@
 .dashboard-source-disclosure {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  align-items: start;
   gap: 6px;
+  max-height: 44px;
+  box-sizing: border-box;
+  overflow: hidden;
   border-left: 2px solid var(--fd-warning);
   padding: 5px 6px;
   background: color-mix(in srgb, var(--fd-warning) 7%, var(--fd-surface));
@@ -78,9 +81,17 @@
 
 .dashboard-source-disclosure.has-error { border-left-color: var(--fd-danger); }
 .dashboard-source-disclosure > div { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
-.dashboard-source-disclosure strong { font-size: 9px; }
-.dashboard-source-disclosure small { color: var(--fd-text-muted); font-size: 8px; line-height: 1.4; }
-.dashboard-source-disclosure button { display: inline-flex; align-items: center; gap: 3px; border: 1px solid var(--fd-border); border-radius: 2px; padding: 5px 6px; color: var(--fd-text-secondary); background: var(--fd-surface); font-size: 8px; }
+.dashboard-source-disclosure strong { overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard-source-disclosure small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--fd-text-muted);
+  font-size: 8px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.dashboard-source-disclosure button { display: inline-flex; height: 28px; min-height: 28px; align-items: center; gap: 3px; border: 1px solid var(--fd-border); border-radius: 2px; padding: 0 6px; color: var(--fd-text-secondary); background: var(--fd-surface); font-size: 8px; }
 .dashboard-source-disclosure button:hover { border-color: var(--fd-accent); color: var(--fd-accent); }
 
 /* The grid item must own its measured geometry. BoardFrame forwards these
@@ -89,6 +100,27 @@
 .dashboard-board-canvas .react-grid-item.dashboard-board-frame {
   position: absolute;
   margin: 0;
+}
+
+.layout-mode-chip {
+  display: inline-flex;
+  min-height: 18px;
+  align-items: center;
+  border: 1px solid var(--fd-border);
+  border-radius: 999px;
+  padding: 0 5px;
+  color: var(--fd-text-muted);
+  background: var(--fd-surface);
+  font-size: 7px;
+  white-space: nowrap;
+}
+.layout-mode-chip.mode-auto { border-color: color-mix(in srgb, var(--fd-success) 42%, var(--fd-border)); color: var(--fd-success); }
+.layout-mode-chip.mode-ai { border-color: color-mix(in srgb, var(--fd-accent) 42%, var(--fd-border)); color: var(--fd-accent); }
+.layout-mode-chip.mode-manual { border-color: color-mix(in srgb, var(--fd-warning) 42%, var(--fd-border)); color: var(--fd-warning); }
+
+.dashboard-board-frame[data-layout-mode="auto"] .advanced-board,
+.dashboard-board-frame[data-layout-mode="ai"] .advanced-board {
+  align-content: start;
 }
 
 @media (max-width: 900px) {

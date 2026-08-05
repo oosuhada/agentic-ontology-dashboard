@@ -31,6 +31,12 @@ const STATUS_ORDER: StatusGrade[] = ["critical", "warning", "attention", "normal
 export const AI4I_V3_1_DATASET_NAME = "UCI AI4I 2020 Manufacturing Predictive Maintenance — Physics & Maintenance Canonical V3.1";
 const AI4I_V2_DATASET_NAME = "UCI AI4I 2020 Manufacturing Predictive Maintenance — Canonical V2 compatibility snapshot";
 
+export function replayTimestamp(value: string): string | undefined {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+}
+
 function timeLabel(value: string | null | undefined): string {
   if (!value) return "—";
   const parsed = new Date(value);
@@ -223,7 +229,7 @@ export function PredictiveMaintenanceReplayPanel({
     try {
       const next = await startPredictiveMaintenanceReplay(projectId, workspaceId, {
         dataset_version_id: selectedVersionId || context?.dataset_version_id,
-        start_time: seekTime || undefined,
+        start_time: replayTimestamp(seekTime),
         speed_minutes_per_second: speed,
       });
       setReplay(next);
@@ -431,7 +437,7 @@ export function PredictiveMaintenanceReplayPanel({
                 <button type="button" disabled={busy || replay.cursor.state === "completed"} onClick={() => void control("resume")}>Resume</button>
               )}
               <button type="button" disabled={busy} onClick={() => void control("speed", { speed_minutes_per_second: speed })}>Apply speed</button>
-              <button type="button" disabled={busy || !seekTime} onClick={() => void control("seek", { time: new Date(seekTime).toISOString() })}>Seek</button>
+              <button type="button" disabled={busy || !seekTime} onClick={() => void control("seek", { time: replayTimestamp(seekTime) })}>Seek</button>
               <button type="button" disabled={busy} onClick={() => void control("reset")}>Reset</button>
             </>
           )}

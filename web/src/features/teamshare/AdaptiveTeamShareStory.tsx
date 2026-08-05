@@ -266,7 +266,7 @@ export function AdaptiveTeamShareStory() {
       <header className="adaptive-share-header">
         <a className="adaptive-share-brand" href="#overview"><span>OD</span><div><strong>Ontology Dashboard</strong><small>Complete project + AI4I 2020 V3.1/Adaptive Modeling</small></div></a>
         <nav aria-label="Complete team share sections">
-          <a href="#foundation">Foundation</a><a href="#adaptive">Adaptive UI</a><a href="#workbenches">Workbenches</a><a href="#runtime">AI4I V3.1</a><a href="#modeling">Modeling</a><a href="#status">Status</a>
+          <a href="#foundation">Foundation</a><a href="#adaptive">Adaptive UI</a><a href="#workbenches">Workbenches</a><a href="#runtime">AI4I V3.1</a><a href="#modeling">Modeling</a><a href="#quality">Quality</a><a href="#status">Status</a>
         </nav>
         <div><a href="/team-share">2026-08-04 기록</a><a className="primary" href={APP_ROUTE}>앱 열기 <ArrowRight size={13} /></a></div>
       </header>
@@ -343,9 +343,9 @@ export function AdaptiveTeamShareStory() {
       </section>
 
       <section className="adaptive-share-section" id="modeling">
-        <header><span>05 · GOVERNED ADAPTIVE MODELING</span><h2>현재 ML Validator는 upstream artifact 부재를 blocked로 정확히 표시합니다</h2><p>Dataset·Mapping·Recipe·Feature Dataset이 없으므로 아직 Experiment, Model Version, release request가 없습니다. 준비되지 않은 모델 성능을 만들거나 성공 상태로 꾸미지 않으며 선택자와 승인자 분리 계약은 유지합니다.</p></header>
-        <div className="adaptive-share-feature-grid three">
-          {upgradeCaptures.slice(2).map((capture) => <CaptureCard key={capture.id} capture={capture} onOpen={setSelected} />)}
+        <header><span>05 · MODEL PIPELINE READINESS & GOVERNANCE</span><h2>운영 Dataset과 모델링 파이프라인의 준비 상태를 구분해 표시합니다</h2><p>AI4I V3.1 Dataset Version과 Result Artifact는 운영 화면에 연결되어 있습니다. 다만 ML Validator가 Experiment를 실행하기 위해 필요한 Intake Profile, Manifest Draft, Mapping Set, Feature Recipe Set과 Feature Dataset Version은 아직 생성되지 않았습니다. 준비되지 않은 모델 성능을 만들거나 성공 상태로 꾸미지 않으며 검증자와 승인자의 책임 분리 계약을 유지합니다.</p></header>
+        <div className="adaptive-share-feature-grid">
+          {upgradeCaptures.slice(2, 4).map((capture) => <CaptureCard key={capture.id} capture={capture} onOpen={setSelected} />)}
         </div>
         <div className="adaptive-share-evidence">
           <article><span>UPSTREAM READINESS</span><strong>0 / 5</strong><p>Intake, Manifest, Mapping, Recipe, Feature Dataset artifact가 아직 없습니다.</p></article>
@@ -356,8 +356,15 @@ export function AdaptiveTeamShareStory() {
         <div className="adaptive-share-chain"><span>Intake</span><ArrowRight /><span>Manifest</span><ArrowRight /><span>Mapping</span><ArrowRight /><span>Feature</span><ArrowRight /><span>Experiment</span><ArrowRight /><span>Registry</span><ArrowRight /><span>Prediction</span><ArrowRight /><span>Explanation</span></div>
       </section>
 
-      <section className="adaptive-share-section alt" id="status">
-        <header><span>06 · DELIVERY STATUS</span><h2>완료, 검토, 추가 작업을 같은 수준으로 표시하지 않습니다</h2><p>동작하는 prototype·local release와 strict production readiness를 명확히 구분합니다.</p></header>
+      <section className="adaptive-share-section alt" id="quality">
+        <header><span>06 · RESPONSIVE & DARK MODE QUALITY</span><h2>화면 크기와 테마가 바뀌어도 정보와 가독성을 유지합니다</h2><p>ML Validator의 blocked 사유는 모바일에서도 보존되며, Dashboard runtime과 Planner 내부에는 동일한 dark surface와 텍스트 대비 기준을 적용합니다. 이 검증은 모델 성능이나 release readiness가 아니라 역할별 UI 사용성 품질을 확인합니다.</p></header>
+        <div className="adaptive-share-feature-grid">
+          {upgradeCaptures.slice(4).map((capture) => <CaptureCard key={capture.id} capture={capture} onOpen={setSelected} />)}
+        </div>
+      </section>
+
+      <section className="adaptive-share-section" id="status">
+        <header><span>07 · DELIVERY STATUS</span><h2>완료, 검토, 추가 작업을 같은 수준으로 표시하지 않습니다</h2><p>동작하는 prototype·local release와 strict production readiness를 명확히 구분합니다.</p></header>
         <div className="adaptive-share-status-grid">
           <StatusColumn title="완료" tone="complete" items={completed} />
           <StatusColumn title="검토 필요" tone="review" items={needsReview} />

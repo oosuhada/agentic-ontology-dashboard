@@ -7,6 +7,7 @@ import {
   LogOut,
   UserCog,
 } from "lucide-react";
+import { useI18n } from "../i18n/I18nProvider";
 
 export interface FoundryNavigationItem {
   id: string;
@@ -48,6 +49,7 @@ export function FoundryProductNavigation({
   onAdmin,
   onLogout,
 }: FoundryProductNavigationProps) {
+  const { t } = useI18n();
   const navigationRef = useRef<HTMLElement | null>(null);
   const activeItem = items.find((item) => item.id === activeId) ?? items[0];
   const ActiveIcon = activeItem.icon;
@@ -97,12 +99,12 @@ export function FoundryProductNavigation({
       className={`od-primary-sidebar fd-product-navigation ${mobileOpen ? "mobile-open" : ""}`}
       role={mobileOpen ? "dialog" : undefined}
       aria-modal={mobileOpen ? "true" : undefined}
-      aria-label={mobileOpen ? "Product navigation" : undefined}
+      aria-label={mobileOpen ? t("nav.open") : undefined}
       tabIndex={mobileOpen ? -1 : undefined}
     >
       <div className="fd-platform-rail" aria-label="Platform rail">
         <div className="fd-platform-mark" title="Ontology Dashboard" aria-label="Ontology Dashboard">OD</div>
-        <nav className="fd-platform-shortcuts" aria-label="Workbench shortcuts">
+        <nav className="fd-platform-shortcuts" aria-label={t("nav.workbenches")}>
           {items.map((item) => {
             const Icon = item.icon;
             if (!collapsed) {
@@ -133,8 +135,8 @@ export function FoundryProductNavigation({
           })}
         </nav>
         <div className="fd-platform-rail__spacer" />
-        {isAdmin ? <button type="button" title="Administration" aria-label="Administration" onClick={onAdmin}><UserCog size={16} /></button> : null}
-        <button type="button" title="Sign out" aria-label="로그아웃" onClick={onLogout}><LogOut size={16} /></button>
+        {isAdmin ? <button type="button" title={t("nav.administration")} aria-label={t("nav.administration")} onClick={onAdmin}><UserCog size={16} /></button> : null}
+        <button type="button" title={t("nav.signOut")} aria-label={t("nav.signOut")} onClick={onLogout}><LogOut size={16} /></button>
       </div>
 
       {!collapsed ? (
@@ -142,14 +144,14 @@ export function FoundryProductNavigation({
           <header className="fd-resource-navigation__header">
             <span className="fd-resource-navigation__icon"><ActiveIcon size={15} /></span>
             <div>
-              <small>APPLICATION</small>
+              <small>{t("nav.application").toUpperCase()}</small>
               <strong>{activeItem.label}</strong>
             </div>
-            <button type="button" className="od-sidebar-collapse" onClick={onToggleCollapsed} title="사이드바 접기"><ChevronLeft size={15} /></button>
+            <button type="button" className="od-sidebar-collapse" onClick={onToggleCollapsed} title={t("nav.collapseSidebar")}><ChevronLeft size={15} /></button>
           </header>
 
-          <nav className="od-primary-nav" aria-label="Product navigation">
-            <span className="od-nav-section">WORKBENCHES</span>
+          <nav className="od-primary-nav" aria-label={t("nav.open")}>
+            <span className="od-nav-section">{t("nav.workbenches").toUpperCase()}</span>
             {items.map((item) => {
               const Icon = item.icon;
               return (
@@ -164,7 +166,7 @@ export function FoundryProductNavigation({
                 >
                   <Icon size={14} />
                   <span>{item.label}</span>
-                  {!item.enabled ? <small>SOON</small> : null}
+                  {!item.enabled ? <small>{t("nav.soon").toUpperCase()}</small> : null}
                 </button>
               );
             })}
@@ -172,7 +174,7 @@ export function FoundryProductNavigation({
 
           <div className="od-sidebar-spacer" />
           <section className="od-sidebar-scope">
-            <span className="od-nav-section">ACTIVE SCOPE</span>
+            <span className="od-nav-section">{t("nav.activeScope").toUpperCase()}</span>
             <div>
               <GitBranch size={14} />
               <span><strong>{projectName}</strong><small>{workspaceName}</small></span>
@@ -184,7 +186,7 @@ export function FoundryProductNavigation({
           </footer>
         </div>
       ) : (
-        <button type="button" className="fd-sidebar-expand" onClick={onToggleCollapsed} title="사이드바 펼치기" aria-label="사이드바 펼치기"><ChevronRight size={15} /></button>
+        <button type="button" className="fd-sidebar-expand" onClick={onToggleCollapsed} title={t("nav.expandSidebar")} aria-label={t("nav.expandSidebar")}><ChevronRight size={15} /></button>
       )}
     </aside>
   );

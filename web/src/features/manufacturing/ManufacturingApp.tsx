@@ -17,6 +17,7 @@ import {
   getSavedViews,
   invokeOntologyAction,
   publishDashboardTemplate,
+  recommendBoards,
   recordDecision,
   requestDashboardTemplatePublish,
   resolveDashboardShare,
@@ -27,6 +28,7 @@ import { analysisPath, datasetCatalogPath, navigate } from "../../routing";
 import type { AppRole, Intent } from "../../types";
 import { useAuth } from "../auth/AuthContext";
 import { WorkbenchState } from "../../ui/foundry/WorkbenchState";
+import { useI18n } from "../../ui/i18n/I18nProvider";
 import type { AddAnalysisBoardRequest } from "../analysis/types";
 import { BoardCanvas } from "../dashboard/BoardCanvas";
 import { BoardCatalogPanel } from "../dashboard/BoardCatalogPanel";
@@ -69,6 +71,12 @@ import { VisualizationSwitcher } from "../dashboard/visualization/VisualizationS
 import { visualizationSettings } from "../dashboard/visualization/visualizationProfile";
 import { RoleReportWorkbench } from "../reports/RoleReportWorkbench";
 import { applyAdaptiveDashboardProfile, deriveAdaptiveExperience } from "./adaptiveExperience";
+import { localizeAdaptiveProfile, localizeRoleLanding } from "./localizedExperience";
+import {
+  optimizeDashboardLayout,
+  type BoardContentMetric,
+  type DashboardLayoutStrategy,
+} from "../dashboard/layoutOptimizer";
 
 const AnalysisWorkbench = lazy(() =>
   import("../dashboard/AnalysisWorkbench").then((module) => ({ default: module.AnalysisWorkbench })),
@@ -120,6 +128,7 @@ function sameDashboardDraft(left: ResolvedDashboard | null, right: ResolvedDashb
 
 export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisId = "risk-event-portfolio" }: ManufacturingAppProps = {}) {
   const { user, logout, setActiveProject } = useAuth();
+  const { locale, t } = useI18n();
   if (!user) throw new Error("ManufacturingApp requires an authenticated user");
   const authenticatedUser = user;
   const availableRoles = (authenticatedUser.active_project_roles.length
@@ -140,6 +149,10 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     });
   }, [authenticatedUser.active_project_id, authenticatedUser.active_project_roles.join("|")]);
   const roleConfig = ROLE_LANDING[appRole];
+  const localizedRoleConfig = useMemo(
+    () => localizeRoleLanding(appRole, roleConfig, t),
+    [appRole, roleConfig, t],
+  );
   const role = roleConfig.legacyRole;
   const hasDecisionPermission = authenticatedUser.permissions.includes("events.decision");
   const hasNotePermission = authenticatedUser.permissions.includes("events.note");
@@ -148,6 +161,9 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
   const [intent, setIntent] = useState<Intent>(roleConfig.defaultIntent);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [layoutOptimizing, setLayoutOptimizing] = useState(false);
+  const boardContentMetricsRef = useRef<BoardContentMetric[]>([]);
+  const previousLocaleRef = useRef(locale);
   const activeProjectRef = useRef(authenticatedUser.active_project_id);
   useEffect(() => {
     activeProjectRef.current = authenticatedUser.active_project_id;
@@ -263,6 +279,15 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
   const adaptiveProfile = useMemo(
     () => deriveAdaptiveExperience(selectedProjectId, selectedProject, selectedPack, datasetItems, datasetDetails),
     [datasetDetails, datasetItems, selectedPack, selectedProject, selectedProjectId],
+  );
+  const localizedAdaptiveProfile = useMemo(
+    () => localizeAdaptiveProfile(
+      adaptiveProfile,
+      t,
+      datasetItems.length,
+      datasetItems.reduce((sum, item) => sum + item.record_count, 0),
+    ),
+    [adaptiveProfile, datasetItems, t],
   );
   const effectiveInitialWorkspaceView: WorkspaceView = initialWorkspaceView === "analysis"
     ? "analysis"
@@ -538,6 +563,69 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       return { ...current, [boardId]: runtime };
     });
   }, []);
+
+  const handleOptimizeLayout = useCallback(async (strategy: DashboardLayoutStrategy) => {
+    if (!draftDashboard?.active_tab_id) return;
+    setLayoutOptimizing(true);
+    try {
+      const rendererByDefinition = new Map(catalogItems.map((definition) => [definition.id, definition.renderer]));
+      let recommendedDefinitionIds: string[] = [];
+      let plannerMode = "deterministic layout engine";
+      try {
+        if (strategy === "ai-recommendation") {
+          const recommendation = await recommendBoards({
+            workspace_id: selectedWorkspaceId,
+            goal: locale === "ko-KR"
+              ? `${localizedRoleConfig.label} 역할이 현재 데이터에서 중요한 판단을 빠르게 할 수 있도록 Board 우선순위와 레이아웃을 추천해줘`
+              : `Recommend board priority and layout so the ${localizedRoleConfig.label} role can make the most important decisions quickly from the current data.`,
+            use_llm: true,
+            limit: Math.max(5, draftDashboard.tabs.find((tab) => tab.id === draftDashboard.active_tab_id)?.boards.length ?? 5),
+          });
+          recommendedDefinitionIds = recommendation.recommendations.map((item) => item.definition_id);
+          plannerMode = `${recommendation.mode} · ${recommendation.provider}`;
+        }
+      } catch {
+        plannerMode = "deterministic fallback";
+      }
+
+      updateDraft((current) => ({
+        ...current,
+        tabs: current.tabs.map((tab) => {
+          if (tab.id !== current.active_tab_id) return tab;
+          const rank = new Map(recommendedDefinitionIds.map((definitionId, index) => [definitionId, index]));
+          const ordered = strategy === "ai-recommendation"
+            ? [...tab.boards].sort((left, right) => {
+                const leftRank = rank.get(left.definition_id) ?? Number.MAX_SAFE_INTEGER;
+                const rightRank = rank.get(right.definition_id) ?? Number.MAX_SAFE_INTEGER;
+                return leftRank - rightRank || left.order - right.order;
+              }).map((board, order) => ({ ...board, order }))
+            : tab.boards;
+          return {
+            ...tab,
+            boards: optimizeDashboardLayout(
+              ordered,
+              boardContentMetricsRef.current,
+              strategy,
+              window.innerWidth,
+              rendererByDefinition,
+            ),
+          };
+        }),
+      }));
+      setNotice(strategy === "content-fit"
+        ? t("dashboard.layoutAutoFitApplied")
+        : t("dashboard.layoutAiAppliedMode", { mode: plannerMode }));
+    } finally {
+      setLayoutOptimizing(false);
+    }
+  }, [catalogItems, draftDashboard, locale, localizedRoleConfig.label, selectedWorkspaceId, t, updateDraft]);
+
+  useEffect(() => {
+    if (previousLocaleRef.current === locale) return undefined;
+    previousLocaleRef.current = locale;
+    const timer = window.setTimeout(() => { void handleOptimizeLayout("content-fit"); }, 450);
+    return () => window.clearTimeout(timer);
+  }, [handleOptimizeLayout, locale]);
 
   function handleVisualizationChange(boardId: string, visualization: VisualizationSettings) {
     const board = draftDashboard?.tabs.flatMap((tab) => tab.boards).find((item) => item.id === boardId);
@@ -1009,7 +1097,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
         workspace_id: selectedWorkspaceId,
         scope: "dashboard",
         format,
-        title: `${roleConfig.label} Dashboard Export`,
+        title: `${localizedRoleConfig.label} Dashboard Export`,
       });
       const url = URL.createObjectURL(artifact.blob);
       const anchor = document.createElement("a");
@@ -1233,6 +1321,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
         onRemoveBoard={handleRemoveBoard}
         onToggleHidden={handleToggleHidden}
         onToggleFavorite={handleToggleFavorite}
+        onContentMetricsChange={(metrics) => { boardContentMetricsRef.current = metrics; }}
         onEnterArrange={() => setMode("edit")}
         saving={saving}
         onFullscreen={setFullscreenBoardId}
@@ -1291,16 +1380,16 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
   return (
     <DashboardShell
       user={authenticatedUser}
-      roleLabel={roleConfig.label}
+      roleLabel={localizedRoleConfig.label}
       roleEyebrow={roleConfig.eyebrow}
-      roleDescription={roleConfig.description}
-      roleFocus={roleConfig.focus}
+      roleDescription={localizedRoleConfig.description}
+      roleFocus={localizedRoleConfig.focus}
       projects={projects}
       selectedProjectId={selectedProjectId}
       workspaces={workspaces}
       selectedWorkspaceId={selectedWorkspaceId}
       domainPack={selectedPack}
-      adaptiveProfile={adaptiveProfile}
+      adaptiveProfile={localizedAdaptiveProfile}
       tabs={draftDashboard?.tabs ?? []}
       activeTabId={draftDashboard?.active_tab_id ?? ""}
       templateVersion={draftDashboard?.template_version ?? 0}
@@ -1310,6 +1399,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       dirty={dirty}
       saving={saving}
       exporting={exporting}
+      layoutOptimizing={layoutOptimizing}
       notice={notice}
       error={error}
       canManageTemplates={canManageTemplates}
@@ -1322,9 +1412,9 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       reportWorkbench={(openDashboard) => (
         <RoleReportWorkbench
           workspaceId={selectedWorkspaceId}
-          roleLabel={roleConfig.label}
+          roleLabel={localizedRoleConfig.label}
           projectName={selectedProject?.display_name ?? selectedProjectId}
-          profile={adaptiveProfile}
+          profile={localizedAdaptiveProfile}
           report={report}
           evidence={evidence}
           events={events}
@@ -1387,6 +1477,8 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
         setCatalogOpen(true);
       }}
       onAddTab={handleAddTab}
+      onAutoFitLayout={() => void handleOptimizeLayout("content-fit")}
+      onAiOptimizeLayout={() => void handleOptimizeLayout("ai-recommendation")}
       onSave={() => void handleSave(false)}
       onRestore={() => void handleRestore()}
       onSaveView={() => void handleSaveView()}

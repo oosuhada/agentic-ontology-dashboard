@@ -91,7 +91,10 @@ import type {
   Workspace,
 } from "./types";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8100";
+// Same-origin is the safe production default: Cloudflare and Vite proxy /api
+// without creating an HTTPS -> loopback HTTP mixed-content boundary. Local
+// scripts and isolated Playwright servers can still opt into an absolute URL.
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 let csrfTokenCache: string | null = null;
 

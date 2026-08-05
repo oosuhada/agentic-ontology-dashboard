@@ -75,6 +75,15 @@ test("legacy team share remains unchanged and complete adaptive story is indepen
   await expect(page.getByText("UCI AI4I 2020 Manufacturing Predictive Maintenance — Physics & Maintenance Canonical V3.1", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("dsv-9fc144c7-d3f8-5b37-8465-04248165b7ce", { exact: false })).toBeVisible();
   await expect(page.getByText("68,208 timeline rows", { exact: false }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Quality", exact: true })).toHaveAttribute("href", "#quality");
+  const modelingSection = page.locator("#modeling");
+  const qualitySection = page.locator("#quality");
+  await expect(modelingSection.getByRole("heading", { name: "운영 Dataset과 모델링 파이프라인의 준비 상태를 구분해 표시합니다" })).toBeVisible();
+  await expect(modelingSection.locator(".adaptive-share-capture-card")).toHaveCount(2);
+  await expect(modelingSection.getByText("DARK MODE USABILITY REGRESSION", { exact: true })).toHaveCount(0);
+  await expect(qualitySection.getByRole("heading", { name: "화면 크기와 테마가 바뀌어도 정보와 가독성을 유지합니다" })).toBeVisible();
+  await expect(qualitySection.locator(".adaptive-share-capture-card")).toHaveCount(2);
+  await expect(qualitySection.getByText("DARK MODE USABILITY REGRESSION", { exact: true })).toBeVisible();
   await expectVerticalSectionHeaders(page);
   await page.screenshot({ path: `${captureRoot}/00-team-share-adaptive-story.png`, fullPage: true, animations: "disabled", caret: "hide" });
 
@@ -88,6 +97,8 @@ test("legacy team share remains unchanged and complete adaptive story is indepen
 
   await page.goto("/team-share-adaptive.html");
   await expect(page.getByRole("heading", { name: /가입과 역할별 업무부터/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "운영 Dataset과 모델링 파이프라인의 준비 상태를 구분해 표시합니다" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "화면 크기와 테마가 바뀌어도 정보와 가독성을 유지합니다" })).toBeVisible();
   await expect(page.locator("main img")).toHaveCount(7);
   await page.waitForFunction(() => Array.from(document.querySelectorAll<HTMLImageElement>('img[data-local="true"]')).every((image) => image.complete && image.naturalWidth > 0));
   await expect(page.getByRole("link", { name: "2026-08-04 기록 보기" })).toHaveAttribute("href", "/team-share");

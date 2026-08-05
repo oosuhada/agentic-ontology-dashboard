@@ -1,7 +1,9 @@
 import type { ExplanationArtifact, WorkbenchPayload } from "./types";
 
 type Scope = { projectId: string; workspaceId: string };
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8100";
+// Keep the deployed workbench on the public origin. An absolute API URL is
+// injected only by local multi-port runners and isolated E2E environments.
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 function cookieValue(name: string): string | null {

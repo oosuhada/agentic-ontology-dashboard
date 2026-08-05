@@ -45,17 +45,6 @@ interface FoundryAppShellProps {
   children: ReactNode;
 }
 
-const ROLE_LABELS: Record<AppRole, string> = {
-  tenant_admin: "조직 관리자",
-  executive_viewer: "임원 Viewer",
-  process_manager: "운영 매니저",
-  process_engineer: "도메인 엔지니어",
-  maintenance_technician: "현장 작업자",
-  quality_auditor: "품질·감사 Viewer",
-  ml_validator: "데이터 사이언티스트",
-  fde: "Forward Deployed Engineer",
-};
-
 const NAV_ITEMS = [
   { id: "home", label: "Project Home", icon: Home, enabled: true },
   { id: "dashboard", label: "Dashboards", icon: LayoutDashboard, enabled: true },
@@ -127,7 +116,28 @@ export function FoundryAppShell({ projectId, workspaceId, activeRoute, title, ch
   );
   const resolvedWorkspaceId = workspaceId ?? selectedWorkspace?.id ?? "";
   const activeRole = user.active_project_roles[0] as AppRole | undefined;
-  const roleLabel = activeRole ? ROLE_LABELS[activeRole] : user.is_admin ? ROLE_LABELS.tenant_admin : "Project member";
+  const roleLabels: Record<AppRole, string> = {
+    tenant_admin: t("role.tenant_admin"),
+    executive_viewer: t("role.executive_viewer"),
+    process_manager: t("role.process_manager"),
+    process_engineer: t("role.process_engineer"),
+    maintenance_technician: t("role.maintenance_technician"),
+    quality_auditor: t("role.quality_auditor"),
+    ml_validator: t("role.ml_validator"),
+    fde: t("role.fde"),
+  };
+  const roleLabel = activeRole ? roleLabels[activeRole] : user.is_admin ? roleLabels.tenant_admin : "Project member";
+  const localizedNavItems = NAV_ITEMS.map((item) => ({
+    ...item,
+    label: item.id === "home" ? t("nav.projectHome")
+      : item.id === "dashboard" ? t("nav.dashboards")
+        : item.id === "analysis" ? t("nav.analysis")
+          : item.id === "agent" ? t("nav.agent")
+            : item.id === "ontology" ? t("nav.ontology")
+              : item.id === "datasets" ? t("nav.datasets")
+                : item.id === "governance" ? t("nav.governance")
+                  : t("nav.mlValidator"),
+  }));
 
   function routeFor(route: FoundryRoute) {
     if (route === "home") return projectHomePath(projectId);
@@ -155,7 +165,7 @@ export function FoundryAppShell({ projectId, workspaceId, activeRoute, title, ch
   return (
     <div className={`od-product-shell fd-route-shell route-${activeRoute} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <FoundryProductNavigation
-        items={NAV_ITEMS.map((item) => ({
+        items={localizedNavItems.map((item) => ({
           ...item,
           enabled: item.enabled
             && (!(item.id === "agent" || item.id === "ontology" || item.id === "governance" || item.id === "modeling") || Boolean(resolvedWorkspaceId))
@@ -187,8 +197,8 @@ export function FoundryAppShell({ projectId, workspaceId, activeRoute, title, ch
           <button type="button" className="od-global-search" onClick={() => setCommandOpen(true)}><Search size={14} /><span>{t("nav.search")}</span><kbd>⌘K</kbd></button>
           <div className="od-topbar-actions">
             <DisplayMenu />
-            <button type="button" title="테마 전환" onClick={() => setTheme((current) => current === "light" ? "dark" : "light")}>{theme === "light" ? <Moon size={15} /> : <Sun size={15} />}</button>
-            <button type="button" title="알림"><Bell size={15} /></button>
+            <button type="button" title={t("dashboard.theme")} onClick={() => setTheme((current) => current === "light" ? "dark" : "light")}>{theme === "light" ? <Moon size={15} /> : <Sun size={15} />}</button>
+            <button type="button" title={t("dashboard.notifications")}><Bell size={15} /></button>
             <div className="od-user-identity"><span>{user.display_name.slice(0, 1).toUpperCase()}</span><div><strong>{user.display_name}</strong><small>{roleLabel}</small></div></div>
           </div>
         </header>
@@ -201,7 +211,7 @@ export function FoundryAppShell({ projectId, workspaceId, activeRoute, title, ch
             <header><div><span className="section-label">COMMAND PALETTE</span><strong>{t("dashboard.commandTitle")}</strong></div><kbd>ESC</kbd></header>
             <div className="command-search"><Search size={15} /><input data-dialog-initial-focus placeholder={t("dashboard.command")} /></div>
             <div className="command-group"><span>Project resources</span>
-              {NAV_ITEMS.filter((item) => item.enabled).map((item) => {
+              {localizedNavItems.filter((item) => item.enabled).map((item) => {
                 const Icon = item.icon;
                 return <button type="button" key={item.id} onClick={() => openRoute(item.id)}><b><Icon size={14} /></b><div><strong>{item.label}</strong><small>{routeFor(item.id)}</small></div></button>;
               })}
