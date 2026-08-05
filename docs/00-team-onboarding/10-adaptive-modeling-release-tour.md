@@ -28,7 +28,7 @@
 최신 통합 Story의 검증 태그:
 
 ```text
-team-share-adaptive-complete-integrity-20260805
+team-share-adaptive-v3.1-postgresql-20260805
 ```
 
 ## 프로젝트 한 문장
@@ -249,40 +249,34 @@ Dataset schema
 → Personal preference
 ```
 
-### 기본 Project 데이터와 AI4I 2020 V3.1 Runtime은 별도다
+### 기본 Project Dashboard는 PostgreSQL V3.1을 사용한다
 
-`https://dashboard.oosu.dev/app/projects/manufacturing-demo-project`에 처음 접속했을 때 기본 Dashboard와 Ontology가 사용하는 데이터는 다음 local demonstration dataset이다.
+`https://dashboard.oosu.dev/app/projects/manufacturing-demo-project`의 기본 source는 다음
+release-ready Dataset Version이다.
 
-```text
-Manufacturing Gold Fixture Demo — Equipment Registry + Risk Events
-```
+| 계약 | 값 |
+|---|---|
+| Dataset | UCI AI4I 2020 Manufacturing Predictive Maintenance — Physics & Maintenance Canonical V3.1 |
+| Dataset Version ID | `dsv-9fc144c7-d3f8-5b37-8465-04248165b7ce` |
+| Source / model | `canonical-ai4i-physics-v3.1` / `independent-logreg-v3.1` |
+| Result contract | `result-artifact-v1.0` / `binary_failure_within_horizon` |
+| Bundle checksum | `12734b1eec67ae5ccf322221967d5628ba5cf1ecb0401e6daef5c3dd7a855682` |
+| Canonical contents | 672,553 rows · 100 assets · 790 maintenance events |
+| Runtime contents | 100 Result Artifacts · 300 factors · 68,208 prediction timeline rows |
+| Projection | relational ready · graph pending |
 
-실제 Dataset Catalog 구성:
+서버가 Result Artifact를 typed Dashboard query contract로 변환하므로 KPI, risk trend,
+priority/event grid, factor contribution, model details, maintenance history, recommended action,
+ontology relationship와 replay가 같은 Dataset Version/provenance를 사용한다. 자동 선택 이유는
+`canonical_v3_1_release_ready`로 표시된다.
 
-| Dataset | Source version | Rows | Source type |
-|---|---|---:|---|
-| Manufacturing Equipment Registry | `gold-fixtures-2026-08-01` | 7 | `local_fixture` |
-| Manufacturing Risk Events | `gold-fixtures-2026-08-01` | 8 | `local_fixture` |
+Gold Fixture Dataset 2종(7 + 8 rows)은 삭제하지 않았다. 같은 PostgreSQL Catalog에
+legacy comparison, offline fallback, fixture regression test, 기존 `/team-share` 기록용으로
+남아 있지만 기본 source는 아니다. 자동 선택은 현재 project/workspace 밖의 Dataset을
+보지 않으며, 사용자 명시 선택은 user/project/workspace 범위로 저장된다.
 
-따라서 현재 기본 Project 화면은 **AI4I 2020 V3.1 데이터를 기본 source로 사용하는 화면이 아니다.** 총 15개 versioned Gold Fixture row로 Dashboard·Ontology·role workflow를 시연한다.
-
-아래 데이터는 별도의 PostgreSQL Result Artifact Runtime이다.
-
-```text
-UCI AI4I 2020 Manufacturing Predictive Maintenance
-— Physics & Maintenance Canonical V3.1
-```
-
-이 Runtime은 다음을 제공한다.
-
-- immutable Dataset Version
-- Result Artifact
-- prediction timeline
-- Historical replay
-- release evidence
-- graph projection readiness
-
-현재 Cloudflare 개발 서버에는 `ONTOLOGY_DASHBOARD_DATABASE_URL`이 설정되지 않아 이 PostgreSQL Runtime이 활성화되지 않는다. UI는 기본 Gold Fixture Dashboard와 이를 혼동하지 않으며, Runtime capability가 없을 때 500 오류 화면 대신 unavailable 상태로 처리한다.
+Neo4j credential 불일치와 Project 3 미실행 때문에 graph projection만 `pending`이다.
+relational Dashboard·Result Artifact·replay는 이 optional capability와 분리되어 정상 동작한다.
 
 ---
 
@@ -411,7 +405,11 @@ Dataset Version
 - slice metrics
 - validation과 held-out test 분리
 
-Controlled release evidence 대표 값:
+현재 공유 서버에는 Adaptive Modeling upstream artifact가 아직 없어 ML Validator는
+`blocked · 5 upstream prerequisites missing`을 표시한다. Experiment 0, Model Version 0,
+release request 0이며 준비되지 않은 성능을 현재 상태처럼 표시하지 않는다.
+
+아래 값은 별도 controlled E2E 회귀 fixture의 대표 값이며 현재 공유 서버 실행 결과가 아니다.
 
 | Candidate | Validation AP | ROC-AUC | Brier | Held-out AP |
 |---|---:|---:|---:|---:|
@@ -514,13 +512,13 @@ foreground contrast ratio >= 4.5:1
 | Analysis·Ontology Workbench | 완료 |
 | UCI AI4I 2020 Physics & Maintenance Canonical V3.1 package·Result Artifact 구현 | 완료 |
 | Dataset Version selector·rollback | 완료 |
-| Cloudflare 개발 서버의 PostgreSQL V3.1 runtime 연결 | blocked — database URL 미설정 |
+| Cloudflare 개발 서버의 PostgreSQL V3.1 runtime 연결 | 완료 — PostgreSQL/RLS/Result Artifact/replay |
 | Dataset Intake·Manifest approval | 완료 |
 | Ontology Mapping approval | 완료 |
 | Feature Recipe·Feature Dataset | 완료 |
 | Experiment worker·recovery | 완료 |
 | Model Registry·activation·rollback | 완료 |
-| ML Validator desktop·tablet·mobile | 완료 |
+| ML Validator desktop·tablet·mobile | 완료 — 현재 upstream 5개 미비를 blocked로 표시 |
 | Dashboard runtime·server-filtered scope·Planner dark mode | 완료 |
 | Local release verifier | 완료 |
 | Strict production infrastructure | blocked |
@@ -540,8 +538,7 @@ foreground contrast ratio >= 4.5:1
 
 ### 제품·운영 추가 작업
 
-- Live demo Dataset·Mapping·Recipe·Experiment seed
-- Cloudflare 개발 서버에 AI4I 2020 V3.1 PostgreSQL Runtime 연결
+- Adaptive Modeling live Dataset·Mapping·Recipe·Experiment seed
 - Source upload·Mapping·Recipe 통합 Modeling Studio
 - daemon worker와 heartbeat registry
 - S3 또는 GCS artifact store
@@ -559,7 +556,8 @@ foreground contrast ratio >= 4.5:1
 | 독립 HTML | `https://dashboard.oosu.dev/team-share-adaptive.html` |
 | 2026-08-04 이전 Story 기록 | `https://dashboard.oosu.dev/team-share` |
 | 실제 ML Validator | `https://dashboard.oosu.dev/app/projects/manufacturing-demo-project/workspaces/manufacturing-demo/modeling` |
-| API 문서 | 로컬 `http://127.0.0.1:8100/docs` |
+| Project Dashboard | `https://dashboard.oosu.dev/app/projects/manufacturing-demo-project` |
+| API 문서 | `https://dashboard.oosu.dev/docs` · 로컬 `http://127.0.0.1:8100/docs` |
 
 ## 캡처 재생성
 

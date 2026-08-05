@@ -77,10 +77,18 @@ Dataset schema, 시간·수치·범주·관계·문서 신호와 projection 상�
 
 ```text
 Branch  feature/predictive-maintenance-adaptive-modeling
-Tag     team-share-adaptive-complete-integrity-20260805
+Tag     team-share-adaptive-v3.1-postgresql-20260805
 Web     http://127.0.0.1:3100/
 API     http://127.0.0.1:8100/
 ```
+
+기본 Project Dashboard source는 PostgreSQL의
+**UCI AI4I 2020 Manufacturing Predictive Maintenance — Physics & Maintenance Canonical V3.1**이다.
+`dsv-9fc144c7-d3f8-5b37-8465-04248165b7ce`,
+`canonical-ai4i-physics-v3.1`, `independent-logreg-v3.1`을 화면과 API에서 함께 확인한다.
+현재 relational projection과 100 Result Artifacts·68,208 prediction timeline rows는
+ready이며, Neo4j credential/Project 3 미준비로 graph만 pending이다. Gold Fixture는
+legacy/offline/test/기존 Story 용도로 보존된다.
 
 ## 공유할 때 권장 표현
 

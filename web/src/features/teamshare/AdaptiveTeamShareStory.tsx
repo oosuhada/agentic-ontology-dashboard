@@ -32,10 +32,11 @@ import analysisGraph from "../../../../docs/00-team-onboarding/assets/screenshot
 import ontologySelection from "../../../../docs/00-team-onboarding/assets/screenshots/15-ontology-objectset-selection.png";
 
 const CAPTURE_ROOT = "/team-share-adaptive-assets";
-const VERIFIED_TAG = "team-share-adaptive-complete-integrity-20260805";
+const VERIFIED_TAG = "team-share-adaptive-v3.1-postgresql-20260805";
 const APP_ROUTE = "/app/projects/manufacturing-demo-project/workspaces/manufacturing-demo/modeling";
 const GOLD_FIXTURE_DATASET_NAME = "Manufacturing Gold Fixture Demo — Equipment Registry + Risk Events";
 const AI4I_V3_1_DATASET_NAME = "UCI AI4I 2020 Manufacturing Predictive Maintenance — Physics & Maintenance Canonical V3.1";
+const AI4I_V3_1_DATASET_VERSION_ID = "dsv-9fc144c7-d3f8-5b37-8465-04248165b7ce";
 
 interface Capture {
   id: string;
@@ -163,7 +164,7 @@ const upgradeCaptures: Capture[] = [
     description: `${AI4I_V3_1_DATASET_NAME}의 provenance, release evidence, 최신 위험 자산과 PostgreSQL 기반 replay를 한 화면에서 확인합니다.`,
     image: `${CAPTURE_ROOT}/01-v3-runtime-dashboard.png`,
     alt: "UCI AI4I 2020 Manufacturing Predictive Maintenance Canonical V3.1 운영 Dashboard",
-    status: "65/65 canonical release checks",
+    status: "published · 100 Result Artifacts · relational ready",
   },
   {
     id: "replay",
@@ -172,31 +173,31 @@ const upgradeCaptures: Capture[] = [
     description: "Replay는 새 값을 생성하거나 모델을 재학습하지 않습니다. 저장된 관측과 prediction timeline만 시간 순서대로 재현합니다.",
     image: `${CAPTURE_ROOT}/02-v3-result-replay.png`,
     alt: "Predictive Maintenance Result Artifact replay controls",
-    status: "truth hidden · source immutable",
+    status: "68,208 timeline rows · truth hidden · source immutable",
   },
   {
     id: "validator",
     eyebrow: "ML VALIDATOR WORKBENCH",
-    title: "모델 비교와 threshold 선택 근거를 실제 artifact로 검토합니다",
-    description: "Dummy baseline, Logistic Regression, optional model capability, PR/ROC, calibration, slice metrics와 lineage를 검증합니다.",
+    title: "현재 upstream artifact가 없어 Experiment 실행은 blocked입니다",
+    description: "Dataset Intake Profile, Manifest Draft, Mapping Set, Feature Recipe Set과 Feature Dataset Version이 모두 준비되어야 leaderboard와 threshold 검증을 시작합니다.",
     image: `${CAPTURE_ROOT}/03-ml-validator-desktop.png`,
     alt: "ML Validator Workbench desktop",
-    status: "validation-only selection",
+    status: "blocked · 5 upstream prerequisites missing",
   },
   {
     id: "governance",
     eyebrow: "MODEL RELEASE GOVERNANCE",
-    title: "검증자와 승인자의 책임을 분리합니다",
-    description: "ML Validator는 release를 요청하고 Tenant Admin은 승인·활성화·rollback을 수행합니다. 한 사용자가 스스로 승인할 수 없습니다.",
+    title: "검증자와 승인자의 책임을 분리하고 빈 Registry도 명확히 표시합니다",
+    description: "현재 release request는 없습니다. Model이 생성되면 ML Validator는 요청만 하고 Tenant Admin은 승인·활성화·rollback을 수행하며 자기 승인은 차단됩니다.",
     image: `${CAPTURE_ROOT}/04-model-release-governance.png`,
     alt: "Model Registry release governance",
-    status: "request → approve → activate → rollback",
+    status: "no model versions yet · self-approval blocked",
   },
   {
     id: "mobile",
     eyebrow: "RESPONSIVE VALIDATION",
-    title: "모바일에서도 lineage와 release 상태를 잃지 않습니다",
-    description: "390px viewport에서도 가로 overflow 없이 실험, 모델, threshold와 governance 상태가 단일 column으로 정리됩니다.",
+    title: "모바일에서도 blocked 이유와 필요한 upstream 단계를 잃지 않습니다",
+    description: "390px viewport에서도 가로 overflow 없이 missing prerequisite, worker 상태와 빈 evaluation artifact가 단일 column으로 정리됩니다.",
     image: `${CAPTURE_ROOT}/05-ml-validator-mobile.png`,
     alt: "ML Validator Workbench mobile",
     status: "desktop · tablet · mobile",
@@ -224,6 +225,7 @@ const completed = [
   "Model Registry·release approval·atomic activation·rollback",
   "Prediction Result와 non-causal Explanation Artifact",
   "PostgreSQL JSONB·RLS·tenant/project/workspace isolation",
+  "V3.1을 manufacturing-demo 기본 Dashboard source로 자동 활성화",
   "Desktop·tablet·mobile visual regression",
 ];
 
@@ -232,14 +234,14 @@ const needsReview = [
   "Feature Recipe의 설비 물리 의미와 현장 유효성",
   "Synthetic controlled E2E metric의 발표 표현 범위",
   "Cloudflare 개발 터널과 production reverse proxy 경계",
+  "Neo4j credential과 Project 3 service 복구 후 graph projection 완료",
 ];
 
 const nextWork = [
-  "Live demo Dataset·Mapping·Recipe·Experiment seed",
-  "통합 Modeling authoring UI",
   "Daemon worker·heartbeat·queue consumer",
   "S3/GCS artifact store와 backup/restore exercise",
   "Calibration·confidence·drift·outcome artifact",
+  "Production OIDC·Redis·OTLP와 secret manager 연결",
 ];
 
 export function AdaptiveTeamShareStory() {
@@ -289,7 +291,7 @@ export function AdaptiveTeamShareStory() {
           <span><strong>8</strong><small>업무 역할</small></span>
           <span><strong>3</strong><small>Dataset 적응형 사례</small></span>
           <span><strong>17</strong><small>통합 기능 캡처</small></span>
-          <span><strong>65/65</strong><small>AI4I 2020 Canonical V3.1 verifier</small></span>
+          <span><strong>672,553</strong><small>V3.1 canonical rows</small></span>
         </div>
       </section>
 
@@ -313,14 +315,14 @@ export function AdaptiveTeamShareStory() {
         </div>
         <div className="adaptive-share-data-boundary" aria-label="Default project and AI4I V3.1 data boundary">
           <article>
-            <span>DEFAULT PROJECT DATA</span>
-            <strong>{GOLD_FIXTURE_DATASET_NAME}</strong>
-            <p>`/app/projects/manufacturing-demo-project`의 기본 Dashboard와 Ontology는 local fixture 2개, 총 15개 versioned rows를 사용합니다.</p>
+            <span>DEFAULT POSTGRESQL PROJECT DATA</span>
+            <strong>{AI4I_V3_1_DATASET_NAME}</strong>
+            <p>`/app/projects/manufacturing-demo-project`는 {AI4I_V3_1_DATASET_VERSION_ID}를 기본으로 사용합니다. canonical-ai4i-physics-v3.1 · independent-logreg-v3.1 · 100 Result Artifacts · 68,208 timeline rows · relational ready입니다.</p>
           </article>
           <article>
-            <span>POSTGRESQL RESULT ARTIFACT RUNTIME</span>
-            <strong>{AI4I_V3_1_DATASET_NAME}</strong>
-            <p>V3.1 Result Artifact·prediction timeline·replay는 PostgreSQL이 연결된 경우에만 별도 runtime panel로 표시됩니다.</p>
+            <span>LEGACY · OFFLINE FALLBACK</span>
+            <strong>{GOLD_FIXTURE_DATASET_NAME}</strong>
+            <p>2개 local fixture Dataset과 15개 rows는 삭제하지 않고 legacy comparison, offline fallback, fixture regression test와 기존 `/team-share` 기록에만 유지합니다.</p>
           </article>
         </div>
         <div className="adaptive-share-chain"><span>Dataset schema</span><ArrowRight /><span>Semantic signals</span><ArrowRight /><span>Board selection</span><ArrowRight /><span>Role layout</span><ArrowRight /><span>Personal preference</span></div>
@@ -341,15 +343,15 @@ export function AdaptiveTeamShareStory() {
       </section>
 
       <section className="adaptive-share-section" id="modeling">
-        <header><span>05 · GOVERNED ADAPTIVE MODELING</span><h2>모델 성능보다 먼저 lineage와 승인 가능성을 검증합니다</h2><p>실험 결과가 좋아도 Dataset·Mapping·Recipe·Feature Dataset·artifact checksum이 맞지 않으면 release를 요청할 수 없습니다. 선택자와 승인자도 분리합니다.</p></header>
+        <header><span>05 · GOVERNED ADAPTIVE MODELING</span><h2>현재 ML Validator는 upstream artifact 부재를 blocked로 정확히 표시합니다</h2><p>Dataset·Mapping·Recipe·Feature Dataset이 없으므로 아직 Experiment, Model Version, release request가 없습니다. 준비되지 않은 모델 성능을 만들거나 성공 상태로 꾸미지 않으며 선택자와 승인자 분리 계약은 유지합니다.</p></header>
         <div className="adaptive-share-feature-grid three">
           {upgradeCaptures.slice(2).map((capture) => <CaptureCard key={capture.id} capture={capture} onOpen={setSelected} />)}
         </div>
         <div className="adaptive-share-evidence">
-          <article><span>DATA</span><strong>360 → 360</strong><p>Source rows와 accepted rows. quarantine 0, equipment 3, derived features 4.</p></article>
-          <article><span>MODEL SELECTION</span><strong>AP 0.5882</strong><p>Logistic Regression validation AP. Dummy baseline AP 0.2917.</p></article>
-          <article><span>HELD-OUT TEST</span><strong>AP 0.5003</strong><p>선택된 후보 한 건에만 test를 사용했으며 selection에는 사용하지 않았습니다.</p></article>
-          <article><span>THRESHOLD</span><strong>0.33</strong><p>Validation recall 0.9524. FN cost 10, FP cost 1 정책 근거.</p></article>
+          <article><span>UPSTREAM READINESS</span><strong>0 / 5</strong><p>Intake, Manifest, Mapping, Recipe, Feature Dataset artifact가 아직 없습니다.</p></article>
+          <article><span>EXPERIMENTS</span><strong>0</strong><p>Worker는 idle이며 실행·queue 중인 Experiment가 없습니다.</p></article>
+          <article><span>MODEL VERSIONS</span><strong>0</strong><p>검증되지 않은 모델이나 metric을 생성하지 않습니다.</p></article>
+          <article><span>RELEASE REQUESTS</span><strong>0</strong><p>Model 생성 후에도 validator 자기 승인은 허용되지 않습니다.</p></article>
         </div>
         <div className="adaptive-share-chain"><span>Intake</span><ArrowRight /><span>Manifest</span><ArrowRight /><span>Mapping</span><ArrowRight /><span>Feature</span><ArrowRight /><span>Experiment</span><ArrowRight /><span>Registry</span><ArrowRight /><span>Prediction</span><ArrowRight /><span>Explanation</span></div>
       </section>
@@ -361,7 +363,7 @@ export function AdaptiveTeamShareStory() {
           <StatusColumn title="검토 필요" tone="review" items={needsReview} />
           <StatusColumn title="추가 작업" tone="next" items={nextWork} />
         </div>
-        <div className="adaptive-share-production"><Network size={20} /><div><strong>Strict production release는 외부 인프라로 blocked</strong><p>Production PostgreSQL, Redis, Neo4j, Project 3, OIDC, object storage, OTLP와 optional LightGBM·XGBoost·SHAP 구성이 필요합니다.</p></div></div>
+        <div className="adaptive-share-production"><Network size={20} /><div><strong>Local PostgreSQL runtime은 ready · graph projection은 pending</strong><p>Dashboard, Result Artifact, replay와 RLS scope는 PostgreSQL에서 동작합니다. Neo4j credential 불일치와 Project 3 미실행으로 graph만 pending이며 relational 화면을 실패시키지 않습니다. Strict production에는 Redis, OIDC, object storage, OTLP와 운영 secret 관리가 추가로 필요합니다.</p></div></div>
       </section>
 
       <footer className="adaptive-share-footer"><div><Settings2 size={16} /><strong>Ontology Dashboard · Complete Project Story</strong></div><span>{VERIFIED_TAG}</span><a href="/team-share">2026-08-04 기록 보기</a></footer>

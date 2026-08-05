@@ -10,9 +10,9 @@
 > 독립 HTML 공유본: `http://127.0.0.1:3100/team-share-adaptive.html`
 > 2026-08-04 이전 Story 기록: `http://127.0.0.1:3100/team-share`
 >
-> 기본 `manufacturing-demo-project` 데이터: **Manufacturing Gold Fixture Demo — Equipment Registry + Risk Events**
+> 기본 `manufacturing-demo-project / manufacturing-demo` 데이터: **UCI AI4I 2020 Manufacturing Predictive Maintenance — Physics & Maintenance Canonical V3.1**
 >
-> 별도 PostgreSQL Runtime 데이터: **UCI AI4I 2020 Manufacturing Predictive Maintenance — Physics & Maintenance Canonical V3.1**
+> Gold Fixture 2종·15행은 삭제하지 않고 legacy comparison, offline fallback, fixture regression, 기존 `/team-share` 기록용으로만 유지한다.
 >
 > 전체 문서 지도: [`docs/README.md`](./docs/README.md)
 
@@ -109,6 +109,47 @@ bash scripts/run_local.sh
 
 DB에는 Argon2id hash만 저장한다. 개발 DB에 계정이 없다면 `PYTHONPATH=api:ml/src python scripts/seed_demo_accounts.py`를 실행한다.
 
+### Canonical V3.1 기본 Dashboard
+
+현재 로컬·Cloudflare 개발 서버는 PostgreSQL을 사용하며 다음 release-ready Dataset Version을
+`manufacturing-demo-project / manufacturing-demo`의 자동 기본 source로 선택한다.
+
+| 계약 | 값 |
+|---|---|
+| Dataset | UCI AI4I 2020 Manufacturing Predictive Maintenance — Physics & Maintenance Canonical V3.1 |
+| Dataset Version ID | `dsv-9fc144c7-d3f8-5b37-8465-04248165b7ce` |
+| Source version | `canonical-ai4i-physics-v3.1` |
+| Model version | `independent-logreg-v3.1` |
+| Result schema / task | `result-artifact-v1.0` / `binary_failure_within_horizon` |
+| Bundle checksum | `12734b1eec67ae5ccf322221967d5628ba5cf1ecb0401e6daef5c3dd7a855682` |
+| Counts | 672,553 canonical rows · 100 assets · 790 maintenance events · 100 Result Artifacts · 68,208 timeline rows |
+| Projection | relational ready · graph pending |
+
+비밀번호를 Git에 넣지 말고 ignored `.env`에 loopback PostgreSQL URL을 설정한다.
+프로젝트의 공식 컨테이너 경로는 `cd infra && docker compose --profile polyglot up -d postgres`다.
+이미 유효한 Homebrew PostgreSQL/volume이 있으면 그대로 재사용한다.
+
+```bash
+export PYTHONPATH="$PWD/api:$PWD/ml/src"
+.venv/bin/python -m ontology_dashboard.migrations
+.venv/bin/python scripts/bootstrap_predictive_maintenance_v3_1_demo.py \
+  --package-root "/absolute/path/to/predictive_maintenance_canonical_v3.1" \
+  --organization-id org-ontology-demo \
+  --project-id manufacturing-demo-project \
+  --workspace-id manufacturing-demo \
+  --database-url "$ONTOLOGY_DASHBOARD_DATABASE_URL" \
+  --skip-graph
+```
+
+재검증은 같은 명령에 `--verify-only`를 추가한다. 완전 재물질화가 필요할 때만
+`--force-rematerialize`를 사용한다. release-ready V3.1이 없으면 같은 scope의 최신
+published predictive-maintenance Dataset Version, 그마저 없으면 Gold Fixture 순으로
+fallback한다. 사용자 명시 선택은 user/project/workspace 범위로 저장되어 새로고침과
+재로그인 뒤에도 유지된다.
+
+현재 로컬 Neo4j는 credential 불일치, Project 3은 미실행 상태이므로 graph projection은
+`pending`이다. 이 상태는 relational Dashboard·Result Artifact·replay를 실패시키지 않는다.
+
 ## Vertex AI 연결
 
 Vertex AI는 OpenAI 호환 API 키가 아니라 Google Cloud 프로젝트의 인증과 결제로 연결된다.
@@ -142,7 +183,7 @@ Google Cloud Console에서 해당 프로젝트에 결제 계정이 연결되어 
 
 ```bash
 cd infra
-docker compose up --build
+docker compose --profile polyglot up --build
 ```
 
 ## 검증

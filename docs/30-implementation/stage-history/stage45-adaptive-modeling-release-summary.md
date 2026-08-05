@@ -139,6 +139,29 @@ source SHA-256
 이 항목들은 현재 shell에 설정되지 않아 strict release에서 blocked다. 로컬 disposable
 PostgreSQL 검증 통과를 production credential readiness로 오해하지 않는다.
 
+## 2026-08-05 V3.1 demo runtime follow-up
+
+공유 개발 서버는 이제 disposable SQLite가 아니라 기존 로컬 PostgreSQL 18을 사용한다.
+18개 migration과 RLS를 적용하고 Canonical V3.1 package를 공식
+validation → bundle ingestion → relational/Result Artifact materialization → ontology
+projection 흐름으로 적재했다.
+
+| 항목 | 실제 값 |
+|---|---|
+| Dataset Version | `dsv-9fc144c7-d3f8-5b37-8465-04248165b7ce` |
+| Source / model | `canonical-ai4i-physics-v3.1` / `independent-logreg-v3.1` |
+| Checksum | `12734b1eec67ae5ccf322221967d5628ba5cf1ecb0401e6daef5c3dd7a855682` |
+| Data | 672,553 rows · 100 assets · 790 maintenance events |
+| Result runtime | 100 artifacts · 300 factors · 68,208 timeline rows |
+| Ontology | 1,984 objects · 2,160 links |
+| Status | relational ready · graph pending |
+
+기본 Dashboard는 release-ready V3.1을 자동 선택한다. Gold Fixture는 legacy/offline/test
+fallback으로 보존한다. graph는 로컬 Neo4j credential 불일치와 Project 3 미실행 때문에
+pending이며 relational/runtime과 분리된다. Adaptive Modeling의 live upstream artifact는
+아직 없으므로 ML Validator는 5개 prerequisite missing, experiment/model/release 0을
+정확히 표시한다. 위 Controlled E2E 수치는 회귀 evidence이며 live UI 상태가 아니다.
+
 ## 실제 남은 작업
 
 1. ML Validator 안에서 source/mapping/recipe를 직접 authoring하는 통합 UI

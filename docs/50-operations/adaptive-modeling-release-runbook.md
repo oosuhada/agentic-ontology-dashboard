@@ -43,6 +43,60 @@ LightGBM, XGBoost, SHAP은 optional capability다. 설치되지 않은 알고리
 `blocked`로 나타나고 해당 Model Version의 promotion/activation이 거부된다. Dummy,
 Logistic Regression, Random Forest baseline은 optional dependency 없이 동작한다.
 
+### 2.1 Local PostgreSQL과 Canonical V3.1 bootstrap
+
+기존 PostgreSQL 설치·container·volume이 유효하면 삭제하지 않는다. 새 환경은 공식
+Compose profile을 사용할 수 있다.
+
+```bash
+cd infra
+docker compose --profile polyglot up -d postgres
+```
+
+ignored `.env`에 loopback 전용 URL과 artifact root를 설정한다. 실제 password는 문서나
+Git tracked 파일에 기록하지 않는다.
+
+```dotenv
+ONTOLOGY_DASHBOARD_DATABASE_URL=postgresql://<user>:<password>@127.0.0.1:5432/ontology_dashboard
+ONTOLOGY_DASHBOARD_MODELING_ARTIFACT_ROOT=/absolute/durable/path
+```
+
+migration과 idempotent demo 적재:
+
+```bash
+export PYTHONPATH="$PWD/api:$PWD/ml/src"
+.venv/bin/python -m ontology_dashboard.migrations
+.venv/bin/python scripts/bootstrap_predictive_maintenance_v3_1_demo.py \
+  --package-root "/absolute/path/to/predictive_maintenance_canonical_v3.1" \
+  --organization-id org-ontology-demo \
+  --project-id manufacturing-demo-project \
+  --workspace-id manufacturing-demo \
+  --database-url "$ONTOLOGY_DASHBOARD_DATABASE_URL" \
+  --skip-graph
+```
+
+검증만 다시 수행할 때는 `--verify-only`, materialization을 명시적으로 재생성할 때만
+`--force-rematerialize`를 추가한다. 정상 출력은 Dataset
+`dsv-9fc144c7-d3f8-5b37-8465-04248165b7ce`, source
+`canonical-ai4i-physics-v3.1`, model `independent-logreg-v3.1`, 100 Result Artifacts,
+68,208 timeline rows, relational `ready`를 포함한다.
+
+기본 선택 정책은 (1) 현재 project/workspace의 published·release-ready V3.1,
+(2) 같은 scope의 최신 published predictive-maintenance version, (3) Gold Fixture
+fallback 순이다. 사용자의 명시 선택은 별도 RLS table에 유지된다. Neo4j/Project 3이
+없거나 인증에 실패해도 graph만 `pending/blocked`로 표시하고 relational API를 500으로
+실패시키지 않는다.
+
+production build 후 표준 pid/log로 재시작한다.
+
+```bash
+npm --prefix web run build
+bash scripts/restart_local_services.sh
+```
+
+PID는 `/tmp/ontology-dashboard-{api,web}.pid`, 로그는
+`/tmp/ontology-dashboard-{api,web}.log`에 기록된다.
+
 ## 3. Source onboarding
 
 ### 3.1 Dataset Intake Profile
@@ -263,3 +317,7 @@ restore 순서는 Dataset metadata → modeling metadata → artifact root → w
 6. operational drift/outcome artifact가 연결되지 않았으며 offline metric을 대신 표시하지
    않는다.
 7. synthetic controlled E2E는 production predictive quality를 보증하지 않는다.
+8. 현재 공유 개발 서버의 graph projection은 Neo4j credential 불일치와 Project 3 미실행으로
+   pending이다. relational V3.1 runtime은 ready다.
+9. 현재 ML Validator에는 live intake/mapping/recipe/feature Dataset이 없어 5개 prerequisite
+   missing으로 blocked다. Controlled E2E metric을 live 상태로 해석하지 않는다.

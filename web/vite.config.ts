@@ -1,13 +1,38 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
 const githubPagesBase = process.env.GITHUB_PAGES === "1"
   ? "/agentic-ontology-dashboard/"
   : "/";
 
+function interactiveTeamShareRoute(): Plugin {
+  const rewrite = (
+    request: { url?: string },
+    _response: unknown,
+    next: () => void,
+  ) => {
+    const url = request.url ?? "";
+    const suffixIndex = url.search(/[?#]/);
+    const pathname = suffixIndex === -1 ? url : url.slice(0, suffixIndex);
+    if (pathname === "/team-share-adaptive") {
+      request.url = `/index.html${suffixIndex === -1 ? "" : url.slice(suffixIndex)}`;
+    }
+    next();
+  };
+  return {
+    name: "interactive-team-share-route",
+    configureServer(server) {
+      server.middlewares.use(rewrite);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(rewrite);
+    },
+  };
+}
+
 export default defineConfig({
   base: githubPagesBase,
-  plugins: [react()],
+  plugins: [interactiveTeamShareRoute(), react()],
   // ManufacturingApp is route-lazy, so Vite's initial source scan does not
   // always discover its heavy UI dependencies before the first browser load.
   // Pre-bundle them during cold starts to avoid transient 504 Outdated
