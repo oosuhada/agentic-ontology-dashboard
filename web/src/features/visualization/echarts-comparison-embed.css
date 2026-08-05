@@ -22,3 +22,28 @@
 .echarts-comparison-canvas .echart-canvas { min-height: 260px; }
 .echarts-comparison-embed footer { min-height: 32px; padding: 6px 11px; border-top: 1px solid #eceDEF; color: #697586; background: #f7f8f9; font-size: 9px; }
 
+@media (max-width: 520px) {
+  .echarts-comparison-embed { min-height: 360px; border-radius: 8px; }
+  .echarts-comparison-embed header {
+    min-height: 68px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 7px;
+    padding: 10px 11px;
+  }
+  .echarts-comparison-embed header div { flex: 1 1 180px; }
+  .echarts-comparison-embed header strong {
+    overflow: visible;
+    font-size: 12px;
+    text-overflow: clip;
+    white-space: normal;
+  }
+  .echarts-comparison-embed header > span {
+    align-self: flex-start;
+    font-size: 8px;
+  }
+  .echarts-comparison-canvas { min-height: 252px; padding: 5px 2px; }
+  .echarts-comparison-canvas .echart-canvas { min-height: 252px; }
+  .echarts-comparison-embed footer { padding: 6px 9px; font-size: 8px; }
+}
+

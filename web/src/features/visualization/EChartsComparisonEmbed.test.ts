@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseComparisonPayload } from "./EChartsComparisonEmbed";
+import { buildComparisonChartOption, parseComparisonPayload } from "./EChartsComparisonEmbed";
 
 describe("parseComparisonPayload", () => {
   it("accepts the shared comparison payload", () => {
@@ -18,5 +18,16 @@ describe("parseComparisonPayload", () => {
 
   it("falls back when the payload is invalid", () => {
     expect(parseComparisonPayload("?payload=not-json").rows.length).toBeGreaterThan(0);
+  });
+
+  it("removes redundant numeric ticks from compact horizontal bars", () => {
+    const option = buildComparisonChartOption({
+      kind: "bar",
+      title: "Node count",
+      rows: [{ category: "QualityMeasurement", value: 7570 }],
+    }, true);
+
+    expect((option.xAxis as { axisLabel?: { show?: boolean } }).axisLabel?.show).toBe(false);
+    expect((option.yAxis as { axisLabel?: { width?: number } }).axisLabel?.width).toBe(112);
   });
 });
