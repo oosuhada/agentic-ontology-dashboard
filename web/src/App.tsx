@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import {
   matchAgentPath,
   matchAnalysisPath,
+  matchBlueprintProjectPath,
   matchDatasetCatalogPath,
   matchGovernancePath,
   matchModelingPath,
@@ -26,6 +27,9 @@ const AdminApp = lazy(() =>
 );
 const ManufacturingApp = lazy(() =>
   import("./features/manufacturing/ManufacturingApp").then((module) => ({ default: module.ManufacturingApp })),
+);
+const BlueprintManufacturingApp = lazy(() =>
+  import("./features/blueprint/BlueprintManufacturingApp").then((module) => ({ default: module.BlueprintManufacturingApp })),
 );
 const ProjectHomePage = lazy(() =>
   import("./features/projects/ProjectHomePage").then((module) => ({ default: module.ProjectHomePage })),
@@ -188,6 +192,17 @@ function AppRouter() {
 
   const analysisId = matchAnalysisPath(pathname);
   if (analysisId) return <ManufacturingApp initialWorkspaceView="analysis" analysisId={analysisId} />;
+
+  const blueprintProjectRoute = matchBlueprintProjectPath(pathname);
+  if (blueprintProjectRoute) {
+    return (
+      <ProjectRouteBoundary projectId={blueprintProjectRoute.projectId}>
+        <Suspense fallback={<RouteLoading operation="Loading Blueprint Workbench" detail="Resolving Project, Ontology, Analysis, and operational workflow surfaces." />}>
+          <BlueprintManufacturingApp projectId={blueprintProjectRoute.projectId} />
+        </Suspense>
+      </ProjectRouteBoundary>
+    );
+  }
 
   const projectHomeRoute = matchProjectHomePath(pathname);
   if (projectHomeRoute) {

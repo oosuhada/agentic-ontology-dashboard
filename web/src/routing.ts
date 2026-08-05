@@ -72,6 +72,15 @@ export function projectDashboardPath(projectId: string) {
   return `/app/projects/${encodeURIComponent(projectId)}`;
 }
 
+export function blueprintProjectPath(projectId: string) {
+  return `/app/projects/${encodeURIComponent(projectId)}/blueprint`;
+}
+
+export function matchBlueprintProjectPath(pathname: string): { projectId: string } | null {
+  const match = pathname.match(/^\/app\/projects\/([^/]+)\/blueprint$/);
+  return match ? { projectId: decodeURIComponent(match[1]) } : null;
+}
+
 export function matchProjectDashboardPath(pathname: string): { projectId: string } | null {
   const match = pathname.match(/^\/app\/projects\/([^/]+)$/);
   return match ? { projectId: decodeURIComponent(match[1]) } : null;
