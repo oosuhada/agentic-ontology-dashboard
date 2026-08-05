@@ -48,9 +48,16 @@ def test_public_comparison_page_and_json_are_available() -> None:
     assert page.status_code == 200
     assert "FastAPI vs Flask" in page.text
     assert "162개 OpenAPI 경로" in page.text
+    assert "FastAPI를 최종 선택한 근거" in page.text
+    assert "172개 실제 업무 핸들러" in page.text
+    assert "JSON 168" in page.text
     assert "최종 선택: FastAPI" in page.text
+    assert "The selection now covers" not in page.text
     assert report.status_code == 200
     assert report.json()["baseline"]["selected_framework"] == "FastAPI"
     assert report.json()["full_surface"]["scope"]["operation_count"] == 172
     assert full_report.status_code == 200
     assert full_report.json()["scope"]["path_count"] == 162
+    assert full_report.json()["fastapi"]["automatic_response_schema_operation_count"] == 168
+    assert full_report.json()["fastapi"]["success_contract_operation_count"] == 172
+    assert full_report.json()["conclusion"]["selection_basis"]

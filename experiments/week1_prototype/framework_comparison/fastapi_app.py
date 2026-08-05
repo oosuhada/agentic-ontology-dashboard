@@ -25,6 +25,11 @@ def _load_full_surface_snapshot() -> dict:
                 "automatic_openapi_operation_count": 0,
                 "automatic_request_validation_operation_count": 0,
                 "automatic_response_schema_operation_count": 0,
+                "field_level_response_schema_operation_count": 0,
+                "non_json_response_contract_operation_count": 0,
+                "no_content_contract_operation_count": 0,
+                "success_contract_operation_count": 0,
+                "runtime_response_validation_operation_count": 0,
                 "authenticated_probe": {
                     "operation_count": 0,
                     "status_counts": {},
@@ -38,8 +43,9 @@ def _load_full_surface_snapshot() -> dict:
                 "manual_port_required_operation_count": 0,
             },
             "conclusion": {
-                "reason": "Full-surface snapshot has not been generated yet.",
-                "limitation": "Run run_full_surface_comparison.sh.",
+                "reason": "전체 API 비교 스냅샷이 아직 생성되지 않았습니다.",
+                "limitation": "run_full_surface_comparison.sh를 실행해야 합니다.",
+                "selection_basis": [],
             },
         }
     return json.loads(FULL_SURFACE_SNAPSHOT_PATH.read_text())
@@ -166,22 +172,30 @@ def _full_surface_rows() -> str:
     rows = [
         {
             "framework": "FastAPI",
-            "surface": f"{scope['path_count']} paths / {scope['operation_count']} operations",
-            "business": f"{scope['operation_count']} real handlers",
+            "surface": f"{scope['path_count']}개 경로 / {scope['operation_count']}개 작업",
+            "business": f"실제 업무 핸들러 {scope['operation_count']}개",
             "openapi": fastapi["automatic_openapi_operation_count"],
             "validation": fastapi["automatic_request_validation_operation_count"],
-            "response": fastapi["automatic_response_schema_operation_count"],
+            "response": (
+                f"JSON {fastapi['automatic_response_schema_operation_count']} · "
+                f"binary/SSE {fastapi['non_json_response_contract_operation_count']} · "
+                f"no-content {fastapi['no_content_contract_operation_count']}"
+            ),
+            "response_validation": fastapi[
+                "runtime_response_validation_operation_count"
+            ],
             "runtime": fastapi["authenticated_probe"]["operation_count"],
             "port": 0,
             "selected": True,
         },
         {
             "framework": "Flask",
-            "surface": f"{scope['path_count']} paths / {flask['registered_operation_count']} operations",
-            "business": f"{flask['business_handler_operation_count']} real handlers",
+            "surface": f"{scope['path_count']}개 경로 / {flask['registered_operation_count']}개 작업",
+            "business": f"실제 업무 핸들러 {flask['business_handler_operation_count']}개",
             "openapi": flask["automatic_openapi_operation_count"],
             "validation": flask["automatic_request_validation_operation_count"],
             "response": flask["automatic_response_schema_operation_count"],
+            "response_validation": 0,
             "runtime": flask["registered_operation_count"],
             "port": flask["manual_port_required_operation_count"],
             "selected": False,
@@ -190,13 +204,14 @@ def _full_surface_rows() -> str:
     return "".join(
         "<tr>"
         f"<td><strong>{item['framework']}</strong>"
-        + ('<span class="badge selected">최종 선택</span>' if item["selected"] else '<span class="badge">route mirror</span>')
+        + ('<span class="badge selected">최종 선택</span>' if item["selected"] else '<span class="badge">라우트 미러</span>')
         + "</td>"
         f"<td>{item['surface']}</td>"
         f"<td>{item['business']}</td>"
         f"<td>{item['openapi']}</td>"
         f"<td>{item['validation']}</td>"
         f"<td>{item['response']}</td>"
+        f"<td>{item['response_validation']}</td>"
         f"<td>{item['runtime']}</td>"
         f"<td>{item['port']}</td>"
         "</tr>"
@@ -204,9 +219,21 @@ def _full_surface_rows() -> str:
     )
 
 
+def _selection_basis_cards() -> str:
+    cards: list[str] = []
+    for item in FULL_SURFACE_SNAPSHOT["conclusion"].get("selection_basis", []):
+        cards.append(
+            '<article class="basis-card">'
+            f'<div class="eyebrow">{escape(item["title"])}</div>'
+            f'<h3>FastAPI</h3><p>{escape(item["fastapi"])}</p>'
+            f'<h3>Flask</h3><p>{escape(item["flask"])}</p>'
+            "</article>"
+        )
+    return "".join(cards)
+
+
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def comparison_page() -> HTMLResponse:
-    payload = json.dumps(HEALTH_PAYLOAD, ensure_ascii=False, indent=2)
     source = COMPARISON_SNAPSHOT["source"]
     scope = FULL_SURFACE_SNAPSHOT["scope"]
     fastapi_surface = FULL_SURFACE_SNAPSHOT["fastapi"]
@@ -233,7 +260,11 @@ def comparison_page() -> HTMLResponse:
     a.button {{ color:var(--text); text-decoration:none; border:1px solid var(--line); background:#13222e; border-radius:10px; padding:10px 14px; font-weight:700; }}
     a.button.primary {{ color:#04120f; background:var(--accent); border-color:var(--accent); }}
     .grid {{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:24px 0; }}
+    .basis-grid {{ display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin:18px 0 30px; }}
     .card,.table-wrap,.conclusion {{ border:1px solid var(--line); background:rgba(13,24,34,.9); border-radius:16px; padding:22px; box-shadow:0 18px 60px rgba(0,0,0,.22); }}
+    .basis-card {{ border:1px solid var(--line); background:rgba(13,24,34,.78); border-radius:14px; padding:20px; }}
+    .basis-card h3 {{ margin:12px 0 2px; font-size:15px; }}
+    .basis-card p {{ margin:0; color:#c7d5df; }}
     .card strong {{ display:block; font-size:26px; margin-top:7px; }}
     .card span {{ color:var(--muted); }}
     .live {{ display:inline-flex; align-items:center; gap:7px; font-weight:800; }}
@@ -251,14 +282,14 @@ def comparison_page() -> HTMLResponse:
     pre {{ overflow:auto; padding:16px; border-radius:12px; background:#050b10; color:#c6f7ea; border:1px solid var(--line); }}
     .note {{ color:var(--muted); font-size:13px; margin-top:16px; }}
     footer {{ color:var(--muted); margin-top:34px; font-size:13px; }}
-    @media (max-width:800px) {{ .grid {{ grid-template-columns:1fr; }} main {{ padding-top:30px; }} }}
+    @media (max-width:800px) {{ .grid,.basis-grid {{ grid-template-columns:1fr; }} main {{ padding-top:30px; }} }}
   </style>
 </head>
 <body>
 <main>
-  <div class="eyebrow">WEEK 1 · FRAMEWORK COMPARISON</div>
-  <h1>FastAPI vs Flask<br/>동일 조건 비교 실험</h1>
-  <p class="lead">초기 <code>GET /health</code> 최소 비교에 머물지 않고, 현재 Ontology Dashboard MVP의 <strong>{scope['path_count']}개 OpenAPI 경로·{scope['operation_count']}개 HTTP 작업 전체</strong>를 수집했습니다. FastAPI 실제 핸들러 전수 프로브와 bare Flask route mirror를 함께 실행해 계약 자동화, 검증 범위와 재구현 비용을 비교했습니다.</p>
+  <div class="eyebrow">WEEK 1 · 프레임워크 비교</div>
+  <h1>FastAPI vs Flask<br/>전체 MVP 구현 기준 비교</h1>
+  <p class="lead">초기 <code>GET /health</code> 최소 비교를 기준선으로만 남기고, 현재 Ontology Dashboard MVP의 <strong>{scope['path_count']}개 OpenAPI 경로·{scope['operation_count']}개 HTTP 작업 전체</strong>를 비교 대상으로 확장했습니다. FastAPI의 실제 업무 핸들러·요청 검증·성공 응답 Schema·런타임 응답 검증과 Flask 재구현 비용을 함께 평가했습니다.</p>
   <div class="actions">
     <a class="button primary" href="https://dashboard.oosu.dev/docs">실제 서비스 162경로 Swagger</a>
     <a class="button" href="/docs">비교 화면 Swagger</a>
@@ -270,16 +301,19 @@ def comparison_page() -> HTMLResponse:
   </div>
 
   <section class="grid">
-    <article class="card"><span>전체 API 표면</span><strong>{scope['path_count']} paths</strong><span>{scope['operation_count']} HTTP operations</span></article>
+    <article class="card"><span>전체 API 표면</span><strong>{scope['path_count']}개 경로</strong><span>{scope['operation_count']}개 HTTP 작업</span></article>
     <article class="card"><span>인증 전수 프로브</span><strong>{authenticated['operation_count']} / {scope['operation_count']}</strong><span>{status_summary}</span></article>
-    <article class="card"><span>처리되지 않은 오류</span><strong>{authenticated['unhandled_server_error_count']}건</strong><span>SQLite에서 PostgreSQL 전용 503 {authenticated['expected_503_count']}건은 명시적 degraded contract</span></article>
+    <article class="card"><span>처리되지 않은 오류</span><strong>{authenticated['unhandled_server_error_count']}건</strong><span>SQLite에서 PostgreSQL 전용 503 {authenticated['expected_503_count']}건은 명시적인 기능 제한 응답</span></article>
     <article class="card"><span>기준선 실험</span><strong>GET /health</strong><div class="live"><i id="fast-dot" class="dot"></i><span id="fast-live">FastAPI 확인 중</span></div><div class="live"><i id="flask-dot" class="dot"></i><span id="flask-live">Flask 확인 중</span></div></article>
   </section>
+
+  <h2>FastAPI를 최종 선택한 근거</h2>
+  <section class="basis-grid">{_selection_basis_cards()}</section>
 
   <h2>전체 162개 경로·172개 작업 비교</h2>
   <section class="table-wrap">
     <table>
-      <thead><tr><th>Framework</th><th>Route surface</th><th>Business handlers</th><th>Auto OpenAPI</th><th>Auto validation</th><th>Response schemas</th><th>Runtime probes</th><th>Manual ports</th></tr></thead>
+      <thead><tr><th>프레임워크</th><th>API 표면</th><th>업무 핸들러</th><th>자동 OpenAPI</th><th>요청 자동 검증</th><th>성공 응답 계약</th><th>응답 런타임 검증</th><th>전수 프로브</th><th>수동 이식</th></tr></thead>
       <tbody>{_full_surface_rows()}</tbody>
     </table>
   </section>
@@ -287,20 +321,19 @@ def comparison_page() -> HTMLResponse:
   <h2>동일 `/health` 기준선 마이크로 비교</h2>
   <section class="table-wrap">
     <table>
-      <thead><tr><th>Framework</th><th>HTTP</th><th>Payload</th><th>OpenAPI</th><th>Response schema</th><th>Endpoint LOC</th><th>p50*</th><th>p95*</th><th>Score</th></tr></thead>
+      <thead><tr><th>프레임워크</th><th>HTTP</th><th>응답 일치</th><th>OpenAPI</th><th>응답 Schema</th><th>코드 줄 수</th><th>p50*</th><th>p95*</th><th>점수</th></tr></thead>
       <tbody>{_comparison_rows()}</tbody>
     </table>
   </section>
 
   <section class="conclusion">
-    <div class="eyebrow">SELECTION</div>
+    <div class="eyebrow">최종 선정</div>
     <h2>최종 선택: FastAPI</h2>
     <p>{escape(FULL_SURFACE_SNAPSHOT['conclusion']['reason'])}</p>
-    <pre>{escape(payload)}</pre>
-    <p class="note">{escape(FULL_SURFACE_SNAPSHOT['conclusion']['limitation'])} `/health` 지연시간은 로컬 인프로세스 참고값이며 운영 성능 결론이 아닙니다.</p>
+    <p class="note">{escape(FULL_SURFACE_SNAPSHOT['conclusion']['limitation'])} <code>/health</code> 지연시간은 로컬 인프로세스 참고값이며 최종 선정 점수에 사용하지 않았습니다.</p>
   </section>
 
-  <footer>Source · {source['repository']} · {source['branch']} · initial commit {source['commit']}</footer>
+  <footer>소스 · {source['repository']} · {source['branch']} · 최초 실험 커밋 {source['commit']}</footer>
 </main>
 <script>
 async function probe(url, dotId, textId, label) {{

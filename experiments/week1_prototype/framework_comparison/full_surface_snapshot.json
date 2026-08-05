@@ -3,13 +3,18 @@
     "application": "Ontology Dashboard MVP",
     "path_count": 162,
     "operation_count": 172,
-    "comparison_unit": "every OpenAPI path and HTTP operation"
+    "comparison_unit": "OpenAPI의 모든 경로와 HTTP 작업"
   },
   "fastapi": {
     "real_business_application": true,
     "automatic_openapi_operation_count": 172,
     "automatic_request_validation_operation_count": 147,
-    "automatic_response_schema_operation_count": 150,
+    "automatic_response_schema_operation_count": 168,
+    "field_level_response_schema_operation_count": 167,
+    "non_json_response_contract_operation_count": 2,
+    "no_content_contract_operation_count": 2,
+    "success_contract_operation_count": 172,
+    "runtime_response_validation_operation_count": 168,
     "unauthenticated_probe": {
       "authenticated": false,
       "operation_count": 172,
@@ -93,7 +98,7 @@
   },
   "flask": {
     "real_business_application": false,
-    "comparison_mode": "generated bare-Flask route mirror",
+    "comparison_mode": "자동 생성 bare Flask 라우트 미러",
     "registered_operation_count": 172,
     "status_counts": {
       "200": 172
@@ -111,7 +116,12 @@
     "operation_count": 172,
     "request_body_operation_count": 72,
     "parameterized_operation_count": 115,
-    "response_schema_operation_count": 150,
+    "response_schema_operation_count": 170,
+    "json_success_schema_operation_count": 168,
+    "field_level_json_success_schema_operation_count": 167,
+    "non_json_success_schema_operation_count": 2,
+    "no_content_success_operation_count": 2,
+    "success_contract_operation_count": 172,
     "method_counts": {
       "DELETE": 2,
       "GET": 93,
@@ -150,7 +160,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -162,7 +176,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -174,7 +192,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": false,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -186,7 +208,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -198,7 +224,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -210,7 +240,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": false,
+        "has_json_success_schema": false,
+        "has_field_level_json_success_schema": false,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": true
       },
       {
         "method": "GET",
@@ -222,7 +256,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -234,7 +272,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "PUT",
@@ -246,7 +288,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "PATCH",
@@ -258,7 +304,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -270,7 +320,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -282,7 +336,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "DELETE",
@@ -294,7 +352,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -306,7 +368,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -318,7 +384,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 7,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -330,7 +400,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -343,7 +417,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -356,7 +434,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -369,7 +451,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -382,7 +468,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -395,7 +485,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -407,7 +501,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 6,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -419,7 +517,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -431,7 +533,11 @@
         "path_parameter_count": 2,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -443,7 +549,11 @@
         "path_parameter_count": 2,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "PUT",
@@ -455,7 +565,11 @@
         "path_parameter_count": 3,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -467,7 +581,11 @@
         "path_parameter_count": 3,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -479,7 +597,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -491,7 +613,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -503,7 +629,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -515,7 +645,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -527,7 +661,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -539,7 +677,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -551,7 +693,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 6,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -563,7 +709,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 6,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -575,7 +725,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -587,7 +741,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 5,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -599,7 +757,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 1,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -611,7 +773,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -623,7 +789,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -635,7 +805,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "PUT",
@@ -647,7 +821,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -659,7 +837,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -671,7 +853,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -683,7 +869,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -695,7 +885,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 1,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -707,7 +901,11 @@
         "path_parameter_count": 2,
         "query_parameter_count": 3,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -719,7 +917,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 1,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -731,7 +933,11 @@
         "path_parameter_count": 2,
         "query_parameter_count": 3,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -743,7 +949,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -755,7 +965,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -767,7 +981,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -779,7 +997,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -791,7 +1013,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "PATCH",
@@ -803,7 +1029,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -815,7 +1045,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "PUT",
@@ -827,7 +1061,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -839,7 +1077,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 1,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -851,7 +1093,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 1,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -863,7 +1109,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -875,7 +1125,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -887,7 +1141,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -899,7 +1157,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 1,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -911,7 +1173,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 4,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -923,7 +1189,11 @@
         "path_parameter_count": 2,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "PUT",
@@ -935,7 +1205,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -947,7 +1221,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -959,7 +1237,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 1,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -971,7 +1253,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -983,7 +1269,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "DELETE",
@@ -995,7 +1285,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": false,
+        "has_json_success_schema": false,
+        "has_field_level_json_success_schema": false,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": true
       },
       {
         "method": "POST",
@@ -1007,7 +1301,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1019,7 +1317,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1031,7 +1333,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": false,
+        "has_field_level_json_success_schema": false,
+        "has_non_json_success_schema": true,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1043,7 +1349,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1055,7 +1365,11 @@
         "path_parameter_count": 2,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1067,7 +1381,11 @@
         "path_parameter_count": 3,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1079,7 +1397,11 @@
         "path_parameter_count": 3,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1091,7 +1413,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1103,7 +1429,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1115,7 +1445,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1127,7 +1461,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1139,7 +1477,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1151,7 +1493,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1163,7 +1509,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 1,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1175,7 +1525,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 1,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1187,7 +1541,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 4,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1199,7 +1557,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 5,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1211,7 +1573,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1223,7 +1589,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1235,7 +1605,11 @@
         "path_parameter_count": 2,
         "query_parameter_count": 1,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1247,7 +1621,11 @@
         "path_parameter_count": 2,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "PUT",
@@ -1259,7 +1637,11 @@
         "path_parameter_count": 2,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1271,7 +1653,11 @@
         "path_parameter_count": 2,
         "query_parameter_count": 4,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1283,7 +1669,11 @@
         "path_parameter_count": 2,
         "query_parameter_count": 1,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1295,7 +1685,11 @@
         "path_parameter_count": 2,
         "query_parameter_count": 8,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1307,7 +1701,11 @@
         "path_parameter_count": 3,
         "query_parameter_count": 1,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1319,7 +1717,11 @@
         "path_parameter_count": 2,
         "query_parameter_count": 6,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1331,7 +1733,11 @@
         "path_parameter_count": 2,
         "query_parameter_count": 10,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1343,7 +1749,11 @@
         "path_parameter_count": 2,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1355,7 +1765,11 @@
         "path_parameter_count": 3,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1367,7 +1781,11 @@
         "path_parameter_count": 4,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1379,7 +1797,11 @@
         "path_parameter_count": 3,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": false,
+        "has_field_level_json_success_schema": false,
+        "has_non_json_success_schema": true,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1391,7 +1813,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1403,7 +1829,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1415,7 +1845,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1427,7 +1861,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1439,7 +1877,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "PATCH",
@@ -1451,7 +1893,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1463,7 +1909,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1475,7 +1925,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1487,7 +1941,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1499,7 +1957,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1511,7 +1973,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1523,7 +1989,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1535,7 +2005,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1547,7 +2021,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1559,7 +2037,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1571,7 +2053,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1583,7 +2069,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1595,7 +2085,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1607,7 +2101,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1619,7 +2117,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1631,7 +2133,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1643,7 +2149,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1655,7 +2165,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 3,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1667,7 +2181,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1679,7 +2197,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1691,7 +2213,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1703,7 +2229,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1715,7 +2245,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1727,7 +2261,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 3,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1739,7 +2277,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1751,7 +2293,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1763,7 +2309,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 3,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1775,7 +2325,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1787,7 +2341,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1799,7 +2357,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1811,7 +2373,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1823,7 +2389,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1835,7 +2405,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 3,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1847,7 +2421,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 1,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1859,7 +2437,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 2,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1871,7 +2453,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1883,7 +2469,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 1,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1895,7 +2485,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 1,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1907,7 +2501,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 1,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1919,7 +2517,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1931,7 +2533,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1943,7 +2549,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1955,7 +2565,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1967,7 +2581,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -1979,7 +2597,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -1991,7 +2613,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -2003,7 +2629,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -2015,7 +2645,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -2027,7 +2661,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -2039,7 +2677,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -2051,7 +2693,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -2063,7 +2709,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -2075,7 +2725,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 1,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -2087,7 +2741,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -2099,7 +2757,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -2111,7 +2773,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "PUT",
@@ -2123,7 +2789,11 @@
         "path_parameter_count": 2,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "PATCH",
@@ -2135,7 +2805,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -2147,7 +2821,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -2159,7 +2837,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -2171,7 +2853,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "GET",
@@ -2183,7 +2869,11 @@
         "path_parameter_count": 0,
         "query_parameter_count": 0,
         "has_request_body": false,
-        "has_response_schema": false
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -2195,7 +2885,11 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       },
       {
         "method": "POST",
@@ -2207,13 +2901,39 @@
         "path_parameter_count": 1,
         "query_parameter_count": 0,
         "has_request_body": true,
-        "has_response_schema": true
+        "has_response_schema": true,
+        "has_json_success_schema": true,
+        "has_field_level_json_success_schema": true,
+        "has_non_json_success_schema": false,
+        "has_no_content_success": false
       }
     ]
   },
   "conclusion": {
     "selected_framework": "FastAPI",
-    "reason": "The selection now covers the full 162-path/172-operation MVP surface. FastAPI already executes the real handlers and generates the request, response and OpenAPI contracts. Bare Flask can mirror all routes, but the 172 business handlers plus validation and documentation contracts would still require an explicit port.",
-    "limitation": "The Flask mirror is a routing and migration-effort comparison, not a claim that the full Ontology Dashboard business implementation exists twice."
+    "reason": "현재 MVP 전체 162개 경로·172개 HTTP 작업을 기준으로 FastAPI를 선택했습니다. FastAPI에는 172개 실제 업무 핸들러가 이미 구현되어 있고, 168개 JSON 성공 응답 Schema와 binary·SSE 계약 2개, no-content 계약 2개가 같은 코드에서 문서화·런타임 검증됩니다. 반면 bare Flask는 경로만 복제했으며 업무 핸들러 172개와 요청·응답 검증 및 문서 계약을 별도로 다시 구현해야 합니다.",
+    "limitation": "Flask 결과는 라우팅 가능성과 이식 비용을 확인하기 위한 미러이며, Ontology Dashboard 전체 업무 로직이 Flask에도 구현됐다는 의미가 아닙니다.",
+    "selection_basis": [
+      {
+        "title": "실제 업무 구현",
+        "fastapi": "172개 실제 업무 핸들러 실행",
+        "flask": "0개 실제 업무 핸들러 · 라우트 미러만 등록"
+      },
+      {
+        "title": "성공 응답 계약",
+        "fastapi": "JSON Schema 168개 · binary/SSE 2개 · no-content 2개",
+        "flask": "자동 생성 0개 · 모두 수동 선언 필요"
+      },
+      {
+        "title": "자동 검증과 문서화",
+        "fastapi": "요청 검증 대상 147개 · 응답 런타임 검증 168개",
+        "flask": "기본 구성 0개 · 확장 라이브러리와 수동 연결 필요"
+      },
+      {
+        "title": "선정에서 제외한 기준",
+        "fastapi": "/health 로컬 지연시간은 참고값으로만 유지",
+        "flask": "단일 응답이 더 가벼워도 전체 제품 선정 근거로 사용하지 않음"
+      }
+    ]
   }
 }

@@ -106,8 +106,11 @@ FastAPI OpenAPI 전체를 수집해 162개 경로·172개 HTTP 작업을 전수 
 Runtime 10개 작업은 의도된 503 degraded contract를 반환했습니다.
 
 FastAPI는 172개 실제 business handler와 OpenAPI를 제공하며, 147개 작업에서
-요청 Body 또는 Parameter 검증을 자동 적용하고 150개 작업의 응답 Schema를
-문서화합니다. Flask에는 동일 172개 route mirror를 생성해 등록 parity를
+요청 Body 또는 Parameter 검증을 자동 적용합니다. 성공 응답은 168개 JSON
+Schema와 런타임 응답 검증, binary·SSE 계약 2개, no-content 계약 2개로 구성되어
+전체 172개 작업의 성공 계약이 명시됩니다. JSON 성공 응답 중 167개는 필드
+수준 Schema를 제공하고, OpenAPI 문서 자체를 반환하는 1개 작업만 동적 문서
+객체 계약입니다. Flask에는 동일 172개 route mirror를 생성해 등록 parity를
 확인했지만 실제 business handler, 자동 OpenAPI와 Schema 검증은 기본 제공되지
 않으므로 172개 작업을 별도로 이식해야 합니다.
 

@@ -18,7 +18,11 @@ def test_full_product_surface_is_inventoried() -> None:
 
     assert summary["path_count"] == 162
     assert summary["operation_count"] == 172
-    assert summary["response_schema_operation_count"] > 0
+    assert summary["json_success_schema_operation_count"] == 168
+    assert summary["field_level_json_success_schema_operation_count"] == 167
+    assert summary["non_json_success_schema_operation_count"] == 2
+    assert summary["no_content_success_operation_count"] == 2
+    assert summary["success_contract_operation_count"] == 172
     assert summary["request_body_operation_count"] > 0
 
 

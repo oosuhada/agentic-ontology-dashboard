@@ -102,7 +102,11 @@ Authentication 10개 작업이다.
 | 실제 business handler | 172 | 0 |
 | 자동 OpenAPI 작업 | 172 | 0 |
 | 자동 요청·파라미터 검증 대상 | 147 | 0 |
-| 응답 Schema 작업 | 150 | 0 |
+| JSON 성공 응답 Schema·런타임 검증 | 168 | 0 |
+| 필드 수준 JSON 성공 응답 Schema | 167 | 0 |
+| binary·SSE 성공 응답 계약 | 2 | 0 |
+| 명시적 no-content 성공 계약 | 2 | 0 |
+| 전체 성공 응답 계약 | 172 | 0 |
 | 수동 business port 필요 | 0 | 172 |
 
 Flask route mirror는 172개 경로가 Flask에서도 등록 가능한지와 이식 대상 규모를
@@ -168,8 +172,10 @@ Flask에서도 extension과 별도 schema 코드를 추가하면 같은 기능�
 > 초기에는 FastAPI와 Flask로 동일한 `/health` API를 구현해 기준선을
 > 비교했습니다. 이후 현재 MVP의 OpenAPI 전체를 기준으로 162개 경로·172개
 > HTTP 작업을 전수 수집하고, 인증 전·후 runtime probe와 Flask route mirror를
-> 실행했습니다. FastAPI는 172개 실제 business handler, 자동 OpenAPI, 요청
-> 검증과 응답 Schema를 제공했고 처리되지 않은 HTTP 500은 0건이었습니다.
+> 실행했습니다. FastAPI는 172개 실제 business handler, 자동 OpenAPI, 147개
+> 요청 검증 대상과 168개 JSON 응답 런타임 검증을 제공했고, binary·SSE 2개와
+> no-content 2개도 별도 성공 계약으로 문서화했습니다. 처리되지 않은 HTTP
+> 500은 0건이었습니다.
 > 반면 bare Flask는 172개 route를 등록할 수 있었지만 실제 handler와 계약을
 > 모두 별도로 이식해야 했기 때문에 전체 MVP 결과물 기준으로 FastAPI를 최종
 > 선택했습니다.
@@ -177,7 +183,7 @@ Flask에서도 extension과 별도 schema 코드를 추가하면 같은 기능�
 ## 4. 자동 테스트
 
 ```text
-전체 백엔드: 255 passed, 2 skipped
+전체 백엔드: 259 passed, 2 skipped
 Week 1 실험: 11 passed
 ```
 
@@ -191,6 +197,8 @@ Week 1 실험: 11 passed
 - 172개 FastAPI 작업 비인증 runtime probe
 - 172개 FastAPI 작업 Tenant Admin 인증 runtime probe
 - 처리되지 않은 HTTP 500 0건
+- JSON 성공 응답 빈 Schema 0건·문자열 오표시 Schema 0건
+- 168개 JSON 성공 응답 런타임 검증
 - Flask 172개 route mirror 등록 parity
 - 전체 API 표면 기준 FastAPI 선정
 - Canonical package path 탐색

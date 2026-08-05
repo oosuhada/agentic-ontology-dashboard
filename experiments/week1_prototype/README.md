@@ -76,7 +76,11 @@ https://fastapi-flask.oosu.dev
 - 처리되지 않은 HTTP 500: 0건
 - SQLite 격리 환경에서 PostgreSQL 전용 Runtime의 명시적 503: 10건
 - FastAPI 자동 요청·파라미터 검증 대상: 147개 작업
-- FastAPI 응답 Schema: 150개 작업
+- FastAPI JSON 성공 응답 Schema와 런타임 검증: 168개 작업
+- 필드 수준 JSON 성공 응답 Schema: 167개 작업
+- binary·SSE 성공 응답 계약: 2개 작업
+- 명시적 no-content 성공 계약: 2개 작업
+- 전체 성공 응답 계약: 172개 작업
 - Flask route mirror: 172개 작업 등록
 - Flask 실제 business handler: 0개 — 전체 이식 시 172개를 별도 구현해야 함
 
@@ -109,6 +113,8 @@ bash experiments/week1_prototype/run_full_surface_comparison.sh
 - FastAPI OpenAPI에서 모든 path·method·request body·parameter·response schema 수집
 - 비인증 상태에서 172개 작업의 인증·검증 경계 전수 probe
 - Tenant Admin 인증 상태에서 172개 작업의 handler·권한·Schema 경계 전수 probe
+- 168개 JSON 응답에 Pydantic 런타임 응답 검증 적용
+- binary·SSE 2개와 no-content 2개를 JSON과 분리해 문서화
 - bare Flask에 172개 route mirror를 생성해 route 등록 parity 검증
 - FastAPI 자동 계약과 Flask 수동 port 필요량 비교
 

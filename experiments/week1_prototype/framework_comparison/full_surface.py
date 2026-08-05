@@ -49,6 +49,10 @@ class OperationContract:
     query_parameter_count: int
     has_request_body: bool
     has_response_schema: bool
+    has_json_success_schema: bool
+    has_field_level_json_success_schema: bool
+    has_non_json_success_schema: bool
+    has_no_content_success: bool
 
 
 def collect_operations(schema: dict[str, Any]) -> list[OperationContract]:
@@ -58,6 +62,7 @@ def collect_operations(schema: dict[str, Any]) -> list[OperationContract]:
             if method.lower() not in HTTP_METHODS:
                 continue
             parameters = operation.get("parameters", [])
+            success_contract = _success_contract(operation, schema)
             operations.append(
                 OperationContract(
                     method=method.upper(),
@@ -71,7 +76,15 @@ def collect_operations(schema: dict[str, Any]) -> list[OperationContract]:
                         item.get("in") == "query" for item in parameters
                     ),
                     has_request_body=bool(operation.get("requestBody")),
-                    has_response_schema=_has_response_schema(operation),
+                    has_response_schema=success_contract["has_content_schema"],
+                    has_json_success_schema=success_contract["has_json_schema"],
+                    has_field_level_json_success_schema=success_contract[
+                        "has_field_level_json_schema"
+                    ],
+                    has_non_json_success_schema=success_contract[
+                        "has_non_json_schema"
+                    ],
+                    has_no_content_success=success_contract["has_no_content"],
                 )
             )
     return operations
@@ -93,6 +106,22 @@ def summarize_schema(schema: dict[str, Any]) -> dict[str, Any]:
         ),
         "response_schema_operation_count": sum(
             operation.has_response_schema for operation in operations
+        ),
+        "json_success_schema_operation_count": sum(
+            operation.has_json_success_schema for operation in operations
+        ),
+        "field_level_json_success_schema_operation_count": sum(
+            operation.has_field_level_json_success_schema for operation in operations
+        ),
+        "non_json_success_schema_operation_count": sum(
+            operation.has_non_json_success_schema for operation in operations
+        ),
+        "no_content_success_operation_count": sum(
+            operation.has_no_content_success for operation in operations
+        ),
+        "success_contract_operation_count": sum(
+            operation.has_response_schema or operation.has_no_content_success
+            for operation in operations
         ),
         "method_counts": dict(sorted(methods.items())),
         "tag_counts": dict(sorted(tags.items(), key=lambda item: (-item[1], item[0]))),
@@ -284,7 +313,7 @@ def build_full_surface_report() -> dict[str, Any]:
             "application": "Ontology Dashboard MVP",
             "path_count": summary["path_count"],
             "operation_count": operation_count,
-            "comparison_unit": "every OpenAPI path and HTTP operation",
+            "comparison_unit": "OpenAPI의 모든 경로와 HTTP 작업",
         },
         "fastapi": {
             "real_business_application": True,
@@ -298,14 +327,29 @@ def build_full_surface_report() -> dict[str, Any]:
                 for operation in summary["operations"]
             ),
             "automatic_response_schema_operation_count": summary[
-                "response_schema_operation_count"
+                "json_success_schema_operation_count"
+            ],
+            "field_level_response_schema_operation_count": summary[
+                "field_level_json_success_schema_operation_count"
+            ],
+            "non_json_response_contract_operation_count": summary[
+                "non_json_success_schema_operation_count"
+            ],
+            "no_content_contract_operation_count": summary[
+                "no_content_success_operation_count"
+            ],
+            "success_contract_operation_count": summary[
+                "success_contract_operation_count"
+            ],
+            "runtime_response_validation_operation_count": summary[
+                "json_success_schema_operation_count"
             ],
             "unauthenticated_probe": unauthenticated_probe,
             "authenticated_probe": authenticated_probe,
         },
         "flask": {
             "real_business_application": False,
-            "comparison_mode": "generated bare-Flask route mirror",
+            "comparison_mode": "자동 생성 bare Flask 라우트 미러",
             **flask_probe,
             "manual_port_required_operation_count": operation_count,
         },
@@ -313,17 +357,47 @@ def build_full_surface_report() -> dict[str, Any]:
         "conclusion": {
             "selected_framework": "FastAPI",
             "reason": (
-                "The selection now covers the full 162-path/172-operation MVP surface. "
-                "FastAPI already executes the real handlers and generates the request, "
-                "response and OpenAPI contracts. Bare Flask can mirror all routes, but "
-                "the 172 business handlers plus validation and documentation contracts "
-                "would still require an explicit port."
+                "현재 MVP 전체 162개 경로·172개 HTTP 작업을 기준으로 FastAPI를 "
+                "선택했습니다. FastAPI에는 172개 실제 업무 핸들러가 이미 구현되어 "
+                "있고, 168개 JSON 성공 응답 Schema와 binary·SSE 계약 2개, "
+                "no-content 계약 2개가 같은 코드에서 문서화·런타임 검증됩니다. "
+                "반면 bare Flask는 경로만 복제했으며 업무 핸들러 172개와 요청·응답 "
+                "검증 및 문서 계약을 별도로 다시 구현해야 합니다."
             ),
             "limitation": (
-                "The Flask mirror is a routing and migration-effort comparison, not a "
-                "claim that the full Ontology Dashboard business implementation exists "
-                "twice."
+                "Flask 결과는 라우팅 가능성과 이식 비용을 확인하기 위한 미러이며, "
+                "Ontology Dashboard 전체 업무 로직이 Flask에도 구현됐다는 의미가 "
+                "아닙니다."
             ),
+            "selection_basis": [
+                {
+                    "title": "실제 업무 구현",
+                    "fastapi": "172개 실제 업무 핸들러 실행",
+                    "flask": "0개 실제 업무 핸들러 · 라우트 미러만 등록",
+                },
+                {
+                    "title": "성공 응답 계약",
+                    "fastapi": (
+                        f"JSON Schema {summary['json_success_schema_operation_count']}개 · "
+                        f"binary/SSE {summary['non_json_success_schema_operation_count']}개 · "
+                        f"no-content {summary['no_content_success_operation_count']}개"
+                    ),
+                    "flask": "자동 생성 0개 · 모두 수동 선언 필요",
+                },
+                {
+                    "title": "자동 검증과 문서화",
+                    "fastapi": (
+                        f"요청 검증 대상 {sum(bool(operation['has_request_body'] or operation['path_parameter_count'] or operation['query_parameter_count']) for operation in summary['operations'])}개 · "
+                        f"응답 런타임 검증 {summary['json_success_schema_operation_count']}개"
+                    ),
+                    "flask": "기본 구성 0개 · 확장 라이브러리와 수동 연결 필요",
+                },
+                {
+                    "title": "선정에서 제외한 기준",
+                    "fastapi": "/health 로컬 지연시간은 참고값으로만 유지",
+                    "flask": "단일 응답이 더 가벼워도 전체 제품 선정 근거로 사용하지 않음",
+                },
+            ],
         },
     }
 
@@ -335,11 +409,55 @@ def write_full_surface_report(path: Path) -> dict[str, Any]:
     return report
 
 
-def _has_response_schema(operation: dict[str, Any]) -> bool:
-    for response in operation.get("responses", {}).values():
-        for content in response.get("content", {}).values():
-            if content.get("schema"):
-                return True
+def _success_contract(
+    operation: dict[str, Any],
+    root_schema: dict[str, Any],
+) -> dict[str, bool]:
+    result = {
+        "has_content_schema": False,
+        "has_json_schema": False,
+        "has_field_level_json_schema": False,
+        "has_non_json_schema": False,
+        "has_no_content": False,
+    }
+    for code in ("200", "201", "202", "204"):
+        response = operation.get("responses", {}).get(code)
+        if response is None:
+            continue
+        content_map = response.get("content") or {}
+        if code == "204" or not content_map:
+            result["has_no_content"] = True
+            return result
+        for media_type, media in content_map.items():
+            response_schema = media.get("schema")
+            if not response_schema:
+                continue
+            result["has_content_schema"] = True
+            if media_type == "application/json":
+                result["has_json_schema"] = True
+                result["has_field_level_json_schema"] = _is_field_level_schema(
+                    response_schema,
+                    root_schema,
+                )
+            else:
+                result["has_non_json_schema"] = True
+        return result
+    return result
+
+
+def _is_field_level_schema(
+    response_schema: dict[str, Any],
+    root_schema: dict[str, Any],
+) -> bool:
+    resolved = response_schema
+    reference = response_schema.get("$ref")
+    if isinstance(reference, str) and reference.startswith("#/components/schemas/"):
+        name = reference.rsplit("/", 1)[-1]
+        resolved = root_schema.get("components", {}).get("schemas", {}).get(name, {})
+    if resolved.get("properties"):
+        return True
+    if resolved.get("type") == "array" and resolved.get("items"):
+        return True
     return False
 
 
