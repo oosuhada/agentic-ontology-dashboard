@@ -90,6 +90,32 @@ export function matchBlueprintV2ProjectPath(pathname: string): { projectId: stri
   return match ? { projectId: decodeURIComponent(match[1]) } : null;
 }
 
+export function blueprintV4ProjectPath(projectId: string) {
+  return `/app/projects/${encodeURIComponent(projectId)}/blueprint-v4`;
+}
+
+export function matchBlueprintV4ProjectPath(pathname: string): { projectId: string } | null {
+  const match = pathname.match(/^\/app\/projects\/([^/]+)\/blueprint-v4$/);
+  return match ? { projectId: decodeURIComponent(match[1]) } : null;
+}
+
+export function loginPath(returnTo?: string) {
+  if (!returnTo) return "/login";
+  const params = new URLSearchParams({ returnTo });
+  return `/login?${params.toString()}`;
+}
+
+export function safeApplicationReturnPath(value: string | null): string | null {
+  if (!value || !value.startsWith("/app/")) return null;
+  try {
+    const parsed = new URL(value, "https://ontology-dashboard.invalid");
+    if (parsed.origin !== "https://ontology-dashboard.invalid" || !parsed.pathname.startsWith("/app/")) return null;
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return null;
+  }
+}
+
 export function blueprintComparisonPath(projectId: string) {
   return `/app/projects/${encodeURIComponent(projectId)}/blueprint-compare`;
 }

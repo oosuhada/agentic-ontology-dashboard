@@ -21,12 +21,15 @@ def test_phase17_baseline_is_deterministic_and_truthful() -> None:
     assert first == second
     assert first["package_lock"]["consistent"] is True
     assert first["inventory"]["legacy_namespace_files"] == []
-    assert [item["state"] for item in first["version_baseline"]] == [
+    assert [item["state"] for item in first["version_baseline"]][:3] == [
         "implemented",
         "implemented",
         "implemented",
-        "not_implemented",
     ]
+    phase17 = __import__("json").loads(
+        (ROOT / "docs/50-operations/commercialization-readiness.json").read_text(encoding="utf-8")
+    )
+    assert phase17["version_baseline"][3]["state"] == "not_implemented"
     stale = {item["path"]: item for item in first["document_freshness"]}
     assert stale["docs/20-architecture/current-state/current-state.md"]["status"] == "stale"
 

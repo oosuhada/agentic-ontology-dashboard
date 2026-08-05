@@ -1,0 +1,364 @@
+import { Component, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from "react";
+import {
+  Activity,
+  Boxes,
+  BrainCircuit,
+  ChevronRight,
+  CircleAlert,
+  Database,
+  FileClock,
+  GitBranch,
+  LockKeyhole,
+  Settings2,
+  Workflow,
+} from "lucide-react";
+import { ApiError, getDatasetCatalogPage, getProject, getProjectWorkspaces } from "../../api";
+import { useAuth } from "../auth/AuthContext";
+import type { DatasetCatalogItem } from "../datasets/types";
+import type { Project, Workspace } from "../../types";
+import { blueprintV4ProjectPath, navigate } from "../../routing";
+import {
+  COMMERCIAL_V4_APPLICATION,
+  accessibleCommercialSurfaces,
+  type CommercialSurfaceId,
+} from "../../platform/application/applicationRegistry";
+import {
+  applicationStorageKey,
+  readApplicationPreference,
+  writeApplicationPreference,
+} from "../../platform/application/applicationState";
+import "./commercial-v4.css";
+
+const ICONS = {
+  overview: Activity,
+  objects: Boxes,
+  analysis: Workflow,
+  models: BrainCircuit,
+  lineage: GitBranch,
+  governance: FileClock,
+  actions: LockKeyhole,
+  automation: Workflow,
+  settings: Settings2,
+} as const;
+
+interface CommercialContext {
+  project: Project;
+  workspaces: Workspace[];
+  datasets: DatasetCatalogItem[];
+}
+
+function currentSurface(): CommercialSurfaceId {
+  const value = new URLSearchParams(window.location.search).get("surface");
+  return COMMERCIAL_V4_APPLICATION.surfaces.some((item) => item.id === value)
+    ? value as CommercialSurfaceId
+    : "overview";
+}
+
+function stateLabel(state: string) {
+  if (state === "ready") return "Ready";
+  if (state === "planned") return "Planned";
+  if (state === "not_configured") return "Not configured";
+  return "Blocked";
+}
+
+class CommercialV4ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("commercial-v4-render-failed", { error, info });
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <main className="commercial-v4 commercial-v4-fatal" data-application-version="v4">
+        <CircleAlert aria-hidden="true" />
+        <p className="commercial-v4-eyebrow">COMMERCIAL V4 · ERROR</p>
+        <h1>Application composition could not be rendered</h1>
+        <p>The previous product versions remain available. Reload V4 or return to the Original application.</p>
+        <button type="button" onClick={() => window.location.reload()}>Reload V4</button>
+      </main>
+    );
+  }
+}
+
+function CommercialV4Runtime({ projectId }: { projectId: string }) {
+  const { user } = useAuth();
+  const [context, setContext] = useState<CommercialContext | null>(null);
+  const [error, setError] = useState<string>("");
+  const [surface, setSurface] = useState<CommercialSurfaceId>(() => currentSurface());
+  const [compactNavigation, setCompactNavigation] = useState(false);
+  const workspace = context?.workspaces.find((item) => item.id === context.project.default_workspace_id)
+    ?? context?.workspaces[0]
+    ?? null;
+  const preferenceKey = useMemo(() => user ? applicationStorageKey({
+    version: "v4",
+    projectId,
+    userId: user.user_id,
+    key: "application-preference",
+  }) : "", [projectId, user]);
+  const surfaces = useMemo(() => accessibleCommercialSurfaces(user?.permissions ?? []), [user?.permissions]);
+
+  useEffect(() => {
+    if (!preferenceKey) return;
+    const stored = readApplicationPreference(preferenceKey);
+    if (!stored) return;
+    setCompactNavigation(stored.compactNavigation);
+    if (!new URLSearchParams(window.location.search).has("surface")) setSurface(stored.surface);
+  }, [preferenceKey]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setContext(null);
+    setError("");
+    Promise.all([
+      getProject(projectId),
+      getProjectWorkspaces(projectId),
+      getDatasetCatalogPage({ project_id: projectId, offset: 0, limit: 8 }),
+    ])
+      .then(([project, workspaces, datasets]) => {
+        if (!controller.signal.aborted) setContext({ project, workspaces, datasets: datasets.items });
+      })
+      .catch((reason: unknown) => {
+        if (controller.signal.aborted) return;
+        setError(reason instanceof ApiError ? `${reason.code}: ${reason.message}` : "The V4 application context could not be loaded.");
+      });
+    return () => controller.abort();
+  }, [projectId]);
+
+  function selectSurface(next: CommercialSurfaceId) {
+    setSurface(next);
+    if (preferenceKey) writeApplicationPreference(preferenceKey, {
+      schemaVersion: 1,
+      surface: next,
+      compactNavigation,
+    });
+    const path = new URL(blueprintV4ProjectPath(projectId), window.location.origin);
+    path.searchParams.set("surface", next);
+    navigate(`${path.pathname}${path.search}`, { replace: true });
+  }
+
+  function toggleNavigation() {
+    const next = !compactNavigation;
+    setCompactNavigation(next);
+    if (preferenceKey) writeApplicationPreference(preferenceKey, {
+      schemaVersion: 1,
+      surface,
+      compactNavigation: next,
+    });
+  }
+
+  if (error) {
+    return (
+      <main className="commercial-v4 commercial-v4-state" data-application-version="v4">
+        <CircleAlert aria-hidden="true" />
+        <p className="commercial-v4-eyebrow">COMMERCIAL V4 · DEGRADED</p>
+        <h1>Project context is unavailable</h1>
+        <p>{error}</p>
+        <button type="button" onClick={() => window.location.reload()}>Retry context load</button>
+      </main>
+    );
+  }
+
+  if (!context || !workspace || !user) {
+    return (
+      <main className="commercial-v4 commercial-v4-state" data-application-version="v4" aria-busy="true">
+        <span className="commercial-v4-loader" aria-hidden="true" />
+        <p className="commercial-v4-eyebrow">COMMERCIAL V4 · LOADING</p>
+        <h1>Resolving version-scoped application context</h1>
+        <p>Project, Dataset Version, role and permission metadata are loading.</p>
+      </main>
+    );
+  }
+
+  const selected = surfaces.find((item) => item.id === surface) ?? surfaces[0];
+  const activeDatasets = context.datasets.filter((item) => item.status === "active");
+  const publishedRecords = activeDatasets.reduce((total, item) => total + item.record_count, 0);
+  const readyFeatures = surfaces.filter((item) => item.state === "ready" && item.accessible).length;
+  const plannedFeatures = surfaces.filter((item) => item.state === "planned").length;
+
+  return (
+    <main
+      className={`commercial-v4 ${compactNavigation ? "is-navigation-compact" : ""}`}
+      data-application-id={COMMERCIAL_V4_APPLICATION.id}
+      data-application-version="v4"
+    >
+      <header className="commercial-v4-topbar">
+        <div className="commercial-v4-brand">
+          <span className="commercial-v4-mark" aria-hidden="true">O4</span>
+          <div>
+            <p className="commercial-v4-eyebrow">ONTOLOGY PLATFORM</p>
+            <strong>Commercial V4</strong>
+          </div>
+        </div>
+        <div className="commercial-v4-context-line" aria-label="Application context">
+          <span>{context.project.display_name}</span>
+          <ChevronRight aria-hidden="true" />
+          <span>{workspace.display_name}</span>
+          <ChevronRight aria-hidden="true" />
+          <span>{user.active_project_roles.join(", ") || user.roles.join(", ")}</span>
+        </div>
+        <div className="commercial-v4-release">
+          <span className="commercial-v4-state-badge is-ready">Separate application</span>
+          <small>Not the default route</small>
+        </div>
+      </header>
+
+      <div className="commercial-v4-layout">
+        <aside className="commercial-v4-nav" aria-label="Commercial V4 navigation">
+          <button className="commercial-v4-nav-toggle" type="button" onClick={toggleNavigation} aria-label="Toggle compact navigation">
+            <Settings2 aria-hidden="true" />
+            <span>Application surfaces</span>
+          </button>
+          <nav>
+            {surfaces.map((item) => {
+              const Icon = ICONS[item.id];
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={item.id === selected.id ? "is-active" : ""}
+                  onClick={() => selectSurface(item.id)}
+                  aria-current={item.id === selected.id ? "page" : undefined}
+                >
+                  <Icon aria-hidden="true" />
+                  <span>{item.label}</span>
+                  <i className={`commercial-v4-state-dot is-${item.state}`} title={stateLabel(item.state)} />
+                </button>
+              );
+            })}
+          </nav>
+          <div className="commercial-v4-version-policy">
+            <GitBranch aria-hidden="true" />
+            <div>
+              <strong>V1–V3 preserved</strong>
+              <span>V4 promotion requires explicit approval.</span>
+            </div>
+          </div>
+        </aside>
+
+        <section className="commercial-v4-content">
+          <div className="commercial-v4-resource-header">
+            <div>
+              <p className="commercial-v4-eyebrow">{COMMERCIAL_V4_APPLICATION.applicationIdentity}</p>
+              <h1>{selected.label}</h1>
+              <p>{selected.description}</p>
+            </div>
+            <div className="commercial-v4-header-actions">
+              <span className={`commercial-v4-state-badge is-${selected.state}`}>{stateLabel(selected.state)} · Phase {selected.phase}</span>
+              {selected.launchPath && selected.accessible ? (
+                <button type="button" onClick={() => navigate(selected.launchPath!({ projectId, workspaceId: workspace.id }))}>
+                  Open shared workbench <ChevronRight aria-hidden="true" />
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          {selected.id === "overview" ? (
+            <>
+              <section className="commercial-v4-metrics" aria-label="Commercial readiness metrics">
+                <article><span>Ready surfaces</span><strong>{readyFeatures}</strong><small>permission-aware</small></article>
+                <article><span>Planned surfaces</span><strong>{plannedFeatures}</strong><small>no fake success UI</small></article>
+                <article><span>Active datasets</span><strong>{activeDatasets.length}</strong><small>{publishedRecords.toLocaleString()} governed rows</small></article>
+                <article><span>Application scope</span><strong>V4</strong><small>isolated state and cache identity</small></article>
+              </section>
+
+              <div className="commercial-v4-grid">
+                <section className="commercial-v4-panel commercial-v4-project-card">
+                  <div className="commercial-v4-panel-title"><Database aria-hidden="true" /><span>Project & Dataset context</span></div>
+                  <dl>
+                    <div><dt>Project</dt><dd>{context.project.display_name}</dd></div>
+                    <div><dt>Domain pack</dt><dd>{context.project.domain_pack_code}</dd></div>
+                    <div><dt>Workspace</dt><dd>{workspace.display_name}</dd></div>
+                    <div><dt>Organization</dt><dd>{context.project.organization_id}</dd></div>
+                  </dl>
+                  <div className="commercial-v4-dataset-list">
+                    {context.datasets.length ? context.datasets.slice(0, 4).map((dataset) => (
+                      <article key={dataset.id}>
+                        <span><strong>{dataset.display_name}</strong><small>{dataset.latest_version_label ?? "No published version"}</small></span>
+                        <em>{dataset.record_count.toLocaleString()} rows</em>
+                      </article>
+                    )) : <p className="commercial-v4-empty">No Dataset is registered for this Project.</p>}
+                  </div>
+                </section>
+
+                <section className="commercial-v4-panel">
+                  <div className="commercial-v4-panel-title"><LockKeyhole aria-hidden="true" /><span>Role & permission boundary</span></div>
+                  <dl>
+                    <div><dt>Signed in as</dt><dd>{user.display_name}</dd></div>
+                    <div><dt>Project roles</dt><dd>{user.active_project_roles.join(", ") || "No active role"}</dd></div>
+                    <div><dt>Workspace scope</dt><dd>{user.workspace_scopes.includes(workspace.id) || user.is_admin ? "Allowed" : "Denied"}</dd></div>
+                    <div><dt>Permissions</dt><dd>{user.permissions.length}</dd></div>
+                  </dl>
+                  <div className="commercial-v4-capability-list">
+                    {surfaces.map((item) => (
+                      <div key={item.id}>
+                        <span>{item.label}</span>
+                        <strong className={`is-${item.accessible ? item.state : "blocked"}`}>
+                          {item.accessible ? stateLabel(item.state) : "Permission denied"}
+                        </strong>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </div>
+            </>
+          ) : selected.id === "settings" ? (
+            <div className="commercial-v4-grid">
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Settings2 aria-hidden="true" /><span>Version-scoped runtime</span></div>
+                <dl>
+                  <div><dt>Application ID</dt><dd>{COMMERCIAL_V4_APPLICATION.id}</dd></div>
+                  <div><dt>Storage namespace</dt><dd>{COMMERCIAL_V4_APPLICATION.storageNamespace}</dd></div>
+                  <div><dt>Query namespace</dt><dd>{COMMERCIAL_V4_APPLICATION.queryNamespace}</dd></div>
+                  <div><dt>Collaboration channel</dt><dd>{COMMERCIAL_V4_APPLICATION.collaborationNamespace}</dd></div>
+                </dl>
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><GitBranch aria-hidden="true" /><span>Release policy</span></div>
+                <p className="commercial-v4-policy-copy">V4 does not replace the Original, Blueprint V1 or Blueprint V2 applications. Default-route promotion is a separate release decision after cross-version regression evidence.</p>
+                <button type="button" onClick={() => navigate(`/app/projects/${encodeURIComponent(projectId)}`)}>Open Original application</button>
+              </section>
+            </div>
+          ) : (
+            <section className={`commercial-v4-panel commercial-v4-feature-state is-${selected.accessible ? selected.state : "blocked"}`}>
+              {selected.accessible ? <Database aria-hidden="true" /> : <LockKeyhole aria-hidden="true" />}
+              <p className="commercial-v4-eyebrow">{selected.accessible ? stateLabel(selected.state) : "PERMISSION DENIED"}</p>
+              <h2>{selected.accessible ? selected.description : "Your active role cannot open this surface."}</h2>
+              {selected.launchPath && selected.accessible ? (
+                <button type="button" onClick={() => navigate(selected.launchPath!({ projectId, workspaceId: workspace.id }))}>Open the existing governed workbench</button>
+              ) : (
+                <p>{selected.accessible ? `Implementation is assigned to Phase ${selected.phase}; V4 does not present a simulated success state.` : `Required permission: ${selected.permission}`}</p>
+              )}
+            </section>
+          )}
+        </section>
+
+        <aside className="commercial-v4-inspector" aria-label="Application definition inspector">
+          <p className="commercial-v4-eyebrow">APPLICATION DEFINITION</p>
+          <h2>{selected.label}</h2>
+          <dl>
+            <div><dt>Surface ID</dt><dd>{selected.id}</dd></div>
+            <div><dt>State</dt><dd>{selected.accessible ? stateLabel(selected.state) : "Permission denied"}</dd></div>
+            <div><dt>Owning phase</dt><dd>{selected.phase}</dd></div>
+            <div><dt>Permission</dt><dd>{selected.permission ?? "Project membership"}</dd></div>
+          </dl>
+          <hr />
+          <p>This inspector is generated from the V4 application manifest. Future phases extend the manifest instead of adding pathname conditionals to unrelated components.</p>
+        </aside>
+      </div>
+    </main>
+  );
+}
+
+export function CommercialV4App({ projectId }: { projectId: string }) {
+  return (
+    <CommercialV4ErrorBoundary>
+      <CommercialV4Runtime projectId={projectId} />
+    </CommercialV4ErrorBoundary>
+  );
+}

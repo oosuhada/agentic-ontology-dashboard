@@ -5,6 +5,7 @@ import {
   matchBlueprintComparisonPath,
   matchBlueprintProjectPath,
   matchBlueprintV2ProjectPath,
+  matchBlueprintV4ProjectPath,
   matchDatasetCatalogPath,
   matchGovernancePath,
   matchModelingPath,
@@ -12,6 +13,7 @@ import {
   matchProjectDashboardPath,
   matchProjectHomePath,
   navigate,
+  loginPath,
   usePathname,
 } from "./routing";
 import { ApiError, getProject, getProjectWorkspaces } from "./api";
@@ -38,6 +40,9 @@ const BlueprintManufacturingV2App = lazy(() =>
 );
 const BlueprintComparisonPage = lazy(() =>
   import("./features/blueprint-compare/BlueprintComparisonPage").then((module) => ({ default: module.BlueprintComparisonPage })),
+);
+const CommercialV4App = lazy(() =>
+  import("./features/commercial-v4/CommercialV4App").then((module) => ({ default: module.CommercialV4App })),
 );
 const ProjectHomePage = lazy(() =>
   import("./features/projects/ProjectHomePage").then((module) => ({ default: module.ProjectHomePage })),
@@ -192,7 +197,9 @@ function AppRouter() {
   if (!user) {
     if (pathname === "/register") return <RegisterPage />;
     if (pathname === "/pending") return <PendingPage />;
-    if (pathname !== "/login" && pathname !== "/") return <Redirect to="/login" />;
+    if (pathname !== "/login" && pathname !== "/") {
+      return <Redirect to={loginPath(`${pathname}${window.location.search}`)} />;
+    }
     return <LoginPage />;
   }
 
@@ -229,6 +236,17 @@ function AppRouter() {
       <ProjectRouteBoundary projectId={blueprintV2ProjectRoute.projectId}>
         <Suspense fallback={<RouteLoading operation="Loading Blueprint V2 Workbench" detail="Resolving the dense Object, Analysis, and Action workspace." />}>
           <BlueprintManufacturingV2App projectId={blueprintV2ProjectRoute.projectId} />
+        </Suspense>
+      </ProjectRouteBoundary>
+    );
+  }
+
+  const blueprintV4ProjectRoute = matchBlueprintV4ProjectPath(pathname);
+  if (blueprintV4ProjectRoute) {
+    return (
+      <ProjectRouteBoundary projectId={blueprintV4ProjectRoute.projectId}>
+        <Suspense fallback={<RouteLoading operation="Loading Commercial V4" detail="Resolving version-scoped application metadata and Project context." />}>
+          <CommercialV4App projectId={blueprintV4ProjectRoute.projectId} />
         </Suspense>
       </ProjectRouteBoundary>
     );

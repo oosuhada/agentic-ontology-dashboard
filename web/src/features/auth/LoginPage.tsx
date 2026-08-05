@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { ApiError } from "../../api";
-import { navigate } from "../../routing";
+import { navigate, safeApplicationReturnPath } from "../../routing";
 import { useAuth } from "./AuthContext";
 import { AuthShell } from "./AuthShell";
 
@@ -41,7 +41,8 @@ export function LoginPage() {
     setError("");
     try {
       const user = await login(email, password);
-      navigate(user.default_path, { replace: true });
+      const returnTo = safeApplicationReturnPath(new URLSearchParams(window.location.search).get("returnTo"));
+      navigate(returnTo ?? user.default_path, { replace: true });
     } catch (reason) {
       if (reason instanceof ApiError && reason.code === "pending_approval") {
         navigate(`/pending?email=${encodeURIComponent(email)}`);
