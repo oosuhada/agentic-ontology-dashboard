@@ -57,6 +57,9 @@ const TeamShareStory = lazy(() =>
 const AdaptiveTeamShareStory = lazy(() =>
   import("./features/teamshare/AdaptiveTeamShareStory").then((module) => ({ default: module.AdaptiveTeamShareStory })),
 );
+const EChartsComparisonEmbed = lazy(() =>
+  import("./features/visualization/EChartsComparisonEmbed").then((module) => ({ default: module.EChartsComparisonEmbed })),
+);
 
 const LAST_VALID_PROJECT_KEY = "ontology-dashboard:last-valid-project";
 const IS_PUBLIC_STORY = import.meta.env.VITE_PUBLIC_STORY === "1";
@@ -168,6 +171,7 @@ function AppRouter() {
   if (pathname === "/reference") return <ReferenceGallery />;
   if (pathname === "/team-share") return <TeamShareStory />;
   if (pathname === "/team-share-adaptive") return <AdaptiveTeamShareStory />;
+  if (pathname === "/visualization-compare/echarts") return <EChartsComparisonEmbed />;
 
   if (loading) {
     return <RouteLoading operation="Checking session" detail="Resolving identity and governed scope." />;
@@ -296,6 +300,15 @@ function AppRouter() {
 }
 
 export default function App() {
+  if (window.location.pathname === "/visualization-compare/echarts") {
+    return (
+      <I18nProvider>
+        <Suspense fallback={<RouteLoading operation="Loading ECharts comparison" />}>
+          <EChartsComparisonEmbed />
+        </Suspense>
+      </I18nProvider>
+    );
+  }
   return (
     <I18nProvider>
       {IS_PUBLIC_STORY ? (

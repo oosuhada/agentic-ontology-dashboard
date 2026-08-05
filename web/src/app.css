@@ -21,6 +21,7 @@
 @import "./features/reference/reference-gallery.css" layer(features);
 @import "./features/teamshare/team-share-story.css" layer(features);
 @import "./features/teamshare/team-share-adaptive.css" layer(features);
+@import "./features/visualization/echarts-comparison-embed.css" layer(features);
 @import "./features/auth/auth-control-plane.css" layer(features);
 @import "./features/admin/admin-control-plane.css" layer(features);
 @import "./ui/foundry/convergence.css" layer(convergence);
