@@ -73,6 +73,7 @@ SHA-256 값은 다음과 같습니다.
 
 ### GitHub 구현·검증 자료
 
+- [Canonical V3.1 데이터셋 Story HTML](https://github.com/oosuhada/agentic-ontology-dashboard/blob/experiment/week1-streamlit-plotly-framework-comparison/experiments/week1_prototype/canonical_v3_1_story/index.html)
 - [Canonical V3.1 통합 브랜치](https://github.com/oosuhada/agentic-ontology-dashboard/tree/feature/predictive-maintenance-canonical-v3.1-complete)
 - [V3.1 업그레이드 계획](https://github.com/oosuhada/agentic-ontology-dashboard/blob/feature/predictive-maintenance-canonical-v3.1-complete/docs/30-implementation/predictive-maintenance-canonical-v3-upgrade-plan.md)
 - [Release 검증 결과](https://github.com/oosuhada/agentic-ontology-dashboard/blob/feature/predictive-maintenance-canonical-v3.1-complete/docs/30-implementation/stage-history/stage44-predictive-maintenance-v3.1-release-summary.md)
