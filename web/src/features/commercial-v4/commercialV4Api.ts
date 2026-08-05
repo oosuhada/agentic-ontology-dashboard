@@ -153,6 +153,71 @@ export interface DistributedRuntimeSnapshot {
   dead_letters: DurableJob[];
 }
 
+export interface GovernedArtifact {
+  id: string;
+  organization_id: string;
+  project_id: string;
+  workspace_id: string | null;
+  resource_type: string;
+  resource_id: string;
+  resource_version: string;
+  object_key: string;
+  uri: string;
+  backend: "local" | "s3" | "gcs" | "azure";
+  checksum_sha256: string;
+  media_type: string;
+  size_bytes: number;
+  metadata: Record<string, unknown>;
+  provenance: Record<string, unknown>;
+  state: "available" | "missing" | "checksum_mismatch" | "quarantined" | "retention_pending" | "deleted";
+  retention_class: "ephemeral" | "standard" | "regulated" | "backup" | "legal_hold";
+  retain_until: string | null;
+  legal_hold: boolean;
+  created_by: string;
+  created_at: string;
+  verified_at: string | null;
+  deleted_at: string | null;
+}
+
+export interface ArtifactGovernanceSnapshot {
+  readiness: {
+    state: "ready" | "degraded" | "not_configured" | "blocked";
+    backend: "local" | "s3" | "gcs" | "azure";
+    bucket: string | null;
+    endpoint_configured: boolean;
+    credential_reference_configured: boolean;
+    encryption: string;
+    versioning: string;
+    signed_downloads: string;
+    deterministic_key_schema: string;
+    checksum: string;
+    retention_classes: string[];
+    reconciliation: string;
+    blockers: string[];
+  };
+  artifacts: GovernedArtifact[];
+  retention_preview: Array<{
+    artifact_id: string;
+    object_key: string;
+    retention_class: string;
+    retain_until: string | null;
+    legal_hold: boolean;
+    action: "retain" | "delete" | "skip_legal_hold";
+    reason: string;
+  }>;
+  last_reconciliation: null | {
+    run_id: string;
+    mode: "dry_run" | "apply";
+    catalog_count: number;
+    object_count: number;
+    verified: string[];
+    missing: string[];
+    checksum_mismatch: string[];
+    orphan_keys: string[];
+    completed_at: string;
+  };
+}
+
 export async function getProjectV4ApplicationDefinition(projectId: string): Promise<ProjectV4ApplicationDefinition> {
   const response = await fetch(
     `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/applications/v4`,
@@ -228,4 +293,47 @@ export async function operateDistributedJob(
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload?.error?.message ?? payload?.detail ?? `Job ${action} failed: ${response.status}`);
   return payload as DurableJob;
+}
+
+export async function getArtifactGovernance(projectId: string): Promise<ArtifactGovernanceSnapshot> {
+  const response = await fetch(
+    `${API_BASE}/api/platform/projects/${encodeURIComponent(projectId)}/artifact-governance`,
+    { credentials: "include" },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message ?? `Artifact governance failed: ${response.status}`);
+  return payload as ArtifactGovernanceSnapshot;
+}
+
+async function artifactOperatorRequest<T>(url: string, purpose: string): Promise<T> {
+  const response = await fetch(`${API_BASE}${url}`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
+    body: JSON.stringify({ purpose }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message ?? payload?.detail ?? `Artifact operation failed: ${response.status}`);
+  return payload as T;
+}
+
+export function verifyArtifact(projectId: string, artifactId: string): Promise<GovernedArtifact> {
+  return artifactOperatorRequest(
+    `/api/platform/projects/${encodeURIComponent(projectId)}/artifacts/${encodeURIComponent(artifactId)}/verify`,
+    "Verify checksum from Commercial V4",
+  );
+}
+
+export function signArtifactDownload(projectId: string, artifactId: string): Promise<{ url: string }> {
+  return artifactOperatorRequest(
+    `/api/platform/projects/${encodeURIComponent(projectId)}/artifacts/${encodeURIComponent(artifactId)}/sign-download`,
+    "Governed download from Commercial V4",
+  );
+}
+
+export function reconcileArtifacts(projectId: string, apply = false): Promise<NonNullable<ArtifactGovernanceSnapshot["last_reconciliation"]>> {
+  return artifactOperatorRequest(
+    `/api/platform/projects/${encodeURIComponent(projectId)}/artifact-reconciliation?apply=${apply ? "true" : "false"}`,
+    apply ? "Apply artifact reconciliation from Commercial V4" : "Preview artifact reconciliation from Commercial V4",
+  );
 }

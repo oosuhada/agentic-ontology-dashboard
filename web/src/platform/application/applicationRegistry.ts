@@ -6,6 +6,7 @@ export type CommercialSurfaceId =
   | "identity"
   | "deployment"
   | "runtime"
+  | "artifacts"
   | "objects"
   | "analysis"
   | "models"
@@ -77,6 +78,14 @@ const V4_SURFACES: readonly ApplicationSurfaceDefinition[] = [
     description: "Redis coordination, durable workers, retry, cancellation and dead-letter operations.",
     state: "ready",
     phase: 23,
+  },
+  {
+    id: "artifacts",
+    label: "Artifacts",
+    description: "Object storage, checksum, signed download, retention and reconciliation governance.",
+    state: "ready",
+    phase: 24,
+    permission: "governance.read",
   },
   {
     id: "objects",

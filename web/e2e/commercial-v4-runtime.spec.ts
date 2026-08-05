@@ -36,6 +36,13 @@ test("preserves V1 through V3 and exposes an independent Commercial V4 compositi
   await expect(page.getByText("Distributed rate-limit policy", { exact: true })).toBeVisible();
   await expect(page.getByText("No durable jobs have been submitted for this Project.", { exact: true })).toBeVisible();
 
+  await page.getByRole("button", { name: /Artifacts/ }).click();
+  await expect(page.getByText("Object-storage readiness", { exact: true })).toBeVisible();
+  await expect(page.getByText("Governed artifact catalog", { exact: true })).toBeVisible();
+  await expect(page.getByText("No governed artifact has been registered for this Project.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Run reconciliation preview", exact: true }).click();
+  await expect(page.getByText(/Reconciliation preview:/)).toBeVisible();
+
   await page.goto("/app/projects/manufacturing-demo-project");
   await expect(page.getByRole("heading", { name: "운영 매니저 운영 브리핑" })).toBeVisible();
   await expect(page.locator('[data-application-version="v4"]')).toHaveCount(0);

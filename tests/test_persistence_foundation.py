@@ -34,6 +34,7 @@ def test_migrations_are_idempotent_and_create_outbox(tmp_path: Path) -> None:
             "0019_tenant_transaction_convergence",
             "0020_enterprise_identity_access",
             "0021_distributed_execution_runtime",
+            "0022_object_storage_artifact_governance",
         ]
     assert second == []
 

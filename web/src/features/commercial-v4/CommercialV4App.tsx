@@ -1,6 +1,7 @@
 import { Component, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from "react";
 import {
   Activity,
+  Archive,
   Boxes,
   BrainCircuit,
   ChevronRight,
@@ -41,6 +42,11 @@ import {
   getEnterpriseIdentityReadiness,
   getDeploymentReadiness,
   getDistributedRuntime,
+  getArtifactGovernance,
+  reconcileArtifacts,
+  signArtifactDownload,
+  verifyArtifact,
+  type ArtifactGovernanceSnapshot,
   operateDistributedJob,
   type DistributedRuntimeSnapshot,
   type DeploymentReadiness,
@@ -55,6 +61,7 @@ const ICONS = {
   identity: Users,
   deployment: Container,
   runtime: ServerCog,
+  artifacts: Archive,
   objects: Boxes,
   analysis: Workflow,
   models: BrainCircuit,
@@ -74,6 +81,7 @@ interface CommercialContext {
   identity: EnterpriseIdentityReadiness;
   deployment: DeploymentReadiness;
   distributed: DistributedRuntimeSnapshot;
+  artifacts: ArtifactGovernanceSnapshot;
 }
 
 function currentSurface(): CommercialSurfaceId {
@@ -154,8 +162,9 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       getEnterpriseIdentityReadiness(projectId),
       getDeploymentReadiness(projectId),
       getDistributedRuntime(projectId),
+      getArtifactGovernance(projectId),
     ])
-      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed]) => {
+      .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts]) => {
         if (!controller.signal.aborted) setContext({
           project,
           workspaces,
@@ -165,6 +174,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
           identity,
           deployment,
           distributed,
+          artifacts,
         });
       })
       .catch((reason: unknown) => {
@@ -216,6 +226,43 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       setOperationMessage(`Job ${action} completed.`);
     } catch (reason) {
       setOperationMessage(reason instanceof Error ? reason.message : `Job ${action} failed.`);
+    }
+  }
+
+  async function refreshArtifacts() {
+    const artifacts = await getArtifactGovernance(projectId);
+    setContext((current) => current ? { ...current, artifacts } : current);
+  }
+
+  async function operateArtifact(artifactId: string, action: "verify" | "download") {
+    setOperationMessage("");
+    try {
+      if (action === "verify") {
+        await verifyArtifact(projectId, artifactId);
+        await refreshArtifacts();
+        setOperationMessage("Artifact checksum verification completed.");
+      } else {
+        const signed = await signArtifactDownload(projectId, artifactId);
+        window.location.assign(signed.url);
+      }
+    } catch (reason) {
+      setOperationMessage(reason instanceof Error ? reason.message : `Artifact ${action} failed.`);
+    }
+  }
+
+  async function runArtifactReconciliation() {
+    setOperationMessage("");
+    try {
+      const report = await reconcileArtifacts(projectId, false);
+      setContext((current) => current ? {
+        ...current,
+        artifacts: { ...current.artifacts, last_reconciliation: report },
+      } : current);
+      setOperationMessage(
+        `Reconciliation preview: ${report.missing.length} missing, ${report.checksum_mismatch.length} mismatched, ${report.orphan_keys.length} orphaned.`,
+      );
+    } catch (reason) {
+      setOperationMessage(reason instanceof Error ? reason.message : "Artifact reconciliation failed.");
     }
   }
 
@@ -521,6 +568,55 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
                     ) : null}
                   </article>
                 )) : <p className="commercial-v4-empty">No durable jobs have been submitted for this Project.</p>}
+              </section>
+            </div>
+          ) : selected.id === "artifacts" ? (
+            <div className="commercial-v4-grid">
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><Archive aria-hidden="true" /><span>Object-storage readiness</span></div>
+                <dl>
+                  <div><dt>Backend</dt><dd>{context.artifacts.readiness.backend}</dd></div>
+                  <div><dt>Bucket</dt><dd>{context.artifacts.readiness.bucket ?? "Local emulator"}</dd></div>
+                  <div><dt>Encryption</dt><dd>{context.artifacts.readiness.encryption}</dd></div>
+                  <div><dt>Checksums</dt><dd>{context.artifacts.readiness.checksum}</dd></div>
+                </dl>
+                <span className={`commercial-v4-state-badge is-${context.artifacts.readiness.state}`}>{context.artifacts.readiness.state.replace("_", " ")}</span>
+                {context.artifacts.readiness.blockers.map((blocker) => <p key={blocker} className="commercial-v4-policy-copy">{blocker}</p>)}
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><GitBranch aria-hidden="true" /><span>Governance contract</span></div>
+                <p className="commercial-v4-policy-copy">{context.artifacts.readiness.deterministic_key_schema}</p>
+                <p className="commercial-v4-policy-copy">{context.artifacts.readiness.signed_downloads}</p>
+                <div className="commercial-v4-chip-list">
+                  {context.artifacts.readiness.retention_classes.map((retentionClass) => <span key={retentionClass}>{retentionClass}</span>)}
+                </div>
+              </section>
+              <section className="commercial-v4-panel commercial-v4-artifact-catalog">
+                <div className="commercial-v4-panel-title"><Database aria-hidden="true" /><span>Governed artifact catalog</span></div>
+                {operationMessage ? <p className="commercial-v4-policy-copy" role="status">{operationMessage}</p> : null}
+                {context.artifacts.artifacts.length ? context.artifacts.artifacts.map((artifact) => (
+                  <article key={artifact.id}>
+                    <span>
+                      <strong>{artifact.resource_type} · {artifact.resource_id}</strong>
+                      <small>{artifact.resource_version} · {artifact.checksum_sha256.slice(0, 12)}… · {artifact.size_bytes.toLocaleString()} B</small>
+                    </span>
+                    <em className={`is-${artifact.state}`}>{artifact.state.replace("_", " ")}</em>
+                    <button type="button" onClick={() => void operateArtifact(artifact.id, "verify")}>Verify</button>
+                    {artifact.state === "available" ? <button type="button" onClick={() => void operateArtifact(artifact.id, "download")}>Download</button> : null}
+                  </article>
+                )) : <p className="commercial-v4-empty">No governed artifact has been registered for this Project.</p>}
+              </section>
+              <section className="commercial-v4-panel">
+                <div className="commercial-v4-panel-title"><CircleAlert aria-hidden="true" /><span>Retention & reconciliation</span></div>
+                <dl>
+                  <div><dt>Catalog objects</dt><dd>{context.artifacts.artifacts.length}</dd></div>
+                  <div><dt>Delete candidates</dt><dd>{context.artifacts.retention_preview.filter((item) => item.action === "delete").length}</dd></div>
+                  <div><dt>Legal holds</dt><dd>{context.artifacts.retention_preview.filter((item) => item.action === "skip_legal_hold").length}</dd></div>
+                  <div><dt>Last preview</dt><dd>{context.artifacts.last_reconciliation?.completed_at ?? "Not run"}</dd></div>
+                </dl>
+                {user.permissions.includes("governance.projection.retry") ? (
+                  <button type="button" onClick={() => void runArtifactReconciliation()}>Run reconciliation preview</button>
+                ) : null}
               </section>
             </div>
           ) : selected.id === "settings" ? (
