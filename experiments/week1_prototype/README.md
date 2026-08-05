@@ -58,6 +58,15 @@ bash experiments/week1_prototype/run_streamlit.sh
 
 ## FastAPI·Flask 비교 실행
 
+공개 비교 화면:
+
+```text
+https://fastapi-flask.oosu.dev
+```
+
+공개 화면에서 FastAPI·Flask의 동일 `/health` 응답, OpenAPI·응답 스키마
+지원 여부, 로컬 비교 결과와 최종 선정 근거를 확인할 수 있다.
+
 ```bash
 bash experiments/week1_prototype/run_framework_comparison.sh
 ```
