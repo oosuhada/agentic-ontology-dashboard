@@ -27,6 +27,7 @@ from .routers.manufacturing import router as manufacturing_router
 from .routers.modeling import router as modeling_router
 from .routers.ontology import router as ontology_router
 from .routers.planner import router as planner_router
+from .routers.platform import router as platform_router
 from .routers.project3 import router as project3_router
 from .routers.predictive_maintenance_runtime import (
     router as predictive_maintenance_runtime_router,
@@ -103,6 +104,7 @@ for feature_router in (
     exports_router,
     governance_router,
     planner_router,
+    platform_router,
     project3_router,
     predictive_maintenance_runtime_router,
     modeling_router,

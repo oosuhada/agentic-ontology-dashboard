@@ -40,6 +40,10 @@ from .datasets.models import (
     MaterializationRecord,
     OntologyMappingRecord,
 )
+from .domain_packs.models import (
+    DomainPackDefinition as PlatformDomainPackDefinition,
+    ProjectApplicationDefinition,
+)
 from .export_models import ExportCheckpoint
 from .governance.models import GovernanceAgentRunDetail, ProjectionRetryResult
 from .identity_models import DisplayPreferenceUpdateRequest, Principal
@@ -566,6 +570,8 @@ _EXPLICIT_MODELS: dict[str, Any] = {
     "ontology_dashboard.routers.projects.list_projects": ProjectListResponse,
     "ontology_dashboard.routers.projects.list_project_workspaces": ItemsResponse[dict[str, Any]],
     "ontology_dashboard.routers.projects.list_project_events": ItemsResponse[dict[str, Any]],
+    "ontology_dashboard.routers.platform.domain_pack_catalog": ItemsResponse[PlatformDomainPackDefinition],
+    "ontology_dashboard.routers.platform.project_v4_application": ProjectApplicationDefinition,
     "ontology_dashboard.routers.dashboards.get_report_draft": ReportDraftResponse,
     "ontology_dashboard.routers.dashboards.dashboard_template_versions": ItemsResponse[dict[str, Any]],
     "ontology_dashboard.routers.dashboards.request_dashboard_template_publish": WorkflowRequestResponse,

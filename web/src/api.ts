@@ -94,7 +94,7 @@ import type {
 // Same-origin is the safe production default: Cloudflare and Vite proxy /api
 // without creating an HTTPS -> loopback HTTP mixed-content boundary. Local
 // scripts and isolated Playwright servers can still opt into an absolute URL.
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 let csrfTokenCache: string | null = null;
 
@@ -109,6 +109,7 @@ export class ApiError extends Error {
     this.code = code;
   }
 }
+
 
 function cookieValue(name: string): string | null {
   const prefix = `${encodeURIComponent(name)}=`;
@@ -260,6 +261,7 @@ export async function getProjects(): Promise<Project[]> {
 export function getProject(projectId: string): Promise<Project> {
   return request<Project>(`/api/projects/${encodeURIComponent(projectId)}`);
 }
+
 
 export async function getProjectWorkspaces(projectId: string): Promise<Workspace[]> {
   return (await request<{ items: Workspace[] }>(

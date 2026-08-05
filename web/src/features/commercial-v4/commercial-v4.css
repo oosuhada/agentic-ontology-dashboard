@@ -102,6 +102,12 @@
 .commercial-v4-capability-list .is-ready { color: var(--v4-ready); }
 .commercial-v4-capability-list .is-planned { color: var(--v4-planned); }
 .commercial-v4-capability-list .is-blocked { color: var(--v4-blocked); }
+.commercial-v4-context-list { display: grid; gap: 5px; }
+.commercial-v4-context-list article { display: flex; justify-content: space-between; gap: 12px; padding: 9px; border-left: 2px solid var(--v4-accent); background: var(--v4-panel-muted); }
+.commercial-v4-context-list strong, .commercial-v4-context-list small { display: block; }
+.commercial-v4-context-list strong { font-size: 11px; }
+.commercial-v4-context-list small { margin-top: 3px; color: var(--v4-muted); font-size: 9px; }
+.commercial-v4-context-list em { align-self: center; color: var(--v4-accent); font-size: 9px; font-style: normal; white-space: nowrap; }
 
 .commercial-v4-feature-state { min-height: 320px; margin-top: 16px; display: grid; place-content: center; justify-items: center; gap: 9px; text-align: center; }
 .commercial-v4-feature-state > svg { width: 34px; height: 34px; color: var(--v4-accent); }

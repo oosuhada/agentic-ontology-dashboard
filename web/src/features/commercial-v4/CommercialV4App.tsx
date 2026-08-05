@@ -12,7 +12,12 @@ import {
   Settings2,
   Workflow,
 } from "lucide-react";
-import { ApiError, getDatasetCatalogPage, getProject, getProjectWorkspaces } from "../../api";
+import {
+  ApiError,
+  getDatasetCatalogPage,
+  getProject,
+  getProjectWorkspaces,
+} from "../../api";
 import { useAuth } from "../auth/AuthContext";
 import type { DatasetCatalogItem } from "../datasets/types";
 import type { Project, Workspace } from "../../types";
@@ -27,6 +32,10 @@ import {
   readApplicationPreference,
   writeApplicationPreference,
 } from "../../platform/application/applicationState";
+import {
+  getProjectV4ApplicationDefinition,
+  type ProjectV4ApplicationDefinition,
+} from "./commercialV4Api";
 import "./commercial-v4.css";
 
 const ICONS = {
@@ -45,6 +54,7 @@ interface CommercialContext {
   project: Project;
   workspaces: Workspace[];
   datasets: DatasetCatalogItem[];
+  application: ProjectV4ApplicationDefinition;
 }
 
 function currentSurface(): CommercialSurfaceId {
@@ -119,13 +129,20 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       getProject(projectId),
       getProjectWorkspaces(projectId),
       getDatasetCatalogPage({ project_id: projectId, offset: 0, limit: 8 }),
+      getProjectV4ApplicationDefinition(projectId),
     ])
-      .then(([project, workspaces, datasets]) => {
-        if (!controller.signal.aborted) setContext({ project, workspaces, datasets: datasets.items });
+      .then(([project, workspaces, datasets, application]) => {
+        if (!controller.signal.aborted) setContext({ project, workspaces, datasets: datasets.items, application });
       })
       .catch((reason: unknown) => {
         if (controller.signal.aborted) return;
-        setError(reason instanceof ApiError ? `${reason.code}: ${reason.message}` : "The V4 application context could not be loaded.");
+        setError(
+          reason instanceof ApiError
+            ? `${reason.code}: ${reason.message}`
+            : reason instanceof Error
+              ? reason.message
+              : "The V4 application context could not be loaded.",
+        );
       });
     return () => controller.abort();
   }, [projectId]);
@@ -180,6 +197,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
   const publishedRecords = activeDatasets.reduce((total, item) => total + item.record_count, 0);
   const readyFeatures = surfaces.filter((item) => item.state === "ready" && item.accessible).length;
   const plannedFeatures = surfaces.filter((item) => item.state === "planned").length;
+  const domainPack = context.application.domain_pack;
 
   return (
     <main
@@ -273,6 +291,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
                   <dl>
                     <div><dt>Project</dt><dd>{context.project.display_name}</dd></div>
                     <div><dt>Domain pack</dt><dd>{context.project.domain_pack_code}</dd></div>
+                    <div><dt>Canonical pack</dt><dd>{domainPack.code} · {domainPack.version}</dd></div>
                     <div><dt>Workspace</dt><dd>{workspace.display_name}</dd></div>
                     <div><dt>Organization</dt><dd>{context.project.organization_id}</dd></div>
                   </dl>
@@ -304,6 +323,30 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
                       </div>
                     ))}
                   </div>
+                </section>
+                <section className="commercial-v4-panel commercial-v4-domain-contexts">
+                  <div className="commercial-v4-panel-title"><Boxes aria-hidden="true" /><span>Bounded contexts</span></div>
+                  <p className="commercial-v4-policy-copy">{domainPack.description}</p>
+                  <div className="commercial-v4-context-list">
+                    {domainPack.bounded_contexts.map((boundedContext) => (
+                      <article key={boundedContext.id}>
+                        <span>
+                          <strong>{boundedContext.display_name}</strong>
+                          <small>{boundedContext.id} · {boundedContext.kind}</small>
+                        </span>
+                        <em>{boundedContext.owns.length} owned types</em>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+                <section className="commercial-v4-panel">
+                  <div className="commercial-v4-panel-title"><GitBranch aria-hidden="true" /><span>Namespace boundary</span></div>
+                  <dl>
+                    <div><dt>Platform</dt><dd>{context.application.platform_namespace}</dd></div>
+                    <div><dt>Domain pack</dt><dd>{domainPack.namespace}</dd></div>
+                    <div><dt>Source</dt><dd>{context.application.configuration_source}</dd></div>
+                    <div><dt>Legacy aliases</dt><dd>{context.application.compatibility_namespaces.length}</dd></div>
+                  </dl>
                 </section>
               </div>
             </>
