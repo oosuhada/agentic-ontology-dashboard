@@ -18,11 +18,10 @@ async function login(page: Page) {
 
 async function boardPositions(page: Page) {
   return page.locator(".react-grid-item.dashboard-board-frame").evaluateAll((elements) => elements.map((element) => {
-    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
     return {
       id: element.getAttribute("data-board-id"),
-      x: Math.round(rect.x * 10) / 10,
-      y: Math.round(rect.y * 10) / 10,
+      transform: style.transform,
     };
   }));
 }
