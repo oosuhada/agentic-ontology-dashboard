@@ -56,7 +56,7 @@ export function ContextPanel({
   onApplySavedView,
   onDeleteSavedView,
 }: ContextPanelProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const selected = events.find((event) => event.event_id === selectedEventId);
   const statusDefinition = parameterDefinitions.find((item) => item.id === "status_filter");
   const intentDefinition = parameterDefinitions.find((item) => item.id === "intent");
@@ -66,44 +66,44 @@ export function ContextPanel({
   });
   const activeSource = dataConnection.activeSource;
   const sourceDetail = activeSource
-    ? `${activeSource.source_version} · ${activeSource.dataset_status === "published" ? "Published" : activeSource.dataset_status} · ${activeSource.release_ready ? "release ready" : "release checks pending"} · PostgreSQL Result Artifact · ${activeSource.result_artifact_count.toLocaleString()} artifacts · ${activeSource.prediction_timeline_count.toLocaleString()} timeline rows · relational ${activeSource.relational_status} · graph ${activeSource.graph.status} · ${activeSource.model_version ?? "model unavailable"} · ${activeSource.selection_reason.replaceAll("_", " ")}`
+    ? `${activeSource.source_version} · ${activeSource.dataset_status === "published" ? t("dashboard.sourcePublished") : activeSource.dataset_status} · ${activeSource.release_ready ? "release ready" : "release checks pending"} · PostgreSQL Result Artifact · ${activeSource.result_artifact_count.toLocaleString(locale)} artifacts · ${activeSource.prediction_timeline_count.toLocaleString(locale)} timeline rows · relational ${activeSource.relational_status} · graph ${activeSource.graph.status} · ${activeSource.model_version ?? t("dashboard.sourceModelUnavailable")} · ${activeSource.selection_reason.replaceAll("_", " ")}`
     : dataConnection.error
       ? dataConnection.error
       : `${dataConnection.datasetNames.join(" + ") || "Manufacturing Equipment Registry + Manufacturing Risk Events"} · ${dataConnection.sourceVersions.join(", ") || "gold-fixtures-2026-08-01"} · legacy/offline fallback${dataConnection.fallbackReason ? ` · ${dataConnection.fallbackReason}` : ""}`;
   const sourceSummary = activeSource
-    ? `${activeSource.source_version} · ${activeSource.dataset_status === "published" ? "Published" : activeSource.dataset_status} · ${activeSource.result_artifact_count.toLocaleString()} artifacts · ${activeSource.model_version ?? "model unavailable"}`
+    ? `${activeSource.source_version} · ${activeSource.dataset_status === "published" ? t("dashboard.sourcePublished") : activeSource.dataset_status} · ${activeSource.result_artifact_count.toLocaleString(locale)} ${t("dashboard.sourceArtifacts")} · ${activeSource.model_version ?? t("dashboard.sourceModelUnavailable")}`
     : sourceDetail;
 
   return (
     <aside className="dashboard-context-panel">
       <section className="dashboard-data-connections">
         <div className="context-section-heading">
-          <span className="section-label">Connected Resources</span>
+          <span className="section-label">{t("dashboard.connectedResources")}</span>
           <strong className={activeSource || dataConnection.externalConnection ? "is-live" : "is-local"}>
             {dataConnection.loading && !activeSource
-              ? "checking"
+              ? t("dashboard.checking")
               : activeSource
                 ? "PostgreSQL"
                 : dataConnection.error
-                  ? "degraded"
-                  : "local fixture"}
+                  ? t("dashboard.degraded")
+                  : t("dashboard.localFixture")}
           </strong>
         </div>
         <div className="dashboard-connection-grid">
           <article>
-            <span><PlugZap size={12} /> Events API</span>
-            <strong>{events.length.toLocaleString()}</strong>
-            <small>workspace-scoped objects</small>
+            <span><PlugZap size={12} /> {t("dashboard.eventsApi")}</span>
+            <strong>{events.length.toLocaleString(locale)}</strong>
+            <small>{t("dashboard.workspaceObjects")}</small>
           </article>
           <article>
-            <span><Database size={12} /> Datasets</span>
-            <strong>{dataConnection.loading ? "—" : dataConnection.datasetCount.toLocaleString()}</strong>
-            <small>{dataConnection.recordCount.toLocaleString()} versioned rows</small>
+            <span><Database size={12} /> {t("dashboard.datasetsLabel")}</span>
+            <strong>{dataConnection.loading ? "—" : dataConnection.datasetCount.toLocaleString(locale)}</strong>
+            <small>{dataConnection.recordCount.toLocaleString(locale)} {t("dashboard.versionedRows")}</small>
           </article>
           <article>
-            <span><Rows3 size={12} /> Relational</span>
+            <span><Rows3 size={12} /> {t("dashboard.relational")}</span>
             <strong>{dataConnection.loading ? "—" : `${dataConnection.relationalReadyCount}/${dataConnection.datasetCount}`}</strong>
-            <small>ready projections</small>
+            <small>{t("dashboard.readyProjections")}</small>
           </article>
         </div>
         <div className={`dashboard-source-disclosure ${dataConnection.error && !activeSource ? "has-error" : ""}`}>
@@ -116,7 +116,7 @@ export function ContextPanel({
       </section>
 
       <section>
-        <span className="section-label">Object Context</span>
+        <span className="section-label">{t("dashboard.objectContext")}</span>
         {selected ? (
           <div className="context-object-card">
             <div><strong>{selected.equipment.display_name}</strong><StatusBadge status={selected.status} /></div>
@@ -124,19 +124,19 @@ export function ContextPanel({
             <dl>
               <dt>Equipment</dt><dd>{selected.equipment.equipment_id}</dd>
               <dt>Risk Event</dt><dd>{selected.event_id}</dd>
-              <dt>담당</dt><dd>{selected.equipment.assigned_engineer}</dd>
+              <dt>{t("dashboard.assignee")}</dt><dd>{selected.equipment.assigned_engineer}</dd>
             </dl>
           </div>
-        ) : <p className="context-empty">Risk Event를 선택하세요.</p>}
+        ) : <p className="context-empty">{t("dashboard.selectRiskEvent")}</p>}
       </section>
 
       <section>
         <div className="context-section-heading">
-          <span className="section-label">Parameters & Filters</span>
-          <strong>{affectedCount} boards affected</strong>
+          <span className="section-label">{t("dashboard.parametersFilters")}</span>
+          <strong>{t("dashboard.boardsAffected", { count: affectedCount })}</strong>
         </div>
         <label className="context-field">
-          상태 필터
+          {t("dashboard.statusFilter")}
           <select
             value={String(parameterState.status_filter ?? "all")}
             onChange={(event) => onParameterChange("status_filter", event.target.value)}
@@ -146,7 +146,7 @@ export function ContextPanel({
             ))}
           </select>
         </label>
-        <div className="fd-filter-chips" role="group" aria-label="상태 필터 바로가기">
+        <div className="fd-filter-chips" role="group" aria-label={t("dashboard.statusFilterShortcuts")}>
           {(statusDefinition?.options ?? ["all"]).map((option) => {
             const value = String(option);
             return (
@@ -162,7 +162,7 @@ export function ContextPanel({
           })}
         </div>
         <label className="context-field">
-          화면 관점
+          {t("dashboard.viewIntent")}
           <select
             value={String(parameterState.intent ?? "overview")}
             onChange={(event) => onParameterChange("intent", event.target.value)}
@@ -174,7 +174,7 @@ export function ContextPanel({
         </label>
         {activeSelectionCount ? (
           <div className="cross-filter-summary">
-            <span><strong>{activeSelectionCount}</strong> active cross-filter{activeSelectionCount > 1 ? "s" : ""}</span>
+            <span>{t("dashboard.activeCrossFilters", { count: activeSelectionCount })}</span>
             <button type="button" onClick={onClearSelections}>{t("common.clear")}</button>
           </div>
         ) : null}
@@ -189,7 +189,7 @@ export function ContextPanel({
       </section>
 
       <section className="context-event-section">
-        <span className="section-label">Risk Event Objects</span>
+        <span className="section-label">{t("dashboard.riskEvents")}</span>
         <div className="event-nav context-event-nav">
           {filteredEvents.map((event) => (
             <button
@@ -206,7 +206,7 @@ export function ContextPanel({
       </section>
 
       <section>
-        <span className="section-label">Saved Views</span>
+        <span className="section-label">{t("dashboard.savedViews")}</span>
         <select
           className="saved-view-select"
           value={selectedSavedViewId}

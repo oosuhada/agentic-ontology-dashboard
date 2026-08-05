@@ -68,7 +68,7 @@ export function useDashboardEditor({
     const tab = draftDashboard?.tabs.find((item) => item.id === tabId);
     if (!tab) return;
     const boardById = new Map(tab.boards.map((board, index) => [board.id, { board, index }]));
-    const changed = layouts.some((layout) => {
+    const changedIds = new Set(layouts.filter((layout) => {
       const current = boardById.get(layout.i);
       if (!current) return false;
       const position = legacyBoardToGridLayout(current.board, current.index);
@@ -76,11 +76,18 @@ export function useDashboardEditor({
         || position.y !== layout.y
         || position.w !== layout.w
         || position.h !== layout.h;
-    });
-    if (!changed) return;
+    }).map((layout) => layout.i));
+    if (!changedIds.size) return;
     updateDraft((current) => ({
       ...current,
-      tabs: applyBoardLayouts(current.tabs, tabId, layouts),
+      tabs: applyBoardLayouts(current.tabs, tabId, layouts).map((item) => item.id !== tabId
+        ? item
+        : {
+            ...item,
+            boards: item.boards.map((board) => changedIds.has(board.id)
+              ? { ...board, settings: { ...board.settings, layout_mode: "manual", layout_lock: true } }
+              : board),
+          }),
     }));
   }
 

@@ -12,6 +12,23 @@ export function DisplayMenu({ className = "" }: { className?: string }) {
   const { preferences, setDensity, setPreset, setShowTechnicalMetadata, setTextSize, reset } = useDisplayPreferences();
   const { locale, setLocale, t } = useI18n();
   const preset = displayPreset(preferences);
+  const presetLabel = (value: (typeof DISPLAY_PRESET_OPTIONS)[number]["value"]) => value === "compact"
+    ? [t("display.preset.compact"), t("display.preset.compactDetail")]
+    : value === "standard"
+      ? [t("display.preset.standard"), t("display.preset.standardDetail")]
+      : [t("display.preset.accessible"), t("display.preset.accessibleDetail")];
+  const textSizeLabel = (value: (typeof DISPLAY_TEXT_SIZE_OPTIONS)[number]["value"]) => value === "small"
+    ? t("display.size.small")
+    : value === "default"
+      ? t("display.size.default")
+      : value === "large"
+        ? t("display.size.large")
+        : t("display.size.extraLarge");
+  const densityLabel = (value: (typeof DISPLAY_DENSITY_OPTIONS)[number]["value"]) => value === "compact"
+    ? t("display.density.compact")
+    : value === "standard"
+      ? t("display.density.standard")
+      : t("display.density.comfortable");
   return (
     <details className={`od-display-menu ${className}`.trim()}>
       <summary aria-label={t("display.title")} title={t("display.title")}>
@@ -33,7 +50,7 @@ export function DisplayMenu({ className = "" }: { className?: string }) {
                 aria-pressed={preset === option.value}
                 className={preset === option.value ? "active" : ""}
                 onClick={() => setPreset(option.value)}
-              ><strong>{option.label}</strong><small>{option.detail}</small></button>
+              ><strong>{presetLabel(option.value)[0]}</strong><small>{presetLabel(option.value)[1]}</small></button>
             ))}
           </div>
         </fieldset>
@@ -43,7 +60,7 @@ export function DisplayMenu({ className = "" }: { className?: string }) {
             <legend>{t("display.textSize")}</legend>
             <div className="od-display-options">
               {DISPLAY_TEXT_SIZE_OPTIONS.map((option) => (
-                <button type="button" key={option.value} aria-pressed={preferences.textSize === option.value} className={preferences.textSize === option.value ? "active" : ""} onClick={() => setTextSize(option.value)}>{option.label}</button>
+                <button type="button" key={option.value} aria-pressed={preferences.textSize === option.value} className={preferences.textSize === option.value ? "active" : ""} onClick={() => setTextSize(option.value)}>{textSizeLabel(option.value)}</button>
               ))}
             </div>
           </fieldset>
@@ -51,7 +68,7 @@ export function DisplayMenu({ className = "" }: { className?: string }) {
             <legend>{t("display.density")}</legend>
             <div className="od-display-options three-up">
               {DISPLAY_DENSITY_OPTIONS.map((option) => (
-                <button type="button" key={option.value} aria-pressed={preferences.density === option.value} className={preferences.density === option.value ? "active" : ""} onClick={() => setDensity(option.value)}>{option.label}</button>
+                <button type="button" key={option.value} aria-pressed={preferences.density === option.value} className={preferences.density === option.value ? "active" : ""} onClick={() => setDensity(option.value)}>{densityLabel(option.value)}</button>
               ))}
             </div>
           </fieldset>

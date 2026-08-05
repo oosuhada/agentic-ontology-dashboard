@@ -50,6 +50,12 @@ test("dashboard source disclosure, selected priority row, and grid selection rem
 
   const beforeCrossFilter = await boardPositions(page);
   const priorityRow = page.locator(".priority-row").first();
+  const tabs = page.locator(".dashboard-tabs button");
+  for (let index = 0; index < await tabs.count(); index += 1) {
+    if (await priorityRow.isVisible()) break;
+    await tabs.nth(index).click();
+    await page.waitForTimeout(250);
+  }
   await expect(priorityRow).toBeVisible({ timeout: 30_000 });
   await priorityRow.click();
   await expect(priorityRow).toHaveClass(/selected/);

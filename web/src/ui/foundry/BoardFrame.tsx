@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight, Copy, Eye, EyeOff, GripVertical, Maximize2, Minimize2, MoreHorizontal, Star, Trash2 } from "lucide-react";
 import { forwardRef, type CSSProperties, type ReactNode } from "react";
 import type { DashboardBoard, DashboardMode } from "../../features/dashboard/types";
+import { useI18n } from "../i18n/I18nProvider";
 
 interface BoardFrameProps {
   board: DashboardBoard;
@@ -45,6 +46,8 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
   className = "",
   style,
 }, ref) {
+  const { t } = useI18n();
+  const layoutMode = typeof board.settings.layout_mode === "string" ? board.settings.layout_mode : "manual";
   return (
     <article
       ref={ref}
@@ -60,6 +63,7 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
       data-board-id={board.id}
       data-definition-id={board.definition_id}
       data-favorite={favorite ? "true" : "false"}
+      data-layout-mode={layoutMode}
       className={[
         "dashboard-board-frame",
         "fd-board-frame",
@@ -78,25 +82,26 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
         <button
           type="button"
           className="dashboard-board-drag-handle"
-          aria-label={`${board.title} 이동`}
-          title={mode === "edit" ? "드래그하여 이동" : "View mode"}
+          aria-label={`${board.title} ${t("dashboard.moveBoard")}`}
+          title={mode === "edit" ? t("dashboard.dragToMove") : t("dashboard.viewMode")}
           disabled={mode !== "edit"}
         >
           <GripVertical size={14} />
         </button>
         <div className="dashboard-board-title fd-board-frame__title">
-          <span>{board.custom ? "PERSONAL BOARD" : "GOVERNED BOARD"}</span>
+          <span>{board.custom ? t("dashboard.personalBoard").toUpperCase() : t("dashboard.governedBoard").toUpperCase()}</span>
           <strong>{board.title}</strong>
         </div>
         <div className="dashboard-board-actions fd-board-frame__actions">
-          {affected ? <span className="affected-chip">필터 반영</span> : null}
+          {mode === "edit" ? <span className={`layout-mode-chip mode-${layoutMode}`}>{layoutMode === "ai" ? t("dashboard.layoutModeAi") : layoutMode === "auto" ? t("dashboard.layoutModeAuto") : t("dashboard.layoutModeManual")}</span> : null}
+          {affected ? <span className="affected-chip">{t("dashboard.filterApplied")}</span> : null}
           {headerActions}
           {mode === "view" && onToggleCollapsed ? (
             <button
               type="button"
-              aria-label={collapsed ? `${board.title} 펼치기` : `${board.title} 접기`}
+              aria-label={collapsed ? `${board.title} ${t("dashboard.expandBoard")}` : `${board.title} ${t("dashboard.collapseBoard")}`}
               aria-expanded={!collapsed}
-              title={collapsed ? "Board 펼치기" : "Board 접기"}
+              title={collapsed ? t("dashboard.expandBoard") : t("dashboard.collapseBoard")}
               onClick={(event) => { event.stopPropagation(); onToggleCollapsed(); }}
             >
               {collapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
@@ -106,9 +111,9 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
             <button
               type="button"
               className={`dashboard-board-favorite ${favorite ? "active" : ""}`}
-              aria-label={favorite ? `${board.title} 즐겨찾기 해제` : `${board.title} 즐겨찾기`}
+              aria-label={favorite ? `${board.title} ${t("dashboard.unfavorite")}` : `${board.title} ${t("dashboard.favorite")}`}
               aria-pressed={favorite}
-              title={favorite ? "즐겨찾기 해제" : "즐겨찾기"}
+              title={favorite ? t("dashboard.unfavorite") : t("dashboard.favorite")}
               onClick={(event) => {
                 event.stopPropagation();
                 onToggleFavorite();
@@ -119,8 +124,8 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
           ) : null}
           <button
             type="button"
-            aria-label={fullscreen ? "전체 화면 닫기" : `${board.title} 전체 화면`}
-            title={fullscreen ? "전체 화면 닫기" : "전체 화면"}
+            aria-label={fullscreen ? t("dashboard.closeFullscreen") : `${board.title} ${t("dashboard.fullscreen")}`}
+            title={fullscreen ? t("dashboard.closeFullscreen") : t("dashboard.fullscreen")}
             onClick={(event) => {
               event.stopPropagation();
               onFullscreen();
@@ -130,18 +135,18 @@ export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function Boar
           </button>
           {mode === "edit" ? (
             <details className="dashboard-board-more" onClick={(event) => event.stopPropagation()}>
-              <summary aria-label={`${board.title} 추가 작업`} title="추가 작업"><MoreHorizontal size={14} /></summary>
-              <div role="menu" aria-label={`${board.title} 추가 작업`}>
-                <button type="button" role="menuitem" onClick={(event) => { onToggleFavorite(); event.currentTarget.closest("details")?.removeAttribute("open"); }}><Star size={13} fill={favorite ? "currentColor" : "none"} />{favorite ? "즐겨찾기 해제" : "즐겨찾기"}</button>
-                <button type="button" role="menuitem" onClick={(event) => { onToggleHidden(); event.currentTarget.closest("details")?.removeAttribute("open"); }}>{board.hidden ? <Eye size={13} /> : <EyeOff size={13} />}{board.hidden ? "표시" : "숨기기"}</button>
-                <button type="button" role="menuitem" onClick={(event) => { onDuplicate(); event.currentTarget.closest("details")?.removeAttribute("open"); }}><Copy size={13} />복제</button>
-                <button type="button" role="menuitem" className="intent-danger" disabled={board.mandatory} title={board.mandatory ? "필수 board는 삭제할 수 없습니다." : "Board 삭제"} onClick={(event) => { onRemove(); event.currentTarget.closest("details")?.removeAttribute("open"); }}><Trash2 size={13} />삭제</button>
+              <summary aria-label={`${board.title} ${t("dashboard.moreActions")}`} title={t("dashboard.moreActions")}><MoreHorizontal size={14} /></summary>
+              <div role="menu" aria-label={`${board.title} ${t("dashboard.moreActions")}`}>
+                <button type="button" role="menuitem" onClick={(event) => { onToggleFavorite(); event.currentTarget.closest("details")?.removeAttribute("open"); }}><Star size={13} fill={favorite ? "currentColor" : "none"} />{favorite ? t("dashboard.unfavorite") : t("dashboard.favorite")}</button>
+                <button type="button" role="menuitem" onClick={(event) => { onToggleHidden(); event.currentTarget.closest("details")?.removeAttribute("open"); }}>{board.hidden ? <Eye size={13} /> : <EyeOff size={13} />}{board.hidden ? t("common.show") : t("common.hide")}</button>
+                <button type="button" role="menuitem" onClick={(event) => { onDuplicate(); event.currentTarget.closest("details")?.removeAttribute("open"); }}><Copy size={13} />{t("common.duplicate")}</button>
+                <button type="button" role="menuitem" className="intent-danger" disabled={board.mandatory} title={board.mandatory ? t("dashboard.requiredBoardDelete") : t("common.delete")} onClick={(event) => { onRemove(); event.currentTarget.closest("details")?.removeAttribute("open"); }}><Trash2 size={13} />{t("common.delete")}</button>
               </div>
             </details>
           ) : null}
         </div>
       </header>
-      {board.hidden && mode === "edit" ? <div className="hidden-board-label">View 모드에서는 숨겨집니다.</div> : null}
+      {board.hidden && mode === "edit" ? <div className="hidden-board-label">{t("dashboard.hiddenInView")}</div> : null}
       {resizeLabel ? <output className="dashboard-board-resize-label">{resizeLabel}</output> : null}
       {!collapsed ? <div className="dashboard-board-content fd-board-frame__content">{children}</div> : null}
     </article>

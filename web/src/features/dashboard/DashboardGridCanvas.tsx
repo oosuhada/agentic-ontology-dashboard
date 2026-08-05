@@ -1,5 +1,5 @@
 import { ListFilter, Rows3, Star } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BoardFrame } from "../../ui/foundry/BoardFrame";
 import { useI18n } from "../../ui/i18n/I18nProvider";
 import {
@@ -12,6 +12,7 @@ import {
 import type { DashboardBoard, DashboardMode, DashboardTab } from "./types";
 import { useDashboardArrangeMode } from "./dashboardArrange";
 import { legacyBoardToGridLayout } from "./gridLayout";
+import type { BoardContentMetric } from "./layoutOptimizer";
 
 export interface DashboardGridCanvasProps {
   tab: DashboardTab | null;
@@ -30,6 +31,7 @@ export interface DashboardGridCanvasProps {
   onFullscreen: (boardId: string | null) => void;
   onEnterArrange: () => void;
   onToggleFavorite: (boardId: string) => void;
+  onContentMetricsChange?: (metrics: BoardContentMetric[]) => void;
   saving?: boolean;
 }
 
@@ -108,10 +110,12 @@ export function DashboardGridCanvas({
   onFullscreen,
   onEnterArrange,
   onToggleFavorite,
+  onContentMetricsChange,
   saving = false,
 }: DashboardGridCanvasProps) {
   const { t } = useI18n();
   const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1180 });
+  const canvasRef = useRef<HTMLElement | null>(null);
   const [focusMode, setFocusMode] = useState<"all" | "focus" | "favorites" | "details">("all");
   const [collapseOverrides, setCollapseOverrides] = useState<Record<string, boolean>>({});
   const availableBoards = useMemo(() => tab?.boards.filter((board) => mode === "edit" || !board.hidden) ?? [], [mode, tab]);
@@ -134,6 +138,27 @@ export function DashboardGridCanvas({
   const [resizePreview, setResizePreview] = useState<{ boardId: string; width: number; height: number } | null>(null);
   const { phase, dispatch, longPressHandlers } = useDashboardArrangeMode({ mode, onEnter: onEnterArrange });
 
+  const assignCanvasRef = useCallback((node: HTMLElement | null) => {
+    canvasRef.current = node;
+    containerRef.current = node as HTMLDivElement | null;
+  }, [containerRef]);
+
+  const reportContentMetrics = useCallback(() => {
+    if (!canvasRef.current || !onContentMetricsChange) return;
+    const metrics = Array.from(canvasRef.current.querySelectorAll<HTMLElement>(".dashboard-board-frame"))
+      .map((frame) => {
+        const content = frame.querySelector<HTMLElement>(".dashboard-board-content") ?? frame;
+        return {
+          boardId: frame.dataset.boardId ?? "",
+          contentHeight: Math.max(content.scrollHeight, content.getBoundingClientRect().height),
+          contentWidth: Math.max(content.scrollWidth, content.getBoundingClientRect().width),
+          viewportHeight: content.getBoundingClientRect().height,
+        };
+      })
+      .filter((metric) => metric.boardId);
+    onContentMetricsChange(metrics);
+  }, [onContentMetricsChange]);
+
   useEffect(() => {
     dispatch({ type: saving ? "SAVE_START" : "SAVE_END" });
   }, [dispatch, saving]);
@@ -143,15 +168,31 @@ export function DashboardGridCanvas({
     setCollapseOverrides({});
   }, [tab?.id]);
 
+  useEffect(() => {
+    if (!canvasRef.current || !onContentMetricsChange || typeof ResizeObserver === "undefined") return undefined;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(reportContentMetrics);
+    });
+    observer.observe(canvasRef.current);
+    canvasRef.current.querySelectorAll(".dashboard-board-content").forEach((element) => observer.observe(element));
+    frame = requestAnimationFrame(reportContentMetrics);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [gridBoards, onContentMetricsChange, reportContentMetrics]);
+
   function toggleCollapsed(boardId: string) {
     setCollapseOverrides((current) => ({ ...current, [boardId]: !collapsedBoardIds.has(boardId) }));
   }
 
-  if (!tab) return <div className="dashboard-empty-canvas">표시할 Dashboard 탭이 없습니다.</div>;
+  if (!tab) return <div className="dashboard-empty-canvas">{t("dashboard.emptyTabs")}</div>;
 
   return (
     <section
-      ref={containerRef}
+      ref={assignCanvasRef}
       className={`dashboard-board-canvas rgl-canvas mode-${mode} arrange-${phase}`}
       data-arrange-state={phase}
       aria-label={`${tab.title} board canvas`}
@@ -178,7 +219,7 @@ export function DashboardGridCanvas({
           </label>
         </div>
       ) : null}
-      {mode === "edit" ? <div className="dashboard-arrange-hint" role="status">Arrange mode · drag board headers or resize from any edge · Esc/Done to finish</div> : null}
+      {mode === "edit" ? <div className="dashboard-arrange-hint" role="status">{t("dashboard.arrangeHint")}</div> : null}
       {visibleBoards.length === 0 ? (
         <div className="dashboard-empty-canvas">
           <strong>{t("dashboard.focus.noBoards")}</strong>
@@ -187,7 +228,7 @@ export function DashboardGridCanvas({
       ) : null}
 
       {collapsedBoards.length ? (
-        <div className="dashboard-collapsed-board-tray" aria-label="Collapsed boards">
+        <div className="dashboard-collapsed-board-tray" aria-label={t("dashboard.collapsedBoards")}>
           {collapsedBoards.map((board) => (
             <BoardFrame
               key={board.id}

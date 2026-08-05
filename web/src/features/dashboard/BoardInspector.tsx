@@ -1,5 +1,6 @@
 import type { BoardCatalogDefinition, BoardVisualizationRuntime, BoardWidth, DashboardBoard, DashboardTab } from "./types";
 import { VisualizationInspector } from "./visualization/VisualizationInspector";
+import { useI18n } from "../../ui/i18n/I18nProvider";
 
 interface BoardInspectorProps {
   board: DashboardBoard | null;
@@ -26,13 +27,14 @@ export function BoardInspector({
   onMove,
   onClose,
 }: BoardInspectorProps) {
+  const { t } = useI18n();
   if (!board || !definition) {
     return (
       <aside className="dashboard-inspector">
-        <span className="section-label">Inspector</span>
+        <span className="section-label">{t("inspector.title")}</span>
         <div className="inspector-empty">
-          <strong>Board를 선택하세요.</strong>
-          <p>편집 모드에서 제목, 폭, 표시 여부, binding과 text 내용을 수정할 수 있습니다.</p>
+          <strong>{t("inspector.selectBoard")}</strong>
+          <p>{t("inspector.selectBoardDetail")}</p>
         </div>
       </aside>
     );
@@ -47,12 +49,12 @@ export function BoardInspector({
   return (
     <aside className="dashboard-inspector">
       <header className="inspector-header">
-        <div><span className="section-label">RESOURCE INSPECTOR</span><strong>{definition.display_name}</strong><small>{currentTabId ?? "dashboard"} / {board.id}</small></div>
-        <button type="button" onClick={onClose}>닫기</button>
+        <div><span className="section-label">{t("inspector.resource").toUpperCase()}</span><strong>{definition.display_name}</strong><small>{currentTabId ?? "dashboard"} / {board.id}</small></div>
+        <button type="button" onClick={onClose}>{t("common.close")}</button>
       </header>
 
       <nav className="dashboard-inspector-nav" aria-label="Board inspector sections">
-        <a href="#board-configuration">Configuration</a><a href="#board-layout">Layout</a>{visualizationRuntime ? <a href="#board-visualization">Visualization</a> : null}<a href="#board-contract">Data contract</a><a href="#board-runtime">Runtime</a>
+        <a href="#board-configuration">{t("inspector.configuration")}</a><a href="#board-layout">{t("inspector.layout")}</a>{visualizationRuntime ? <a href="#board-visualization">{t("inspector.visualization")}</a> : null}<a href="#board-contract">{t("inspector.dataContract")}</a><a href="#board-runtime">{t("inspector.runtime")}</a>
       </nav>
 
       <div className="inspector-definition" id="board-configuration">
@@ -62,17 +64,17 @@ export function BoardInspector({
       </div>
 
       <label className="context-field" id="board-layout">
-        Board 제목
+        {t("inspector.boardTitle")}
         <input value={board.title} onChange={(event) => onUpdate({ title: event.target.value })} />
       </label>
 
       <label className="context-field">
-        Layout 폭
+        {t("inspector.layoutWidth")}
         <select
           value={layout.w}
           onChange={(event) => {
             const width = Number(event.target.value) as BoardWidth;
-            onUpdate({ width, layout: { ...layout, w: width, x: Math.min(layout.x, 12 - width) } });
+            onUpdate({ width, layout: { ...layout, w: width, x: Math.min(layout.x, 12 - width) }, settings: { ...board.settings, layout_mode: "manual", layout_lock: true } });
           }}
         >
           {widthOptions.map((width) => (
@@ -82,12 +84,12 @@ export function BoardInspector({
       </label>
 
       <label className="context-field">
-        Board 높이
+        {t("inspector.boardHeight")}
         <select
           value={String(layout.h)}
           onChange={(event) => {
             const height = Number(event.target.value);
-            onUpdate({ layout: { ...layout, h: height }, settings: { ...board.settings, height_units: String(height) } });
+            onUpdate({ layout: { ...layout, h: height }, settings: { ...board.settings, height_units: String(height), layout_mode: "manual", layout_lock: true } });
           }}
         >
           <option value="1">Compact · 1 row</option>
@@ -101,15 +103,32 @@ export function BoardInspector({
         </select>
       </label>
 
+      <label className="context-field">
+        {t("inspector.layoutMode")}
+        <select
+          value={board.settings.layout_lock === true || board.settings.layout_mode === "manual" ? "manual" : "auto"}
+          onChange={(event) => onUpdate({
+            settings: {
+              ...board.settings,
+              layout_mode: event.target.value,
+              layout_lock: event.target.value === "manual",
+            },
+          })}
+        >
+          <option value="auto">{t("inspector.layoutAuto")}</option>
+          <option value="manual">{t("inspector.layoutManual")}</option>
+        </select>
+      </label>
+
       <div className="inspector-layout-grid">
-        <label className="context-field">X<input type="number" min={0} max={Math.max(0, 12 - layout.w)} value={layout.x} onChange={(event) => onUpdate({ layout: { ...layout, x: Math.max(0, Math.min(12 - layout.w, Number(event.target.value))) } })} /></label>
-        <label className="context-field">Y<input type="number" min={0} value={layout.y} onChange={(event) => onUpdate({ layout: { ...layout, y: Math.max(0, Number(event.target.value)) } })} /></label>
-        <label className="context-field">W<input type="number" min={definition.minimum_width} max={definition.maximum_width} value={layout.w} onChange={(event) => { const width = Math.max(definition.minimum_width, Math.min(definition.maximum_width, Number(event.target.value))); onUpdate({ width, layout: { ...layout, w: width, x: Math.min(layout.x, 12 - width) } }); }} /></label>
-        <label className="context-field">H<input type="number" min={1} max={12} value={layout.h} onChange={(event) => { const height = Math.max(1, Math.min(12, Number(event.target.value))); onUpdate({ layout: { ...layout, h: height }, settings: { ...board.settings, height_units: String(height) } }); }} /></label>
+        <label className="context-field">X<input type="number" min={0} max={Math.max(0, 12 - layout.w)} value={layout.x} onChange={(event) => onUpdate({ layout: { ...layout, x: Math.max(0, Math.min(12 - layout.w, Number(event.target.value))) }, settings: { ...board.settings, layout_mode: "manual", layout_lock: true } })} /></label>
+        <label className="context-field">Y<input type="number" min={0} value={layout.y} onChange={(event) => onUpdate({ layout: { ...layout, y: Math.max(0, Number(event.target.value)) }, settings: { ...board.settings, layout_mode: "manual", layout_lock: true } })} /></label>
+        <label className="context-field">W<input type="number" min={definition.minimum_width} max={definition.maximum_width} value={layout.w} onChange={(event) => { const width = Math.max(definition.minimum_width, Math.min(definition.maximum_width, Number(event.target.value))); onUpdate({ width, layout: { ...layout, w: width, x: Math.min(layout.x, 12 - width) }, settings: { ...board.settings, layout_mode: "manual", layout_lock: true } }); }} /></label>
+        <label className="context-field">H<input type="number" min={1} max={12} value={layout.h} onChange={(event) => { const height = Math.max(1, Math.min(12, Number(event.target.value))); onUpdate({ layout: { ...layout, h: height }, settings: { ...board.settings, height_units: String(height), layout_mode: "manual", layout_lock: true } }); }} /></label>
       </div>
 
       <label className="context-field">
-        배치 탭
+        {t("inspector.placementTab")}
         <select value={currentTabId ?? ""} onChange={(event) => onMove(event.target.value)}>
           {tabs.map((tab) => <option key={tab.id} value={tab.id}>{tab.title}</option>)}
         </select>
@@ -122,9 +141,9 @@ export function BoardInspector({
           disabled={board.mandatory}
           onChange={(event) => onUpdate({ hidden: event.target.checked })}
         />
-        View 모드에서 숨김
+        {t("inspector.hideInView")}
       </label>
-      {board.mandatory ? <small className="mandatory-note">필수 board는 숨기거나 삭제할 수 없습니다.</small> : null}
+      {board.mandatory ? <small className="mandatory-note">{t("inspector.requiredBoard")}</small> : null}
 
       {Object.keys(definition.binding_schema).length ? (
         <section className="inspector-section" id="board-contract">
@@ -135,7 +154,7 @@ export function BoardInspector({
               <input
                 value={String(board.bindings[bindingId] ?? "")}
                 onChange={(event) => onUpdate({ bindings: { ...board.bindings, [bindingId]: event.target.value } })}
-                placeholder="고정 값 또는 비워두기"
+                placeholder={t("inspector.fixedOrEmpty")}
               />
             </label>
           ))}
