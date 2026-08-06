@@ -8,6 +8,7 @@
 - [MVP 4개 화면 명세서](mentoring-mvp-2026-08/mvp-scope-and-screen-specification.md)
 - [MVP API 명세서](mentoring-mvp-2026-08/mvp-api-specification.md)
 - [MVP 데이터 계약서](mentoring-mvp-2026-08/mvp-data-contract.md)
+- [Week 2 역할 분담 및 산출물 정의](mentoring-mvp-2026-08/week2-team-role-and-deliverables.md)
 - [Project charter](project-charter.md)
 - [Domain model](domain-model.md)
 - [MVP scope](mvp-scope.md)
