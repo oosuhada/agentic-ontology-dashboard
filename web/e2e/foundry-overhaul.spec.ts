@@ -39,23 +39,24 @@ test("Foundry shell and dashboard primitives use the compact geometry", async ({
   await login(page);
   await expect(page.locator(".od-product-shell .react-grid-layout")).toBeVisible({ timeout: 45_000 });
 
-  expect(await roundedBox(page.locator(".od-global-topbar"))).toEqual({ width: 1232, height: 40 });
-  expect((await roundedBox(page.locator(".od-primary-sidebar"))).width).toBe(208);
+  expect(await roundedBox(page.locator(".od-global-topbar"))).toEqual({ width: 1216, height: 34 });
+  expect((await roundedBox(page.locator(".od-primary-sidebar"))).width).toBe(224);
+  expect((await roundedBox(page.locator(".fd-platform-rail"))).width).toBe(40);
+  expect((await roundedBox(page.locator(".fd-resource-navigation"))).width).toBe(184);
 
   const toolbar = await roundedBox(page.locator(".dashboard-tab-toolbar"));
-  expect(toolbar.height).toBeGreaterThanOrEqual(34);
-  expect(toolbar.height).toBeLessThanOrEqual(38);
-  expect((await roundedBox(page.locator(".dashboard-board-header").first())).height).toBe(32);
-  expect((await roundedBox(page.locator(".generic-data-table-body > button").first())).height).toBe(30);
+  expect(toolbar.height).toBe(32);
+  expect((await roundedBox(page.locator(".dashboard-board-header").first())).height).toBe(29);
+  expect((await roundedBox(page.locator(".generic-data-table-body > button").first())).height).toBe(28);
 
   await expect(page.locator(".fd-filter-chips")).toBeVisible();
   await expect(page.locator(".fd-status-pill.runtime-state").first()).toContainText(/ready|querying/);
   await expect(page.locator(".board-runtime-footer").first()).toContainText(/template|latest_published|pinned/);
 
   await page.getByTitle("사이드바 접기").click();
-  await expect.poll(async () => (await roundedBox(page.locator(".od-primary-sidebar"))).width).toBe(48);
+  await expect.poll(async () => (await roundedBox(page.locator(".od-primary-sidebar"))).width).toBe(40);
   await page.getByTitle("사이드바 펼치기").click();
-  await expect.poll(async () => (await roundedBox(page.locator(".od-primary-sidebar"))).width).toBe(208);
+  await expect.poll(async () => (await roundedBox(page.locator(".od-primary-sidebar"))).width).toBe(224);
 });
 
 test("shared route shell keeps workbench navigation and theme behavior", async ({ page }) => {
@@ -66,7 +67,7 @@ test("shared route shell keeps workbench navigation and theme behavior", async (
   await page.getByRole("button", { name: "Project Home", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/home$`));
   await expect(page.locator(".fd-route-shell.route-home")).toBeVisible();
-  expect((await roundedBox(page.locator(".od-global-topbar"))).height).toBe(40);
+  expect((await roundedBox(page.locator(".od-global-topbar"))).height).toBe(34);
   await expect(page.getByRole("navigation", { name: "Product navigation", exact: true })).toBeVisible();
   await expect(page.getByRole("main")).toHaveCount(1);
 

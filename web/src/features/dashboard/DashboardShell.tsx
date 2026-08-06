@@ -8,16 +8,12 @@ import {
   Database,
   Download,
   Eye,
-  GitBranch,
   Home,
   LayoutDashboard,
-  LogOut,
   Maximize2,
   Menu,
   Moon,
   Network,
-  PanelLeftClose,
-  PanelLeftOpen,
   Plus,
   Redo2,
   RotateCcw,
@@ -29,13 +25,13 @@ import {
   ShieldCheck,
   Sparkles,
   Sun,
-  UserCog,
   Workflow,
 } from "lucide-react";
 import { featureFlags } from "../../featureFlags";
 import { EntityTitle } from "../../ui/foundry/EntityTitle";
 import { StatusPill } from "../../ui/foundry/StatusPill";
 import { WorkbenchHeader, WorkbenchToolbar } from "../../ui/foundry/WorkbenchChrome";
+import { FoundryProductNavigation } from "../../ui/foundry/FoundryProductNavigation";
 import { agentPath, datasetCatalogPath, governancePath, navigate, ontologyPath, projectHomePath } from "../../routing";
 import type { AppRole, AuthUser, DomainPack, Project, Workspace } from "../../types";
 import type { DashboardMode, DashboardTab } from "./types";
@@ -144,7 +140,6 @@ export function DashboardShell({
   user,
   roleLabel,
   roleEyebrow,
-  roleDescription,
   roleFocus,
   projects,
   selectedProjectId,
@@ -210,6 +205,7 @@ export function DashboardShell({
 
   const selectedProject = useMemo(() => projects.find((project) => project.id === selectedProjectId), [projects, selectedProjectId]);
   const selectedWorkspace = useMemo(() => workspaces.find((workspace) => workspace.id === selectedWorkspaceId), [selectedWorkspaceId, workspaces]);
+  const activeTab = useMemo(() => tabs.find((tab) => tab.id === activeTabId), [activeTabId, tabs]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -281,48 +277,21 @@ export function DashboardShell({
 
   return (
     <div className={`ontology-dashboard-shell od-product-shell mode-${mode} role-${user.landing_key} density-${density} workspace-${workspaceView} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
-      <aside className={`od-primary-sidebar ${mobileNavOpen ? "mobile-open" : ""}`}>
-        <header className="od-sidebar-brand">
-          <span className="brand-mark">OD</span>
-          <span className="sr-only">Ontology Dashboard</span>
-          {!sidebarCollapsed ? <div><strong>Ontology</strong><small>Dashboard</small></div> : null}
-          <button type="button" className="od-sidebar-collapse" onClick={() => setSidebarCollapsed((current) => !current)} title={sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기"}>
-            {sidebarCollapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
-          </button>
-        </header>
-
-        <nav className="od-primary-nav" aria-label="Product navigation">
-          <span className="od-nav-section">{sidebarCollapsed ? "" : "WORKBENCH"}</span>
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const active = item.id === workspaceView;
-            return (
-              <button
-                type="button"
-                key={item.id}
-                className={active ? "active" : ""}
-                disabled={!item.enabled}
-                title={!item.enabled ? `${item.label} 전용 화면은 다음 backend vertical에서 연결됩니다.` : item.label}
-                onClick={() => item.enabled && openProductView(item.id)}
-              >
-                <Icon size={16} />
-                {!sidebarCollapsed ? <span>{item.label}</span> : null}
-                {!sidebarCollapsed && !item.enabled ? <small>SOON</small> : null}
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="od-sidebar-spacer" />
-        <section className="od-sidebar-scope">
-          {!sidebarCollapsed ? <span className="od-nav-section">ACTIVE SCOPE</span> : null}
-          <div><GitBranch size={14} />{!sidebarCollapsed ? <span><strong>{selectedProject?.display_name ?? "Project"}</strong><small>{selectedWorkspace?.display_name ?? "Workspace"}</small></span> : null}</div>
-        </section>
-        <footer className="od-sidebar-footer">
-          {user.is_admin ? <button type="button" onClick={onAdmin} title="관리자"><UserCog size={15} />{!sidebarCollapsed ? <span>Administration</span> : null}</button> : null}
-          <button type="button" onClick={onLogout} title="로그아웃" aria-label="로그아웃"><LogOut size={15} />{!sidebarCollapsed ? <span>Sign out</span> : null}</button>
-        </footer>
-      </aside>
+      <FoundryProductNavigation
+        items={NAV_ITEMS}
+        activeId={workspaceView}
+        collapsed={sidebarCollapsed}
+        mobileOpen={mobileNavOpen}
+        projectName={selectedProject?.display_name ?? "Project"}
+        workspaceName={selectedWorkspace?.display_name ?? "Workspace"}
+        userName={user.display_name}
+        roleLabel={roleLabel}
+        isAdmin={user.is_admin}
+        onNavigate={(id) => openProductView(id as (typeof NAV_ITEMS)[number]["id"])}
+        onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
+        onAdmin={onAdmin}
+        onLogout={onLogout}
+      />
 
       <div className="od-shell-main">
         <header className="od-global-topbar">
@@ -330,7 +299,7 @@ export function DashboardShell({
           <div className="od-breadcrumbs">
             <span>{selectedProject?.display_name ?? "Project"}</span><ChevronRight size={12} />
             <span>{selectedWorkspace?.display_name ?? "Workspace"}</span><ChevronRight size={12} />
-            <strong>{workspaceView === "dashboard" ? "Role Dashboard" : "Analysis Path"}</strong>
+            <strong>{workspaceView === "dashboard" ? activeTab?.title ?? "Dashboard" : "Analysis Path"}</strong>
           </div>
           <button type="button" className="od-global-search" onClick={() => setCommandOpen(true)}><Search size={14} /><span>Search objects, boards, actions…</span><kbd>⌘K</kbd></button>
           <div className="od-topbar-actions">
@@ -345,16 +314,18 @@ export function DashboardShell({
           title={<div className="od-context-title">
             <EntityTitle
               icon={workspaceView === "dashboard" ? LayoutDashboard : Workflow}
-              eyebrow={roleEyebrow}
-              title={workspaceView === "dashboard" ? `${roleLabel} Operations` : "Risk Event Analysis Path"}
-              subtitle={workspaceView === "dashboard" ? roleDescription : "Object set에서 변형, 검증, 시각화, lineage를 순차적으로 구성합니다."}
+              eyebrow={workspaceView === "dashboard" ? `DASHBOARD · ${roleEyebrow}` : "ANALYSIS · GOVERNED PATH"}
+              title={workspaceView === "dashboard" ? activeTab?.title ?? `${roleLabel} Operations` : "Risk Event Analysis Path"}
+              subtitle={workspaceView === "dashboard"
+                ? `${selectedProject?.display_name ?? "Project"} / ${selectedWorkspace?.display_name ?? "Workspace"} · ${roleLabel}`
+                : `${selectedWorkspace?.display_name ?? "Workspace"} · Object set → transform → validate → publish`}
               trailing={<div className="fd-entity-title__trailing"><span className="od-domain-pack-name">{domainPack?.display_name ?? "Manufacturing Operations"}</span><StatusPill intent={dirty ? "warning" : "success"}>{dirty ? "Unsaved changes" : "Saved"}</StatusPill></div>}
             />
           </div>}
           actions={<div className="od-context-controls">
-            <label>Project<select value={selectedProjectId} onChange={(event) => onProjectChange(event.target.value)}>{projects.map((project) => <option key={project.id} value={project.id}>{project.display_name}</option>)}</select></label>
-            <label>Workspace<select value={selectedWorkspaceId} onChange={(event) => onWorkspaceChange(event.target.value)}>{workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.display_name}</option>)}</select></label>
-            <label>Role<select value={activeRole} onChange={(event) => onActiveRoleChange(event.target.value as AppRole)}>{availableRoles.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}</select></label>
+            <label>Project<select aria-label="Project" value={selectedProjectId} onChange={(event) => onProjectChange(event.target.value)}>{projects.map((project) => <option key={project.id} value={project.id}>{project.display_name}</option>)}</select></label>
+            <label>Workspace<select aria-label="Workspace" value={selectedWorkspaceId} onChange={(event) => onWorkspaceChange(event.target.value)}>{workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.display_name}</option>)}</select></label>
+            <label>Role<select aria-label="Role" value={activeRole} onChange={(event) => onActiveRoleChange(event.target.value as AppRole)}>{availableRoles.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}</select></label>
             <div className="workbench-switcher" role="group" aria-label="Workbench mode">
               <button type="button" className={workspaceView === "dashboard" ? "active" : ""} onClick={() => openWorkspace("dashboard")}><LayoutDashboard size={13} /> Dashboard</button>
               <button type="button" className={workspaceView === "analysis" ? "active" : ""} onClick={() => openWorkspace("analysis")}><Workflow size={13} /> Analysis</button>

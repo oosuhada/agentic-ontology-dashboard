@@ -7,9 +7,9 @@ async function login(page: Page, email: string, password: string) {
   await page.getByRole("button", { name: "로그인", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/projects\/|\/admin$/);
   if (!page.url().endsWith("/admin")) {
-    await expect(page.getByLabel("Project")).toBeVisible();
-    if (await page.getByLabel("Project").inputValue() !== "manufacturing-demo-project") {
-      await page.getByLabel("Project").selectOption("manufacturing-demo-project");
+    await expect(page.getByLabel("Project", { exact: true })).toBeVisible();
+    if (await page.getByLabel("Project", { exact: true }).inputValue() !== "manufacturing-demo-project") {
+      await page.getByLabel("Project", { exact: true }).selectOption("manufacturing-demo-project");
       await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project$/);
     }
   }
@@ -19,7 +19,7 @@ test("manager and engineer accounts see different governed views for the same ev
   test.setTimeout(90_000);
   await login(page, "manager@ontology.local", "Manager!2026");
   await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project$/);
-  await expect(page.getByText("Ontology Dashboard", { exact: true })).toBeVisible();
+  await expect(page.locator(".od-product-shell .react-grid-layout")).toBeVisible();
   await expect(page.getByText("Manufacturing Predictive Maintenance Pack", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: /GS-002/ }).click();
@@ -57,19 +57,19 @@ test("manager and engineer accounts see different governed views for the same ev
 test("project context restores the migrated demo route and scopes its workspace", async ({ page }) => {
   await login(page, "manager@ontology.local", "Manager!2026");
   await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project$/);
-  await expect(page.getByLabel("Project")).toHaveValue("manufacturing-demo-project");
+  await expect(page.getByLabel("Project", { exact: true })).toHaveValue("manufacturing-demo-project");
   await expect(page.getByLabel("Workspace")).toHaveValue("manufacturing-demo");
 
   await page.goto("/app/projects/not-accessible");
   await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project$/);
-  await expect(page.getByLabel("Project")).toHaveValue("manufacturing-demo-project");
+  await expect(page.getByLabel("Project", { exact: true })).toHaveValue("manufacturing-demo-project");
   await expect(page.getByLabel("Workspace")).toHaveValue("manufacturing-demo");
 });
 
 test("project switch persists active context and isolates project resources", async ({ page }) => {
   test.setTimeout(60_000);
   await login(page, "manager@ontology.local", "Manager!2026");
-  await page.getByLabel("Project").selectOption("azure-fleet-maintenance-project");
+  await page.getByLabel("Project", { exact: true }).selectOption("azure-fleet-maintenance-project");
   await expect(page).toHaveURL(/\/app\/projects\/azure-fleet-maintenance-project$/);
   await expect(page.getByLabel("Workspace")).toHaveValue("azure-fleet-maintenance");
   await expect(page.getByRole("button", { name: /GS-002/ })).toHaveCount(0);
@@ -78,7 +78,7 @@ test("project switch persists active context and isolates project resources", as
 
   await page.reload();
   await expect(page).toHaveURL(/\/app\/projects\/azure-fleet-maintenance-project$/);
-  await expect(page.getByLabel("Project")).toHaveValue("azure-fleet-maintenance-project");
+  await expect(page.getByLabel("Project", { exact: true })).toHaveValue("azure-fleet-maintenance-project");
   await expect(page.getByLabel("Workspace")).toHaveValue("azure-fleet-maintenance");
 
   await page.goto("/app/projects/deleted-project");
@@ -93,7 +93,7 @@ test("project switch persists active context and isolates project resources", as
 
 test("MetroPT project renders a scoped compressor evidence dashboard", async ({ page }) => {
   await login(page, "manager@ontology.local", "Manager!2026");
-  await page.getByLabel("Project").selectOption("metropt-compressor-project");
+  await page.getByLabel("Project", { exact: true }).selectOption("metropt-compressor-project");
   await expect(page).toHaveURL(/\/app\/projects\/metropt-compressor-project$/);
   await expect(page.getByLabel("Workspace")).toHaveValue("metropt-compressor-monitoring");
   await expect(page.getByRole("button", { name: /MPT-001/ })).toBeVisible();

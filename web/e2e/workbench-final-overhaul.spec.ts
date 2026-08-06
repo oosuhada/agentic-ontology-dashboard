@@ -43,6 +43,30 @@ async function stabilizeVisualSurface(page: Page) {
   await page.waitForTimeout(150);
 }
 
+function visualDatasetAnalysisId(viewportName: string) {
+  return `palantir-visual-dataset-${viewportName}`;
+}
+
+async function ensureVisualDataset(page: Page, viewportName: string) {
+  const analysisId = visualDatasetAnalysisId(viewportName);
+  await page.goto(`/app/projects/${projectId}`);
+  const projectSelect = page.getByLabel("Project", { exact: true });
+  await expect(projectSelect).toBeVisible({ timeout: 45_000 });
+  if (await projectSelect.inputValue() !== projectId) {
+    await projectSelect.selectOption(projectId);
+    await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}$`));
+  }
+
+  await page.goto(`/app/analysis/${analysisId}`);
+  const chartNode = page.locator(".analysis-flow-node").filter({ hasText: "Risk by production line" });
+  await expect(chartNode).toBeVisible({ timeout: 45_000 });
+  await chartNode.click();
+  await page.getByRole("button", { name: /Run path/ }).click();
+  await expect(page.getByText(/Run .* succeeded/)).toBeVisible({ timeout: 45_000 });
+  await page.getByRole("button", { name: /Save dataset/ }).click();
+  await expect(page.getByText(/생성 · .* rows/)).toBeVisible({ timeout: 30_000 });
+}
+
 async function capture(page: Page, viewportName: string, name: string, route: string, readySelector: string) {
   await page.goto(route);
   await expect(page.locator(readySelector).first()).toBeVisible({ timeout: 45_000 });
@@ -57,12 +81,17 @@ async function capture(page: Page, viewportName: string, name: string, route: st
   }
   if (name === "governance") {
     await page.getByRole("button", { name: "Access & Policy", exact: true }).click();
-    await expect(page.getByText("ACTIVE SCOPE", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Access and policy").getByText("ACTIVE SCOPE", { exact: true })).toBeVisible();
   }
   if (name === "datasets") {
+    const expectedDatasetName = `Risk by production line · ${visualDatasetAnalysisId(viewportName)}`;
     const datasetSearch = page.getByLabel("Dataset catalog search");
-    await datasetSearch.fill("final-dataset-materialization");
-    await expect(page.locator(".dataset-resource-table .fd-resource-table__row").first()).toBeVisible({ timeout: 45_000 });
+    await datasetSearch.fill(expectedDatasetName);
+    await expect(
+      page.locator(".dataset-resource-table .fd-resource-table__row")
+        .filter({ hasText: expectedDatasetName })
+        .first(),
+    ).toBeVisible({ timeout: 45_000 });
   }
   await stabilizeVisualSurface(page);
   await page.screenshot({
@@ -216,6 +245,7 @@ for (const viewport of [
     await capture(page, viewport.name, "project-home", `/app/projects/${projectId}/home`, ".project-home-page");
     await capture(page, viewport.name, "agent", `/app/projects/${projectId}/workspaces/${workspaceId}/agent`, ".agent-workbench-page");
     await capture(page, viewport.name, "ontology", `/app/projects/${projectId}/workspaces/${workspaceId}/ontology`, ".ontology-workbench-page");
+    await ensureVisualDataset(page, viewport.name);
     await capture(page, viewport.name, "datasets", `/app/projects/${projectId}/datasets`, ".dataset-catalog-page");
     await capture(page, viewport.name, "governance", `/app/projects/${projectId}/workspaces/${workspaceId}/governance`, ".governance-workbench-page");
 

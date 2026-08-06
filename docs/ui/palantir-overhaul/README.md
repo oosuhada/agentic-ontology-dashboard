@@ -31,6 +31,7 @@ Viewports:
 - `visual-manifest.json`: dimensions, bytes, SHA-256 values, pair deltas, and CI thresholds for `baseline/` + `final/`.
 - `scorecard.md`: before/final implementation and validation scorecard.
 - `ubuntu-calibration.md`: successful Ubuntu runner evidence, per-platform threshold rationale, and final product-design review.
+- `convergence-review.md`: 2026-08-03 reference-gap diagnosis, two-level shell redesign, geometry and measured visual change.
 
 ## Reproduce
 

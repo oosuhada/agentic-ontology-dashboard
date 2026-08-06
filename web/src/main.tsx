@@ -5,6 +5,7 @@ import "./styles.css";
 import "./workbench.css";
 import "./ui/foundry/tokens.css";
 import "./ui/foundry/workbenches.css";
+import "./ui/foundry/convergence.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

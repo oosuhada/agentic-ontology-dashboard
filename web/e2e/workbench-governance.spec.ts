@@ -7,9 +7,9 @@ async function login(page: Page, email: string, password: string) {
   await page.getByRole("button", { name: "로그인", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/(projects\/|$)|\/admin$/);
   if (!page.url().endsWith("/admin")) {
-    await expect(page.getByLabel("Project")).toBeVisible();
-    if (await page.getByLabel("Project").inputValue() !== "manufacturing-demo-project") {
-      await page.getByLabel("Project").selectOption("manufacturing-demo-project");
+    await expect(page.getByLabel("Project", { exact: true })).toBeVisible();
+    if (await page.getByLabel("Project", { exact: true }).inputValue() !== "manufacturing-demo-project") {
+      await page.getByLabel("Project", { exact: true }).selectOption("manufacturing-demo-project");
       await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project$/);
     }
   }
@@ -38,7 +38,7 @@ test("ontology deep link restores through reload and browser history with a visu
   expect(gridColumns).toHaveLength(3);
   expect(gridColumns[0]).toBe(255);
   expect(gridColumns[2]).toBe(300);
-  expect(gridColumns[1]).toBeGreaterThan(650);
+  expect(gridColumns[1]).toBeGreaterThanOrEqual(650);
 
   const screenshot = await page.screenshot({
     fullPage: true,
@@ -67,7 +67,7 @@ test("ontology workbench rejects unauthorized project and mismatched project-wor
   await login(page, "engineer@ontology.local", "Engineer!2026");
   await page.goto("/app/projects/not-accessible/workspaces/azure-fleet-maintenance/ontology");
   await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project$/);
-  await expect(page.getByText("Ontology Dashboard", { exact: true })).toBeVisible();
+  await expect(page.locator(".od-product-shell .react-grid-layout")).toBeVisible();
 
   await page.goto("/app/projects/azure-fleet-maintenance-project/workspaces/manufacturing-demo/ontology");
   await expect(page).toHaveURL(/\/app\/projects\/manufacturing-demo-project$/);
@@ -164,7 +164,7 @@ test("quality auditor restores the Governance Workbench and captures its referen
   await expect(page).toHaveURL(new RegExp(`${governanceRoute}$`));
   await expect(page.getByText("GOVERNANCE WORKBENCH", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Access & Policy", exact: true }).click();
-  await expect(page.getByText("ACTIVE SCOPE", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Access and policy").getByText("ACTIVE SCOPE", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Users", exact: true })).toHaveCount(0);
 });
 

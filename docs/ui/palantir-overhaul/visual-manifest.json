@@ -1,10 +1,23 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-08-02",
-  "description": "Approved 48-image baseline/final set for the Palantir-inspired UI overhaul.",
+  "generated_at": "2026-08-03",
+  "description": "Approved 48-image baseline/final set for the Palantir-inspired UI overhaul and Foundry shell convergence pass.",
   "capture_platform": "darwin",
-  "viewports": ["1440x1000", "1728x1117", "720x500"],
-  "surfaces": ["admin", "agent", "analysis", "dashboard", "datasets", "governance", "ontology", "project-home"],
+  "viewports": [
+    "1440x1000",
+    "1728x1117",
+    "720x500"
+  ],
+  "surfaces": [
+    "admin",
+    "agent",
+    "analysis",
+    "dashboard",
+    "datasets",
+    "governance",
+    "ontology",
+    "project-home"
+  ],
   "thresholds": {
     "candidate_mean_pixel_delta_percent_max": 0.15,
     "candidate_changed_pixel_percent_max": 0.75,
@@ -14,79 +27,415 @@
     "baseline_final_mean_pixel_delta_percent_max": 35.0
   },
   "artifacts": {
-    "baseline/1440x1000/admin.png": {"width": 1440, "height": 1000, "bytes": 52971, "sha256": "62a3cd734f64ce1efc0ff5e34e8a3f0cf4d6d213a068ae98c94fa25107981751"},
-    "baseline/1440x1000/agent.png": {"width": 1440, "height": 1000, "bytes": 106912, "sha256": "a75c7cca05932d0cd46bcba0c75e857119701e4b5ffdc1f8d8615bb01766449a"},
-    "baseline/1440x1000/analysis.png": {"width": 1440, "height": 1000, "bytes": 204637, "sha256": "fe5a721729607e5e588b49467429ea31108b1dc68292c4217f93be3a77e702ee"},
-    "baseline/1440x1000/dashboard.png": {"width": 1440, "height": 1000, "bytes": 190048, "sha256": "2dae0f01c9577665057f4a6ea28955692a8c7b3fbb53fd17f5485cb28673c159"},
-    "baseline/1440x1000/datasets.png": {"width": 1440, "height": 1000, "bytes": 43558, "sha256": "747a6bd40fca944e780ccdce56652a02ef94d5cf9d68def29b01784c25b1423f"},
-    "baseline/1440x1000/governance.png": {"width": 1440, "height": 1000, "bytes": 75045, "sha256": "12482c141e0e86db243b0b3370af94a7ce3ed510b4d02c5e8c9c6385bfae1a6a"},
-    "baseline/1440x1000/ontology.png": {"width": 1440, "height": 1000, "bytes": 123650, "sha256": "26d2f82385fb3810625a73514e2e4e20a1b8ed2efe23b22086b7b31ec62f9c89"},
-    "baseline/1440x1000/project-home.png": {"width": 1440, "height": 1000, "bytes": 73220, "sha256": "f42cc608f5f38edb423d809a3b4c3ee1616085babb7525a0088ddd5bbeadbd85"},
-    "baseline/1728x1117/admin.png": {"width": 1728, "height": 1117, "bytes": 54756, "sha256": "83af49ea12a02df2043c7bb5f6f9c091170942cceff6e0f772f9f31f403df000"},
-    "baseline/1728x1117/agent.png": {"width": 1728, "height": 1117, "bytes": 112352, "sha256": "5e3c214e7f40c60deaa7b6bb4f3f32e9c952c0706db86b14516ad0afd69c4d44"},
-    "baseline/1728x1117/analysis.png": {"width": 1728, "height": 1117, "bytes": 213929, "sha256": "0957ca4d357c3a9138fd02614cde879bc6bed4a114aa4820aae201e4a896ae5f"},
-    "baseline/1728x1117/dashboard.png": {"width": 1728, "height": 1117, "bytes": 168058, "sha256": "fc149d3d0dcd8b5cb16c2f3082a652aa8eca2b3fc04333370df3d0c3bcc8acfb"},
-    "baseline/1728x1117/datasets.png": {"width": 1728, "height": 1117, "bytes": 45408, "sha256": "d2cac3f9f1c791030e88e30e32f662e2e3d805ad9c86a1c079fbad2e71169fe7"},
-    "baseline/1728x1117/governance.png": {"width": 1728, "height": 1117, "bytes": 77072, "sha256": "d807e31b7fb078e095a8cb0162ca6038af8407eb437fc29b5fa7183567d93a41"},
-    "baseline/1728x1117/ontology.png": {"width": 1728, "height": 1117, "bytes": 126226, "sha256": "d813383ee467e5eb1014fd93ce13b97332a01d33b615c367f9020ca720e3484c"},
-    "baseline/1728x1117/project-home.png": {"width": 1728, "height": 1117, "bytes": 72910, "sha256": "219a43bca8d168fef87858f80d9c9c3a28648cf0d8163d2a63e3c9de1bcd8ee3"},
-    "baseline/720x500/admin.png": {"width": 720, "height": 500, "bytes": 33184, "sha256": "9c474658e806fb8d7c0a185bb776961fa08a8528911030a28025496080bce98c"},
-    "baseline/720x500/agent.png": {"width": 720, "height": 500, "bytes": 57318, "sha256": "9c2628d7d671207680e9f52f745cec044c4633c25a2c9b4af97185c1fd61e772"},
-    "baseline/720x500/analysis.png": {"width": 720, "height": 500, "bytes": 52191, "sha256": "4b18b6a0e693702121a6c6aee4d63edfe125a0a3464189b28af1c0d0eafe97d5"},
-    "baseline/720x500/dashboard.png": {"width": 720, "height": 500, "bytes": 49058, "sha256": "d7dc1f377ede1c540a55aa4148818beec17ad503223cefb8ce8efa705597956c"},
-    "baseline/720x500/datasets.png": {"width": 720, "height": 500, "bytes": 35996, "sha256": "f85511f6231366bd5f199691f1e054f62c4fe337b068ee5d8c74318bbd82da99"},
-    "baseline/720x500/governance.png": {"width": 720, "height": 500, "bytes": 69848, "sha256": "d374960894acff40cd230274257fae87af2141a385cea3362c6776a0747437e1"},
-    "baseline/720x500/ontology.png": {"width": 720, "height": 500, "bytes": 67776, "sha256": "4d45c2fe16cd05ac7c97224d18f4f69b30cce3ea62cec569639f4b2161e837b0"},
-    "baseline/720x500/project-home.png": {"width": 720, "height": 500, "bytes": 65276, "sha256": "a325a288a3a2c29ba843feb483a4826748f9879b0c8e448a257a112014a1db42"},
-    "final/1440x1000/admin.png": {"width": 1440, "height": 1000, "bytes": 55260, "sha256": "882de1a540cf117029778eed7862f89a1ee0c2f677376d7b522563c3b502aaf3"},
-    "final/1440x1000/agent.png": {"width": 1440, "height": 1000, "bytes": 127026, "sha256": "9c52a5691f51fa4dcd6f0def1ea23d66e17cb9d4efaec7715afd409161538d26"},
-    "final/1440x1000/analysis.png": {"width": 1440, "height": 1000, "bytes": 224670, "sha256": "9da55d9247d78f3d6d42fdff19c451d4feed5c88154599d3b1b5e7d0cf15ce5c"},
-    "final/1440x1000/dashboard.png": {"width": 1440, "height": 1000, "bytes": 158506, "sha256": "ad720228a07dadebd6815d0c843c925102172ef65499484f9e3c74cea87ab148"},
-    "final/1440x1000/datasets.png": {"width": 1440, "height": 1000, "bytes": 133554, "sha256": "8201f84727ce85ad4eb7a533d866ea40bc64e3dc5cc3c9cdd1de7402c4bd86f8"},
-    "final/1440x1000/governance.png": {"width": 1440, "height": 1000, "bytes": 135349, "sha256": "b5af900f85677340a8c6fcb89d48f24e876e7e085091c2b490e4b0bb66b76fb3"},
-    "final/1440x1000/ontology.png": {"width": 1440, "height": 1000, "bytes": 148011, "sha256": "299962a04b46433940d4b240a6910aeb92833609fb23d0b6c0c56a3834a27f69"},
-    "final/1440x1000/project-home.png": {"width": 1440, "height": 1000, "bytes": 96144, "sha256": "7a9e0abc5905931706bf297f401023ea9929f1302a2960ad861c97a5b5652a94"},
-    "final/1728x1117/admin.png": {"width": 1728, "height": 1117, "bytes": 56981, "sha256": "f004e24f629d990e41a1c8bd93fb3c14a9e8f82a902f39bdeae7de81ca202a70"},
-    "final/1728x1117/agent.png": {"width": 1728, "height": 1117, "bytes": 129496, "sha256": "28b0844d665e21bd53250c7715e68964c38fabf7c9007e574e12e46b50e0abb1"},
-    "final/1728x1117/analysis.png": {"width": 1728, "height": 1117, "bytes": 239652, "sha256": "211c01220317bfd61b8ea66ed7051893f3393227cde9f74b09b212452a95307b"},
-    "final/1728x1117/dashboard.png": {"width": 1728, "height": 1117, "bytes": 169653, "sha256": "2cfd9d41ed878b7013f8910599da7ce6fca31dafc76365b1c933ce041068a517"},
-    "final/1728x1117/datasets.png": {"width": 1728, "height": 1117, "bytes": 139546, "sha256": "12bc7b52b3b2f9ceb525220395bc5ee96ca1fed779fc5541a0e7db080b26b265"},
-    "final/1728x1117/governance.png": {"width": 1728, "height": 1117, "bytes": 137983, "sha256": "e2a0cc723e43ebdb55ae9df7627ec867ebeebfccae33db5306fbefa01cbf05e3"},
-    "final/1728x1117/ontology.png": {"width": 1728, "height": 1117, "bytes": 151815, "sha256": "324335e5fce605c9d86303daa92246a838b9409c34c4fc64c2cf320889c2fb4b"},
-    "final/1728x1117/project-home.png": {"width": 1728, "height": 1117, "bytes": 97509, "sha256": "777ab217c3d6585de632cb9bfadaf88a63f65fff97231e3316ef3ec9168f33ac"},
-    "final/720x500/admin.png": {"width": 720, "height": 500, "bytes": 32685, "sha256": "7f3f57ab9fcacf95a55c5749ae4d7248542c30e568e143076a5d8879fb0d8585"},
-    "final/720x500/agent.png": {"width": 720, "height": 500, "bytes": 53151, "sha256": "80f2c6338848bd31cc5c983ba46049646cd6e8cd03c7c2541e9bcf6ea3569cf9"},
-    "final/720x500/analysis.png": {"width": 720, "height": 500, "bytes": 61864, "sha256": "46a881c6f6e841f52eed2676802b5ade2fcc5649e6909449d55af1b385778463"},
-    "final/720x500/dashboard.png": {"width": 720, "height": 500, "bytes": 57230, "sha256": "d5d63b0c08b9e99af3bfba0189e99cf067990310d4ef075b23a5286426eb524a"},
-    "final/720x500/datasets.png": {"width": 720, "height": 500, "bytes": 44842, "sha256": "f2f9773dbbe93cd60870c850e387f15d3cb0116731d9c5246b540f3534ad2de2"},
-    "final/720x500/governance.png": {"width": 720, "height": 500, "bytes": 82669, "sha256": "4b9057dd8dff4cb09776b7b16c2fe87858735a3d22b282bf85915f4fa1cec81b"},
-    "final/720x500/ontology.png": {"width": 720, "height": 500, "bytes": 59896, "sha256": "c99a585f6a66a8a2afe0e5605d103bc0aac5f5f1b7fc40931692bd5ead6146db"},
-    "final/720x500/project-home.png": {"width": 720, "height": 500, "bytes": 63544, "sha256": "e1ae9ea8bd9ff907c266e1d987e8c707e76959c785ea55830c653f1bcf6fdfa8"}
+    "baseline/1440x1000/admin.png": {
+      "width": 1440,
+      "height": 1000,
+      "bytes": 52971,
+      "sha256": "62a3cd734f64ce1efc0ff5e34e8a3f0cf4d6d213a068ae98c94fa25107981751"
+    },
+    "baseline/1440x1000/agent.png": {
+      "width": 1440,
+      "height": 1000,
+      "bytes": 106912,
+      "sha256": "a75c7cca05932d0cd46bcba0c75e857119701e4b5ffdc1f8d8615bb01766449a"
+    },
+    "baseline/1440x1000/analysis.png": {
+      "width": 1440,
+      "height": 1000,
+      "bytes": 204637,
+      "sha256": "fe5a721729607e5e588b49467429ea31108b1dc68292c4217f93be3a77e702ee"
+    },
+    "baseline/1440x1000/dashboard.png": {
+      "width": 1440,
+      "height": 1000,
+      "bytes": 190048,
+      "sha256": "2dae0f01c9577665057f4a6ea28955692a8c7b3fbb53fd17f5485cb28673c159"
+    },
+    "baseline/1440x1000/datasets.png": {
+      "width": 1440,
+      "height": 1000,
+      "bytes": 43558,
+      "sha256": "747a6bd40fca944e780ccdce56652a02ef94d5cf9d68def29b01784c25b1423f"
+    },
+    "baseline/1440x1000/governance.png": {
+      "width": 1440,
+      "height": 1000,
+      "bytes": 75045,
+      "sha256": "12482c141e0e86db243b0b3370af94a7ce3ed510b4d02c5e8c9c6385bfae1a6a"
+    },
+    "baseline/1440x1000/ontology.png": {
+      "width": 1440,
+      "height": 1000,
+      "bytes": 123650,
+      "sha256": "26d2f82385fb3810625a73514e2e4e20a1b8ed2efe23b22086b7b31ec62f9c89"
+    },
+    "baseline/1440x1000/project-home.png": {
+      "width": 1440,
+      "height": 1000,
+      "bytes": 73220,
+      "sha256": "f42cc608f5f38edb423d809a3b4c3ee1616085babb7525a0088ddd5bbeadbd85"
+    },
+    "baseline/1728x1117/admin.png": {
+      "width": 1728,
+      "height": 1117,
+      "bytes": 54756,
+      "sha256": "83af49ea12a02df2043c7bb5f6f9c091170942cceff6e0f772f9f31f403df000"
+    },
+    "baseline/1728x1117/agent.png": {
+      "width": 1728,
+      "height": 1117,
+      "bytes": 112352,
+      "sha256": "5e3c214e7f40c60deaa7b6bb4f3f32e9c952c0706db86b14516ad0afd69c4d44"
+    },
+    "baseline/1728x1117/analysis.png": {
+      "width": 1728,
+      "height": 1117,
+      "bytes": 213929,
+      "sha256": "0957ca4d357c3a9138fd02614cde879bc6bed4a114aa4820aae201e4a896ae5f"
+    },
+    "baseline/1728x1117/dashboard.png": {
+      "width": 1728,
+      "height": 1117,
+      "bytes": 168058,
+      "sha256": "fc149d3d0dcd8b5cb16c2f3082a652aa8eca2b3fc04333370df3d0c3bcc8acfb"
+    },
+    "baseline/1728x1117/datasets.png": {
+      "width": 1728,
+      "height": 1117,
+      "bytes": 45408,
+      "sha256": "d2cac3f9f1c791030e88e30e32f662e2e3d805ad9c86a1c079fbad2e71169fe7"
+    },
+    "baseline/1728x1117/governance.png": {
+      "width": 1728,
+      "height": 1117,
+      "bytes": 77072,
+      "sha256": "d807e31b7fb078e095a8cb0162ca6038af8407eb437fc29b5fa7183567d93a41"
+    },
+    "baseline/1728x1117/ontology.png": {
+      "width": 1728,
+      "height": 1117,
+      "bytes": 126226,
+      "sha256": "d813383ee467e5eb1014fd93ce13b97332a01d33b615c367f9020ca720e3484c"
+    },
+    "baseline/1728x1117/project-home.png": {
+      "width": 1728,
+      "height": 1117,
+      "bytes": 72910,
+      "sha256": "219a43bca8d168fef87858f80d9c9c3a28648cf0d8163d2a63e3c9de1bcd8ee3"
+    },
+    "baseline/720x500/admin.png": {
+      "width": 720,
+      "height": 500,
+      "bytes": 33184,
+      "sha256": "9c474658e806fb8d7c0a185bb776961fa08a8528911030a28025496080bce98c"
+    },
+    "baseline/720x500/agent.png": {
+      "width": 720,
+      "height": 500,
+      "bytes": 57318,
+      "sha256": "9c2628d7d671207680e9f52f745cec044c4633c25a2c9b4af97185c1fd61e772"
+    },
+    "baseline/720x500/analysis.png": {
+      "width": 720,
+      "height": 500,
+      "bytes": 52191,
+      "sha256": "4b18b6a0e693702121a6c6aee4d63edfe125a0a3464189b28af1c0d0eafe97d5"
+    },
+    "baseline/720x500/dashboard.png": {
+      "width": 720,
+      "height": 500,
+      "bytes": 49058,
+      "sha256": "d7dc1f377ede1c540a55aa4148818beec17ad503223cefb8ce8efa705597956c"
+    },
+    "baseline/720x500/datasets.png": {
+      "width": 720,
+      "height": 500,
+      "bytes": 35996,
+      "sha256": "f85511f6231366bd5f199691f1e054f62c4fe337b068ee5d8c74318bbd82da99"
+    },
+    "baseline/720x500/governance.png": {
+      "width": 720,
+      "height": 500,
+      "bytes": 69848,
+      "sha256": "d374960894acff40cd230274257fae87af2141a385cea3362c6776a0747437e1"
+    },
+    "baseline/720x500/ontology.png": {
+      "width": 720,
+      "height": 500,
+      "bytes": 67776,
+      "sha256": "4d45c2fe16cd05ac7c97224d18f4f69b30cce3ea62cec569639f4b2161e837b0"
+    },
+    "baseline/720x500/project-home.png": {
+      "width": 720,
+      "height": 500,
+      "bytes": 65276,
+      "sha256": "a325a288a3a2c29ba843feb483a4826748f9879b0c8e448a257a112014a1db42"
+    },
+    "final/1440x1000/admin.png": {
+      "width": 1440,
+      "height": 1000,
+      "bytes": 55220,
+      "sha256": "70d762977a972d0050367dd8c12ebb444284e9fde599f42a2adf9d956d1d1cec"
+    },
+    "final/1440x1000/agent.png": {
+      "width": 1440,
+      "height": 1000,
+      "bytes": 122391,
+      "sha256": "111dfa6c3101ab4dfb7dfd52c259da6c92080e41b7bf41640ca85cb4cc633f6c"
+    },
+    "final/1440x1000/analysis.png": {
+      "width": 1440,
+      "height": 1000,
+      "bytes": 215871,
+      "sha256": "5e9305e48d45be5548814d0dbbc7c0f1487411ed2cea65cad3a0b874ad1b5dad"
+    },
+    "final/1440x1000/dashboard.png": {
+      "width": 1440,
+      "height": 1000,
+      "bytes": 153510,
+      "sha256": "81432f367435fb7331833af654a7c1b77ae6779284b7133937bf8ecf49879e27"
+    },
+    "final/1440x1000/datasets.png": {
+      "width": 1440,
+      "height": 1000,
+      "bytes": 132449,
+      "sha256": "1d65bfedddf6390e36a62be3e9a765de9451565b589c71db131f13bfbcf98560"
+    },
+    "final/1440x1000/governance.png": {
+      "width": 1440,
+      "height": 1000,
+      "bytes": 136129,
+      "sha256": "dcfb4df8996f98422837b96169f3726719aef6c3ba539a41b31d06ca0884cbe0"
+    },
+    "final/1440x1000/ontology.png": {
+      "width": 1440,
+      "height": 1000,
+      "bytes": 146481,
+      "sha256": "3e216693615349555464a34306072e8828284ee45d8c9791238de2d65aa24e62"
+    },
+    "final/1440x1000/project-home.png": {
+      "width": 1440,
+      "height": 1000,
+      "bytes": 98788,
+      "sha256": "933b9f4e46eca631a434c470d9f46a309c97b30b7ba172e1531b9c3fea2e31f4"
+    },
+    "final/1728x1117/admin.png": {
+      "width": 1728,
+      "height": 1117,
+      "bytes": 56896,
+      "sha256": "b83d179ffcdc91b989be729e5fb937342aebc7b77104165780707b9130c0337a"
+    },
+    "final/1728x1117/agent.png": {
+      "width": 1728,
+      "height": 1117,
+      "bytes": 124579,
+      "sha256": "e42c4183ba10089f262e0c34b47667347af567b4f4c767b6159c0487ee0d5d5f"
+    },
+    "final/1728x1117/analysis.png": {
+      "width": 1728,
+      "height": 1117,
+      "bytes": 228479,
+      "sha256": "9ece0c2b9cb0dc21201a977569a343bf7f40d94018f479695c57725c67e077fc"
+    },
+    "final/1728x1117/dashboard.png": {
+      "width": 1728,
+      "height": 1117,
+      "bytes": 162406,
+      "sha256": "51a071385ee0feab0bc8b0e2e32afc52612aacaa080f7a52b962ba0d4e3b433f"
+    },
+    "final/1728x1117/datasets.png": {
+      "width": 1728,
+      "height": 1117,
+      "bytes": 140200,
+      "sha256": "71ae485a9fa3fb1774e3d8433a0a28216e9ce4d7918aecb053fff34e775d2484"
+    },
+    "final/1728x1117/governance.png": {
+      "width": 1728,
+      "height": 1117,
+      "bytes": 136553,
+      "sha256": "f92076b07570d307aa7a302cc8079b98ae4c7087cc49dd887d9b85e9a5dd9c79"
+    },
+    "final/1728x1117/ontology.png": {
+      "width": 1728,
+      "height": 1117,
+      "bytes": 150395,
+      "sha256": "0f1b77dc5286980567c011cc2604b1ea9361daee0a60dcc153a6e28fc7d63be0"
+    },
+    "final/1728x1117/project-home.png": {
+      "width": 1728,
+      "height": 1117,
+      "bytes": 98172,
+      "sha256": "75c03fff2156511559d9f872e7b0ada548c720aaa87289a4514f73dc86afdd68"
+    },
+    "final/720x500/admin.png": {
+      "width": 720,
+      "height": 500,
+      "bytes": 32825,
+      "sha256": "e090be66b695b17b8b18315ae845254130b6172a7d075c643dc98d934d7570d4"
+    },
+    "final/720x500/agent.png": {
+      "width": 720,
+      "height": 500,
+      "bytes": 52695,
+      "sha256": "736191af3175db992f7135d2358af4db35a8e02f159d7a9bf4acdd10c2367aa2"
+    },
+    "final/720x500/analysis.png": {
+      "width": 720,
+      "height": 500,
+      "bytes": 68094,
+      "sha256": "9424284af858aa0a73dfaa35621cf7ca2981808848e4f7f8dbca120e2f05a45e"
+    },
+    "final/720x500/dashboard.png": {
+      "width": 720,
+      "height": 500,
+      "bytes": 72172,
+      "sha256": "50cf57bdb169223df9a2eb7f6dd72a8551d8f486c88ddc68d13da6d3078a0814"
+    },
+    "final/720x500/datasets.png": {
+      "width": 720,
+      "height": 500,
+      "bytes": 42682,
+      "sha256": "4fd9b5e732c86ab4d2d76d6f82e31ba25622a953d69d6ce5e2775f76a1c77d8a"
+    },
+    "final/720x500/governance.png": {
+      "width": 720,
+      "height": 500,
+      "bytes": 94212,
+      "sha256": "afb0571c4753be1e1023abc97834b8a752ab18a6cbc13d215e0b4bf4735529f7"
+    },
+    "final/720x500/ontology.png": {
+      "width": 720,
+      "height": 500,
+      "bytes": 60122,
+      "sha256": "a97d4af0ae6aa9c1478bb553c3af99985c68ee7597683cacd31f5dd0d9933b14"
+    },
+    "final/720x500/project-home.png": {
+      "width": 720,
+      "height": 500,
+      "bytes": 64513,
+      "sha256": "e9f858f355a85ac7c298056f15fa871599045f49b8b93422b7119448899b6d1d"
+    }
   },
   "pairs": {
-    "1440x1000/admin.png": {"mean_pixel_delta_percent": 6.2732, "changed_pixel_percent": 94.6721},
-    "1440x1000/agent.png": {"mean_pixel_delta_percent": 16.0775, "changed_pixel_percent": 94.2851},
-    "1440x1000/analysis.png": {"mean_pixel_delta_percent": 5.987, "changed_pixel_percent": 77.0595},
-    "1440x1000/dashboard.png": {"mean_pixel_delta_percent": 5.4929, "changed_pixel_percent": 62.248},
-    "1440x1000/datasets.png": {"mean_pixel_delta_percent": 17.5459, "changed_pixel_percent": 94.1375},
-    "1440x1000/governance.png": {"mean_pixel_delta_percent": 14.9949, "changed_pixel_percent": 96.8241},
-    "1440x1000/ontology.png": {"mean_pixel_delta_percent": 16.9305, "changed_pixel_percent": 89.013},
-    "1440x1000/project-home.png": {"mean_pixel_delta_percent": 14.218, "changed_pixel_percent": 78.6225},
-    "1728x1117/admin.png": {"mean_pixel_delta_percent": 5.4089, "changed_pixel_percent": 94.9807},
-    "1728x1117/agent.png": {"mean_pixel_delta_percent": 14.1474, "changed_pixel_percent": 94.4695},
-    "1728x1117/analysis.png": {"mean_pixel_delta_percent": 5.1478, "changed_pixel_percent": 81.3395},
-    "1728x1117/dashboard.png": {"mean_pixel_delta_percent": 4.3661, "changed_pixel_percent": 53.3859},
-    "1728x1117/datasets.png": {"mean_pixel_delta_percent": 15.5168, "changed_pixel_percent": 94.2542},
-    "1728x1117/governance.png": {"mean_pixel_delta_percent": 12.5332, "changed_pixel_percent": 96.6627},
-    "1728x1117/ontology.png": {"mean_pixel_delta_percent": 14.9053, "changed_pixel_percent": 90.2066},
-    "1728x1117/project-home.png": {"mean_pixel_delta_percent": 11.8801, "changed_pixel_percent": 79.9241},
-    "720x500/admin.png": {"mean_pixel_delta_percent": 28.6199, "changed_pixel_percent": 99.9006},
-    "720x500/agent.png": {"mean_pixel_delta_percent": 7.3264, "changed_pixel_percent": 73.0},
-    "720x500/analysis.png": {"mean_pixel_delta_percent": 7.6517, "changed_pixel_percent": 66.6936},
-    "720x500/dashboard.png": {"mean_pixel_delta_percent": 7.4788, "changed_pixel_percent": 77.4306},
-    "720x500/datasets.png": {"mean_pixel_delta_percent": 6.8794, "changed_pixel_percent": 85.3558},
-    "720x500/governance.png": {"mean_pixel_delta_percent": 9.6773, "changed_pixel_percent": 87.4019},
-    "720x500/ontology.png": {"mean_pixel_delta_percent": 9.8532, "changed_pixel_percent": 88.0492},
-    "720x500/project-home.png": {"mean_pixel_delta_percent": 7.6961, "changed_pixel_percent": 51.2011}
+    "1440x1000/admin.png": {
+      "mean_pixel_delta_percent": 4.8727,
+      "changed_pixel_percent": 94.6883,
+      "structural_mean_pixel_delta_percent": 4.1629
+    },
+    "1440x1000/agent.png": {
+      "mean_pixel_delta_percent": 7.284,
+      "changed_pixel_percent": 89.4584,
+      "structural_mean_pixel_delta_percent": 5.8512
+    },
+    "1440x1000/analysis.png": {
+      "mean_pixel_delta_percent": 15.1516,
+      "changed_pixel_percent": 80.7303,
+      "structural_mean_pixel_delta_percent": 13.203
+    },
+    "1440x1000/dashboard.png": {
+      "mean_pixel_delta_percent": 14.4834,
+      "changed_pixel_percent": 62.6976,
+      "structural_mean_pixel_delta_percent": 13.0177
+    },
+    "1440x1000/datasets.png": {
+      "mean_pixel_delta_percent": 8.1273,
+      "changed_pixel_percent": 90.5368,
+      "structural_mean_pixel_delta_percent": 6.5979
+    },
+    "1440x1000/governance.png": {
+      "mean_pixel_delta_percent": 6.667,
+      "changed_pixel_percent": 93.8685,
+      "structural_mean_pixel_delta_percent": 5.315
+    },
+    "1440x1000/ontology.png": {
+      "mean_pixel_delta_percent": 7.8046,
+      "changed_pixel_percent": 82.7199,
+      "structural_mean_pixel_delta_percent": 6.2367
+    },
+    "1440x1000/project-home.png": {
+      "mean_pixel_delta_percent": 5.7705,
+      "changed_pixel_percent": 74.7398,
+      "structural_mean_pixel_delta_percent": 4.7725
+    },
+    "1728x1117/admin.png": {
+      "mean_pixel_delta_percent": 4.0743,
+      "changed_pixel_percent": 94.9927,
+      "structural_mean_pixel_delta_percent": 3.4726
+    },
+    "1728x1117/agent.png": {
+      "mean_pixel_delta_percent": 6.7304,
+      "changed_pixel_percent": 90.0338,
+      "structural_mean_pixel_delta_percent": 5.6122
+    },
+    "1728x1117/analysis.png": {
+      "mean_pixel_delta_percent": 12.6681,
+      "changed_pixel_percent": 81.8841,
+      "structural_mean_pixel_delta_percent": 11.0931
+    },
+    "1728x1117/dashboard.png": {
+      "mean_pixel_delta_percent": 11.9038,
+      "changed_pixel_percent": 54.1352,
+      "structural_mean_pixel_delta_percent": 10.6091
+    },
+    "1728x1117/datasets.png": {
+      "mean_pixel_delta_percent": 7.627,
+      "changed_pixel_percent": 91.1694,
+      "structural_mean_pixel_delta_percent": 6.3733
+    },
+    "1728x1117/governance.png": {
+      "mean_pixel_delta_percent": 5.7125,
+      "changed_pixel_percent": 94.3225,
+      "structural_mean_pixel_delta_percent": 4.6198
+    },
+    "1728x1117/ontology.png": {
+      "mean_pixel_delta_percent": 7.1924,
+      "changed_pixel_percent": 85.2205,
+      "structural_mean_pixel_delta_percent": 5.9449
+    },
+    "1728x1117/project-home.png": {
+      "mean_pixel_delta_percent": 4.9406,
+      "changed_pixel_percent": 76.9954,
+      "structural_mean_pixel_delta_percent": 4.2045
+    },
+    "720x500/admin.png": {
+      "mean_pixel_delta_percent": 29.3991,
+      "changed_pixel_percent": 99.9006,
+      "structural_mean_pixel_delta_percent": 29.0115
+    },
+    "720x500/agent.png": {
+      "mean_pixel_delta_percent": 6.9415,
+      "changed_pixel_percent": 69.2406,
+      "structural_mean_pixel_delta_percent": 4.8908
+    },
+    "720x500/analysis.png": {
+      "mean_pixel_delta_percent": 7.869,
+      "changed_pixel_percent": 73.4314,
+      "structural_mean_pixel_delta_percent": 5.9857
+    },
+    "720x500/dashboard.png": {
+      "mean_pixel_delta_percent": 7.6246,
+      "changed_pixel_percent": 75.8464,
+      "structural_mean_pixel_delta_percent": 5.5776
+    },
+    "720x500/datasets.png": {
+      "mean_pixel_delta_percent": 6.7061,
+      "changed_pixel_percent": 81.4933,
+      "structural_mean_pixel_delta_percent": 5.3874
+    },
+    "720x500/governance.png": {
+      "mean_pixel_delta_percent": 9.9398,
+      "changed_pixel_percent": 88.4161,
+      "structural_mean_pixel_delta_percent": 6.9129
+    },
+    "720x500/ontology.png": {
+      "mean_pixel_delta_percent": 8.3355,
+      "changed_pixel_percent": 81.2961,
+      "structural_mean_pixel_delta_percent": 5.6767
+    },
+    "720x500/project-home.png": {
+      "mean_pixel_delta_percent": 7.0878,
+      "changed_pixel_percent": 42.6758,
+      "structural_mean_pixel_delta_percent": 4.3279
+    }
   }
 }
