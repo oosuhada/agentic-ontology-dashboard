@@ -366,12 +366,12 @@
 .dashboard-edit-toolbar select { height: 24px; min-height: 24px; }
 
 /* Dashboard behaves like a Contour surface rather than a card gallery. */
-.dashboard-workspace-layout { grid-template-columns: var(--fd-filter-rail-w) minmax(0,1fr); }
-.dashboard-workspace-layout.with-inspector { grid-template-columns: var(--fd-filter-rail-w) minmax(0,1fr) var(--fd-inspector-w); }
+.dashboard-workspace-layout { grid-template-columns: 244px minmax(0,1fr); align-items: stretch; }
+.dashboard-workspace-layout.with-inspector { grid-template-columns: 244px minmax(0,1fr) var(--fd-inspector-w); }
 .dashboard-context-panel,
 .dashboard-inspector {
   top: calc(var(--fd-topbar-h) + 100px);
-  max-height: calc(100vh - var(--fd-topbar-h) - 100px);
+  max-height: calc(100vh - var(--fd-topbar-h) - 148px);
 }
 .dashboard-canvas-region { padding: 4px; }
 .dashboard-board-header { min-height: var(--fd-board-header-h); }

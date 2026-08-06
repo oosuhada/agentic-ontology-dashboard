@@ -30,6 +30,13 @@ export interface DashboardGridCanvasProps {
 
 const BREAKPOINTS = { lg: 500, md: 480, sm: 0 } as const;
 const COLS = { lg: 12, md: 8, sm: 1 } as const;
+const MIN_HEIGHT_UNITS_BY_DEFINITION: Record<string, number> = {
+  "operations-kpi": 2,
+  "fde-workspace-overview": 5,
+  "fde-ontology-registry": 3,
+  "fde-deployment-checklist": 5,
+  "fde-diagnostic-events": 4,
+};
 
 function mergeChangedItem(layout: Layout, changedItem: LayoutItem | null): Layout {
   if (!changedItem) return layout;
@@ -45,14 +52,19 @@ function mergeChangedItem(layout: Layout, changedItem: LayoutItem | null): Layou
 function responsiveLayouts(boards: DashboardBoard[]): ResponsiveLayouts<"lg" | "md" | "sm"> {
   const lg: Layout = boards.map((board, index) => {
     const layout = legacyBoardToGridLayout(board, index);
+    const minimumHeight = Math.max(
+      layout.min_h ?? 1,
+      MIN_HEIGHT_UNITS_BY_DEFINITION[board.definition_id] ?? 1,
+    );
+    const height = Math.max(layout.h, minimumHeight);
     return {
       i: board.id,
       x: layout.x,
       y: layout.y,
       w: layout.w,
-      h: layout.h,
+      h: height,
       minW: layout.min_w ?? 2,
-      minH: layout.min_h ?? 1,
+      minH: minimumHeight,
       maxW: layout.max_w ?? 12,
       maxH: layout.max_h ?? 12,
       static: false,

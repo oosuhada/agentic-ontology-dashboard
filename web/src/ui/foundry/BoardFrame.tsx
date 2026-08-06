@@ -1,5 +1,5 @@
 import { Copy, Eye, EyeOff, GripVertical, Maximize2, Minimize2, Trash2 } from "lucide-react";
-import type { ReactNode } from "react";
+import { forwardRef, type CSSProperties, type ReactNode } from "react";
 import type { DashboardBoard, DashboardMode } from "../../features/dashboard/types";
 
 interface BoardFrameProps {
@@ -14,9 +14,11 @@ interface BoardFrameProps {
   onDuplicate: () => void;
   onRemove: () => void;
   onFullscreen: () => void;
+  className?: string;
+  style?: CSSProperties;
 }
 
-export function BoardFrame({
+export const BoardFrame = forwardRef<HTMLElement, BoardFrameProps>(function BoardFrame({
   board,
   mode,
   selected,
@@ -28,9 +30,13 @@ export function BoardFrame({
   onDuplicate,
   onRemove,
   onFullscreen,
-}: BoardFrameProps) {
+  className = "",
+  style,
+}, ref) {
   return (
     <article
+      ref={ref}
+      style={style}
       data-grid-x={board.layout?.x ?? ""}
       data-grid-y={board.layout?.y ?? ""}
       data-grid-w={board.layout?.w ?? board.width}
@@ -42,6 +48,7 @@ export function BoardFrame({
         selected ? "is-selected" : "",
         affected ? "is-affected" : "",
         fullscreen ? "is-fullscreen" : "",
+        className,
       ].filter(Boolean).join(" ")}
       onClick={onSelect}
     >
@@ -116,4 +123,4 @@ export function BoardFrame({
       <div className="dashboard-board-content fd-board-frame__content">{children}</div>
     </article>
   );
-}
+});

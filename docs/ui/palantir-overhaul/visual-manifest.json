@@ -180,26 +180,26 @@
     "final/1440x1000/agent.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 122391,
-      "sha256": "111dfa6c3101ab4dfb7dfd52c259da6c92080e41b7bf41640ca85cb4cc633f6c"
+      "bytes": 126557,
+      "sha256": "a826cac65675966e8148f23ef387c3fe7f72cd72a428f0389ddfff35efc2640c"
     },
     "final/1440x1000/analysis.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 223222,
-      "sha256": "03a14225354ffb4612f0e0d541de73beef5b94c8ac09ea2995d2cb8f09c78655"
+      "bytes": 223212,
+      "sha256": "9d4b2715fa1a21f3e58cf98ae36cf5c1a78c526f0ad4a357e640cfd75e1f5118"
     },
     "final/1440x1000/dashboard.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 153510,
-      "sha256": "81432f367435fb7331833af654a7c1b77ae6779284b7133937bf8ecf49879e27"
+      "bytes": 241208,
+      "sha256": "3fa5814ed394d958c1d6476ae5602a637c220e87e8d3a889d207dc78ba718e0b"
     },
     "final/1440x1000/datasets.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 137619,
-      "sha256": "7062f52c2100fdd41fdd3ac16c5b6b166dee7c9b39f36bf476bb777ce2522e00"
+      "bytes": 137450,
+      "sha256": "e4f823185c08897ddc8b6838ebb8e2cf3a20a4124f79791d0a4ae2c09f34997b"
     },
     "final/1440x1000/governance.png": {
       "width": 1440,
@@ -210,14 +210,14 @@
     "final/1440x1000/ontology.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 153274,
-      "sha256": "8862232ce96d62ceb63fe5bb74969c5fc05aaa13a3b5670edd4868b58a89ccac"
+      "bytes": 152665,
+      "sha256": "bdd12a0a02ee68506c84fd7a4ceb56d4740c2b56885f480f480316e66c44336e"
     },
     "final/1440x1000/project-home.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 98788,
-      "sha256": "933b9f4e46eca631a434c470d9f46a309c97b30b7ba172e1531b9c3fea2e31f4"
+      "bytes": 97178,
+      "sha256": "d3cad90c79566c678720caf0c4655f6b1a4175c5f94505ba8a31999c315fc3f1"
     },
     "final/1728x1117/admin.png": {
       "width": 1728,
@@ -228,8 +228,8 @@
     "final/1728x1117/agent.png": {
       "width": 1728,
       "height": 1117,
-      "bytes": 124579,
-      "sha256": "e42c4183ba10089f262e0c34b47667347af567b4f4c767b6159c0487ee0d5d5f"
+      "bytes": 128778,
+      "sha256": "b02f1ea7c95a467d91da168312f3369882fdbed48b509a8a10b99baf0beed86f"
     },
     "final/1728x1117/analysis.png": {
       "width": 1728,
@@ -240,14 +240,14 @@
     "final/1728x1117/dashboard.png": {
       "width": 1728,
       "height": 1117,
-      "bytes": 162406,
-      "sha256": "51a071385ee0feab0bc8b0e2e32afc52612aacaa080f7a52b962ba0d4e3b433f"
+      "bytes": 258827,
+      "sha256": "aaab158457fb26aca017233ec439e586761d83b866474a6a996a56822e1c866b"
     },
     "final/1728x1117/datasets.png": {
       "width": 1728,
       "height": 1117,
-      "bytes": 145566,
-      "sha256": "3ca2304d9e71bb76b416ea5bc20717430eb90c2882aea2ebe89e2ab7e7cc88a9"
+      "bytes": 146387,
+      "sha256": "032e7eb31e2fe90452c34bb9305caa7f3f3d5146a67c0492356ca87d65310227"
     },
     "final/1728x1117/governance.png": {
       "width": 1728,
@@ -264,8 +264,8 @@
     "final/1728x1117/project-home.png": {
       "width": 1728,
       "height": 1117,
-      "bytes": 98172,
-      "sha256": "75c03fff2156511559d9f872e7b0ada548c720aaa87289a4514f73dc86afdd68"
+      "bytes": 98274,
+      "sha256": "74d47081cac4e0fcf7d76500d2ef0ad934f30ff71b0f803e2d0552d97046518d"
     },
     "final/720x500/admin.png": {
       "width": 720,
@@ -276,20 +276,20 @@
     "final/720x500/agent.png": {
       "width": 720,
       "height": 500,
-      "bytes": 52695,
-      "sha256": "736191af3175db992f7135d2358af4db35a8e02f159d7a9bf4acdd10c2367aa2"
+      "bytes": 52905,
+      "sha256": "909141c0833694ff1494306cd6efef8620401229ffd65d165b5d646b1dca9b0b"
     },
     "final/720x500/analysis.png": {
       "width": 720,
       "height": 500,
-      "bytes": 68094,
-      "sha256": "9424284af858aa0a73dfaa35621cf7ca2981808848e4f7f8dbca120e2f05a45e"
+      "bytes": 68151,
+      "sha256": "307f4e299d3517611cdda0c370fc640e92174b04606b5ddc5f6edab4a222abd8"
     },
     "final/720x500/dashboard.png": {
       "width": 720,
       "height": 500,
-      "bytes": 72172,
-      "sha256": "50cf57bdb169223df9a2eb7f6dd72a8551d8f486c88ddc68d13da6d3078a0814"
+      "bytes": 71630,
+      "sha256": "97aec3516cda6113b2e048ed230dc90e417162d90c62cace4e9f1970d71f64f8"
     },
     "final/720x500/datasets.png": {
       "width": 720,
@@ -312,8 +312,8 @@
     "final/720x500/project-home.png": {
       "width": 720,
       "height": 500,
-      "bytes": 64513,
-      "sha256": "e9f858f355a85ac7c298056f15fa871599045f49b8b93422b7119448899b6d1d"
+      "bytes": 66102,
+      "sha256": "9a5bb4386b442a3c0c17275f99f38c2025740c301557817f2db0b8e3c0f01c53"
     }
   },
   "pairs": {
@@ -323,9 +323,9 @@
       "structural_mean_pixel_delta_percent": 38.5657
     },
     "1440x1000/agent.png": {
-      "mean_pixel_delta_percent": 7.284,
-      "changed_pixel_percent": 89.4584,
-      "structural_mean_pixel_delta_percent": 5.8512
+      "mean_pixel_delta_percent": 7.3082,
+      "changed_pixel_percent": 89.4882,
+      "structural_mean_pixel_delta_percent": 5.8456
     },
     "1440x1000/analysis.png": {
       "mean_pixel_delta_percent": 15.1545,
@@ -333,14 +333,14 @@
       "structural_mean_pixel_delta_percent": 13.236
     },
     "1440x1000/dashboard.png": {
-      "mean_pixel_delta_percent": 14.4834,
-      "changed_pixel_percent": 62.6976,
-      "structural_mean_pixel_delta_percent": 13.0177
+      "mean_pixel_delta_percent": 15.2983,
+      "changed_pixel_percent": 73.9267,
+      "structural_mean_pixel_delta_percent": 12.9984
     },
     "1440x1000/datasets.png": {
-      "mean_pixel_delta_percent": 8.0983,
-      "changed_pixel_percent": 89.4921,
-      "structural_mean_pixel_delta_percent": 6.5828
+      "mean_pixel_delta_percent": 8.0969,
+      "changed_pixel_percent": 89.491,
+      "structural_mean_pixel_delta_percent": 6.5803
     },
     "1440x1000/governance.png": {
       "mean_pixel_delta_percent": 6.667,
@@ -348,14 +348,14 @@
       "structural_mean_pixel_delta_percent": 5.315
     },
     "1440x1000/ontology.png": {
-      "mean_pixel_delta_percent": 7.682,
-      "changed_pixel_percent": 81.4708,
-      "structural_mean_pixel_delta_percent": 6.1124
+      "mean_pixel_delta_percent": 7.6732,
+      "changed_pixel_percent": 81.4614,
+      "structural_mean_pixel_delta_percent": 6.1052
     },
     "1440x1000/project-home.png": {
-      "mean_pixel_delta_percent": 5.7705,
-      "changed_pixel_percent": 74.7398,
-      "structural_mean_pixel_delta_percent": 4.7725
+      "mean_pixel_delta_percent": 5.7552,
+      "changed_pixel_percent": 74.6975,
+      "structural_mean_pixel_delta_percent": 4.7644
     },
     "1728x1117/admin.png": {
       "mean_pixel_delta_percent": 35.6035,
@@ -363,9 +363,9 @@
       "structural_mean_pixel_delta_percent": 35.3492
     },
     "1728x1117/agent.png": {
-      "mean_pixel_delta_percent": 6.7304,
-      "changed_pixel_percent": 90.0338,
-      "structural_mean_pixel_delta_percent": 5.6122
+      "mean_pixel_delta_percent": 6.7478,
+      "changed_pixel_percent": 90.044,
+      "structural_mean_pixel_delta_percent": 5.6053
     },
     "1728x1117/analysis.png": {
       "mean_pixel_delta_percent": 12.6654,
@@ -373,14 +373,14 @@
       "structural_mean_pixel_delta_percent": 11.1085
     },
     "1728x1117/dashboard.png": {
-      "mean_pixel_delta_percent": 11.9038,
-      "changed_pixel_percent": 54.1352,
-      "structural_mean_pixel_delta_percent": 10.6091
+      "mean_pixel_delta_percent": 12.841,
+      "changed_pixel_percent": 66.4469,
+      "structural_mean_pixel_delta_percent": 11.0944
     },
     "1728x1117/datasets.png": {
-      "mean_pixel_delta_percent": 7.5921,
-      "changed_pixel_percent": 90.1454,
-      "structural_mean_pixel_delta_percent": 6.3546
+      "mean_pixel_delta_percent": 7.5932,
+      "changed_pixel_percent": 90.1462,
+      "structural_mean_pixel_delta_percent": 6.3552
     },
     "1728x1117/governance.png": {
       "mean_pixel_delta_percent": 5.7125,
@@ -393,9 +393,9 @@
       "structural_mean_pixel_delta_percent": 5.8142
     },
     "1728x1117/project-home.png": {
-      "mean_pixel_delta_percent": 4.9406,
+      "mean_pixel_delta_percent": 4.9417,
       "changed_pixel_percent": 76.9954,
-      "structural_mean_pixel_delta_percent": 4.2045
+      "structural_mean_pixel_delta_percent": 4.2056
     },
     "720x500/admin.png": {
       "mean_pixel_delta_percent": 45.5568,
@@ -403,19 +403,19 @@
       "structural_mean_pixel_delta_percent": 45.2423
     },
     "720x500/agent.png": {
-      "mean_pixel_delta_percent": 6.9415,
+      "mean_pixel_delta_percent": 6.9738,
       "changed_pixel_percent": 69.2406,
-      "structural_mean_pixel_delta_percent": 4.8908
+      "structural_mean_pixel_delta_percent": 4.9222
     },
     "720x500/analysis.png": {
       "mean_pixel_delta_percent": 7.869,
       "changed_pixel_percent": 73.4314,
-      "structural_mean_pixel_delta_percent": 5.9857
+      "structural_mean_pixel_delta_percent": 5.9856
     },
     "720x500/dashboard.png": {
-      "mean_pixel_delta_percent": 7.6246,
-      "changed_pixel_percent": 75.8464,
-      "structural_mean_pixel_delta_percent": 5.5776
+      "mean_pixel_delta_percent": 7.5215,
+      "changed_pixel_percent": 79.6508,
+      "structural_mean_pixel_delta_percent": 5.4748
     },
     "720x500/datasets.png": {
       "mean_pixel_delta_percent": 6.6746,
@@ -433,9 +433,9 @@
       "structural_mean_pixel_delta_percent": 5.6551
     },
     "720x500/project-home.png": {
-      "mean_pixel_delta_percent": 7.0878,
-      "changed_pixel_percent": 42.6758,
-      "structural_mean_pixel_delta_percent": 4.3279
+      "mean_pixel_delta_percent": 7.1498,
+      "changed_pixel_percent": 42.8492,
+      "structural_mean_pixel_delta_percent": 4.3805
     }
   }
 }

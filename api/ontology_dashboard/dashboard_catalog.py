@@ -698,6 +698,11 @@ def _tab(role: str, slug: str, title: str, order: int, boards: list[DashboardBoa
         "PlannerAssistant": 6,
         "ConversationThread": 5,
         "SensorLineChart": 4,
+        "OperationsKpi": 2,
+        "FDEWorkspaceOverview": 5,
+        "FDEOntologyRegistry": 3,
+        "FDEDeploymentChecklist": 5,
+        "FDEDiagnosticEvents": 4,
     }
     for board in sorted(boards, key=lambda item: item.order):
         definition = BOARD_DEFINITION_BY_ID[board.definition_id]

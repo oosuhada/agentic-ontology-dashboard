@@ -6,8 +6,8 @@
     "agent.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 121701,
-      "sha256": "f3a3b0fddabd60864edd53247a28ea06ece1b0ef6869f09f92d9dfd325cb5595"
+      "bytes": 122391,
+      "sha256": "111dfa6c3101ab4dfb7dfd52c259da6c92080e41b7bf41640ca85cb4cc633f6c"
     },
     "analysis.png": {
       "width": 1440,
@@ -18,14 +18,14 @@
     "comparison-sheet.png": {
       "width": 1440,
       "height": 3645,
-      "bytes": 927092,
-      "sha256": "12725485bec522a40afe08c681c89e52cfc442c84faf981cf9f59035dc76eb87"
+      "bytes": 953346,
+      "sha256": "d8ab90ec43a9624350b8dd245ebd6fee1b65d349c1ae8055a26b430525089fe9"
     },
     "dashboard.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 139150,
-      "sha256": "edfcde43b145f3fd85922dce5f39223d1146439e2d1af00cdccebb6f341690a2"
+      "bytes": 171411,
+      "sha256": "93b1e852de2c5c08c21059ab2de09864a9913376e788ec0973f6368dd9339bb7"
     },
     "datasets.png": {
       "width": 1440,
@@ -36,8 +36,8 @@
     "governance.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 103216,
-      "sha256": "c879075a5ed5f7341896483188c8f5d7ff07edd82b2c2e86f2a941e80015766b"
+      "bytes": 117531,
+      "sha256": "7617e81f9dfc3f2e238798b4a5b5e201bd797cf05277fc3ed82a91c90b0b9f9b"
     }
   }
 }

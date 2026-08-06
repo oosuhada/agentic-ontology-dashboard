@@ -130,6 +130,52 @@ test("dashboard filter rail and board interactions remain functional", async ({ 
   await catalog.getByRole("button", { name: "닫기", exact: true }).click();
 });
 
+test("dashboard grid owns board geometry and navigation rails persist through document scroll", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await login(page, "manager@ontology.local", "Manager!2026");
+  await page.goto(`/app/projects/${projectId}`);
+
+  const gridItems = page.locator(".dashboard-board-canvas .react-grid-item");
+  await expect(gridItems.first()).toBeVisible({ timeout: 45_000 });
+  expect(await gridItems.count()).toBeGreaterThan(1);
+  await expect(page.locator(".dashboard-data-connections")).toContainText("15 versioned rows");
+  await expect(page.locator(".dashboard-source-disclosure")).toContainText("외부 설비 connector 미연결");
+
+  const initialGeometry = await page.evaluate(() => {
+    const item = document.querySelector<HTMLElement>(".dashboard-board-canvas .react-grid-item");
+    return {
+      documentHeight: document.documentElement.scrollHeight,
+      itemPosition: item ? getComputedStyle(item).position : "missing",
+    };
+  });
+  expect(initialGeometry.itemPosition).toBe("absolute");
+  expect(initialGeometry.documentHeight).toBeLessThan(2500);
+
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(200);
+  const scrolledGeometry = await page.evaluate(() => {
+    const sidebar = document.querySelector(".od-primary-sidebar")?.getBoundingClientRect();
+    const context = document.querySelector(".dashboard-context-panel")?.getBoundingClientRect();
+    const rail = document.querySelector(".dashboard-context-rail")?.getBoundingClientRect();
+    const layout = document.querySelector(".dashboard-workspace-layout")?.getBoundingClientRect();
+    return {
+      sidebarTop: sidebar?.top ?? -1,
+      sidebarBottom: sidebar?.bottom ?? -1,
+      contextTop: context?.top ?? -1,
+      contextBottom: context?.bottom ?? -1,
+      railBottom: rail?.bottom ?? -1,
+      layoutBottom: layout?.bottom ?? -1,
+      viewportHeight: window.innerHeight,
+    };
+  });
+  expect(scrolledGeometry.sidebarTop).toBeGreaterThanOrEqual(-1);
+  expect(scrolledGeometry.sidebarBottom).toBeLessThanOrEqual(scrolledGeometry.viewportHeight + 1);
+  expect(scrolledGeometry.contextTop).toBeCloseTo(134, 0);
+  expect(scrolledGeometry.contextBottom).toBeLessThanOrEqual(scrolledGeometry.viewportHeight + 1);
+  expect(scrolledGeometry.railBottom).toBeCloseTo(scrolledGeometry.layoutBottom, 0);
+});
+
 test("typed analysis and object resources expose contracts, column semantics and provenance", async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -168,8 +214,9 @@ test("720px viewport has one main landmark and no document overflow across workb
     await page.goto(route);
     await expect(page.locator(readySelector).first()).toBeVisible({ timeout: 45_000 });
     await expect(page.getByRole("main")).toHaveCount(1);
+    await page.waitForTimeout(200);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    expect(overflow).toBeLessThanOrEqual(2);
+    expect(overflow, `${route} document overflow`).toBeLessThanOrEqual(2);
   }
 });
 
