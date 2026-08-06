@@ -39,7 +39,7 @@ production = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["ontology_dashboard*", "factory_signal_board*"]
+include = ["ontology_dashboard*"]
 
 [tool.pytest.ini_options]
 testpaths = ["../tests", "tests"]

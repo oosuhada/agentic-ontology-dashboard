@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import ontology_dashboard
 from pathlib import Path
 
 from scripts.check_architecture_debt import assert_no_regressions, collect_architecture_debt
@@ -20,14 +21,19 @@ def test_stage44_architecture_inventory_has_no_regression() -> None:
     assert by_id["dashboard_physical_relocation"].state == "resolved"
     assert by_id["analysis_physical_relocation"].state == "resolved"
     assert by_id["export_workflow_physical_relocation"].state == "resolved"
+    assert by_id["ontology_compatibility_physical_relocation"].state == "resolved"
+    assert by_id["legacy_namespace_path_extension"].state == "resolved"
+    assert by_id["legacy_package_removed"].state == "resolved"
 
 
-def test_remaining_legacy_debt_is_explicitly_owned_by_stage55() -> None:
+def test_stage55_legacy_package_debt_is_fully_resolved() -> None:
     items = collect_architecture_debt(ROOT)
-    accepted = {item.id: item.stage for item in items if item.state == "accepted"}
-    assert accepted.get("legacy_namespace_path_extension") == 55
-    assert "legacy_composition_root" not in accepted
+    assert not [item for item in items if item.state == "accepted"]
     assert next(item for item in items if item.id == "legacy_composition_root").state == "resolved"
+    assert not tuple((ROOT / "api" / "factory_signal_board").glob("*.py"))
+    assert [Path(path).resolve() for path in ontology_dashboard.__path__] == [
+        (ROOT / "api" / "ontology_dashboard").resolve()
+    ]
 
 
 def test_foundation_identity_modules_load_from_canonical_directory() -> None:
@@ -117,4 +123,34 @@ def test_export_workflow_modules_load_from_canonical_directory() -> None:
     assert issubclass(
         postgresql_repositories.PostgreSQLRoleWorkflowRepository,
         workflow_repository.RoleWorkflowRepository,
+    )
+
+
+def test_ontology_compatibility_modules_load_from_canonical_directory() -> None:
+    module_names = (
+        "conversation",
+        "llm",
+        "reports",
+        "ontology",
+        "ontology_adapter",
+        "ontology_repository",
+        "ontology_service",
+        "ontology_planner_models",
+        "ontology_planner_service",
+    )
+    canonical_root = ROOT / "api" / "ontology_dashboard"
+    for name in module_names:
+        module = importlib.import_module(f"ontology_dashboard.{name}")
+        assert Path(module.__file__).resolve().parent == canonical_root.resolve()
+
+    ontology = importlib.import_module("ontology_dashboard.ontology")
+    ontology_adapter = importlib.import_module("ontology_dashboard.ontology_adapter")
+    ontology_repository = importlib.import_module("ontology_dashboard.ontology_repository")
+    ontology_service = importlib.import_module("ontology_dashboard.ontology_service")
+    postgresql_repositories = importlib.import_module("ontology_dashboard.postgresql_repositories")
+    assert ontology_adapter.ObjectRecord is ontology.ObjectRecord
+    assert ontology_service.OntologyActionRepository is ontology_repository.OntologyActionRepository
+    assert issubclass(
+        postgresql_repositories.PostgreSQLOntologyActionRepository,
+        ontology_repository.OntologyActionRepository,
     )

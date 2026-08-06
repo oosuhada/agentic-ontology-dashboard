@@ -319,6 +319,10 @@ Project 2와 Project 3은 회사의 하나의 실제 업무를 구현 과제상 
 - composition root debt와 physical module debt를 별개로 추적한다.
 - 대규모 일괄 이동으로 runtime singleton이나 import identity가 중복되는 위험을 피한다.
 
+### Completion note — 2026-08-03
+
+모든 compatibility slice가 canonical package로 이동했고, architecture/import identity 검증 후 `api/factory_signal_board/`, setuptools legacy package discovery와 `ontology_dashboard.__path__` extension을 제거했다.
+
 ## ADR-019 — Project Showcase Fixtures Do Not Expand the Manufacturing Gold Set
 
 ### Decision

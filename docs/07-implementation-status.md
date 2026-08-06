@@ -56,7 +56,7 @@ The Azure and MetroPT fixtures prove multi-project abstraction and user flow. Th
 ### Implemented
 
 - canonical FastAPI composition root at `ontology_dashboard.main`
-- compatibility-only `factory_signal_board.main` shim
+- canonical-only `ontology_dashboard.main` composition root
 - application factory and feature routers
 - cookie authentication, Argon2id, CSRF, session rotation/revocation and RBAC
 - Organization → Project → Workspace → Role hierarchy
@@ -73,14 +73,14 @@ The Azure and MetroPT fixtures prove multi-project abstraction and user flow. Th
 
 ### Remaining local architecture debt
 
-- import graph inventory plus the foundation/identity, Dashboard, Analysis, and Export/Workflow compatibility slices are complete
+- physical namespace relocation is complete across foundation/identity, Dashboard, Analysis, Export/Workflow, and Ontology/provider/report modules
 - `context`, `contracts`, `security`, identity models/repository/service, audit repository, and the manufacturing demo service now load physically from `api/ontology_dashboard/`
 - Dashboard models, catalog, repository, and service now load physically from `api/ontology_dashboard/`; catalog and repository class identity are guarded by executable architecture tests
 - Analysis models, durable run repository, and service now load physically from `api/ontology_dashboard/`; cache/cancel/cursor/materialization contracts and repository class identity are guarded by tests
 - Export and Role Workflow models, repositories, and services now load physically from `api/ontology_dashboard/`; PostgreSQL subclass, outbox, checkpoint, approval and project-isolation contracts are guarded by tests
 - matching legacy files are thin re-export shims guarded by executable architecture tests
-- the remaining Ontology/provider/report/conversation compatibility slice still depends on the temporary `ontology_dashboard.__path__` extension
-- the namespace path extension is removed only after all remaining service/model/repository modules are relocated and package/runtime verification passes
+- `api/factory_signal_board/` has been removed from source and setuptools package discovery
+- `ontology_dashboard.__path__` contains only the canonical package directory; architecture tests prevent the legacy package or extension from returning
 
 ### Externally blocked backend work
 

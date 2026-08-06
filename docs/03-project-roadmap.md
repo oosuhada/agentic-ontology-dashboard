@@ -69,7 +69,7 @@
 
 - complete public Azure and MetroPT dataset ingestion with provenance artifacts
 - managed PostgreSQL/Redis/Neo4j project-isolation and failover evidence
-- remaining Ontology physical relocation before deleting the namespace path extension; foundation/identity, Dashboard, Analysis, and Export/Workflow are complete
+- physical namespace relocation is complete; `api/factory_signal_board/` and the namespace path extension are removed
 
 ### Acceptance Criteria
 
@@ -203,8 +203,8 @@ legacy handler container 역할을 하는 `main.py`를 제거하고 feature modu
 - Dashboard compatibility slice: `DONE`
 - Analysis compatibility slice: `DONE`
 - Export/Workflow compatibility slice: `DONE`
-- remaining Ontology compatibility slice: `NEXT`
-- shim cleanup and path-extension removal: `PENDING`
+- remaining Ontology compatibility slice: `DONE`
+- shim cleanup and path-extension removal: `DONE`
 - detailed matrix: `docs/physical-namespace-relocation-inventory.md`
 
 ### Acceptance Criteria

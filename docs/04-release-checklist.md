@@ -30,6 +30,7 @@ PYTHONPATH=api:ml/src .venv/bin/python scripts/release_gate.py --with-e2e
 
 - [x] 사용자 노출 영역에 `Factory Signal Board`가 없다.
 - [x] 신규 Python import는 `ontology_dashboard`를 사용한다.
+- [x] `api/factory_signal_board/` physical package와 namespace path extension이 제거됐다.
 - [x] 신규 ML import는 `ontology_dashboard_manufacturing_ml`을 사용한다.
 - [x] Project scope 없이 신규 dataset을 global workspace에 추가하지 않았다.
 - [x] Prediction logic이 Dashboard UI나 presentation service에 들어가지 않았다.
