@@ -6,6 +6,8 @@
 
 - [2026-08 멘토링 MVP 정의](mentoring-mvp-2026-08/README.md)
 - [MVP 4개 화면 명세서](mentoring-mvp-2026-08/mvp-scope-and-screen-specification.md)
+- [MVP API 명세서](mentoring-mvp-2026-08/mvp-api-specification.md)
+- [MVP 데이터 계약서](mentoring-mvp-2026-08/mvp-data-contract.md)
 - [Project charter](project-charter.md)
 - [Domain model](domain-model.md)
 - [MVP scope](mvp-scope.md)

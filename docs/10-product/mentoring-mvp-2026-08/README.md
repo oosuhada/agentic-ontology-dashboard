@@ -5,6 +5,14 @@
 ## 기준 문서
 
 - [MVP 범위 및 4개 화면 명세서](./mvp-scope-and-screen-specification.md)
+- [MVP API 명세서](./mvp-api-specification.md)
+- [MVP 데이터 계약서](./mvp-data-contract.md)
+
+## 문서 사용 순서
+
+1. 범위 및 화면 명세서에서 사용자·화면·제외 범위를 확인한다.
+2. API 명세서에서 화면별 호출, 권한, 요청·응답과 구현 gap을 확인한다.
+3. 데이터 계약서에서 Canonical V3.1 필드 의미, enum, lineage와 화면 간 일관성 규칙을 확인한다.
 
 ## 이번 범위의 핵심
 
