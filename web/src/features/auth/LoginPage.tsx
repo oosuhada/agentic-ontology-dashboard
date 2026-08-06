@@ -5,14 +5,18 @@ import { useAuth } from "./AuthContext";
 import { AuthShell } from "./AuthShell";
 
 const DEMO_ACCOUNTS = [
-  ["관리자", "admin@ontology.local", "OntologyAdmin!2026"],
-  ["임원 Viewer", "executive@ontology.local", "Executive!2026"],
-  ["운영 매니저", "manager@ontology.local", "Manager!2026"],
-  ["도메인 엔지니어", "engineer@ontology.local", "Engineer!2026"],
-  ["현장 작업자", "technician@ontology.local", "Technician!2026"],
-  ["품질·감사", "quality@ontology.local", "Quality!2026"],
-  ["데이터 사이언티스트", "datascientist@ontology.local", "DataScience!2026"],
-  ["FDE", "fde@ontology.local", "FDE!2026"],
+  {
+    label: "관리자·임원",
+    description: "Overview · Operations · Executive Report",
+    email: "manager@ontology.local",
+    password: "Manager!2026",
+  },
+  {
+    label: "실무 엔지니어",
+    description: "Objects · Evidence · 현장 메모",
+    email: "engineer@ontology.local",
+    password: "Engineer!2026",
+  },
 ] as const;
 
 const PUBLIC_DEMO_HOSTS = new Set([
@@ -55,10 +59,10 @@ export function LoginPage() {
   }
 
   function selectDemo(value: string) {
-    const account = DEMO_ACCOUNTS.find((item) => item[1] === value);
+    const account = DEMO_ACCOUNTS.find((item) => item.email === value);
     if (!account) return;
-    setEmail(account[1]);
-    setPassword(account[2]);
+    setEmail(account.email);
+    setPassword(account.password);
   }
 
   return (
@@ -97,16 +101,23 @@ export function LoginPage() {
       </form>
 
       {shouldShowDemoAccounts() ? (
-        <details className="demo-account-picker">
-          <summary>역할별 데모 계정 선택</summary>
-          <label>
-            역할
-            <select value={DEMO_ACCOUNTS.some((item) => item[1] === email) ? email : ""} onChange={(event) => selectDemo(event.target.value)}>
-              <option value="">계정을 선택하세요</option>
-              {DEMO_ACCOUNTS.map(([label, accountEmail]) => <option key={accountEmail} value={accountEmail}>{label} · {accountEmail}</option>)}
-            </select>
-          </label>
-          <small>공개 데모와 로컬 개발 환경에서 역할별 테스트 계정을 빠르게 입력합니다.</small>
+        <details className="demo-account-picker" open>
+          <summary>MVP 데모 역할 선택</summary>
+          <div className="demo-account-grid" role="group" aria-label="MVP 데모 계정">
+            {DEMO_ACCOUNTS.map((account) => (
+              <button
+                key={account.email}
+                className={`demo-account-card ${email === account.email ? "is-selected" : ""}`}
+                type="button"
+                onClick={() => selectDemo(account.email)}
+              >
+                <strong>{account.label}</strong>
+                <span>{account.description}</span>
+                <small>{account.email}</small>
+              </button>
+            ))}
+          </div>
+          <small>최종 MVP에서 사용하는 두 역할만 빠르게 선택할 수 있습니다.</small>
         </details>
       ) : null}
 

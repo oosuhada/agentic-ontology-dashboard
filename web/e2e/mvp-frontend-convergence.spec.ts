@@ -16,6 +16,25 @@ async function login(page: Page, returnTo = MVP_PATH, account: keyof typeof ACCO
   await expect(page).toHaveURL(new RegExp(`/app/projects/${PROJECT}`));
 }
 
+test("login exposes only the two mentoring MVP roles", async ({ page }) => {
+  await page.goto(`/login?returnTo=${encodeURIComponent(MVP_PATH)}`);
+
+  const demoAccounts = page.getByRole("group", { name: "MVP 데모 계정" }).getByRole("button");
+  await expect(demoAccounts).toHaveCount(2);
+  await expect(page.getByRole("button", { name: /관리자·임원/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /실무 엔지니어/ })).toBeVisible();
+  await expect(page.getByText("데이터 사이언티스트", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("FDE", { exact: true })).toHaveCount(0);
+
+  await page.getByRole("button", { name: /관리자·임원/ }).click();
+  await expect(page.getByLabel("이메일")).toHaveValue("manager@ontology.local");
+  await expect(page.getByLabel("비밀번호")).toHaveValue("Manager!2026");
+
+  await page.getByRole("button", { name: /실무 엔지니어/ }).click();
+  await expect(page.getByLabel("이메일")).toHaveValue("engineer@ontology.local");
+  await expect(page.getByLabel("비밀번호")).toHaveValue("Engineer!2026");
+});
+
 test("completes Overview to Objects to Operations to Executive Report without Analysis", async ({ page }) => {
   await login(page);
   await expect(page.locator(".mvp-app")).toBeVisible();

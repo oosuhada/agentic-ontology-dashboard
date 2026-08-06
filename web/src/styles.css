@@ -224,9 +224,15 @@ th { color: #667085; background: #f9fafb; }
 .link-button { border: 0; padding: 0; color: #4f46e5; background: transparent; font-weight: 700; }
 .demo-account-picker { margin-top: 18px; padding: 12px; border: 1px solid #e4e7ec; border-radius: 10px; background: #f9fafb; }
 .demo-account-picker summary { cursor: pointer; color: #475467; font-size: 12px; font-weight: 700; }
-.demo-account-picker label { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; color: #667085; font-size: 11px; }
-.demo-account-picker select { width: 100%; }
+.demo-account-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.demo-account-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; padding: 11px; border: 1px solid #d0d5dd; border-radius: 9px; color: #344054; background: #fff; text-align: left; }
+.demo-account-card:hover { border-color: #8098f9; background: #f5f7ff; }
+.demo-account-card.is-selected { border-color: #6172f3; box-shadow: 0 0 0 2px rgba(97,114,243,.12); background: #eef2ff; }
+.demo-account-card strong { font-size: 12px; }
+.demo-account-card span { color: #667085; font-size: 10px; line-height: 1.4; }
+.demo-account-card small { max-width: 100%; overflow: hidden; color: #98a2b3; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .demo-account-picker > small { display: block; margin-top: 8px; color: #98a2b3; }
+@media (max-width: 560px) { .demo-account-grid { grid-template-columns: 1fr; } }
 .terms-row { flex-direction: row !important; align-items: flex-start; font-weight: 500 !important; line-height: 1.45; }
 .terms-row input { width: auto; min-height: auto; margin-top: 3px; }
 .pending-card { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 12px; color: #067647; background: #ecfdf3; }
