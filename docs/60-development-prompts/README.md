@@ -11,6 +11,7 @@
 
 ## 주제별 프롬프트
 
+- [Week 2 MVP 프론트엔드 통합·재구성](next-session-week2-mvp-frontend-convergence-prompt.md)
 - [Autonomous implementation](next-session-autonomous-full-implementation-prompt.md)
 - [Ontology Dashboard](next-session-ontology-dashboard-prompt.md)
 - [Palantir UI overhaul](next-session-palantir-ui-overhaul-prompt.md)

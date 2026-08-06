@@ -8,6 +8,7 @@
 - [MVP API 명세서](./mvp-api-specification.md)
 - [MVP 데이터 계약서](./mvp-data-contract.md)
 - [Week 2 역할 분담 및 산출물 정의](./week2-team-role-and-deliverables.md)
+- [Week 2 MVP 프론트엔드 통합·재구성 실행 계획](./week2-mvp-frontend-convergence-plan.md)
 
 ## 문서 사용 순서
 
@@ -15,6 +16,7 @@
 2. API 명세서에서 화면별 호출, 권한, 요청·응답과 구현 gap을 확인한다.
 3. 데이터 계약서에서 Canonical V3.1 필드 의미, enum, lineage와 화면 간 일관성 규칙을 확인한다.
 4. Week 2 역할 분담 문서에서 담당자별 구현 범위, 협업 관계, 산출물과 완료 기준을 확인한다.
+5. 프론트엔드 통합·재구성 계획에서 V1~V4 재사용 기준, 새 MVP 경로와 구현 순서를 확인한다.
 
 ## 이번 범위의 핵심
 
