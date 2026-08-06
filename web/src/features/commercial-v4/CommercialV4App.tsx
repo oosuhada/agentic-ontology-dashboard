@@ -207,7 +207,11 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
     Promise.all([
       getProject(projectId),
       getProjectWorkspaces(projectId),
-      getDatasetCatalogPage({ project_id: projectId, offset: 0, limit: 8 }),
+      optionalSurfaceSnapshot(
+        permissions.has("datasets.read"),
+        "overview",
+        () => getDatasetCatalogPage({ project_id: projectId, offset: 0, limit: 8 }),
+      ),
       getProjectV4ApplicationDefinition(projectId),
       getPersistenceReadiness(projectId),
       getEnterpriseIdentityReadiness(projectId),
@@ -227,7 +231,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
         if (!controller.signal.aborted) setContext({
           project,
           workspaces,
-          datasets: datasets.items,
+          datasets: datasets?.items ?? [],
           application,
           persistence,
           identity,
@@ -449,6 +453,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
   const branching = context.branching!;
   const activeDatasets = context.datasets.filter((item) => item.status === "active");
   const publishedRecords = activeDatasets.reduce((total, item) => total + item.record_count, 0);
+  const canReadDatasets = user.permissions.includes("datasets.read");
   const readyFeatures = surfaces.filter((item) => item.state === "ready" && item.accessible).length;
   const plannedFeatures = surfaces.filter((item) => item.state === "planned").length;
   const domainPack = context.application.domain_pack;
@@ -549,7 +554,11 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
               <section className="commercial-v4-metrics" aria-label="Commercial readiness metrics">
                 <article><span>Ready surfaces</span><strong>{readyFeatures}</strong><small>permission-aware</small></article>
                 <article><span>Planned surfaces</span><strong>{plannedFeatures}</strong><small>no fake success UI</small></article>
-                <article><span>Active datasets</span><strong>{activeDatasets.length}</strong><small>{publishedRecords.toLocaleString()} governed rows</small></article>
+                <article>
+                  <span>Active datasets</span>
+                  <strong>{canReadDatasets ? activeDatasets.length : "—"}</strong>
+                  <small>{canReadDatasets ? `${publishedRecords.toLocaleString()} governed rows` : "catalog permission required"}</small>
+                </article>
                 <article><span>Application scope</span><strong>V4</strong><small>isolated state and cache identity</small></article>
               </section>
 
@@ -564,7 +573,9 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
                     <div><dt>Organization</dt><dd>{context.project.organization_id}</dd></div>
                   </dl>
                   <div className="commercial-v4-dataset-list">
-                    {context.datasets.length ? context.datasets.slice(0, 4).map((dataset) => (
+                    {!canReadDatasets ? (
+                      <p className="commercial-v4-empty">Dataset catalog is hidden for this role.</p>
+                    ) : context.datasets.length ? context.datasets.slice(0, 4).map((dataset) => (
                       <article key={dataset.id}>
                         <span><strong>{dataset.display_name}</strong><small>{dataset.latest_version_label ?? "No published version"}</small></span>
                         <em>{dataset.record_count.toLocaleString()} rows</em>
