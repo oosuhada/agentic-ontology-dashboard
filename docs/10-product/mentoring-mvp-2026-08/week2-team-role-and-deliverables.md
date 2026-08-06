@@ -63,6 +63,31 @@ MVP 화면은 다음 네 개로 제한한다.
 - 하나의 임계값을 절대적인 정답으로 주장하지 않는다.
 - 고객의 안전 우선순위와 점검 비용에 따라 적절한 임계값 후보를 제안하는 방향으로 설계한다.
 
+### 2.5 팀원 참고안에서 선택적으로 반영한 원칙
+
+팀원이 작성한 `2주차 요구사항정의서 및 역할분담` 초안은 아래 원칙을 참고 자료로 사용한다. 초안 전체를 이번 역할 분담의 의무 범위로 채택하지는 않는다.
+
+반영하는 원칙:
+
+- Canonical V3.1과 Result Artifact를 네 담당자의 공통 기준 입력으로 사용한다.
+- 생산 관리자와 현장 담당자 두 사용자에 집중한다.
+- Overview·Objects·Operations·Executive Report View 네 화면을 MVP 핵심 범위로 유지한다.
+- 화면·API·리포트가 동일 설비와 동일 예측 결과를 사용하도록 계약을 고정한다.
+- LLM은 Evidence Package 또는 검증된 Facts 밖의 판단과 숫자를 새로 만들지 않는다.
+- 원인을 확정적으로 단정하지 않고 `근거`, `후보`, `가설`, `점검 필요` 표현을 사용한다.
+- null, 데이터 품질 문제와 낮은 신뢰도를 정상값이나 고장 확정으로 바꾸지 않는다.
+
+이번 주 필수 범위로 채택하지 않는 항목:
+
+- 시스템 관리자 기능 구현
+- 실제 Push 알림 인프라
+- 자동 설비 정지
+- 대규모 Action·Assignment·Notification API 확장
+- 전체 Palantir형 플랫폼 기능 완성
+- 완전 자율형 LLM Agent
+
+위 항목은 필수 산출물 완료 후 플러스 알파 또는 후속 주차 Backlog로 다룬다.
+
 ## 3. 최종 역할 요약
 
 | 담당 | 팀 역할 | 핵심 책임 | 주요 산출물 |
@@ -389,14 +414,26 @@ MVP 제외 범위:
 
 ### 6.5 다음 주 산출물
 
-- 요구사항 정의서
-- 리포트 정의서
-- 스키마 정의서
-- 기능 명세서
-- API 명세서
-- MVP 설계 명세서
+- 요구사항 정의서 — `week2-requirements-specification.md`
+- 리포트 정의서 — `week2-report-specification.md`
+- 스키마 정의서 — `week2-schema-definition.md`
+- 기능 명세서 — `week2-functional-specification.md`
+- API 명세서 — `week2-api-specification.md`
+- MVP 설계 명세서 — `week2-mvp-design-specification.md`
 - 문서 간 Traceability Matrix
 - 상단 산출물 링크 인덱스
+
+권장 저장 위치:
+
+```text
+docs/10-product/mentoring-mvp-2026-08/
+├── week2-requirements-specification.md
+├── week2-report-specification.md
+├── week2-schema-definition.md
+├── week2-functional-specification.md
+├── week2-api-specification.md
+└── week2-mvp-design-specification.md
+```
 
 ### 6.6 완료 기준
 
