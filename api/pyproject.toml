@@ -5,13 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ontology-dashboard-api"
 version = "0.1.0"
-description = "FastAPI service for ontology-aware dashboards, governed actions, and domain packs"
+description = "FastAPI service for the Predictive Maintenance MVP and Canonical V3.1 runtime"
 requires-python = ">=3.11"
 dependencies = [
   "argon2-cffi>=23.1",
   "fastapi>=0.115",
   "httpx>=0.28",
-  "google-genai>=1.0",
   "jsonschema>=4.23",
   "openpyxl>=3.1",
   "joblib>=1.4",
@@ -20,26 +19,16 @@ dependencies = [
   "pydantic>=2.9",
   "scikit-learn>=1.5",
   "PyYAML>=6.0",
-  "reportlab>=4.2",
   "uvicorn>=0.30"
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.3"]
 postgres = ["psycopg[binary]>=3.2", "psycopg_pool>=3.2"]
-polyglot = [
-  "psycopg[binary]>=3.2",
-  "psycopg_pool>=3.2",
-  "neo4j>=5",
-  "redis>=5.0",
-  "pyarrow>=17"
-]
 production = [
   "psycopg[binary]>=3.2",
   "psycopg_pool>=3.2",
-  "neo4j>=5",
-  "redis>=5.0",
-  "pyarrow>=17"
+  "redis>=5.0"
 ]
 
 [tool.setuptools.packages.find]

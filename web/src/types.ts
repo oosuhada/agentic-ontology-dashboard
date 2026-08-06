@@ -1,20 +1,11 @@
 export type Role = "manager" | "engineer";
-export type AppRole =
-  | "tenant_admin"
-  | "executive_viewer"
-  | "process_manager"
-  | "process_engineer"
-  | "maintenance_technician"
-  | "quality_auditor"
-  | "ml_validator"
-  | "fde";
-export type UserStatus = "pending_approval" | "active" | "disabled";
+export type AppRole = "process_manager" | "process_engineer";
 
 export interface AuthUser {
   user_id: string;
   email: string;
   display_name: string;
-  status: UserStatus;
+  status: "pending_approval" | "active" | "disabled";
   roles: AppRole[];
   permissions: string[];
   workspace_scopes: string[];
@@ -23,21 +14,8 @@ export interface AuthUser {
   active_project_id: string | null;
   active_project_roles: string[];
   is_admin: boolean;
-  default_path: "/app" | "/admin";
-  landing_key: AppRole | "pending_approval";
-}
-
-export interface ProjectMembership {
-  user_id: string;
-  organization_id: string;
-  project_id: string;
-  status: "active" | "suspended";
-  email: string;
-  display_name: string;
-  user_status: string;
-  roles: string[];
-  created_at: string;
-  updated_at: string;
+  default_path: string;
+  landing_key: string;
 }
 
 export interface Project {
@@ -61,77 +39,6 @@ export interface Workspace {
   display_name: string;
   domain_pack: string;
 }
-
-export interface AdminUser {
-  id: string;
-  organization_id: string | null;
-  organization_name: string | null;
-  email: string;
-  display_name: string;
-  status: UserStatus;
-  requested_organization_name: string | null;
-  requested_role_code: AppRole | null;
-  terms_accepted_at: string | null;
-  created_at: string;
-  updated_at: string;
-  roles: AppRole[];
-  permission_overrides: Record<string, boolean>;
-  effective_permissions: string[];
-  workspace_scopes: string[];
-}
-
-export interface RoleDefinition {
-  code: AppRole;
-  display_name: string;
-  description: string;
-  permissions: string[];
-}
-
-export interface AdminNotification {
-  id: string;
-  organization_id: string | null;
-  notification_type: string;
-  title: string;
-  body: string;
-  target_user_id: string | null;
-  target_email: string | null;
-  target_display_name: string | null;
-  requested_role_code: AppRole | null;
-  created_at: string;
-  read_at: string | null;
-}
-
-export interface AdminAuditEntry {
-  id: string;
-  actor_user_id: string;
-  target_user_id: string | null;
-  actor_email: string;
-  target_email: string | null;
-  action: string;
-  before: Record<string, unknown>;
-  after: Record<string, unknown>;
-  created_at: string;
-}
-
-export interface DomainPack {
-  id: string;
-  display_name: string;
-  description: string;
-  workspace_ids: string[];
-  object_type_ids: string[];
-  link_type_ids: string[];
-  action_type_ids: string[];
-  status: "active" | "draft" | "disabled";
-}
-
-export type Intent =
-  | "overview"
-  | "explain-risk"
-  | "compare"
-  | "summarize-manager"
-  | "detail-engineer"
-  | "recommend-check"
-  | "show-model-details";
 
 export interface Equipment {
   equipment_id: string;
@@ -227,51 +134,13 @@ export interface Report {
   generated_at: string;
 }
 
-export type BlockType =
-  | "StatusSummary"
-  | "RiskKpi"
-  | "PriorityList"
-  | "ImpactSummary"
-  | "ManagerDecisionCard"
-  | "SensorLineChart"
-  | "AnomalyTimeline"
-  | "FactorContribution"
-  | "EvidenceTable"
-  | "RecommendedActions"
-  | "EngineerChecklist"
-  | "DataQualityWarning"
-  | "ModelDetails"
-  | "ConversationThread";
-
-export interface UIBlock {
-  block_id: string;
-  type: BlockType;
-  title: string;
-  order: number;
-  emphasis: "primary" | "secondary" | "detail";
-  data_fields: string[];
-  collapsed: boolean;
-}
-
 export interface Layout {
   layout_id: string;
   event_id: string;
   role: Role;
   locale: "ko-KR" | "en-US";
-  intent: Intent;
+  intent: string;
   mode: string;
-  blocks: UIBlock[];
+  blocks: Array<Record<string, unknown>>;
   generated_at: string;
-}
-
-export interface FollowUp {
-  thread_id: string;
-  event_id: string;
-  role: Role;
-  intent: Intent;
-  answer: string;
-  report: Report;
-  layout: Layout;
-  supported: boolean;
-  audit: Record<string, unknown>;
 }

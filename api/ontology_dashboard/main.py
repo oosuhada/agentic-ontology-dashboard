@@ -8,32 +8,16 @@ from fastapi.responses import JSONResponse
 from .application import create_app
 from .dependencies import (
     get_identity_service,
-    get_ontology_planner_service,
     get_rate_limiter,
     get_service,
 )
 from .identity import AuthError
-from .openapi_contracts import apply_response_contracts
-from .routers.adapters import router as adapters_router
-from .routers.agent import router as agent_router
-from .routers.admin import router as admin_router
-from .routers.analyses import router as analyses_router
 from .routers.auth import router as auth_router
-from .routers.dashboards import router as dashboards_router
-from .routers.datasets import router as datasets_router
-from .routers.exports import router as exports_router
-from .routers.governance import router as governance_router
 from .routers.manufacturing import router as manufacturing_router
-from .routers.modeling import router as modeling_router
-from .routers.ontology import router as ontology_router
-from .routers.planner import router as planner_router
-from .routers.platform import router as platform_router
-from .routers.project3 import router as project3_router
 from .routers.predictive_maintenance_runtime import (
     router as predictive_maintenance_runtime_router,
 )
 from .routers.projects import router as projects_router
-from .routers.role_workspaces import router as role_workspaces_router
 from .routers.system import router as system_router
 from .security import RateLimitExceeded
 from .service import EventNotFound
@@ -94,32 +78,16 @@ async def rate_limit_handler(_: Request, exc: RateLimitExceeded) -> JSONResponse
 for feature_router in (
     system_router,
     auth_router,
-    agent_router,
-    adapters_router,
-    datasets_router,
-    ontology_router,
-    analyses_router,
     projects_router,
-    dashboards_router,
-    exports_router,
-    governance_router,
-    planner_router,
-    platform_router,
-    project3_router,
     predictive_maintenance_runtime_router,
-    modeling_router,
-    role_workspaces_router,
     manufacturing_router,
-    admin_router,
 ):
-    apply_response_contracts(feature_router)
     app.include_router(feature_router)
 
 
 __all__ = [
     "app",
     "get_identity_service",
-    "get_ontology_planner_service",
     "get_rate_limiter",
     "get_service",
 ]

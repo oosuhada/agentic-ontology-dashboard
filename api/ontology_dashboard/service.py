@@ -46,11 +46,7 @@ class ManufacturingPredictiveMaintenanceService:
     ) -> None:
         self.root = Path(root)
         fixture_root = self.root / "data" / "fixtures"
-        fixture_paths = sorted(
-            path
-            for pattern in ("GS-*.json", "AZ-*.json", "MPT-*.json")
-            for path in fixture_root.glob(pattern)
-        )
+        fixture_paths = sorted(fixture_root.glob("GS-*.json"))
         self.project_fixtures = {
             payload["event_id"]: payload
             for payload in (load_fixture(path) for path in fixture_paths)

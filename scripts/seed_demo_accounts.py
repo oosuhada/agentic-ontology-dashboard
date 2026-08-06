@@ -23,13 +23,10 @@ def main() -> None:
     if app_env == "production":
         raise SystemExit("Refusing to seed demo accounts when APP_ENV=production")
 
-    service = IdentityService(args.database, app_env=app_env, seed_demo=True)
-    users = service.repository.list_users()
-    seeded_emails = {account["email"] for account in DEMO_ACCOUNTS}
-    available = sorted(user["email"] for user in users if user["email"] in seeded_emails)
-    print(f"Demo accounts available: {len(available)}/{len(DEMO_ACCOUNTS)}")
-    for email in available:
-        print(f"- {email}")
+    IdentityService(args.database, app_env=app_env, seed_demo=True)
+    print(f"Demo accounts available: {len(DEMO_ACCOUNTS)}")
+    for account in DEMO_ACCOUNTS:
+        print(f"- {account['email']}")
 
 
 if __name__ == "__main__":

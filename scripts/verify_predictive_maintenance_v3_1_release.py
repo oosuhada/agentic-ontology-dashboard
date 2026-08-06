@@ -41,21 +41,6 @@ EXPECTED_ROW_COUNTS = {
     "result_artifact_rows": 100,
 }
 
-EXPECTED_PHASE_FILES = [
-    f"phase-{number:02d}-{slug}.md"
-    for number, slug in (
-        (0, "contract-freeze"),
-        (1, "bundle-adapter"),
-        (2, "postgresql-ingestion"),
-        (3, "ontology-materialization"),
-        (4, "neo4j-projection"),
-        (5, "prediction-replay"),
-        (6, "semantic-visualization"),
-        (7, "dataset-dashboard"),
-        (8, "governance-release"),
-    )
-]
-
 Status = Literal["pass", "blocked", "fail"]
 
 
@@ -223,22 +208,20 @@ def safe_package_checks(package_root: Path) -> list[Check]:
 
 def project_checks(project_root: Path) -> list[Check]:
     checks: list[Check] = []
-    prompt_root = project_root / "docs/60-development-prompts/predictive-maintenance-canonical-v3.1"
-    for filename in EXPECTED_PHASE_FILES:
-        checks.append(required_file_check(f"project.prompt.{filename}", prompt_root / filename))
-
     required = [
+        "docs/contracts/data-contract.md",
+        "docs/contracts/api-contract.md",
         "schemas/dataset-bundle-manifest.schema.json",
         "schemas/prediction-result.schema.json",
         "schemas/project3-graph-projection.schema.json",
         "api/ontology_dashboard/predictive_maintenance_runtime/service.py",
         "api/ontology_dashboard/routers/predictive_maintenance_runtime.py",
-        "web/src/features/predictive-maintenance/PredictiveMaintenanceReplayPanel.tsx",
+        "web/src/features/mvp/MvpApplication.tsx",
         "tests/test_predictive_maintenance_v3_compatibility.py",
         "tests/test_predictive_maintenance_projection.py",
         "tests/test_predictive_maintenance_graph_projection.py",
         "tests/test_predictive_maintenance_result_replay.py",
-        "tests/test_predictive_maintenance_visualization_planner.py",
+        "tests/test_mvp.py",
     ]
     checks.extend(
         required_file_check(f"project.file.{relative}", project_root / relative)

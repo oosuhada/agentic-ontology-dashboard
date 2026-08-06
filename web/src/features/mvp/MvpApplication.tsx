@@ -25,7 +25,7 @@ import { MvpShell } from "./shell/MvpShell";
 import "./mvp.css";
 
 function defaultRoleLens(roles: string[]): MvpRoleLens {
-  return roles.some((role) => role === "process_engineer" || role === "maintenance_technician")
+  return roles.includes("process_engineer")
     ? "field_operator"
     : "process_manager";
 }

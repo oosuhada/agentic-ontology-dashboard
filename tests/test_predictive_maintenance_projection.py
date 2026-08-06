@@ -88,7 +88,7 @@ def test_v2_v3_materialization_is_versioned_governed_and_idempotent(
         dataset_id=v3_ingestion.dataset_id,
         dataset_version_id=v3_ingestion.dataset_version_id,
         approve=True,
-        approved_by="test-fde",
+        approved_by="test-release-reviewer",
     )
     first = materializer.materialize(
         organization_id="org-test",

@@ -37,13 +37,6 @@ export ONTOLOGY_DASHBOARD_DB="${ONTOLOGY_DASHBOARD_DB:-${FACTORY_SIGNAL_DB:-${RO
 export VITE_API_BASE_URL="${VITE_API_BASE_URL:-http://${API_HOST}:${API_PORT}}"
 
 "${VENV_DIR}/bin/python" scripts/preflight.py
-if [[ "${ONTOLOGY_DASHBOARD_SEED_DEMO_DATASETS:-1}" == "1" \
-  && "${ONTOLOGY_DASHBOARD_DB}" != postgresql://* \
-  && "${ONTOLOGY_DASHBOARD_DB}" != postgresql+psycopg://* ]]; then
-  "${VENV_DIR}/bin/python" scripts/seed_demo_dataset_catalog.py \
-    --database "${ONTOLOGY_DASHBOARD_DB}" >/tmp/ontology-dashboard-demo-datasets.log
-fi
-
 "${VENV_DIR}/bin/python" -m uvicorn ontology_dashboard.app:app \
   --host "${API_HOST}" --port "${API_PORT}" > /tmp/ontology-dashboard-api.log 2>&1 &
 API_PID=$!
@@ -75,8 +68,9 @@ curl -fsS "http://${API_HOST}:${WEB_PORT}/" >/dev/null || {
 }
 
 echo
-printf 'Ontology Dashboard is running\n'
+printf 'Predictive Maintenance MVP is running\n'
 printf '  Login: http://%s:%s/login\n' "${API_HOST}" "${WEB_PORT}"
+printf '  MVP: http://%s:%s/app/projects/manufacturing-demo-project/mvp\n' "${API_HOST}" "${WEB_PORT}"
 printf '  API: http://%s:%s/docs\n' "${API_HOST}" "${API_PORT}"
 printf '  Logs: /tmp/ontology-dashboard-{api,web}.log\n'
 echo 'Press Ctrl+C to stop.'

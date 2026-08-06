@@ -1,18 +1,13 @@
-"""Governed domain-pack implementations and domain-neutral registry."""
+"""Current predictive-maintenance domain pack."""
 
-from .models import (
-    BoundedContextDefinition,
-    DomainPackDefinition,
-    DomainVocabulary,
-    ProjectApplicationDefinition,
+from .predictive_maintenance import (
+    DEFAULT_MAPPING_VERSION,
+    PredictiveMaintenanceMaterializationResult,
+    PredictiveMaintenanceOntologyMaterializer,
 )
-from .registry import list_domain_packs, resolve_domain_pack
 
 __all__ = [
-    "BoundedContextDefinition",
-    "DomainPackDefinition",
-    "DomainVocabulary",
-    "ProjectApplicationDefinition",
-    "list_domain_packs",
-    "resolve_domain_pack",
+    "DEFAULT_MAPPING_VERSION",
+    "PredictiveMaintenanceMaterializationResult",
+    "PredictiveMaintenanceOntologyMaterializer",
 ]

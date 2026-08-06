@@ -8,11 +8,8 @@ scope require explicit overrides.
 
 from __future__ import annotations
 
-import hashlib
 import os
-import uuid
 from pathlib import Path
-from typing import Any
 
 from argon2 import PasswordHasher
 
@@ -20,9 +17,6 @@ from ontology_dashboard.adapters.prediction_repository import PredictionResultRe
 from ontology_dashboard.adapters.repository import AdapterRepository
 from ontology_dashboard.projects.repository import ProjectRepository
 
-from .dashboard_catalog import seed_templates
-from .dashboard_repository import DashboardRepository
-from .export_repository import ExportRepository
 from .identity_repository import IdentityRepository
 from .ontology_repository import OntologyActionRepository
 from .repository import AuditRepository
@@ -67,113 +61,7 @@ class PostgreSQLProjectRepository(ProjectRepository):
         )
 
 
-class PostgreSQLDashboardRepository(DashboardRepository):
-    def __init__(self, database_url: str, *, seed_templates: bool = True) -> None:
-        self.database_url = database_url
-        self.path = database_url
-        self.project_context = PostgreSQLProjectContextResolver(database_url)
-        self._template_cache = {}
-        if seed_templates:
-            self._seed_templates()
-
-    def _connect(self):
-        return postgres_repository_connection(
-            self.database_url,
-            resolver=self.project_context,
-        )
-
-    def _initialize(self) -> None:
-        return None
-
-    def _seed_templates(self) -> None:
-        now = self._iso()
-        for template in seed_templates():
-            with self._connect() as connection:
-                scope = self._scope(connection, template.workspace_id)
-                existing = connection.execute(
-                    """
-                    INSERT INTO dashboard_templates (
-                        id,organization_id,project_id,workspace_id,role_code,display_name,
-                        current_version,created_at,updated_at
-                    ) VALUES (?,?,?,?,?,?,?,?,?)
-                    ON CONFLICT (project_id,workspace_id,role_code) DO UPDATE SET
-                        display_name=EXCLUDED.display_name,
-                        current_version=GREATEST(
-                            dashboard_templates.current_version,
-                            EXCLUDED.current_version
-                        ),
-                        updated_at=EXCLUDED.updated_at
-                    RETURNING id,current_version
-                    """,
-                    (
-                        template.template_id,
-                        scope.organization_id,
-                        scope.project_id,
-                        template.workspace_id,
-                        template.role_code,
-                        template.display_name,
-                        template.version,
-                        now,
-                        now,
-                    ),
-                ).fetchone()
-                template_id = existing["id"]
-                payload = template.model_copy(update={"template_id": template_id})
-                connection.execute(
-                    """
-                    INSERT INTO dashboard_template_versions (
-                        id,template_id,version,status,payload_json,created_by,created_at
-                    ) VALUES (?,?,?,?,?,?,?)
-                    ON CONFLICT (template_id,version) DO NOTHING
-                    """,
-                    (
-                        str(uuid.uuid4()),
-                        template_id,
-                        template.version,
-                        template.status,
-                        payload.model_dump_json(),
-                        template.created_by,
-                        template.created_at,
-                    ),
-                )
-
-    def get_share(self, *, token: str) -> dict[str, Any] | None:
-        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
-        scope = self.project_context.resolve_share(token_hash)
-        if scope is None:
-            return None
-        with postgres_repository_connection(
-            self.database_url,
-            organization_id=scope.organization_id,
-            project_id=scope.project_id,
-            resolver=self.project_context,
-        ) as connection:
-            row = connection.execute(
-                "SELECT * FROM dashboard_shares WHERE token_hash=?",
-                (token_hash,),
-            ).fetchone()
-        if row is None:
-            return None
-        return self._share_from_row(row)
-
-
 class PostgreSQLRoleWorkflowRepository(RoleWorkflowRepository):
-    def __init__(self, database_url: str) -> None:
-        self.database_url = database_url
-        self.path = database_url
-        self.project_context = PostgreSQLProjectContextResolver(database_url)
-
-    def _connect(self):
-        return postgres_repository_connection(
-            self.database_url,
-            resolver=self.project_context,
-        )
-
-    def _initialize(self) -> None:
-        return None
-
-
-class PostgreSQLExportRepository(ExportRepository):
     def __init__(self, database_url: str) -> None:
         self.database_url = database_url
         self.path = database_url
@@ -285,8 +173,6 @@ def seed_runtime_reference_data() -> bool:
 __all__ = [
     "PostgreSQLAdapterRepository",
     "PostgreSQLAuditRepository",
-    "PostgreSQLDashboardRepository",
-    "PostgreSQLExportRepository",
     "PostgreSQLIdentityRepository",
     "PostgreSQLOntologyActionRepository",
     "PostgreSQLPredictionResultRepository",

@@ -121,9 +121,7 @@ export function LoginPage() {
         </details>
       ) : null}
 
-      <p className="auth-footer-copy">
-        계정이 없나요? <button className="link-button" type="button" onClick={() => navigate("/register")}>회원가입</button>
-      </p>
+      <p className="auth-footer-copy">최종 MVP 데모는 승인된 두 역할 계정만 사용합니다.</p>
     </AuthShell>
   );
 }

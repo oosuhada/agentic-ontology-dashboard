@@ -1,17 +1,13 @@
-# Schemas
+# Current schemas
 
-모든 계층의 공통 계약을 JSON Schema Draft 2020-12로 관리한다.
+This directory contains only the contracts used by the current Predictive Maintenance MVP and Canonical V3.1 data pipeline.
 
-- `input-event.schema.json`: Gold event와 runtime switches
-- `evidence-package.schema.json`: 모델·정책·근거·context·lineage
-- `report.schema.json`: 역할별 grounded report와 human-approved action
-- `ui-block.schema.json`: 허용 블록, 순서, data field
-- `ontology-core.schema.json`: domain-neutral Object, Link, Action invocation·execution result, traversal, Evidence reference
-- `dashboard-platform.schema.json`: resolved Dashboard, tab, board, preference save, dependency graph와 share payload
-- `role-workspaces.schema.json`: Executive·Audit·Field·FDE·Model workspace와 approval request 응답
-- `ontology-planner.schema.json`: typed Object query, Board recommendation, Dashboard draft와 grounded narrative 응답
-- `export.schema.json`: organization/project/workspace 범위의 export request, snapshot과 checkpoint 계약
-- `dataset-manifest.schema.json`: Project별 dataset source, checksum, schema alias와 quality rule 계약
-- `prediction-result.schema.json`: Prediction Module과 Dashboard 사이의 Evidence·Model·Action 포함 결과 계약
-
-스키마를 변경할 때는 fixture, Pydantic model, backend tests, Gold evaluator와 TypeScript type을 함께 변경해야 한다. LLM 출력은 스키마와 grounding 검사를 모두 통과하지 못하면 폐기하고 deterministic fallback을 사용한다.
+- `input-event.schema.json`: Gold Fixture input event
+- `evidence-package.schema.json`: evidence returned to Objects and Operations
+- `report.schema.json`: grounded role report
+- `ui-block.schema.json`: deterministic fallback layout contract
+- `dataset-manifest.schema.json`: dataset identity and source metadata
+- `dataset-bundle-manifest.schema.json`: Canonical bundle and file roles
+- `prediction-result.schema.json`: governed Result Artifact
+- `project3-graph-projection.schema.json`: graph projection delivery contract
+- `ontology-core.schema.json`: object, link and action primitives used by materialization

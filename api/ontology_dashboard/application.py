@@ -10,14 +10,22 @@ from typing import Awaitable, Callable
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from .migrations import migrate
 from .postgresql_pool import close_pools
-from .settings import allowed_origins, validate_runtime_environment
+from .settings import allowed_origins, database_location, validate_runtime_environment
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 @asynccontextmanager
 async def application_lifespan(_: FastAPI):
+    if os.getenv("ONTOLOGY_DASHBOARD_RUN_STARTUP_MIGRATIONS", "0").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
+        migrate(database_location(ROOT))
     try:
         yield
     finally:
@@ -30,10 +38,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Ontology Dashboard API",
         version="0.7.0",
-        description=(
-            "Domain-neutral ontology dashboard foundation with governed domain packs, "
-            "workspace-scoped objects, role templates, actions, planning, export and audit."
-        ),
+        description="Two-role Predictive Maintenance MVP backed by Canonical V3.1 Result Artifacts.",
         lifespan=application_lifespan,
     )
     app.add_middleware(
@@ -47,12 +52,7 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "Authorization", "X-CSRF-Token"],
-        expose_headers=[
-            "Content-Disposition",
-            "X-Export-Checkpoint-ID",
-            "X-Content-SHA256",
-            "X-Snapshot-SHA256",
-        ],
+        expose_headers=["X-Content-SHA256", "X-Snapshot-SHA256"],
     )
     app.middleware("http")(_security_headers)
     return app
@@ -77,7 +77,7 @@ async def _security_headers(
         )
     else:
         response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
-    if request.url.path.startswith(("/api/auth", "/api/admin", "/api/exports")):
+    if request.url.path.startswith(("/api/auth", "/api/events")):
         response.headers["Cache-Control"] = "no-store"
     if os.getenv("APP_ENV", "development").lower() == "production":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"

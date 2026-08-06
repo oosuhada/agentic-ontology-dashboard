@@ -6,17 +6,15 @@ import uuid
 
 from fastapi import APIRouter, Depends
 
-from ..contracts import DecisionRequest, FollowUpRequest, LayoutRequest, NoteRequest, ReportRequest
+from ..contracts import DecisionRequest, NoteRequest, ReportRequest
 from ..dependencies import (
     MANUFACTURING_WORKSPACE,
-    get_identity_service,
     get_ontology_service,
     get_service,
     require_csrf,
-    require_manufacturing_scope,
     require_permission,
 )
-from ..identity import AuthError, IdentityService, Principal
+from ..identity import AuthError, Principal
 from ..ontology import ActionInvocation
 from ..ontology_adapter import inspection_object_id, risk_event_object_id
 from ..ontology_service import OntologyService
@@ -47,41 +45,6 @@ def _require_configured_action_project(project_id: str) -> None:
         )
 
 
-@router.get("/equipment")
-def list_equipment(
-    _: Principal = Depends(require_manufacturing_scope),
-    service: ManufacturingPredictiveMaintenanceService = Depends(get_service),
-):
-    return {"items": service.list_equipment()}
-
-
-@router.get("/equipment/{equipment_id}")
-def get_equipment(
-    equipment_id: str,
-    _: Principal = Depends(require_manufacturing_scope),
-    service: ManufacturingPredictiveMaintenanceService = Depends(get_service),
-):
-    return service.equipment(equipment_id)
-
-
-@router.get("/events")
-def list_events(
-    _: Principal = Depends(require_manufacturing_scope),
-    service: ManufacturingPredictiveMaintenanceService = Depends(get_service),
-):
-    return {"items": service.list_events()}
-
-
-@router.get("/events/{event_id}")
-def get_event(
-    event_id: str,
-    principal: Principal = Depends(require_permission("events.read")),
-    service: ManufacturingPredictiveMaintenanceService = Depends(get_service),
-):
-    _require_active_event_project(principal, service, event_id)
-    return service.event(event_id)
-
-
 @router.get("/events/{event_id}/evidence")
 def get_evidence(
     event_id: str,
@@ -98,32 +61,13 @@ def create_report(
     request: ReportRequest,
     principal: Principal = Depends(require_permission("events.read")),
     service: ManufacturingPredictiveMaintenanceService = Depends(get_service),
-    identity: IdentityService = Depends(get_identity_service),
 ):
     _require_active_event_project(principal, service, event_id)
-    role = identity.legacy_dashboard_role(principal, request.role)
     report, trace = service.report(
         event_id,
-        ReportRequest(role=role, locale=request.locale, use_llm=request.use_llm),
+        request,
     )
     return {"report": report.model_dump(mode="json"), "trace": trace}
-
-
-@router.post("/events/{event_id}/layout")
-def create_layout(
-    event_id: str,
-    request: LayoutRequest,
-    principal: Principal = Depends(require_permission("events.read")),
-    service: ManufacturingPredictiveMaintenanceService = Depends(get_service),
-    identity: IdentityService = Depends(get_identity_service),
-):
-    _require_active_event_project(principal, service, event_id)
-    role = identity.legacy_dashboard_role(principal, request.role)
-    layout, trace = service.layout(
-        event_id,
-        LayoutRequest(role=role, locale=request.locale, intent=request.intent, use_llm=request.use_llm),
-    )
-    return {"layout": layout.model_dump(mode="json"), "trace": trace}
 
 
 @router.post("/events/{event_id}/decision")
@@ -172,21 +116,6 @@ def add_note(
         principal,
     )
     return execution.result
-
-
-@router.post("/events/{event_id}/follow-up")
-def follow_up(
-    event_id: str,
-    request: FollowUpRequest,
-    principal: Principal = Depends(require_permission("events.read")),
-    _: None = Depends(require_csrf),
-    service: ManufacturingPredictiveMaintenanceService = Depends(get_service),
-    identity: IdentityService = Depends(get_identity_service),
-):
-    _require_active_event_project(principal, service, event_id)
-    role = identity.legacy_dashboard_role(principal, request.role)
-    safe_request = FollowUpRequest(role=role, locale=request.locale, question=request.question)
-    return service.follow_up(event_id, safe_request).model_dump(mode="json")
 
 
 @router.get("/events/{event_id}/activity")

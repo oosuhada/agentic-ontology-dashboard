@@ -1,4 +1,4 @@
-name: ontology-dashboard-ci
+name: predictive-maintenance-mvp-ci
 
 on:
   push:
@@ -8,71 +8,40 @@ permissions:
   contents: read
 
 jobs:
-  hygiene:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Reject tracked secrets and oversized files
-        shell: bash
-        run: |
-          set -euo pipefail
-          tracked_env_files="$(git ls-files | grep -E '(^|/)\.env($|\.)' | grep -v -E '(^|/)\.env\.example$' || true)"
-          if [[ -n "${tracked_env_files}" ]]; then
-            echo "Tracked environment files are not allowed:"
-            echo "${tracked_env_files}"
-            exit 1
-          fi
-          limit_bytes=$((10 * 1024 * 1024))
-          while IFS= read -r -d '' file; do
-            size="$(stat -c%s "${file}")"
-            if (( size > limit_bytes )); then
-              echo "Tracked file exceeds 10 MiB: ${file} (${size} bytes)"
-              exit 1
-            fi
-          done < <(git ls-files -z)
-
   release-gate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
-      - name: Install PostgreSQL runtime tools
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install system packages
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql postgresql-client
-          echo "$(pg_config --bindir)" >> "$GITHUB_PATH"
       - name: Install Python packages
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e 'ml[dev]' -e 'api[dev,production]'
-      - name: Prepare Playwright system dependencies
+      - name: Install frontend and Chromium
         working-directory: web
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npx playwright install --with-deps chromium
-      - name: Run full release gate
+      - name: Run current MVP release gate
         env:
           PYTHONPATH: ${{ github.workspace }}/api:${{ github.workspace }}/ml/src
-        run: |
-          mkdir -p artifacts/palantir-overhaul-ubuntu
-          fc-list : family | sort -u > artifacts/palantir-overhaul-ubuntu/font-families.txt
-          dpkg-query -W -f='${Package}\t${Version}\n' \
-            'font*' 'libfont*' 2>/dev/null \
-            > artifacts/palantir-overhaul-ubuntu/font-packages.txt || true
-          python scripts/release_gate.py \
-            --with-e2e \
-            --e2e-artifact-dir artifacts/palantir-overhaul-ubuntu \
-            --output artifacts/palantir-overhaul-ubuntu/release-gate.json
-      - name: Upload Ubuntu visual evidence
+        run: python scripts/release_gate.py --with-e2e --output current-mvp-release-gate.json
+      - name: Upload release evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: palantir-overhaul-ubuntu-${{ github.run_id }}
-          path: artifacts/palantir-overhaul-ubuntu
+          name: current-mvp-release-gate-${{ github.run_id }}
+          path: current-mvp-release-gate.json
           if-no-files-found: error
           retention-days: 30

@@ -248,7 +248,7 @@ def test_v3_result_artifact_mapping_observation_query_and_replay_controls(
         connection.execute(
             """
             UPDATE store_projections
-            SET status='failed',last_error='neo4j offline'
+            SET status='failed',last_error='graph projection offline'
             WHERE dataset_version_id=%s AND store_kind='graph'
             """,
             (ingestion.dataset_version_id,),

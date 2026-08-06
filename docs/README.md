@@ -1,57 +1,24 @@
-# Documentation home
+# 현재 MVP 문서
 
-`docs/`의 공식 진입점이다. 팀 공유, 제품 정의, 아키텍처, 구현 이력, UI 레퍼런스와 운영 문서를 목적별로 찾을 수 있도록 분류한다.
+이 디렉터리는 실행 중인 Predictive Maintenance MVP의 단일 문서 기준입니다. 단계별 작업 기록, V1~V4 비교 자료, 종료된 설계안과 세션 프롬프트는 제거했습니다.
 
-## 가장 먼저 읽을 문서
+## 문서 지도
 
-| 대상 | 시작 문서 | 읽는 시간 |
-|---|---|---:|
-| 처음 참여하는 팀원 | [`00-team-onboarding/README.md`](./00-team-onboarding/README.md) | 5분 |
-| 제품·기획 담당 | [`10-product/README.md`](./10-product/README.md) | 10분 |
-| 백엔드·아키텍처 담당 | [`20-architecture/README.md`](./20-architecture/README.md) | 15분 |
-| 프론트엔드·UI 담당 | [`40-ui-ux/README.md`](./40-ui-ux/README.md) | 15분 |
-| 실행·검증 담당 | [`50-operations/README.md`](./50-operations/README.md) | 10분 |
-| 다음 개발 세션 담당 | [`60-development-prompts/README.md`](./60-development-prompts/README.md) | 작업별 상이 |
+| 영역 | 문서 | 목적 |
+|---|---|---|
+| 제품 | [`product/mvp-scope.md`](product/mvp-scope.md) | 사용자, 화면, 완료 범위와 제외 범위 |
+| 아키텍처 | [`architecture/system-architecture.md`](architecture/system-architecture.md) | 실행 구성과 요청 흐름 |
+| API 계약 | [`contracts/api-contract.md`](contracts/api-contract.md) | 현재 노출 API와 오류 원칙 |
+| 데이터 계약 | [`contracts/data-contract.md`](contracts/data-contract.md) | Canonical V3.1, Result Artifact, fallback |
+| 역할 계약 | [`contracts/role-action-contract.md`](contracts/role-action-contract.md) | 두 역할과 판단·메모 권한 |
+| 로컬 운영 | [`operations/local-runbook.md`](operations/local-runbook.md) | 설치, 실행, 검증 |
+| 배포 | [`operations/deployment.md`](operations/deployment.md) | 빌드, 재시작, 공개 검증 |
+| 저장소 | [`repository-manifest.md`](repository-manifest.md) | 유지·폐기 경계와 디렉터리 책임 |
 
-## 문서 구조
+## 화면 증거
 
-```text
-docs/
-├── 00-team-onboarding/       팀 공유용 시작점, 화면 투어, 데모, 상태표
-├── 10-product/               문제, 사용자, 역할, Dataset과 정책
-├── 20-architecture/          시스템 구조, 계약, ADR와 current state
-├── 30-implementation/        현재 상태, 로드맵, stage-history
-├── 40-ui-ux/                 구현 설명, 계획, Reference
-├── 50-operations/            실행, 검증, 릴리스, 문제 해결
-├── 60-development-prompts/   다음 세션 실행 프롬프트
-├── 90-archive/               과거 비교 분석과 superseded 계획
-└── ui/                       대용량 화면 캡처·레퍼런스 자산
-```
-
-## 물리 경로 정책
-
-기존 루트 Markdown과 루트 수준의 ADR·current-state 디렉터리는 목적별 폴더로 물리 이동했다. 저장소 전체 Markdown 링크와 스크립트의 명시적 문서 경로도 새 위치로 변경했다.
-
-새 문서는 다음 규칙을 따른다.
-
-1. 팀 공유 문서는 `00-team-onboarding/`에 둔다.
-2. 제품·아키텍처·구현·UI·운영 문서는 해당 번호 폴더에 둔다.
-3. `docs/` 루트에는 새 Markdown 파일을 추가하지 않는다.
-4. 자동 생성 화면은 `00-team-onboarding/assets/screenshots/` 또는 `ui/`에 둔다.
-5. 과거 분석 문서를 수정해 현재 상태처럼 보이게 하지 않고, 최신 상태 문서에서 명시적으로 연결한다.
-
-문서 구조 검증:
-
-```bash
-python3 scripts/check_docs_structure.py
-```
-
-필수 실제 경로와 폐기된 과거 경로는 [`document-registry.json`](./document-registry.json)에 등록한다. `README.md` 외 루트 Markdown, 과거 경로의 재생성 또는 깨진 로컬 링크는 검증 실패로 처리한다.
-
-## 현재 기준 버전
-
-- Tag: `docs-physical-reorg-ready-20260804`
-- 제품 기능 기준: `complete-user-flow-20260803`
-- 팀 공유 패키지 재검증: 2026-08-04
-- 상세 결과: [`00-team-onboarding/09-verification-report.md`](./00-team-onboarding/09-verification-report.md)
-
+- [`assets/mvp/01-overview-desktop.png`](assets/mvp/01-overview-desktop.png)
+- [`assets/mvp/02-objects-inspector-desktop.png`](assets/mvp/02-objects-inspector-desktop.png)
+- [`assets/mvp/03-operations-desktop.png`](assets/mvp/03-operations-desktop.png)
+- [`assets/mvp/04-executive-report-a4.png`](assets/mvp/04-executive-report-a4.png)
+- [`assets/mvp/05-overview-mobile.png`](assets/mvp/05-overview-mobile.png)

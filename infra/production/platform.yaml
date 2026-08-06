@@ -3,36 +3,6 @@ kind: Namespace
 metadata:
   name: ontology-dashboard
 ---
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: ontology-dashboard-migration
-  namespace: ontology-dashboard
-spec:
-  backoffLimit: 1
-  template:
-    spec:
-      restartPolicy: Never
-      serviceAccountName: ontology-dashboard-runtime
-      containers:
-        - name: migration
-          image: ghcr.io/oosuhada/ontology-dashboard-api:RELEASE_SHA
-          command: ["python", "-m", "ontology_dashboard.bootstrap"]
-          envFrom:
-            - configMapRef: {name: ontology-dashboard-config}
-            - secretRef: {name: ontology-dashboard-secrets}
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            runAsUser: 10001
-            capabilities: {drop: ["ALL"]}
-          volumeMounts:
-            - {name: tmp, mountPath: /tmp}
-      volumes:
-        - name: tmp
-          emptyDir: {sizeLimit: 256Mi}
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -40,10 +10,8 @@ metadata:
   namespace: ontology-dashboard
   annotations:
     ontology-dashboard.oosu.dev/versioned-routes: >-
-      /app/projects/manufacturing-demo-project,
-      /app/projects/manufacturing-demo-project/blueprint,
-      /app/projects/manufacturing-demo-project/blueprint-v2,
-      /app/projects/manufacturing-demo-project/blueprint-v4
+      /login,
+      /app/projects/manufacturing-demo-project/mvp
 spec:
   replicas: 2
   strategy:
@@ -62,6 +30,9 @@ spec:
           envFrom:
             - configMapRef: {name: ontology-dashboard-config}
             - secretRef: {name: ontology-dashboard-secrets}
+          env:
+            - name: ONTOLOGY_DASHBOARD_RUN_STARTUP_MIGRATIONS
+              value: "1"
           startupProbe:
             httpGet: {path: /health/startup, port: http}
             failureThreshold: 30
@@ -119,38 +90,6 @@ spec:
       volumes:
         - {name: tmp, emptyDir: {sizeLimit: 64Mi}}
         - {name: cache, emptyDir: {sizeLimit: 64Mi}}
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ontology-dashboard-workers
-  namespace: ontology-dashboard
-spec:
-  replicas: 2
-  selector: {matchLabels: {app: ontology-dashboard-workers}}
-  template:
-    metadata: {labels: {app: ontology-dashboard-workers}}
-    spec:
-      serviceAccountName: ontology-dashboard-runtime
-      terminationGracePeriodSeconds: 60
-      containers:
-        - name: outbox-automation
-          image: ghcr.io/oosuhada/ontology-dashboard-api:RELEASE_SHA
-          command: ["python", "-m", "ontology_dashboard.worker"]
-          envFrom:
-            - configMapRef: {name: ontology-dashboard-config}
-            - secretRef: {name: ontology-dashboard-secrets}
-          resources:
-            requests: {cpu: 250m, memory: 512Mi}
-            limits: {cpu: "2", memory: 2Gi}
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            runAsUser: 10001
-            capabilities: {drop: ["ALL"]}
-          volumeMounts: [{name: tmp, mountPath: /tmp}]
-      volumes: [{name: tmp, emptyDir: {sizeLimit: 1Gi}}]
 ---
 apiVersion: v1
 kind: Service

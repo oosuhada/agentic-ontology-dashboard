@@ -1,17 +1,22 @@
-# Infrastructure
+# Current MVP infrastructure
 
-## Docker Compose
+The retained infrastructure runs only the current React application, FastAPI service and Canonical V3.1 PostgreSQL runtime. Redis is optional and used only for shared rate limiting.
 
 ```bash
 cd infra
 docker compose up --build
 ```
 
-서비스:
+Endpoints:
 
-- `api`: FastAPI, host port 8100 → container port 8000, SQLite named volume
-- `web`: Vite production preview, port 3100
+- Web: `http://127.0.0.1:3100/login`
+- MVP: `http://127.0.0.1:3100/app/projects/manufacturing-demo-project/mvp`
+- API: `http://127.0.0.1:8100/health`
 
-LLM과 Project 3 환경 변수는 루트 `.env`에서 전달할 수 있다. 외부 서비스가 없어도 deterministic mode로 동작한다.
+Start the optional shared rate limiter with:
 
-로컬 개발에는 더 빠른 `bash scripts/run_local.sh`를 권장한다.
+```bash
+docker compose --profile rate-limit up --build
+```
+
+Neo4j, background workers and prototype static-site deployment are not part of the current product infrastructure.

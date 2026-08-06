@@ -322,35 +322,15 @@ class IdentityRepository:
         organization_id = "org-ontology-demo"
         project_id = "manufacturing-demo-project"
         workspace_id = "manufacturing-demo"
-        fixture_projects = (
-            (
-                project_id,
-                "manufacturing-demo",
-                "Manufacturing Demo Project",
-                "Gold/E2E regression baseline for the manufacturing domain pack.",
-                "manufacturing-predictive-maintenance",
-                workspace_id,
-                "Manufacturing Demo",
-            ),
-            (
-                "azure-fleet-maintenance-project",
-                "azure-fleet-maintenance",
-                "Azure Fleet Maintenance",
-                "Primary multi-source showcase Project for predictive fleet maintenance.",
-                "azure-fleet-maintenance",
-                "azure-fleet-maintenance",
-                "Azure Fleet Maintenance Workspace",
-            ),
-            (
-                "metropt-compressor-project",
-                "metropt-compressor-monitoring",
-                "MetroPT Compressor Monitoring",
-                "Second abstraction-validation Project for compressor telemetry.",
-                "metropt-compressor-monitoring",
-                "metropt-compressor-monitoring",
-                "MetroPT Compressor Workspace",
-            ),
-        )
+        fixture_projects = ((
+            project_id,
+            "manufacturing-demo",
+            "Manufacturing Predictive Maintenance MVP",
+            "Canonical V3.1 and Gold Fixture decision-support Project.",
+            "manufacturing-predictive-maintenance",
+            workspace_id,
+            "Manufacturing MVP",
+        ),)
         with self._connect() as connection:
             connection.execute(
                 "INSERT OR IGNORE INTO organizations (id,slug,name,created_at) VALUES (?,?,?,?)",
@@ -424,11 +404,7 @@ class IdentityRepository:
 
     def seed_demo_accounts(self) -> None:
         now = self._iso()
-        fixture_scopes = (
-            ("manufacturing-demo", "manufacturing-demo-project"),
-            ("azure-fleet-maintenance", "azure-fleet-maintenance-project"),
-            ("metropt-compressor-monitoring", "metropt-compressor-project"),
-        )
+        fixture_scopes = (("manufacturing-demo", "manufacturing-demo-project"),)
         with self._connect() as connection:
             for account in DEMO_ACCOUNTS:
                 email = account["email"].lower()
@@ -694,23 +670,6 @@ class IdentityRepository:
                 (user_id, project_id),
             ).fetchone()
             if allowed is None:
-                roles = {
-                    row["role_code"]
-                    for row in connection.execute(
-                        "SELECT role_code FROM user_roles WHERE user_id=?",
-                        (user_id,),
-                    ).fetchall()
-                }
-                if "tenant_admin" in roles:
-                    allowed = connection.execute(
-                        """
-                        SELECT 1 FROM projects p
-                        JOIN users u ON u.organization_id=p.organization_id
-                        WHERE u.id=? AND p.id=? AND p.status<>'archived'
-                        """,
-                        (user_id, project_id),
-                    ).fetchone()
-            if allowed is None:
                 raise AuthError(403, "project_scope_denied", "허용된 Project 범위를 벗어난 요청입니다.")
             cursor = connection.execute(
                 """
@@ -937,33 +896,11 @@ class IdentityRepository:
         global_roles = user["roles"]
         scopes = user["workspace_scopes"]
         project_scopes = user["project_scopes"]
-        with self._connect() as connection:
-            if "tenant_admin" in global_roles:
-                scopes = [
-                    row["id"]
-                    for row in connection.execute(
-                        "SELECT id FROM workspaces WHERE organization_id=? ORDER BY id",
-                        (user["organization_id"],),
-                    )
-                ]
-                project_scopes = [
-                    row["id"]
-                    for row in connection.execute(
-                        "SELECT id FROM projects WHERE organization_id=? AND status<>'archived' ORDER BY id",
-                        (user["organization_id"],),
-                    )
-                ]
         project_roles = {
             project_id: list(role_codes)
             for project_id, role_codes in user.get("project_roles", {}).items()
             if project_id in project_scopes
         }
-        if "tenant_admin" in global_roles:
-            for project_id in project_scopes:
-                role_codes = project_roles.setdefault(project_id, [])
-                if "tenant_admin" not in role_codes:
-                    role_codes.append("tenant_admin")
-                    role_codes.sort()
         organization_id = user.get("organization_id")
         if not organization_id:
             raise AuthError(403, "organization_required", "조직에 할당된 활성 계정만 접근할 수 있습니다.")
@@ -1029,8 +966,8 @@ class IdentityRepository:
             project_roles=project_roles,
             active_project_id=resolved_active_project_id,
             active_project_roles=active_project_roles,
-            is_admin="tenant_admin" in active_project_roles,
-            default_path="/admin" if "tenant_admin" in active_project_roles else "/app",
+            is_admin=False,
+            default_path="/app/projects/manufacturing-demo-project/mvp",
             landing_key=primary_role,
         )
 
@@ -1172,25 +1109,6 @@ class IdentityRepository:
                 raise AuthError(404, "project_not_found", "Project를 찾을 수 없습니다.")
             if user is None:
                 raise AuthError(404, "user_not_found", "사용자를 찾을 수 없습니다.")
-            if actor_user_id == target_user_id and (
-                status != "active" or "tenant_admin" not in roles
-            ):
-                actor_roles = {
-                    item["role_code"]
-                    for item in connection.execute(
-                        """
-                        SELECT role_code FROM project_membership_roles
-                        WHERE user_id=? AND project_id=?
-                        """,
-                        (actor_user_id, project_id),
-                    )
-                }
-                if "tenant_admin" in actor_roles:
-                    raise AuthError(
-                        409,
-                        "self_lockout_blocked",
-                        "현재 Project 관리자 membership을 스스로 제거할 수 없습니다.",
-                    )
             before_rows = self.list_project_members(
                 organization_id=organization_id,
                 project_id=project_id,
@@ -1296,19 +1214,6 @@ class IdentityRepository:
         if actor_user_id == target_user_id:
             if request.status == "disabled":
                 raise AuthError(409, "self_lockout_blocked", "현재 관리자 계정은 스스로 비활성화할 수 없습니다.")
-            if request.roles is not None and "tenant_admin" not in request.roles:
-                raise AuthError(409, "self_lockout_blocked", "현재 관리자 계정에서 tenant_admin 역할을 제거할 수 없습니다.")
-            if request.permission_overrides is not None:
-                protected = {"admin.access", "admin.users.read", "admin.users.manage"}
-                if any(
-                    permission in protected and not allowed
-                    for permission, allowed in request.permission_overrides.items()
-                ):
-                    raise AuthError(
-                        409,
-                        "self_lockout_blocked",
-                        "현재 관리자 계정의 핵심 관리자 권한을 차단할 수 없습니다.",
-                    )
 
         if request.roles is not None:
             invalid_roles = sorted(set(request.roles) - set(ROLE_DEFINITIONS))

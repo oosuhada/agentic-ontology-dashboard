@@ -137,18 +137,17 @@ test("keeps all MVP views inside a 390px mobile viewport and exposes compact nav
   }
 });
 
-test("preserves V1, V2, V3, V4, and comparison routes beside the new MVP", async ({ page }) => {
+test("redirects unknown product routes to the current MVP", async ({ page }) => {
   await login(page);
-  await page.goto(`/app/projects/${PROJECT}`);
-  await expect(page.locator(".mvp-app")).toHaveCount(0);
-  await page.goto(`/app/projects/${PROJECT}/blueprint`);
-  await expect(page.locator(".blueprint-preview")).toBeVisible();
-  await page.goto(`/app/projects/${PROJECT}/blueprint-v2`);
-  await expect(page.locator(".blueprint-v2")).toBeVisible();
-  await page.goto(`/app/projects/${PROJECT}/blueprint-v4`);
-  await expect(page.locator('[data-application-id="ontology-commercial-v4"]')).toBeVisible();
-  await page.goto(`/app/projects/${PROJECT}/blueprint-compare`);
-  await expect(page.locator(".blueprint-comparison-page")).toBeVisible();
-  await page.goto(MVP_PATH);
-  await expect(page.locator(".mvp-app")).toBeVisible();
+  for (const retiredPath of [
+    `/app/projects/${PROJECT}`,
+    `/app/projects/${PROJECT}/legacy`,
+    `/app/projects/${PROJECT}/unknown-workbench`,
+    "/analysis/legacy-analysis",
+    "/admin",
+  ]) {
+    await page.goto(retiredPath);
+    await expect(page).toHaveURL(new RegExp(`/app/projects/${PROJECT}/mvp`));
+    await expect(page.locator(".mvp-app")).toBeVisible();
+  }
 });
