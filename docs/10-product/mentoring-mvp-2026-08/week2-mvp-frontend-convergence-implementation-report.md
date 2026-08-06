@@ -261,3 +261,20 @@ docs/10-product/mentoring-mvp-2026-08/assets/week2-mvp-frontend-convergence/
 ## 11. 배포 주의사항
 
 기존 Checkout에 다른 세션의 미커밋 변경이 있으면 `stash`, `reset`, 강제 checkout, 덮어쓰기를 수행하지 않는다. 이 경우 검증된 `web/dist`만 공개 서비스 경로에 원자적으로 교체하고 launchd 서비스를 재시작한다. API 소스 변경이 없는 이번 작업은 기존 API Checkout을 그대로 재시작·검증할 수 있다.
+
+## 12. 2026-08-06 공개 배포 검증
+
+- 구현 커밋: `6fab2a6350f76cd18b92b2c08aefc158b9a48595`
+- 푸시 브랜치: `feature/predictive-maintenance-adaptive-modeling`
+- 공개 주소: `https://dashboard.oosu.dev/app/projects/manufacturing-demo-project/mvp`
+- API launchd PID: `40176`
+- Web launchd PID: `40178`
+- 공개 Health: HTTP 200, `status=ok`
+- 공개 MVP route: HTTP 200
+- 공개 MVP lazy chunk: `MvpApplication-C874UnLw.js`, 65,470 bytes
+- 공개·로컬 chunk SHA-256: `e137b616cec758f867390cc6ade9536be9225de88649f1c2766fb1b226492c9e`
+- 공개 브라우저 검증: 로그인 후 Overview → Objects → Operations → Executive Report 이동 성공
+- 공개 모바일 검증: 390px viewport 캡처 성공
+- 배포 전후 원본 Checkout의 기존 미커밋 파일 목록: 변경 없음
+
+공개 검증 캡처는 저장소 파일을 덮어쓰지 않도록 `/tmp/ontology-dashboard-mvp-public-verification`에 별도로 생성했다. 공개 화면은 실제 PostgreSQL·Canonical Runtime 상태를 사용하므로 격리 테스트 Fixture 캡처와 숫자·문서 높이가 다를 수 있지만, 같은 View Model·Fallback·권한 계약을 사용한다.
