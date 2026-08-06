@@ -25,6 +25,7 @@ import {
 import { analysisPath, datasetCatalogPath, navigate } from "../../routing";
 import type { AppRole, Intent } from "../../types";
 import { useAuth } from "../auth/AuthContext";
+import { OntologyLifecycleLoader } from "../../ui/foundry/OntologyLifecycleLoader";
 import type { AddAnalysisBoardRequest } from "../analysis/types";
 import { BoardCanvas } from "../dashboard/BoardCanvas";
 import { BoardCatalogPanel } from "../dashboard/BoardCatalogPanel";
@@ -438,6 +439,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     handleUpdateBoard,
     handleRemoveBoard,
     handleToggleHidden,
+    handleToggleFavorite,
     handleDuplicateBoard,
     handleAddTab,
     handleAddBoard,
@@ -1010,7 +1012,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
   }
 
   if (loading && !draftDashboard) {
-    return <div className="route-loading"><div className="spinner" /><span>역할별 Dashboard template을 해석하고 있습니다.</span></div>;
+    return <div className="route-loading"><OntologyLifecycleLoader variant="page" operation="Resolving role Dashboard" detail="Merging governed template and personal preferences." /></div>;
   }
 
   const contextPanel = draftDashboard ? (
@@ -1036,7 +1038,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
 
   const boardCanvas = draftDashboard && evidence && report && layout ? (
     <>
-      {detailLoading || roleWorkspaceLoading ? <div className="loading-panel"><div className="spinner" /><p>{detailLoading ? "선택 object의 Evidence를 갱신하고 있습니다." : "역할 전용 workspace를 갱신하고 있습니다."}</p></div> : null}
+      {detailLoading || roleWorkspaceLoading ? <div className="loading-panel"><OntologyLifecycleLoader variant="panel" operation={detailLoading ? "Refreshing object evidence" : "Refreshing role workspace"} /></div> : null}
       <BoardCanvas
         tab={activeTab}
         mode={mode}
@@ -1053,7 +1055,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
               parameterState={draftDashboard.parameter_state}
               affected={affectedBoards.includes(board.id)}
             >
-              <Suspense fallback={<div className="loading-panel"><div className="spinner" /><p>Board renderer를 불러오고 있습니다.</p></div>}>
+              <Suspense fallback={<div className="loading-panel"><OntologyLifecycleLoader variant="board" operation="Loading board renderer" /></div>}>
                 <DashboardBoardRenderer
               board={board}
               definition={definition}
@@ -1099,10 +1101,13 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
         onDuplicateBoard={handleDuplicateBoard}
         onRemoveBoard={handleRemoveBoard}
         onToggleHidden={handleToggleHidden}
+        onToggleFavorite={handleToggleFavorite}
+        onEnterArrange={() => setMode("edit")}
+        saving={saving}
         onFullscreen={setFullscreenBoardId}
       />
     </>
-  ) : <div className="loading-panel"><div className="spinner" /><p>Dashboard board를 준비하고 있습니다.</p></div>;
+  ) : <div className="loading-panel"><OntologyLifecycleLoader variant="panel" operation="Preparing Dashboard boards" /></div>;
 
   const inspector = draftDashboard ? (
     <BoardInspector
@@ -1185,7 +1190,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       canUndo={undoStack.length > 0}
       canRedo={redoStack.length > 0}
       analysisWorkbench={(
-        <Suspense fallback={<div className="loading-panel"><div className="spinner" /><p>Analysis Workbench를 불러오고 있습니다.</p></div>}>
+        <Suspense fallback={<div className="loading-panel"><OntologyLifecycleLoader variant="panel" operation="Loading Analysis Workbench" /></div>}>
           <AnalysisWorkbench
             analysisId={analysisId}
             projectId={selectedProjectId}

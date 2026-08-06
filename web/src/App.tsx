@@ -15,7 +15,9 @@ import { AuthProvider, useAuth } from "./features/auth/AuthContext";
 import { LoginPage } from "./features/auth/LoginPage";
 import { PendingPage } from "./features/auth/PendingPage";
 import { RegisterPage } from "./features/auth/RegisterPage";
+import { DisplayPreferencesProvider } from "./ui/foundry/displayPreferences";
 import { FoundryAppShell } from "./ui/foundry/FoundryAppShell";
+import { OntologyLifecycleLoader } from "./ui/foundry/OntologyLifecycleLoader";
 
 const AdminApp = lazy(() =>
   import("./features/admin/AdminApp").then((module) => ({ default: module.AdminApp })),
@@ -44,9 +46,17 @@ const GovernanceWorkbenchPage = lazy(() =>
 
 const LAST_VALID_PROJECT_KEY = "ontology-dashboard:last-valid-project";
 
+function RouteLoading({ operation, detail }: { operation: string; detail?: string }) {
+  return (
+    <div className="route-loading">
+      <OntologyLifecycleLoader variant="page" operation={operation} detail={detail} />
+    </div>
+  );
+}
+
 function Redirect({ to }: { to: string }) {
   useEffect(() => navigate(to, { replace: true }), [to]);
-  return <div className="route-loading">화면을 이동하고 있습니다.</div>;
+  return <RouteLoading operation="Opening governed workspace" />;
 }
 
 function ProjectRouteBoundary({
@@ -107,7 +117,7 @@ function ProjectRouteBoundary({
   }, [projectId, requiredPermission, user, workspaceId]);
 
   if (state === null) {
-    return <div className="route-loading"><div className="spinner" /><p>Project scope를 검증하고 있습니다.</p></div>;
+    return <RouteLoading operation="Validating Project scope" detail="Checking workspace membership and permissions." />;
   }
   if (state === "tombstone") return <ProjectTombstonePage projectId={projectId} />;
   if (state === "denied") return <Redirect to={fallback} />;
@@ -141,7 +151,7 @@ function AppRouter() {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div className="route-loading"><div className="spinner" /><p>세션을 확인하고 있습니다.</p></div>;
+    return <RouteLoading operation="Checking session" detail="Resolving identity and governed scope." />;
   }
 
   if (!user) {
@@ -160,7 +170,7 @@ function AppRouter() {
   if (projectHomeRoute) {
     return (
       <ProjectRouteBoundary projectId={projectHomeRoute.projectId}>
-        <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Project Home을 불러오고 있습니다.</p></div>}>
+        <Suspense fallback={<RouteLoading operation="Loading Project Home" />}>
           <FoundryAppShell projectId={projectHomeRoute.projectId} activeRoute="home" title="Project Home">
             <ProjectHomePage projectId={projectHomeRoute.projectId} />
           </FoundryAppShell>
@@ -173,7 +183,7 @@ function AppRouter() {
   if (datasetRoute) {
     return (
       <ProjectRouteBoundary projectId={datasetRoute.projectId} requiredPermission="datasets.read">
-        <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Dataset Catalog를 불러오고 있습니다.</p></div>}>
+        <Suspense fallback={<RouteLoading operation="Loading Dataset Catalog" detail="Resolving immutable versions and lineage." />}>
           <FoundryAppShell projectId={datasetRoute.projectId} activeRoute="datasets" title="Dataset Catalog">
             <DatasetCatalogPage projectId={datasetRoute.projectId} />
           </FoundryAppShell>
@@ -190,7 +200,7 @@ function AppRouter() {
         workspaceId={agentRoute.workspaceId}
         requiredPermission="planner.object_query"
       >
-        <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Agent Evidence Workbench를 불러오고 있습니다.</p></div>}>
+        <Suspense fallback={<RouteLoading operation="Loading Agent Evidence Workbench" />}>
           <FoundryAppShell projectId={agentRoute.projectId} workspaceId={agentRoute.workspaceId} activeRoute="agent" title="Agent Evidence Workbench">
             <AgentWorkbenchPage projectId={agentRoute.projectId} workspaceId={agentRoute.workspaceId} />
           </FoundryAppShell>
@@ -207,7 +217,7 @@ function AppRouter() {
         workspaceId={governanceRoute.workspaceId}
         requiredPermission="governance.read"
       >
-        <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Governance Workbench를 불러오고 있습니다.</p></div>}>
+        <Suspense fallback={<RouteLoading operation="Loading Governance Workbench" />}>
           <FoundryAppShell projectId={governanceRoute.projectId} workspaceId={governanceRoute.workspaceId} activeRoute="governance" title="Governance Workbench">
             <GovernanceWorkbenchPage projectId={governanceRoute.projectId} workspaceId={governanceRoute.workspaceId} />
           </FoundryAppShell>
@@ -224,7 +234,7 @@ function AppRouter() {
         workspaceId={ontologyRoute.workspaceId}
         requiredPermission="ontology.objects.read"
       >
-        <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>Ontology Workbench를 불러오고 있습니다.</p></div>}>
+        <Suspense fallback={<RouteLoading operation="Loading Ontology Object Explorer" detail="Resolving governed objects and links." />}>
           <FoundryAppShell projectId={ontologyRoute.projectId} workspaceId={ontologyRoute.workspaceId} activeRoute="ontology" title="Ontology Object Explorer">
             <OntologyPreviewPage projectId={ontologyRoute.projectId} workspaceId={ontologyRoute.workspaceId} />
           </FoundryAppShell>
@@ -252,9 +262,19 @@ function AppRouter() {
 export default function App() {
   return (
     <AuthProvider>
-      <Suspense fallback={<div className="route-loading"><div className="spinner" /><p>애플리케이션 화면을 불러오고 있습니다.</p></div>}>
+      <DisplayScopedRouter />
+    </AuthProvider>
+  );
+}
+
+function DisplayScopedRouter() {
+  const { user } = useAuth();
+  const scope = user?.user_id ?? "guest";
+  return (
+    <DisplayPreferencesProvider key={scope} scope={scope}>
+      <Suspense fallback={<RouteLoading operation="Loading Ontology Dashboard" />}>
         <AppRouter />
       </Suspense>
-    </AuthProvider>
+    </DisplayPreferencesProvider>
   );
 }

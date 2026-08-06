@@ -1,5 +1,6 @@
 import { navigate } from "../../routing";
 import { Boxes, Database, GitBranch, LockKeyhole, Network, ShieldCheck } from "lucide-react";
+import { DisplayMenu } from "../../ui/foundry/DisplayMenu";
 
 export function AuthShell({
   eyebrow,
@@ -16,7 +17,7 @@ export function AuthShell({
     <main className="auth-page">
       <header className="auth-platform-bar">
         <button className="auth-brand" onClick={() => navigate("/login")}><span className="brand-mark">OD</span><span><strong>Ontology Dashboard</strong><small>Foundry-style operational platform</small></span></button>
-        <div><span><ShieldCheck size={12} /> Governed environment</span><span>Asia/Seoul</span><span>v0.7</span></div>
+        <div><DisplayMenu className="auth-display-menu" /><span><ShieldCheck size={12} /> Governed environment</span><span>Asia/Seoul</span><span>v0.7</span></div>
       </header>
       <div className="auth-control-plane">
         <aside className="auth-resource-context">
