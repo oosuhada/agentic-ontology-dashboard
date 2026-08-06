@@ -36,6 +36,7 @@ PERMISSION_DEFINITIONS: dict[str, str] = {
     "events.note": "점검 및 전달 메모 기록",
     "ontology.registry.read": "온톨로지 registry 조회",
     "ontology.objects.read": "workspace 범위 내 온톨로지 객체와 관계 조회",
+    "ontology.actions.execute": "검증된 온톨로지 Action 미리보기 및 실행",
     "dashboards.read": "역할별 resolved dashboard와 template 조회",
     "dashboards.personalize": "개인 탭·보드·parameter·saved view 저장",
     "dashboards.share": "권한이 유지되는 dashboard parameter 공유 링크 생성",
@@ -71,12 +72,12 @@ PERMISSION_DEFINITIONS: dict[str, str] = {
 ROLE_PERMISSIONS: dict[str, set[str]] = {
     "tenant_admin": set(PERMISSION_DEFINITIONS),
     "executive_viewer": {"app.access", "events.read", "ontology.registry.read", "ontology.objects.read", "dashboards.read", "dashboards.personalize", "dashboards.share", "executive.overview.read", "planner.object_query", "planner.board_recommend", "planner.narrative", "exports.create", "exports.read_own"},
-    "process_manager": {"app.access", "events.read", "events.decision", "ontology.registry.read", "ontology.objects.read", "dashboards.read", "dashboards.personalize", "dashboards.share", "datasets.read", "planner.object_query", "planner.board_recommend", "planner.narrative", "exports.create", "exports.read_own"},
-    "process_engineer": {"app.access", "events.read", "events.note", "ontology.registry.read", "ontology.objects.read", "dashboards.read", "dashboards.personalize", "dashboards.share", "field.tasks.read", "field.tasks.update", "planner.object_query", "planner.board_recommend", "planner.narrative", "exports.create", "exports.read_own"},
-    "maintenance_technician": {"app.access", "events.read", "events.note", "ontology.registry.read", "ontology.objects.read", "dashboards.read", "dashboards.personalize", "dashboards.share", "field.tasks.read", "field.tasks.update", "planner.object_query", "planner.board_recommend", "planner.narrative", "exports.create", "exports.read_own"},
+    "process_manager": {"app.access", "events.read", "events.decision", "ontology.registry.read", "ontology.objects.read", "ontology.actions.execute", "dashboards.read", "dashboards.personalize", "dashboards.share", "datasets.read", "planner.object_query", "planner.board_recommend", "planner.narrative", "exports.create", "exports.read_own"},
+    "process_engineer": {"app.access", "events.read", "events.note", "ontology.registry.read", "ontology.objects.read", "ontology.actions.execute", "dashboards.read", "dashboards.personalize", "dashboards.share", "field.tasks.read", "field.tasks.update", "planner.object_query", "planner.board_recommend", "planner.narrative", "exports.create", "exports.read_own"},
+    "maintenance_technician": {"app.access", "events.read", "events.note", "ontology.registry.read", "ontology.objects.read", "ontology.actions.execute", "dashboards.read", "dashboards.personalize", "dashboards.share", "field.tasks.read", "field.tasks.update", "planner.object_query", "planner.board_recommend", "planner.narrative", "exports.create", "exports.read_own"},
     "quality_auditor": {"app.access", "events.read", "ontology.registry.read", "ontology.objects.read", "dashboards.read", "dashboards.personalize", "dashboards.share", "audit.reconstruction.read", "audit.export.checkpoint", "governance.read", "planner.object_query", "planner.board_recommend", "planner.narrative", "exports.create", "exports.read_own"},
     "ml_validator": {"app.access", "events.read", "ontology.registry.read", "ontology.objects.read", "dashboards.read", "dashboards.personalize", "dashboards.share", "ml.console.read", "ml.release.request", "datasets.read", "datasets.ingest", "predictions.ingest", "governance.read", "planner.object_query", "planner.board_recommend", "planner.narrative", "exports.create", "exports.read_own"},
-    "fde": {"app.access", "events.read", "events.note", "ontology.registry.read", "ontology.objects.read", "dashboards.read", "dashboards.personalize", "dashboards.share", "dashboards.templates.manage", "dashboards.templates.request", "fde.workbench.read", "field.tasks.read", "datasets.read", "datasets.ingest", "predictions.ingest", "governance.read", "governance.projection.retry", "planner.object_query", "planner.board_recommend", "planner.dashboard_draft", "planner.narrative", "exports.create", "exports.read_own"},
+    "fde": {"app.access", "events.read", "events.note", "ontology.registry.read", "ontology.objects.read", "ontology.actions.execute", "dashboards.read", "dashboards.personalize", "dashboards.share", "dashboards.templates.manage", "dashboards.templates.request", "fde.workbench.read", "field.tasks.read", "datasets.read", "datasets.ingest", "predictions.ingest", "governance.read", "governance.projection.retry", "planner.object_query", "planner.board_recommend", "planner.dashboard_draft", "planner.narrative", "exports.create", "exports.read_own"},
 }
 
 DEMO_ACCOUNTS: tuple[dict[str, Any], ...] = (

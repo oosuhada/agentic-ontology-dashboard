@@ -17,6 +17,7 @@ from .adapters.service import AdapterService
 from .adapters.prediction_repository import PredictionResultRepository
 from .analysis_service import AnalysisService
 from .application_runtime import ApplicationRuntimeRepository
+from .artifact_storage import ArtifactGovernanceService, build_artifact_service
 from .branching_lineage import BranchingLineageRepository
 from .connectors import ConnectorRepository, ConnectorService, FixtureConnectorAdapter
 from .dashboard_service import DashboardService
@@ -207,6 +208,15 @@ def get_durable_job_repository(
             1,
             int(os.getenv("ONTOLOGY_DASHBOARD_MAX_QUEUED_JOBS_PER_PROJECT", "5000")),
         ),
+    )
+
+
+@lru_cache(maxsize=1)
+def get_artifact_governance_service() -> ArtifactGovernanceService:
+    ensure_database_migrations()
+    return build_artifact_service(
+        database_target(),
+        local_root=ROOT / ".runtime" / "object-storage",
     )
 
 

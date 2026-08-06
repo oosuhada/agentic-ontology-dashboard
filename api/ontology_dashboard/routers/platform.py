@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from ..dependencies import (
     database_target,
     get_application_runtime_repository,
+    get_artifact_governance_service,
     get_branching_lineage_repository,
     get_connector_repository,
     get_connector_service,
@@ -15,6 +16,16 @@ from ..dependencies import (
     get_project_service,
     require_csrf,
     require_permission,
+)
+from ..artifact_storage import (
+    ArtifactGovernanceService,
+    ArtifactGovernanceSnapshot,
+    ArtifactObject,
+    ArtifactOperatorRequest,
+    ArtifactPermissionError,
+    ArtifactReconciliationReport,
+    SignedArtifactDownload,
+    artifact_storage_readiness,
 )
 from ..application_runtime import (
     ApplicationRuntimeRepository,
@@ -65,6 +76,7 @@ from ..automation_runtime import (
 )
 from ..projects import ProjectService
 from ..persistence_readiness import persistence_readiness
+from ..observability import ObservabilityReadiness, observability_readiness
 
 router = APIRouter(prefix="/api/platform", tags=["platform"])
 
@@ -150,18 +162,135 @@ def project_distributed_runtime(
     ).model_dump(mode="json")
 
 
+@router.get("/projects/{project_id}/artifact-governance")
+def project_artifact_governance(
+    project_id: str,
+    principal: Principal = Depends(require_permission("governance.read")),
+    projects: ProjectService = Depends(get_project_service),
+    service: ArtifactGovernanceService = Depends(get_artifact_governance_service),
+) -> ArtifactGovernanceSnapshot:
+    project = projects.get_for_principal(principal, project_id)
+    return ArtifactGovernanceSnapshot(
+        readiness=artifact_storage_readiness(),
+        artifacts=service.repository.list(
+            organization_id=principal.organization_id,
+            project_id=project_id,
+            limit=100,
+        ),
+        retention_preview=service.retention_preview(
+            organization_id=principal.organization_id,
+            project_id=project_id,
+        ),
+        last_reconciliation=None,
+    )
+
+
+def _project_artifact(
+    *,
+    service: ArtifactGovernanceService,
+    principal: Principal,
+    project_id: str,
+    artifact_id: str,
+) -> ArtifactObject:
+    artifact = service.repository.get(
+        organization_id=principal.organization_id,
+        project_id=project_id,
+        artifact_id=artifact_id,
+    )
+    if artifact is None:
+        raise HTTPException(status_code=404, detail="artifact not found")
+    return artifact
+
+
+@router.post("/projects/{project_id}/artifacts/{artifact_id}/verify")
+def verify_project_artifact(
+    project_id: str,
+    artifact_id: str,
+    request: ArtifactOperatorRequest,
+    principal: Principal = Depends(require_permission("governance.projection.retry")),
+    _: None = Depends(require_csrf),
+    projects: ProjectService = Depends(get_project_service),
+    service: ArtifactGovernanceService = Depends(get_artifact_governance_service),
+) -> ArtifactObject:
+    projects.get_for_principal(principal, project_id)
+    artifact = _project_artifact(
+        service=service,
+        principal=principal,
+        project_id=project_id,
+        artifact_id=artifact_id,
+    )
+    return service.verify(artifact, actor_user_id=principal.user_id)
+
+
+@router.post("/projects/{project_id}/artifacts/{artifact_id}/sign-download")
+def sign_project_artifact_download(
+    project_id: str,
+    artifact_id: str,
+    request: ArtifactOperatorRequest,
+    principal: Principal = Depends(require_permission("governance.read")),
+    _: None = Depends(require_csrf),
+    projects: ProjectService = Depends(get_project_service),
+    service: ArtifactGovernanceService = Depends(get_artifact_governance_service),
+) -> SignedArtifactDownload:
+    projects.get_for_principal(principal, project_id)
+    artifact = _project_artifact(
+        service=service,
+        principal=principal,
+        project_id=project_id,
+        artifact_id=artifact_id,
+    )
+    try:
+        return service.sign_download(
+            artifact,
+            actor_user_id=principal.user_id,
+            purpose=request.purpose,
+        )
+    except ArtifactPermissionError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.post("/projects/{project_id}/artifact-reconciliation")
+def reconcile_project_artifacts(
+    project_id: str,
+    request: ArtifactOperatorRequest,
+    apply: bool = Query(default=False),
+    principal: Principal = Depends(require_permission("governance.projection.retry")),
+    _: None = Depends(require_csrf),
+    projects: ProjectService = Depends(get_project_service),
+    service: ArtifactGovernanceService = Depends(get_artifact_governance_service),
+) -> ArtifactReconciliationReport:
+    project = projects.get_for_principal(principal, project_id)
+    return service.reconcile(
+        organization_id=principal.organization_id,
+        project_id=project_id,
+        workspace_id=project.default_workspace_id,
+        actor_user_id=principal.user_id,
+        apply=apply,
+    )
+
+
+@router.get("/projects/{project_id}/observability")
+def project_observability(
+    project_id: str,
+    principal: Principal = Depends(require_permission("governance.read")),
+    projects: ProjectService = Depends(get_project_service),
+) -> ObservabilityReadiness:
+    projects.get_for_principal(principal, project_id)
+    return observability_readiness()
+
+
 @router.get("/projects/{project_id}/connectors")
 def project_connectors(
     project_id: str,
-    principal: Principal = Depends(require_permission("app.access")),
+    principal: Principal = Depends(require_permission("governance.read")),
     projects: ProjectService = Depends(get_project_service),
     repository: ConnectorRepository = Depends(get_connector_repository),
 ):
-    projects.get_for_principal(principal, project_id)
+    project = projects.get_for_principal(principal, project_id)
     repository.ensure_fixture(
         organization_id=principal.organization_id,
         project_id=project_id,
-        workspace_id=principal.active_workspace_id or "manufacturing-demo",
+        workspace_id=project.default_workspace_id or "manufacturing-demo",
         actor=principal.user_id,
     )
     runs = repository.list_runs(principal.organization_id, project_id)

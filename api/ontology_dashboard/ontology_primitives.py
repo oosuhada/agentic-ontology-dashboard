@@ -175,7 +175,7 @@ class OntologyPrimitiveRepository:
                             "due_date": {"type": "string", "format": "date"},
                         },
                     }),
-                    "bulk", 1, "ontology.actions.execute", "published", now,
+                    "bulk", True, "ontology.actions.execute", "published", now,
                 ),
             )
             connection.execute(

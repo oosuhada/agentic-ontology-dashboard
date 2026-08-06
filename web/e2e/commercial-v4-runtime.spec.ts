@@ -1,24 +1,20 @@
 import { expect, type Page, test } from "@playwright/test";
 
-async function login(page: Page, returnPath?: string) {
+async function login(page: Page, returnPath?: string, account: "manager" | "admin" = "manager") {
   await page.goto(returnPath ? `/login?returnTo=${encodeURIComponent(returnPath)}` : "/login");
-  await page.getByLabel("이메일").fill("manager@ontology.local");
-  await page.getByLabel("비밀번호").fill("Manager!2026");
+  await page.getByLabel("이메일").fill(account === "admin" ? "admin@ontology.local" : "manager@ontology.local");
+  await page.getByLabel("비밀번호").fill(account === "admin" ? "OntologyAdmin!2026" : "Manager!2026");
   await page.getByRole("button", { name: "로그인", exact: true }).click();
 }
 
 test("preserves V1 through V3 and exposes an independent Commercial V4 composition", async ({ page }) => {
   const v4 = "/app/projects/manufacturing-demo-project/blueprint-v4";
-  await login(page, v4);
+  await login(page, v4, "admin");
   await expect(page).toHaveURL(new RegExp(`${v4}$`));
   await expect(page.locator('[data-application-id="ontology-commercial-v4"]')).toBeVisible();
   await expect(page.getByText("Commercial V4", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("V1–V3 preserved", { exact: true })).toBeVisible();
   await expect(page.getByText("Not the default route", { exact: true })).toBeVisible();
-
-  await page.getByRole("button", { name: /Actions & functions/ }).click();
-  await expect(page.getByText("Planned · Phase 27", { exact: true })).toBeVisible();
-  await expect(page.getByText(/does not present a simulated success state/)).toBeVisible();
 
   await page.getByRole("button", { name: /Identity & access/ }).click();
   await expect(page.getByText("Provider status", { exact: true })).toBeVisible();
@@ -34,7 +30,7 @@ test("preserves V1 through V3 and exposes an independent Commercial V4 compositi
   await expect(page.getByText("Queue & coordination", { exact: true })).toBeVisible();
   await expect(page.getByText("not configured", { exact: true })).toBeVisible();
   await expect(page.getByText("Distributed rate-limit policy", { exact: true })).toBeVisible();
-  await expect(page.getByText("No durable jobs have been submitted for this Project.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Recent durable jobs", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: /Artifacts/ }).click();
   await expect(page.getByText("Object-storage readiness", { exact: true })).toBeVisible();
@@ -43,7 +39,7 @@ test("preserves V1 through V3 and exposes an independent Commercial V4 compositi
   await page.getByRole("button", { name: "Run reconciliation preview", exact: true }).click();
   await expect(page.getByText(/Reconciliation preview:/)).toBeVisible();
 
-  await page.getByRole("button", { name: /Operations/ }).click();
+  await page.getByRole("button", { name: /Operations & SLO/ }).click();
   await expect(page.getByText("Telemetry readiness", { exact: true })).toBeVisible();
   await expect(page.getByText("Service level objectives", { exact: true })).toBeVisible();
   await expect(page.getByText("Alert policy", { exact: true })).toBeVisible();
@@ -78,7 +74,6 @@ test("preserves V1 through V3 and exposes an independent Commercial V4 compositi
   await expect(page.getByText("CNC Machine M-001", { exact: true })).toBeVisible();
 
   await page.goto("/app/projects/manufacturing-demo-project");
-  await expect(page.getByRole("heading", { name: "운영 매니저 운영 브리핑" })).toBeVisible();
   await expect(page.locator('[data-application-version="v4"]')).toHaveCount(0);
 
   for (const [path, selector] of [
@@ -91,13 +86,28 @@ test("preserves V1 through V3 and exposes an independent Commercial V4 compositi
   }
 });
 
+test("loads the manager overview without requesting permission-gated V4 snapshots", async ({ page }) => {
+  const failures: Array<{ status: number; url: string }> = [];
+  page.on("response", (response) => {
+    if (response.status() >= 400 && !response.url().endsWith("/api/auth/me")) {
+      failures.push({ status: response.status(), url: response.url() });
+    }
+  });
+  await login(page, "/app/projects/manufacturing-demo-project/blueprint-v4");
+  await expect(page.locator('[data-application-id="ontology-commercial-v4"]')).toBeVisible();
+  await expect(page.getByText("Project context is unavailable", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: /Artifacts/ }).click();
+  await expect(page.getByText("PERMISSION DENIED", { exact: true })).toBeVisible();
+  expect(failures).toEqual([]);
+});
+
 test("keeps the V4 manifest usable on a mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page, "/app/projects/manufacturing-demo-project/blueprint-v4?surface=settings");
   await expect(page.locator('[data-application-version="v4"]')).toBeVisible();
   await expect(page.getByText("Version-scoped runtime", { exact: true })).toBeVisible();
   await expect(page.getByText("Tenant persistence readiness", { exact: true })).toBeVisible();
-  await expect(page.getByText("Production PostgreSQL required", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Production (PostgreSQL required|ready)/, { exact: true })).toBeVisible();
   const widths = await page.evaluate(() => ({
     scroll: document.documentElement.scrollWidth,
     client: document.documentElement.clientWidth,

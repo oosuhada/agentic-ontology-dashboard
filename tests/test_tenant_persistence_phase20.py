@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 
+import ontology_dashboard.migrations as migration_module
 from ontology_dashboard.migrations import migrate, migration_status
 from ontology_dashboard.ontology_repository import OntologyActionRepository
 from ontology_dashboard.persistence_readiness import (
@@ -53,6 +55,56 @@ def test_phase20_additive_migration_and_recovery_state(tmp_path: Path) -> None:
         recovery_state="reconciled",
     )
     assert reconciled["recovery_state"] == "reconciled"
+
+
+def test_phase20_upgrades_legacy_action_table_before_creating_recovery_index(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database = tmp_path / "legacy-action-table.db"
+    with sqlite3.connect(database) as connection:
+        connection.executescript(
+            """
+            CREATE TABLE schema_migrations (
+                version TEXT PRIMARY KEY,
+                applied_at TEXT NOT NULL
+            );
+            CREATE TABLE ontology_action_invocations (
+                id TEXT PRIMARY KEY,
+                organization_id TEXT NOT NULL,
+                project_id TEXT NOT NULL,
+                idempotency_key TEXT NOT NULL,
+                workspace_id TEXT NOT NULL,
+                object_id TEXT NOT NULL,
+                actor_user_id TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+            """
+        )
+
+    migration = ROOT / "api/migrations/sqlite/0019_tenant_transaction_convergence.sql"
+    monkeypatch.setattr(
+        migration_module,
+        "_migration_files",
+        lambda dialect: [migration] if dialect == "sqlite" else [],
+    )
+
+    assert migrate(str(database)) == ["0019_tenant_transaction_convergence"]
+    with sqlite3.connect(database) as connection:
+        columns = {
+            row[1]
+            for row in connection.execute(
+                "PRAGMA table_info(ontology_action_invocations)"
+            ).fetchall()
+        }
+        indexes = {
+            row[1]
+            for row in connection.execute(
+                "PRAGMA index_list(ontology_action_invocations)"
+            ).fetchall()
+        }
+    assert {"recovery_state", "attempt_count", "last_error_at", "outbox_event_id"} <= columns
+    assert "idx_ontology_actions_recovery" in indexes
 
 
 def test_rls_source_matrix_and_local_blocked_semantics() -> None:

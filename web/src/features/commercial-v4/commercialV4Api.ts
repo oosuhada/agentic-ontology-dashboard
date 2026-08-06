@@ -503,16 +503,15 @@ export async function getArtifactGovernance(projectId: string): Promise<Artifact
   return payload as ArtifactGovernanceSnapshot;
 }
 
-async function artifactOperatorRequest<T>(
+async function postCommercialJson<T>(
   url: string,
-  purpose: string,
-  requestPayload: Record<string, unknown> = {},
+  requestPayload: Record<string, unknown>,
 ): Promise<T> {
   const response = await fetch(`${API_BASE}${url}`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
-    body: JSON.stringify({ purpose, ...requestPayload }),
+    body: JSON.stringify(requestPayload),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload?.error?.message ?? payload?.detail ?? `Artifact operation failed: ${response.status}`);
@@ -520,23 +519,23 @@ async function artifactOperatorRequest<T>(
 }
 
 export function verifyArtifact(projectId: string, artifactId: string): Promise<GovernedArtifact> {
-  return artifactOperatorRequest(
+  return postCommercialJson(
     `/api/platform/projects/${encodeURIComponent(projectId)}/artifacts/${encodeURIComponent(artifactId)}/verify`,
-    "Verify checksum from Commercial V4",
+    { purpose: "Verify checksum from Commercial V4" },
   );
 }
 
 export function signArtifactDownload(projectId: string, artifactId: string): Promise<{ url: string }> {
-  return artifactOperatorRequest(
+  return postCommercialJson(
     `/api/platform/projects/${encodeURIComponent(projectId)}/artifacts/${encodeURIComponent(artifactId)}/sign-download`,
-    "Governed download from Commercial V4",
+    { purpose: "Governed download from Commercial V4" },
   );
 }
 
 export function reconcileArtifacts(projectId: string, apply = false): Promise<NonNullable<ArtifactGovernanceSnapshot["last_reconciliation"]>> {
-  return artifactOperatorRequest(
+  return postCommercialJson(
     `/api/platform/projects/${encodeURIComponent(projectId)}/artifact-reconciliation?apply=${apply ? "true" : "false"}`,
-    apply ? "Apply artifact reconciliation from Commercial V4" : "Preview artifact reconciliation from Commercial V4",
+    { purpose: apply ? "Apply artifact reconciliation from Commercial V4" : "Preview artifact reconciliation from Commercial V4" },
   );
 }
 
@@ -561,9 +560,9 @@ export async function getConnectorSnapshot(projectId: string): Promise<Connector
 }
 
 export function runConnector(projectId: string, connectorId: string): Promise<{ job_id: string; state: string }> {
-  return artifactOperatorRequest(
+  return postCommercialJson(
     `/api/platform/projects/${encodeURIComponent(projectId)}/connectors/${encodeURIComponent(connectorId)}/run`,
-    "Run connector ingestion from Commercial V4",
+    { reason: "Run connector ingestion from Commercial V4" },
   );
 }
 
@@ -583,9 +582,8 @@ export function previewGovernedAction(projectId: string): Promise<{
   approval_required: boolean;
   validation_errors: string[];
 }> {
-  return artifactOperatorRequest(
+  return postCommercialJson(
     `/api/platform/projects/${encodeURIComponent(projectId)}/actions/preview`,
-    "Preview governed Asset inspection action",
     {
       action_id: "request-asset-inspection",
       object_ids: ["equipment:M-001", "compressor:C-01"],
@@ -600,9 +598,8 @@ export function executeRiskFunction(projectId: string): Promise<{
   output: { risk_score: number; band: string };
   runtime_checksum: string;
 }> {
-  return artifactOperatorRequest(
+  return postCommercialJson(
     `/api/platform/projects/${encodeURIComponent(projectId)}/functions/execute`,
-    "Execute governed Asset risk function",
     {
       function_id: "asset-risk-metric",
       inputs: { failure_probability: 0.81, criticality: 1.0 },
@@ -625,9 +622,8 @@ export function createBranchPreview(projectId: string): Promise<{
   changes: Array<Record<string, unknown>>;
   mergeable: boolean;
 }> {
-  return artifactOperatorRequest(
+  return postCommercialJson(
     `/api/platform/projects/${encodeURIComponent(projectId)}/branches/change`,
-    "Create governed Commercial V4 branch preview",
     {
       branch_name: `v4-review-${Date.now()}`,
       resource_type: "application",
@@ -643,9 +639,8 @@ export function checkRestrictedDatasetPolicy(projectId: string): Promise<{
   effective_markings: string[];
   masked: boolean;
 }> {
-  return artifactOperatorRequest(
+  return postCommercialJson(
     `/api/platform/projects/${encodeURIComponent(projectId)}/policy/check`,
-    "Check marked Dataset access from Commercial V4",
     {
       resource_type: "dataset",
       resource_id: "canonical-v3.1",
@@ -668,9 +663,8 @@ export async function getApplicationRuntime(projectId: string): Promise<Applicat
 export function globalObjectSearch(projectId: string, query: string): Promise<{
   items: Array<{ type: string; id: string; title: string; subtitle: string; score: number; explanation: string }>;
 }> {
-  return artifactOperatorRequest(
+  return postCommercialJson(
     `/api/platform/projects/${encodeURIComponent(projectId)}/global-search`,
-    "Search Commercial V4 governed resources",
     {
       query,
       allowed_types: [],
@@ -701,9 +695,8 @@ export async function getAutomationSnapshot(projectId: string): Promise<Automati
 }
 
 export function simulateHighRiskAutomation(projectId: string): Promise<Record<string, unknown>> {
-  return artifactOperatorRequest(
+  return postCommercialJson(
     `/api/platform/projects/${encodeURIComponent(projectId)}/automation/simulate`,
-    "Simulate high-risk inspection automation",
     { event_id: `v4-simulation-${Date.now()}`, failure_probability: 0.91, criticality: "high", duplicate: false },
   );
 }

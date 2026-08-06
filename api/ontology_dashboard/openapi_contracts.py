@@ -27,6 +27,12 @@ from starlette.responses import Response, StreamingResponse
 
 from .analysis_models import AnalysisRunResult
 from .application_runtime import ApplicationRuntimeSnapshot
+from .artifact_storage import (
+    ArtifactGovernanceSnapshot,
+    ArtifactObject,
+    ArtifactReconciliationReport,
+    SignedArtifactDownload,
+)
 from .automation_runtime import AutomationSnapshot
 from .branching_lineage import BranchDiff, BranchingLineageSnapshot, PolicyDecision
 from .contracts import GroundedReport, UILayout
@@ -79,6 +85,7 @@ from .ontology import (
     ObjectTypeDefinition,
 )
 from .ontology_primitives import ActionPreview, FunctionExecution, PrimitiveSnapshot
+from .observability import ObservabilityReadiness
 from .orchestration.models import AgentRunResponse
 from .predictive_maintenance_runtime.models import (
     DatasetVersionRuntimeContext,
@@ -628,6 +635,11 @@ _EXPLICIT_MODELS: dict[str, Any] = {
     "ontology_dashboard.routers.platform.project_enterprise_identity": EnterpriseIdentityReadiness,
     "ontology_dashboard.routers.platform.project_deployment_readiness": DeploymentReadiness,
     "ontology_dashboard.routers.platform.project_distributed_runtime": DistributedRuntimeSnapshot,
+    "ontology_dashboard.routers.platform.project_artifact_governance": ArtifactGovernanceSnapshot,
+    "ontology_dashboard.routers.platform.verify_project_artifact": ArtifactObject,
+    "ontology_dashboard.routers.platform.sign_project_artifact_download": SignedArtifactDownload,
+    "ontology_dashboard.routers.platform.reconcile_project_artifacts": ArtifactReconciliationReport,
+    "ontology_dashboard.routers.platform.project_observability": ObservabilityReadiness,
     "ontology_dashboard.routers.platform.project_connectors": ConnectorSnapshot,
     "ontology_dashboard.routers.platform.run_project_connector": ConnectorRunQueuedResponse,
     "ontology_dashboard.routers.platform.project_ontology_primitives": PrimitiveSnapshot,

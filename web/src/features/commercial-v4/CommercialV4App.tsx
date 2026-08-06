@@ -106,14 +106,14 @@ interface CommercialContext {
   identity: EnterpriseIdentityReadiness;
   deployment: DeploymentReadiness;
   distributed: DistributedRuntimeSnapshot;
-  artifacts: ArtifactGovernanceSnapshot;
-  observability: ObservabilityReadiness;
-  connectors: ConnectorSnapshot;
+  artifacts: ArtifactGovernanceSnapshot | null;
+  observability: ObservabilityReadiness | null;
+  connectors: ConnectorSnapshot | null;
   primitives: OntologyPrimitiveSnapshot;
-  branching: BranchingLineageSnapshot;
+  branching: BranchingLineageSnapshot | null;
   applicationRuntime: ApplicationRuntimeSnapshot;
   pipeline: PipelinePlan;
-  mlops: MLOpsSnapshot;
+  mlops: MLOpsSnapshot | null;
   automation: AutomationSnapshot;
 }
 
@@ -129,6 +129,20 @@ function stateLabel(state: string) {
   if (state === "planned") return "Planned";
   if (state === "not_configured") return "Not configured";
   return "Blocked";
+}
+
+async function optionalSurfaceSnapshot<T>(
+  allowed: boolean,
+  surface: CommercialSurfaceId,
+  loader: () => Promise<T>,
+): Promise<T | null> {
+  if (!allowed) return null;
+  try {
+    return await loader();
+  } catch (reason) {
+    console.error("commercial-v4-surface-load-failed", { surface, reason });
+    return null;
+  }
 }
 
 class CommercialV4ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -185,7 +199,9 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
   }, [preferenceKey]);
 
   useEffect(() => {
+    if (!user) return;
     const controller = new AbortController();
+    const permissions = new Set(user.permissions);
     setContext(null);
     setError("");
     Promise.all([
@@ -197,14 +213,14 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
       getEnterpriseIdentityReadiness(projectId),
       getDeploymentReadiness(projectId),
       getDistributedRuntime(projectId),
-      getArtifactGovernance(projectId),
-      getObservabilityReadiness(projectId),
-      getConnectorSnapshot(projectId),
+      optionalSurfaceSnapshot(permissions.has("governance.read"), "artifacts", () => getArtifactGovernance(projectId)),
+      optionalSurfaceSnapshot(permissions.has("governance.read"), "operations", () => getObservabilityReadiness(projectId)),
+      optionalSurfaceSnapshot(permissions.has("governance.read"), "ingestion", () => getConnectorSnapshot(projectId)),
       getOntologyPrimitives(projectId),
-      getBranchingLineage(projectId),
+      optionalSurfaceSnapshot(permissions.has("governance.read"), "lineage", () => getBranchingLineage(projectId)),
       getApplicationRuntime(projectId),
       getSamplePipelinePlan(projectId),
-      getMLOpsSnapshot(projectId),
+      optionalSurfaceSnapshot(permissions.has("ml.console.read"), "models", () => getMLOpsSnapshot(projectId)),
       getAutomationSnapshot(projectId),
     ])
       .then(([project, workspaces, datasets, application, persistence, identity, deployment, distributed, artifacts, observability, connectors, primitives, branching, applicationRuntime, pipeline, mlops, automation]) => {
@@ -239,7 +255,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
         );
       });
     return () => controller.abort();
-  }, [projectId]);
+  }, [projectId, user]);
 
   function selectSurface(next: CommercialSurfaceId) {
     setSurface(next);
@@ -305,7 +321,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
     setOperationMessage("");
     try {
       const report = await reconcileArtifacts(projectId, false);
-      setContext((current) => current ? {
+      setContext((current) => current?.artifacts ? {
         ...current,
         artifacts: { ...current.artifacts, last_reconciliation: report },
       } : current);
@@ -420,6 +436,17 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
   }
 
   const selected = surfaces.find((item) => item.id === surface) ?? surfaces[0];
+  const surfaceSnapshotUnavailable =
+    (selected.id === "artifacts" && !context.artifacts)
+    || (selected.id === "operations" && !context.observability)
+    || (selected.id === "ingestion" && !context.connectors)
+    || (selected.id === "models" && !context.mlops)
+    || (selected.id === "lineage" && !context.branching);
+  const artifacts = context.artifacts!;
+  const observability = context.observability!;
+  const connectors = context.connectors!;
+  const mlops = context.mlops!;
+  const branching = context.branching!;
   const activeDatasets = context.datasets.filter((item) => item.status === "active");
   const publishedRecords = activeDatasets.reduce((total, item) => total + item.record_count, 0);
   const readyFeatures = surfaces.filter((item) => item.state === "ready" && item.accessible).length;
@@ -503,7 +530,21 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
             </div>
           </div>
 
-          {selected.id === "overview" ? (
+          {!selected.accessible ? (
+            <section className="commercial-v4-panel commercial-v4-feature-state is-blocked">
+              <LockKeyhole aria-hidden="true" />
+              <p className="commercial-v4-eyebrow">PERMISSION DENIED</p>
+              <h2>Your active role cannot open this surface.</h2>
+              <p>Required permission: {selected.permission}</p>
+            </section>
+          ) : surfaceSnapshotUnavailable ? (
+            <section className="commercial-v4-panel commercial-v4-feature-state is-blocked">
+              <CircleAlert aria-hidden="true" />
+              <p className="commercial-v4-eyebrow">SURFACE DEGRADED</p>
+              <h2>This surface could not load its operational snapshot.</h2>
+              <p>The rest of Commercial V4 remains available. Reload this page after checking the corresponding service.</p>
+            </section>
+          ) : selected.id === "overview" ? (
             <>
               <section className="commercial-v4-metrics" aria-label="Commercial readiness metrics">
                 <article><span>Ready surfaces</span><strong>{readyFeatures}</strong><small>permission-aware</small></article>
@@ -705,26 +746,26 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
               <section className="commercial-v4-panel">
                 <div className="commercial-v4-panel-title"><Archive aria-hidden="true" /><span>Object-storage readiness</span></div>
                 <dl>
-                  <div><dt>Backend</dt><dd>{context.artifacts.readiness.backend}</dd></div>
-                  <div><dt>Bucket</dt><dd>{context.artifacts.readiness.bucket ?? "Local emulator"}</dd></div>
-                  <div><dt>Encryption</dt><dd>{context.artifacts.readiness.encryption}</dd></div>
-                  <div><dt>Checksums</dt><dd>{context.artifacts.readiness.checksum}</dd></div>
+                  <div><dt>Backend</dt><dd>{artifacts.readiness.backend}</dd></div>
+                  <div><dt>Bucket</dt><dd>{artifacts.readiness.bucket ?? "Local emulator"}</dd></div>
+                  <div><dt>Encryption</dt><dd>{artifacts.readiness.encryption}</dd></div>
+                  <div><dt>Checksums</dt><dd>{artifacts.readiness.checksum}</dd></div>
                 </dl>
-                <span className={`commercial-v4-state-badge is-${context.artifacts.readiness.state}`}>{context.artifacts.readiness.state.replace("_", " ")}</span>
-                {context.artifacts.readiness.blockers.map((blocker) => <p key={blocker} className="commercial-v4-policy-copy">{blocker}</p>)}
+                <span className={`commercial-v4-state-badge is-${artifacts.readiness.state}`}>{artifacts.readiness.state.replace("_", " ")}</span>
+                {artifacts.readiness.blockers.map((blocker) => <p key={blocker} className="commercial-v4-policy-copy">{blocker}</p>)}
               </section>
               <section className="commercial-v4-panel">
                 <div className="commercial-v4-panel-title"><GitBranch aria-hidden="true" /><span>Governance contract</span></div>
-                <p className="commercial-v4-policy-copy">{context.artifacts.readiness.deterministic_key_schema}</p>
-                <p className="commercial-v4-policy-copy">{context.artifacts.readiness.signed_downloads}</p>
+                <p className="commercial-v4-policy-copy">{artifacts.readiness.deterministic_key_schema}</p>
+                <p className="commercial-v4-policy-copy">{artifacts.readiness.signed_downloads}</p>
                 <div className="commercial-v4-chip-list">
-                  {context.artifacts.readiness.retention_classes.map((retentionClass) => <span key={retentionClass}>{retentionClass}</span>)}
+                  {artifacts.readiness.retention_classes.map((retentionClass) => <span key={retentionClass}>{retentionClass}</span>)}
                 </div>
               </section>
               <section className="commercial-v4-panel commercial-v4-artifact-catalog">
                 <div className="commercial-v4-panel-title"><Database aria-hidden="true" /><span>Governed artifact catalog</span></div>
                 {operationMessage ? <p className="commercial-v4-policy-copy" role="status">{operationMessage}</p> : null}
-                {context.artifacts.artifacts.length ? context.artifacts.artifacts.map((artifact) => (
+                {artifacts.artifacts.length ? artifacts.artifacts.map((artifact) => (
                   <article key={artifact.id}>
                     <span>
                       <strong>{artifact.resource_type} · {artifact.resource_id}</strong>
@@ -739,10 +780,10 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
               <section className="commercial-v4-panel">
                 <div className="commercial-v4-panel-title"><CircleAlert aria-hidden="true" /><span>Retention & reconciliation</span></div>
                 <dl>
-                  <div><dt>Catalog objects</dt><dd>{context.artifacts.artifacts.length}</dd></div>
-                  <div><dt>Delete candidates</dt><dd>{context.artifacts.retention_preview.filter((item) => item.action === "delete").length}</dd></div>
-                  <div><dt>Legal holds</dt><dd>{context.artifacts.retention_preview.filter((item) => item.action === "skip_legal_hold").length}</dd></div>
-                  <div><dt>Last preview</dt><dd>{context.artifacts.last_reconciliation?.completed_at ?? "Not run"}</dd></div>
+                  <div><dt>Catalog objects</dt><dd>{artifacts.artifacts.length}</dd></div>
+                  <div><dt>Delete candidates</dt><dd>{artifacts.retention_preview.filter((item) => item.action === "delete").length}</dd></div>
+                  <div><dt>Legal holds</dt><dd>{artifacts.retention_preview.filter((item) => item.action === "skip_legal_hold").length}</dd></div>
+                  <div><dt>Last preview</dt><dd>{artifacts.last_reconciliation?.completed_at ?? "Not run"}</dd></div>
                 </dl>
                 {user.permissions.includes("governance.projection.retry") ? (
                   <button type="button" onClick={() => void runArtifactReconciliation()}>Run reconciliation preview</button>
@@ -754,18 +795,18 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
               <section className="commercial-v4-panel">
                 <div className="commercial-v4-panel-title"><Activity aria-hidden="true" /><span>Telemetry readiness</span></div>
                 <dl>
-                  <div><dt>Structured logs</dt><dd>{context.observability.structured_logging}</dd></div>
-                  <div><dt>Tracing</dt><dd>{String(context.observability.tracing.state)}</dd></div>
-                  <div><dt>Metrics endpoint</dt><dd>{String(context.observability.metrics.endpoint)}</dd></div>
-                  <div><dt>Metric series</dt><dd>{Number(context.observability.metrics.counter_series ?? 0) + Number(context.observability.metrics.histogram_series ?? 0)}</dd></div>
+                  <div><dt>Structured logs</dt><dd>{observability.structured_logging}</dd></div>
+                  <div><dt>Tracing</dt><dd>{String(observability.tracing.state)}</dd></div>
+                  <div><dt>Metrics endpoint</dt><dd>{String(observability.metrics.endpoint)}</dd></div>
+                  <div><dt>Metric series</dt><dd>{Number(observability.metrics.counter_series ?? 0) + Number(observability.metrics.histogram_series ?? 0)}</dd></div>
                 </dl>
-                <span className={`commercial-v4-state-badge is-${context.observability.state}`}>{context.observability.state.replace("_", " ")}</span>
-                {context.observability.blockers.map((blocker) => <p key={blocker} className="commercial-v4-policy-copy">{blocker}</p>)}
+                <span className={`commercial-v4-state-badge is-${observability.state}`}>{observability.state.replace("_", " ")}</span>
+                {observability.blockers.map((blocker) => <p key={blocker} className="commercial-v4-policy-copy">{blocker}</p>)}
               </section>
               <section className="commercial-v4-panel commercial-v4-slo-list">
                 <div className="commercial-v4-panel-title"><Workflow aria-hidden="true" /><span>Service level objectives</span></div>
-                {context.observability.slos.map((slo) => {
-                  const budget = context.observability.error_budgets.find((item) => item.slo_id === slo.id);
+                {observability.slos.map((slo) => {
+                  const budget = observability.error_budgets.find((item) => item.slo_id === slo.id);
                   return (
                     <article key={slo.id}>
                       <span><strong>{slo.name}</strong><small>{slo.sli} · {slo.window_days}d</small></span>
@@ -777,7 +818,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
               </section>
               <section className="commercial-v4-panel commercial-v4-alert-list">
                 <div className="commercial-v4-panel-title"><CircleAlert aria-hidden="true" /><span>Alert policy</span></div>
-                {context.observability.alerts.map((alert) => (
+                {observability.alerts.map((alert) => (
                   <article key={alert.id}>
                     <span><strong>{alert.id}</strong><small>{alert.expression}</small></span>
                     <em className={`is-${alert.severity}`}>{alert.severity} · {alert.duration}</em>
@@ -787,9 +828,9 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
               <section className="commercial-v4-panel">
                 <div className="commercial-v4-panel-title"><Database aria-hidden="true" /><span>Operations dashboards</span></div>
                 <div className="commercial-v4-chip-list">
-                  {context.observability.dashboards.map((dashboard) => <span key={dashboard}>{dashboard}</span>)}
+                  {observability.dashboards.map((dashboard) => <span key={dashboard}>{dashboard}</span>)}
                 </div>
-                <p className="commercial-v4-policy-copy">{context.observability.log_redaction}</p>
+                <p className="commercial-v4-policy-copy">{observability.log_redaction}</p>
               </section>
             </div>
           ) : selected.id === "ingestion" ? (
@@ -797,18 +838,18 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
               <section className="commercial-v4-panel">
                 <div className="commercial-v4-panel-title"><Database aria-hidden="true" /><span>Connector readiness</span></div>
                 <dl>
-                  <div><dt>Checkpoint</dt><dd>{context.connectors.readiness.checkpoint}</dd></div>
-                  <div><dt>Schema drift</dt><dd>{context.connectors.readiness.schema_drift}</dd></div>
-                  <div><dt>Quarantine</dt><dd>{context.connectors.quarantine_count}</dd></div>
-                  <div><dt>Backpressure</dt><dd>{context.connectors.readiness.backpressure}</dd></div>
+                  <div><dt>Checkpoint</dt><dd>{connectors.readiness.checkpoint}</dd></div>
+                  <div><dt>Schema drift</dt><dd>{connectors.readiness.schema_drift}</dd></div>
+                  <div><dt>Quarantine</dt><dd>{connectors.quarantine_count}</dd></div>
+                  <div><dt>Backpressure</dt><dd>{connectors.readiness.backpressure}</dd></div>
                 </dl>
-                <span className={`commercial-v4-state-badge is-${context.connectors.readiness.state}`}>{context.connectors.readiness.state}</span>
-                {context.connectors.readiness.blockers.slice(0, 3).map((blocker) => <p key={blocker} className="commercial-v4-policy-copy">{blocker}</p>)}
+                <span className={`commercial-v4-state-badge is-${connectors.readiness.state}`}>{connectors.readiness.state}</span>
+                {connectors.readiness.blockers.slice(0, 3).map((blocker) => <p key={blocker} className="commercial-v4-policy-copy">{blocker}</p>)}
               </section>
               <section className="commercial-v4-panel commercial-v4-connector-list">
                 <div className="commercial-v4-panel-title"><Workflow aria-hidden="true" /><span>Configured connectors</span></div>
                 {operationMessage ? <p className="commercial-v4-policy-copy" role="status">{operationMessage}</p> : null}
-                {context.connectors.connectors.map((connector) => (
+                {connectors.connectors.map((connector) => (
                   <article key={connector.id}>
                     <span><strong>{connector.name}</strong><small>{connector.connector_type} · {connector.max_batch_records.toLocaleString()} records/batch</small></span>
                     <em className={`is-${connector.status}`}>{connector.status}</em>
@@ -818,7 +859,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
               </section>
               <section className="commercial-v4-panel commercial-v4-connector-list">
                 <div className="commercial-v4-panel-title"><Activity aria-hidden="true" /><span>Ingestion history</span></div>
-                {context.connectors.runs.length ? context.connectors.runs.map((run) => (
+                {connectors.runs.length ? connectors.runs.map((run) => (
                   <article key={run.id}>
                     <span><strong>{run.state}</strong><small>{run.records_committed} committed · {run.records_quarantined} quarantined · {run.bytes_read.toLocaleString()} B</small></span>
                     <em className={run.schema_drift.breaking ? "is-error" : "is-ready"}>{run.schema_drift.breaking ? "breaking drift" : "contract compatible"}</em>
@@ -828,7 +869,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
               <section className="commercial-v4-panel">
                 <div className="commercial-v4-panel-title"><LockKeyhole aria-hidden="true" /><span>Provider configuration</span></div>
                 <div className="commercial-v4-runtime-policy">
-                  {Object.entries(context.connectors.readiness.providers).map(([provider, status]) => (
+                  {Object.entries(connectors.readiness.providers).map(([provider, status]) => (
                     <article key={provider}><span><strong>{provider}</strong><small>{status.credential_reference ? "secret reference configured" : "no credential reference"}</small></span><em className={`is-${status.state}`}>{status.state.replace("_", " ")}</em></article>
                   ))}
                 </div>
@@ -844,7 +885,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
               ))}
               <section className="commercial-v4-panel">
                 <div className="commercial-v4-panel-title"><CircleAlert aria-hidden="true" /><span>Dry run & approval</span></div>
-                <button type="button" onClick={() => void simulateAutomation()}>Simulate automation</button>
+                {user.permissions.includes("ontology.actions.execute") ? <button type="button" onClick={() => void simulateAutomation()}>Simulate automation</button> : null}
                 {operationMessage ? <p role="status" className="commercial-v4-policy-copy">{operationMessage}</p> : null}
                 {context.automation.guarantees.map((item) => <p key={item} className="commercial-v4-policy-copy">{item}</p>)}
               </section>
@@ -854,12 +895,12 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
               {(["feature_view", "deployment", "drift", "retraining", "rollback", "explanation"] as const).map((section) => (
                 <section key={section} className="commercial-v4-panel">
                   <div className="commercial-v4-panel-title"><BrainCircuit aria-hidden="true" /><span>{section.replace("_", " ")}</span></div>
-                  {Object.entries(context.mlops[section]).map(([name, value]) => <p key={name} className="commercial-v4-policy-copy"><strong>{name}</strong>: {Array.isArray(value) ? value.join(", ") : String(value)}</p>)}
+                  {Object.entries(mlops[section]).map(([name, value]) => <p key={name} className="commercial-v4-policy-copy"><strong>{name}</strong>: {Array.isArray(value) ? value.join(", ") : String(value)}</p>)}
                 </section>
               ))}
               <section className="commercial-v4-panel">
                 <div className="commercial-v4-panel-title"><CircleAlert aria-hidden="true" /><span>Model limitations</span></div>
-                {context.mlops.limitations.map((item) => <p key={item} className="commercial-v4-policy-copy">{item}</p>)}
+                {mlops.limitations.map((item) => <p key={item} className="commercial-v4-policy-copy">{item}</p>)}
               </section>
             </div>
           ) : selected.id === "analysis" ? (
@@ -922,7 +963,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
             <div className="commercial-v4-grid">
               <section className="commercial-v4-panel">
                 <div className="commercial-v4-panel-title"><GitBranch aria-hidden="true" /><span>Global branches</span></div>
-                {context.branching.branches.map((branch) => (
+                {branching.branches.map((branch) => (
                   <article key={branch.id} className="commercial-v4-primitive-card">
                     <strong>{branch.name}</strong>
                     <small>{branch.status} · revision {branch.head_revision} · base {branch.base_branch_id ?? "none"}</small>
@@ -933,14 +974,14 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
               <section className="commercial-v4-panel">
                 <div className="commercial-v4-panel-title"><Workflow aria-hidden="true" /><span>End-to-end lineage</span></div>
                 <div className="commercial-v4-lineage-list">
-                  {context.branching.lineage_edges.map((edge) => (
+                  {branching.lineage_edges.map((edge) => (
                     <article key={edge.id}><span>{edge.source_type}:{edge.source_id}</span><em>{edge.relation}</em><span>{edge.target_type}:{edge.target_id}</span></article>
                   ))}
                 </div>
               </section>
               <section className="commercial-v4-panel">
                 <div className="commercial-v4-panel-title"><LockKeyhole aria-hidden="true" /><span>Markings & ABAC</span></div>
-                {context.branching.markings.map((marking) => (
+                {branching.markings.map((marking) => (
                   <p key={`${marking.marking}:${marking.field_name ?? "resource"}`} className="commercial-v4-policy-copy"><strong>{marking.marking}</strong> · {marking.resource_type}:{marking.resource_id}{marking.field_name ? ` · ${marking.field_name}` : ""}</p>
                 ))}
                 <button type="button" onClick={() => void checkMarkingPolicy()}>Check export policy</button>
@@ -948,7 +989,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
               </section>
               <section className="commercial-v4-panel">
                 <div className="commercial-v4-panel-title"><CircleAlert aria-hidden="true" /><span>Merge semantics</span></div>
-                {Object.entries(context.branching.merge_semantics).map(([name, value]) => <p key={name} className="commercial-v4-policy-copy"><strong>{name}</strong>: {value}</p>)}
+                {Object.entries(branching.merge_semantics).map(([name, value]) => <p key={name} className="commercial-v4-policy-copy"><strong>{name}</strong>: {value}</p>)}
               </section>
             </div>
           ) : selected.id === "actions" ? (
@@ -969,7 +1010,7 @@ function CommercialV4Runtime({ projectId }: { projectId: string }) {
                   <article key={`${action.id}:${action.version}`} className="commercial-v4-primitive-card">
                     <strong>{action.display_name}</strong>
                     <small>{action.execution_mode} · {action.approval_required ? "approval required" : "direct"}</small>
-                    <button type="button" onClick={() => void previewAction()}>Preview action</button>
+                    {user.permissions.includes("ontology.actions.execute") ? <button type="button" onClick={() => void previewAction()}>Preview action</button> : null}
                   </article>
                 ))}
               </section>
