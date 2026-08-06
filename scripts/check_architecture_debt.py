@@ -71,6 +71,14 @@ def collect_architecture_debt(root: Path) -> list[DebtItem]:
         "analysis_repository",
         "analysis_service",
     )
+    export_workflow_modules = (
+        "export_models",
+        "export_repository",
+        "export_service",
+        "role_workflow_models",
+        "role_workflow_repository",
+        "role_workflow_service",
+    )
 
     legacy_path_extension = _contains(canonical_init, "__path__.append")
     canonical_root_present = canonical_composition_root.exists() and _contains(canonical_composition_root, "app = create_app()")
@@ -130,6 +138,14 @@ def collect_architecture_debt(root: Path) -> list[DebtItem]:
         )
         for module in analysis_modules
     )
+    export_workflow_relocated = all(
+        (root / "api" / "ontology_dashboard" / f"{module}.py").exists()
+        and _is_thin_reexport(
+            root / "api" / "factory_signal_board" / f"{module}.py",
+            f"ontology_dashboard.{module}",
+        )
+        for module in export_workflow_modules
+    )
 
     return [
         DebtItem(
@@ -180,6 +196,13 @@ def collect_architecture_debt(root: Path) -> list[DebtItem]:
             stage=55,
             evidence="canonical Analysis models, durable repository and service with compatibility-only legacy re-exports",
             action="Keep durable run state, cache identity, cursor lifecycle and materialization-facing Analysis service physically canonical.",
+        ),
+        DebtItem(
+            id="export_workflow_physical_relocation",
+            state="resolved" if export_workflow_relocated else "regression",
+            stage=55,
+            evidence="canonical Export and Role Workflow models, repositories and services with compatibility-only legacy re-exports",
+            action="Keep export checkpoints, approval workflows, field actions and transactional outbox repository identities physically canonical.",
         ),
         DebtItem(
             id="legacy_namespace_path_extension",

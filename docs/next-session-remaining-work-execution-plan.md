@@ -1476,7 +1476,7 @@ R0 → R1(CI) → R2 → R9 → R5/R6/R7/R8
 
 현재 host에서 Docker/managed credentials가 blocked이면 remaining-work plan의 Phase 3 Physical Namespace Relocation부터 작은 compatibility slice로 진행해. 한 번에 broad rename하지 말고 import graph inventory → foundation/identity → dashboard → analysis → export/workflow → ontology/planner → compatibility shim 제거 → ontology_dashboard.__path__ extension 제거 순서로 진행해.
 
-2026-08-02 현재 import graph inventory, foundation/identity, Dashboard, Analysis slice는 완료됐다. 다음 세션은 완료 slice를 반복하지 말고 Export/Workflow slice부터 진행한다.
+2026-08-02 현재 import graph inventory, foundation/identity, Dashboard, Analysis, Export/Workflow slice는 완료됐다. 다음 세션은 완료 slice를 반복하지 말고 remaining Ontology slice부터 진행한다.
 
 승인된 Azure/MetroPT 전체 source 파일이 확인되면 Phase 4 full ingestion을 진행하되 fixture 통계를 full dataset 통계로 과장하지 말고 source checksum, provenance, immutable Dataset Version, quarantine, projection lineage를 반드시 남겨.
 
