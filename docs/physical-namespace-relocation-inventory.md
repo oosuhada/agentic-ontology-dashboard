@@ -25,8 +25,8 @@
 | Inventory | all remaining modules | this document and architecture guard | import graph and package path | complete | source/import inventory |
 | Foundation/identity | `context.py`, `contracts.py`, `security.py`, `identity_models.py`, `identity_repository.py`, `identity.py`, `repository.py`, `service.py` | same module names under `api/ontology_dashboard/` | identity repository and application service instances | complete; legacy files are thin re-export shims | auth, tenant, Project, persistence, architecture tests |
 | Dashboard | `dashboard_models.py`, `dashboard_catalog.py`, `dashboard_repository.py`, `dashboard_service.py` | same module names under `api/ontology_dashboard/` | repository cache, catalog constant identity, PostgreSQL subclass and template resolution | complete; legacy files are thin re-export shims | dashboard, Project, isolation, export and workflow tests |
-| Analysis | `analysis_models.py`, `analysis_repository.py`, `analysis_service.py` | compatibility-preserving canonical module layout, then package consolidation if justified | durable run repository and cache identity | next | analysis lifecycle and materialization tests |
-| Export/workflow | export and role-workflow model/repository/service files | `ontology_dashboard.exports` and `ontology_dashboard.workflows` | outbox, workflow, export repositories | pending | export, workflow, outbox tests |
+| Analysis | `analysis_models.py`, `analysis_repository.py`, `analysis_service.py` | same module names under `api/ontology_dashboard/` | durable run repository, cache identity, cursor/cancel/progress lifecycle and materialization service contract | complete; legacy files are thin re-export shims | analysis lifecycle, cache/cancel/cursor and materialization tests |
+| Export/workflow | export and role-workflow model/repository/service files | compatibility-preserving canonical module layout, then package consolidation if justified | outbox, workflow, export repositories | next | export, workflow, outbox tests |
 | Ontology/planner | ontology files plus conversation/LLM compatibility modules | canonical ontology/planner/orchestration boundaries | ontology repositories and registry constants | planner complete; ontology remainder pending | ontology, planner, Project 3 tests |
 | Shim cleanup | all legacy re-export files | none | no business logic allowed | pending until all consumers are canonical | architecture guard and package build |
 | Path extension removal | `ontology_dashboard.__path__` legacy extension | canonical package only | import provenance | pending final slice | API boot, full tests, release gate |
@@ -61,6 +61,18 @@ ontology_dashboard.dashboard_service
 
 The `BOARD_DEFINITION_BY_ID` catalog remains a single canonical module constant, `DashboardService` imports the same `DashboardRepository` class exposed by the repository module, and `PostgreSQLDashboardRepository` remains a subclass of that canonical repository class. The legacy files contain only canonical re-exports.
 
+## Analysis completion evidence
+
+The following implementations now load from `api/ontology_dashboard/`:
+
+```text
+ontology_dashboard.analysis_models
+ontology_dashboard.analysis_repository
+ontology_dashboard.analysis_service
+```
+
+`AnalysisService` imports the same canonical `AnalysisRepository` class exposed by the repository module. Durable run status, cache keys/hits, cursor pages, cancellation/progress checkpoints, Dataset materialization integration, and Project/Workspace predicates are unchanged. The legacy files contain only canonical re-exports.
+
 ## Next slice
 
-Move the Analysis models, repository, and service as the next compatibility slice. Preserve durable run state, cache identity, cursor pagination, cancellation/progress checkpoints, immutable Dataset Version materialization, and Project/Workspace scope. Do not remove the package path extension until every remaining slice is canonical.
+Move Export and Role Workflow models, repositories, and services as the next compatibility slice. Preserve permission checks, export checkpoints, transactional outbox linkage, WorkOrder identity, approval state, and Project/Workspace scope. Do not remove the package path extension until every remaining slice is canonical.
