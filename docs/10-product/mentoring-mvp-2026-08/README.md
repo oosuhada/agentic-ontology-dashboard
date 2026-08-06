@@ -9,6 +9,7 @@
 - [MVP 데이터 계약서](./mvp-data-contract.md)
 - [Week 2 역할 분담 및 산출물 정의](./week2-team-role-and-deliverables.md)
 - [Week 2 MVP 프론트엔드 통합·재구성 실행 계획](./week2-mvp-frontend-convergence-plan.md)
+- [Week 2 MVP 프론트엔드 통합·재구성 구현 보고서](./week2-mvp-frontend-convergence-implementation-report.md)
 
 ## 문서 사용 순서
 
@@ -17,6 +18,7 @@
 3. 데이터 계약서에서 Canonical V3.1 필드 의미, enum, lineage와 화면 간 일관성 규칙을 확인한다.
 4. Week 2 역할 분담 문서에서 담당자별 구현 범위, 협업 관계, 산출물과 완료 기준을 확인한다.
 5. 프론트엔드 통합·재구성 계획에서 V1~V4 재사용 기준, 새 MVP 경로와 구현 순서를 확인한다.
+6. 구현 보고서에서 실제 파일 구조, Adapter·권한·Fallback 계약, 테스트와 배포 결과를 확인한다.
 
 ## 이번 범위의 핵심
 
@@ -26,6 +28,7 @@ Canonical V3.1
 → V2 Blueprint Objects
 → V2 Blueprint Operations
 → V1 Executive Report View
+→ /app/projects/:projectId/mvp
 ```
 
 - MVP 핵심 사용자는 `생산 관리자`와 `현장 담당자` 두 그룹으로 제한한다.

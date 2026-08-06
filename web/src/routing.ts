@@ -99,6 +99,15 @@ export function matchBlueprintV4ProjectPath(pathname: string): { projectId: stri
   return match ? { projectId: decodeURIComponent(match[1]) } : null;
 }
 
+export function mvpProjectPath(projectId: string) {
+  return `/app/projects/${encodeURIComponent(projectId)}/mvp`;
+}
+
+export function matchMvpProjectPath(pathname: string): { projectId: string } | null {
+  const match = pathname.match(/^\/app\/projects\/([^/]+)\/mvp$/);
+  return match ? { projectId: decodeURIComponent(match[1]) } : null;
+}
+
 export function loginPath(returnTo?: string) {
   if (!returnTo) return "/login";
   const params = new URLSearchParams({ returnTo });

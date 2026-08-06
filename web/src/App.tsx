@@ -9,6 +9,7 @@ import {
   matchDatasetCatalogPath,
   matchGovernancePath,
   matchModelingPath,
+  matchMvpProjectPath,
   matchOntologyPath,
   matchProjectDashboardPath,
   matchProjectHomePath,
@@ -44,6 +45,7 @@ const BlueprintComparisonPage = lazy(() =>
 const CommercialV4App = lazy(() =>
   import("./features/commercial-v4/CommercialV4App").then((module) => ({ default: module.CommercialV4App })),
 );
+const MvpApplication = lazy(() => import("./features/mvp/MvpApplication"));
 const ProjectHomePage = lazy(() =>
   import("./features/projects/ProjectHomePage").then((module) => ({ default: module.ProjectHomePage })),
 );
@@ -81,10 +83,10 @@ const EChartsComparisonEmbed = lazy(() =>
 const LAST_VALID_PROJECT_KEY = "ontology-dashboard:last-valid-project";
 const IS_PUBLIC_STORY = import.meta.env.VITE_PUBLIC_STORY === "1";
 
-function RouteLoading({ operation, detail }: { operation: string; detail?: string }) {
+function RouteLoading({ operation }: { operation: string }) {
   return (
     <div className="route-loading">
-      <WorkbenchState kind="loading" title={operation} detail={detail} />
+      <WorkbenchState kind="loading" title={operation} />
     </div>
   );
 }
@@ -152,11 +154,27 @@ function ProjectRouteBoundary({
   }, [projectId, requiredPermission, user, workspaceId]);
 
   if (state === null) {
-    return <RouteLoading operation="Validating Project scope" detail="Checking workspace membership and permissions." />;
+    return <RouteLoading operation="Validating Project scope" />;
   }
   if (state === "tombstone") return <ProjectTombstonePage projectId={projectId} />;
   if (state === "denied") return <Redirect to={fallback} />;
   return <>{children}</>;
+}
+
+function ProjectPreviewRoute({
+  projectId,
+  children,
+}: {
+  projectId: string;
+  children: ReactNode;
+}) {
+  return (
+    <ProjectRouteBoundary projectId={projectId}>
+      <Suspense fallback={<RouteLoading operation="Loading workbench" />}>
+        {children}
+      </Suspense>
+    </ProjectRouteBoundary>
+  );
 }
 
 function ForbiddenPage() {
@@ -191,7 +209,7 @@ function AppRouter() {
   if (pathname === "/visualization-compare/echarts") return <EChartsComparisonEmbed />;
 
   if (loading) {
-    return <RouteLoading operation="Checking session" detail="Resolving identity and governed scope." />;
+    return <RouteLoading operation="Checking session" />;
   }
 
   if (!user) {
@@ -211,44 +229,45 @@ function AppRouter() {
   const blueprintComparisonRoute = matchBlueprintComparisonPath(pathname);
   if (blueprintComparisonRoute) {
     return (
-      <ProjectRouteBoundary projectId={blueprintComparisonRoute.projectId}>
-        <Suspense fallback={<RouteLoading operation="Loading Blueprint comparison" detail="Preparing three live workbench previews at the same virtual viewport." />}>
-          <BlueprintComparisonPage projectId={blueprintComparisonRoute.projectId} />
-        </Suspense>
-      </ProjectRouteBoundary>
+      <ProjectPreviewRoute projectId={blueprintComparisonRoute.projectId}>
+        <BlueprintComparisonPage projectId={blueprintComparisonRoute.projectId} />
+      </ProjectPreviewRoute>
     );
   }
 
   const blueprintProjectRoute = matchBlueprintProjectPath(pathname);
   if (blueprintProjectRoute) {
     return (
-      <ProjectRouteBoundary projectId={blueprintProjectRoute.projectId}>
-        <Suspense fallback={<RouteLoading operation="Loading Blueprint Workbench" detail="Resolving Project, Ontology, Analysis, and operational workflow surfaces." />}>
-          <BlueprintManufacturingApp projectId={blueprintProjectRoute.projectId} />
-        </Suspense>
-      </ProjectRouteBoundary>
+      <ProjectPreviewRoute projectId={blueprintProjectRoute.projectId}>
+        <BlueprintManufacturingApp projectId={blueprintProjectRoute.projectId} />
+      </ProjectPreviewRoute>
     );
   }
 
   const blueprintV2ProjectRoute = matchBlueprintV2ProjectPath(pathname);
   if (blueprintV2ProjectRoute) {
     return (
-      <ProjectRouteBoundary projectId={blueprintV2ProjectRoute.projectId}>
-        <Suspense fallback={<RouteLoading operation="Loading Blueprint V2 Workbench" detail="Resolving the dense Object, Analysis, and Action workspace." />}>
-          <BlueprintManufacturingV2App projectId={blueprintV2ProjectRoute.projectId} />
-        </Suspense>
-      </ProjectRouteBoundary>
+      <ProjectPreviewRoute projectId={blueprintV2ProjectRoute.projectId}>
+        <BlueprintManufacturingV2App projectId={blueprintV2ProjectRoute.projectId} />
+      </ProjectPreviewRoute>
     );
   }
 
   const blueprintV4ProjectRoute = matchBlueprintV4ProjectPath(pathname);
   if (blueprintV4ProjectRoute) {
     return (
-      <ProjectRouteBoundary projectId={blueprintV4ProjectRoute.projectId}>
-        <Suspense fallback={<RouteLoading operation="Loading Commercial V4" detail="Resolving version-scoped application metadata and Project context." />}>
-          <CommercialV4App projectId={blueprintV4ProjectRoute.projectId} />
-        </Suspense>
-      </ProjectRouteBoundary>
+      <ProjectPreviewRoute projectId={blueprintV4ProjectRoute.projectId}>
+        <CommercialV4App projectId={blueprintV4ProjectRoute.projectId} />
+      </ProjectPreviewRoute>
+    );
+  }
+
+  const mvpProjectRoute = matchMvpProjectPath(pathname);
+  if (mvpProjectRoute) {
+    return (
+      <ProjectPreviewRoute projectId={mvpProjectRoute.projectId}>
+        <MvpApplication projectId={mvpProjectRoute.projectId} />
+      </ProjectPreviewRoute>
     );
   }
 
@@ -269,7 +288,7 @@ function AppRouter() {
   if (datasetRoute) {
     return (
       <ProjectRouteBoundary projectId={datasetRoute.projectId} requiredPermission="datasets.read">
-        <Suspense fallback={<RouteLoading operation="Loading Dataset Catalog" detail="Resolving immutable versions and lineage." />}>
+        <Suspense fallback={<RouteLoading operation="Loading Dataset Catalog" />}>
           <FoundryAppShell projectId={datasetRoute.projectId} activeRoute="datasets" title="Dataset Catalog">
             <DatasetCatalogPage projectId={datasetRoute.projectId} />
           </FoundryAppShell>
@@ -320,7 +339,7 @@ function AppRouter() {
         workspaceId={modelingRoute.workspaceId}
         requiredPermission="ml.console.read"
       >
-        <Suspense fallback={<RouteLoading operation="Loading ML Validator Workbench" detail="Resolving experiment, registry, and release artifacts." />}>
+        <Suspense fallback={<RouteLoading operation="Loading ML Validator Workbench" />}>
           <FoundryAppShell projectId={modelingRoute.projectId} workspaceId={modelingRoute.workspaceId} activeRoute="modeling" title="ML Validator Workbench">
             <MLValidatorWorkbench projectId={modelingRoute.projectId} workspaceId={modelingRoute.workspaceId} />
           </FoundryAppShell>
@@ -337,7 +356,7 @@ function AppRouter() {
         workspaceId={ontologyRoute.workspaceId}
         requiredPermission="ontology.objects.read"
       >
-        <Suspense fallback={<RouteLoading operation="Loading Ontology Object Explorer" detail="Resolving governed objects and links." />}>
+        <Suspense fallback={<RouteLoading operation="Loading Ontology Object Explorer" />}>
           <FoundryAppShell projectId={ontologyRoute.projectId} workspaceId={ontologyRoute.workspaceId} activeRoute="ontology" title="Ontology Object Explorer">
             <OntologyPreviewPage projectId={ontologyRoute.projectId} workspaceId={ontologyRoute.workspaceId} />
           </FoundryAppShell>
