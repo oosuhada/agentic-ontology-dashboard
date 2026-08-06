@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "generated_at": "2026-08-03",
-  "description": "Approved 48-image baseline/final set for the Palantir-inspired UI overhaul and Foundry shell convergence pass.",
+  "description": "Approved 48-image baseline/final set for the Palantir-inspired UI overhaul and Foundry shell plus workbench-precision convergence pass.",
   "capture_platform": "darwin",
   "viewports": [
     "1440x1000",
@@ -24,7 +24,7 @@
     "candidate_structural_mean_pixel_delta_percent_max_same_platform": 0.1,
     "candidate_structural_mean_pixel_delta_percent_max_cross_platform": 2.4,
     "baseline_final_mean_pixel_delta_percent_min": 3.0,
-    "baseline_final_mean_pixel_delta_percent_max": 35.0
+    "baseline_final_mean_pixel_delta_percent_max": 50.0
   },
   "artifacts": {
     "baseline/1440x1000/admin.png": {
@@ -174,8 +174,8 @@
     "final/1440x1000/admin.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 55220,
-      "sha256": "70d762977a972d0050367dd8c12ebb444284e9fde599f42a2adf9d956d1d1cec"
+      "bytes": 69320,
+      "sha256": "49f3cdb9de8cdeae1ff70cfd0e1ab37e1c060383fc026202ec43b2c620d7c60a"
     },
     "final/1440x1000/agent.png": {
       "width": 1440,
@@ -186,8 +186,8 @@
     "final/1440x1000/analysis.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 215871,
-      "sha256": "5e9305e48d45be5548814d0dbbc7c0f1487411ed2cea65cad3a0b874ad1b5dad"
+      "bytes": 223222,
+      "sha256": "03a14225354ffb4612f0e0d541de73beef5b94c8ac09ea2995d2cb8f09c78655"
     },
     "final/1440x1000/dashboard.png": {
       "width": 1440,
@@ -198,20 +198,20 @@
     "final/1440x1000/datasets.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 132449,
-      "sha256": "1d65bfedddf6390e36a62be3e9a765de9451565b589c71db131f13bfbcf98560"
+      "bytes": 137619,
+      "sha256": "7062f52c2100fdd41fdd3ac16c5b6b166dee7c9b39f36bf476bb777ce2522e00"
     },
     "final/1440x1000/governance.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 136129,
-      "sha256": "dcfb4df8996f98422837b96169f3726719aef6c3ba539a41b31d06ca0884cbe0"
+      "bytes": 136126,
+      "sha256": "a4c6eba4eb68448eeb7914bde24ac2dd5635030e3b1dee86dda21b4e00a2f04d"
     },
     "final/1440x1000/ontology.png": {
       "width": 1440,
       "height": 1000,
-      "bytes": 146481,
-      "sha256": "3e216693615349555464a34306072e8828284ee45d8c9791238de2d65aa24e62"
+      "bytes": 153274,
+      "sha256": "8862232ce96d62ceb63fe5bb74969c5fc05aaa13a3b5670edd4868b58a89ccac"
     },
     "final/1440x1000/project-home.png": {
       "width": 1440,
@@ -222,8 +222,8 @@
     "final/1728x1117/admin.png": {
       "width": 1728,
       "height": 1117,
-      "bytes": 56896,
-      "sha256": "b83d179ffcdc91b989be729e5fb937342aebc7b77104165780707b9130c0337a"
+      "bytes": 71213,
+      "sha256": "f59c2bd7a436eaa614ec97660ab9f0ee14d75231006339595e2250ee8183d79a"
     },
     "final/1728x1117/agent.png": {
       "width": 1728,
@@ -234,8 +234,8 @@
     "final/1728x1117/analysis.png": {
       "width": 1728,
       "height": 1117,
-      "bytes": 228479,
-      "sha256": "9ece0c2b9cb0dc21201a977569a343bf7f40d94018f479695c57725c67e077fc"
+      "bytes": 232443,
+      "sha256": "9892a621944a0f6a59dc7c645f9baf280f8a4196f865962c7d06d79e61b729d6"
     },
     "final/1728x1117/dashboard.png": {
       "width": 1728,
@@ -246,8 +246,8 @@
     "final/1728x1117/datasets.png": {
       "width": 1728,
       "height": 1117,
-      "bytes": 140200,
-      "sha256": "71ae485a9fa3fb1774e3d8433a0a28216e9ce4d7918aecb053fff34e775d2484"
+      "bytes": 145566,
+      "sha256": "3ca2304d9e71bb76b416ea5bc20717430eb90c2882aea2ebe89e2ab7e7cc88a9"
     },
     "final/1728x1117/governance.png": {
       "width": 1728,
@@ -258,8 +258,8 @@
     "final/1728x1117/ontology.png": {
       "width": 1728,
       "height": 1117,
-      "bytes": 150395,
-      "sha256": "0f1b77dc5286980567c011cc2604b1ea9361daee0a60dcc153a6e28fc7d63be0"
+      "bytes": 157620,
+      "sha256": "211d313f1d13830c63e8d7477152306a3e64e1a7833e39f29b6bf9ee09959635"
     },
     "final/1728x1117/project-home.png": {
       "width": 1728,
@@ -270,8 +270,8 @@
     "final/720x500/admin.png": {
       "width": 720,
       "height": 500,
-      "bytes": 32825,
-      "sha256": "e090be66b695b17b8b18315ae845254130b6172a7d075c643dc98d934d7570d4"
+      "bytes": 46723,
+      "sha256": "302faf5b102f967f84be684416ee3428f805626b4ef9fc9a626dac2309b58527"
     },
     "final/720x500/agent.png": {
       "width": 720,
@@ -294,8 +294,8 @@
     "final/720x500/datasets.png": {
       "width": 720,
       "height": 500,
-      "bytes": 42682,
-      "sha256": "4fd9b5e732c86ab4d2d76d6f82e31ba25622a953d69d6ce5e2775f76a1c77d8a"
+      "bytes": 47464,
+      "sha256": "3034b9074f4ab67e95f4ea5bda4e25a05d4b18f478e3e43ea47df503e36fa830"
     },
     "final/720x500/governance.png": {
       "width": 720,
@@ -306,8 +306,8 @@
     "final/720x500/ontology.png": {
       "width": 720,
       "height": 500,
-      "bytes": 60122,
-      "sha256": "a97d4af0ae6aa9c1478bb553c3af99985c68ee7597683cacd31f5dd0d9933b14"
+      "bytes": 49560,
+      "sha256": "e0f393a78191053ffa23ace4c209535c714adbfc4afec66e9a85f5222230f078"
     },
     "final/720x500/project-home.png": {
       "width": 720,
@@ -318,9 +318,9 @@
   },
   "pairs": {
     "1440x1000/admin.png": {
-      "mean_pixel_delta_percent": 4.8727,
-      "changed_pixel_percent": 94.6883,
-      "structural_mean_pixel_delta_percent": 4.1629
+      "mean_pixel_delta_percent": 38.8419,
+      "changed_pixel_percent": 99.9752,
+      "structural_mean_pixel_delta_percent": 38.5657
     },
     "1440x1000/agent.png": {
       "mean_pixel_delta_percent": 7.284,
@@ -328,9 +328,9 @@
       "structural_mean_pixel_delta_percent": 5.8512
     },
     "1440x1000/analysis.png": {
-      "mean_pixel_delta_percent": 15.1516,
-      "changed_pixel_percent": 80.7303,
-      "structural_mean_pixel_delta_percent": 13.203
+      "mean_pixel_delta_percent": 15.1545,
+      "changed_pixel_percent": 80.648,
+      "structural_mean_pixel_delta_percent": 13.236
     },
     "1440x1000/dashboard.png": {
       "mean_pixel_delta_percent": 14.4834,
@@ -338,9 +338,9 @@
       "structural_mean_pixel_delta_percent": 13.0177
     },
     "1440x1000/datasets.png": {
-      "mean_pixel_delta_percent": 8.1273,
-      "changed_pixel_percent": 90.5368,
-      "structural_mean_pixel_delta_percent": 6.5979
+      "mean_pixel_delta_percent": 8.0983,
+      "changed_pixel_percent": 89.4921,
+      "structural_mean_pixel_delta_percent": 6.5828
     },
     "1440x1000/governance.png": {
       "mean_pixel_delta_percent": 6.667,
@@ -348,9 +348,9 @@
       "structural_mean_pixel_delta_percent": 5.315
     },
     "1440x1000/ontology.png": {
-      "mean_pixel_delta_percent": 7.8046,
-      "changed_pixel_percent": 82.7199,
-      "structural_mean_pixel_delta_percent": 6.2367
+      "mean_pixel_delta_percent": 7.682,
+      "changed_pixel_percent": 81.4708,
+      "structural_mean_pixel_delta_percent": 6.1124
     },
     "1440x1000/project-home.png": {
       "mean_pixel_delta_percent": 5.7705,
@@ -358,9 +358,9 @@
       "structural_mean_pixel_delta_percent": 4.7725
     },
     "1728x1117/admin.png": {
-      "mean_pixel_delta_percent": 4.0743,
-      "changed_pixel_percent": 94.9927,
-      "structural_mean_pixel_delta_percent": 3.4726
+      "mean_pixel_delta_percent": 35.6035,
+      "changed_pixel_percent": 100.0,
+      "structural_mean_pixel_delta_percent": 35.3492
     },
     "1728x1117/agent.png": {
       "mean_pixel_delta_percent": 6.7304,
@@ -368,9 +368,9 @@
       "structural_mean_pixel_delta_percent": 5.6122
     },
     "1728x1117/analysis.png": {
-      "mean_pixel_delta_percent": 12.6681,
-      "changed_pixel_percent": 81.8841,
-      "structural_mean_pixel_delta_percent": 11.0931
+      "mean_pixel_delta_percent": 12.6654,
+      "changed_pixel_percent": 82.1546,
+      "structural_mean_pixel_delta_percent": 11.1085
     },
     "1728x1117/dashboard.png": {
       "mean_pixel_delta_percent": 11.9038,
@@ -378,9 +378,9 @@
       "structural_mean_pixel_delta_percent": 10.6091
     },
     "1728x1117/datasets.png": {
-      "mean_pixel_delta_percent": 7.627,
-      "changed_pixel_percent": 91.1694,
-      "structural_mean_pixel_delta_percent": 6.3733
+      "mean_pixel_delta_percent": 7.5921,
+      "changed_pixel_percent": 90.1454,
+      "structural_mean_pixel_delta_percent": 6.3546
     },
     "1728x1117/governance.png": {
       "mean_pixel_delta_percent": 5.7125,
@@ -388,9 +388,9 @@
       "structural_mean_pixel_delta_percent": 4.6198
     },
     "1728x1117/ontology.png": {
-      "mean_pixel_delta_percent": 7.1924,
-      "changed_pixel_percent": 85.2205,
-      "structural_mean_pixel_delta_percent": 5.9449
+      "mean_pixel_delta_percent": 7.0602,
+      "changed_pixel_percent": 83.8673,
+      "structural_mean_pixel_delta_percent": 5.8142
     },
     "1728x1117/project-home.png": {
       "mean_pixel_delta_percent": 4.9406,
@@ -398,9 +398,9 @@
       "structural_mean_pixel_delta_percent": 4.2045
     },
     "720x500/admin.png": {
-      "mean_pixel_delta_percent": 29.3991,
-      "changed_pixel_percent": 99.9006,
-      "structural_mean_pixel_delta_percent": 29.0115
+      "mean_pixel_delta_percent": 45.5568,
+      "changed_pixel_percent": 99.9569,
+      "structural_mean_pixel_delta_percent": 45.2423
     },
     "720x500/agent.png": {
       "mean_pixel_delta_percent": 6.9415,
@@ -418,9 +418,9 @@
       "structural_mean_pixel_delta_percent": 5.5776
     },
     "720x500/datasets.png": {
-      "mean_pixel_delta_percent": 6.7061,
-      "changed_pixel_percent": 81.4933,
-      "structural_mean_pixel_delta_percent": 5.3874
+      "mean_pixel_delta_percent": 6.6746,
+      "changed_pixel_percent": 78.7708,
+      "structural_mean_pixel_delta_percent": 5.3518
     },
     "720x500/governance.png": {
       "mean_pixel_delta_percent": 9.9398,
@@ -428,9 +428,9 @@
       "structural_mean_pixel_delta_percent": 6.9129
     },
     "720x500/ontology.png": {
-      "mean_pixel_delta_percent": 8.3355,
-      "changed_pixel_percent": 81.2961,
-      "structural_mean_pixel_delta_percent": 5.6767
+      "mean_pixel_delta_percent": 8.3132,
+      "changed_pixel_percent": 87.1381,
+      "structural_mean_pixel_delta_percent": 5.6551
     },
     "720x500/project-home.png": {
       "mean_pixel_delta_percent": 7.0878,

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { EChartsType } from "echarts/core";
+import { observeElementSize } from "../../ui/foundry/resizeObserver";
 
 export type DashboardChartOption = Record<string, unknown>;
 
@@ -40,10 +41,9 @@ export function EChartRuntime({
     const handleBrush = (params: unknown) => brushRef.current?.(params);
     chart.on("click", handleClick);
     chart.on("brushSelected", handleBrush);
-    const observer = new ResizeObserver(() => chart.resize());
-    observer.observe(host);
+    const stopObserving = observeElementSize(host, () => chart.resize());
     return () => {
-      observer.disconnect();
+      stopObserving();
       chart.off("click", handleClick);
       chart.off("brushSelected", handleBrush);
       chart.dispose();

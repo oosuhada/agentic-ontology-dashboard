@@ -40,17 +40,21 @@ export function BoardInspector({
   return (
     <aside className="dashboard-inspector">
       <header className="inspector-header">
-        <div><span className="section-label">Board Inspector</span><strong>{definition.display_name}</strong></div>
+        <div><span className="section-label">RESOURCE INSPECTOR</span><strong>{definition.display_name}</strong><small>{currentTabId ?? "dashboard"} / {board.id}</small></div>
         <button type="button" onClick={onClose}>닫기</button>
       </header>
 
-      <div className="inspector-definition">
+      <nav className="dashboard-inspector-nav" aria-label="Board inspector sections">
+        <a href="#board-configuration">Configuration</a><a href="#board-layout">Layout</a><a href="#board-contract">Data contract</a><a href="#board-runtime">Runtime</a>
+      </nav>
+
+      <div className="inspector-definition" id="board-configuration">
         <span>{definition.category.toUpperCase()}</span>
         <p>{definition.description}</p>
         <code>{definition.id}</code>
       </div>
 
-      <label className="context-field">
+      <label className="context-field" id="board-layout">
         Board 제목
         <input value={board.title} onChange={(event) => onUpdate({ title: event.target.value })} />
       </label>
@@ -116,7 +120,7 @@ export function BoardInspector({
       {board.mandatory ? <small className="mandatory-note">필수 board는 숨기거나 삭제할 수 없습니다.</small> : null}
 
       {Object.keys(definition.binding_schema).length ? (
-        <section className="inspector-section">
+        <section className="inspector-section" id="board-contract">
           <span className="section-label">Bindings</span>
           {Object.entries(definition.binding_schema).map(([bindingId, valueType]) => (
             <label key={bindingId} className="context-field">
@@ -158,7 +162,7 @@ export function BoardInspector({
         </label>
       ) : null}
 
-      <section className="inspector-section">
+      <section className="inspector-section" id="board-runtime">
         <span className="section-label">Runtime</span>
         <div className="inspector-contract">
           <span>Renderer</span><code>{definition.renderer}</code>

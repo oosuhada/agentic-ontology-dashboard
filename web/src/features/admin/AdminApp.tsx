@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Activity, AppWindow, CheckSquare, LayoutDashboard, LogOut, RefreshCw, ShieldCheck, Users, UserRoundCog } from "lucide-react";
 import {
   decideModelReleaseRequest,
   decideTemplatePublishRequest,
@@ -173,12 +174,13 @@ export function AdminApp() {
           <span className="brand-mark">OD</span>
           <div><strong>Ontology Dashboard</strong><small>Administrator control plane</small></div>
         </div>
+        <span className="admin-nav-section">CONTROL PLANE</span>
         <nav className="admin-nav" aria-label="관리자 메뉴">
-          <button className={tab === "overview" ? "active" : ""} onClick={() => setTab("overview")}>Overview</button>
-          <button className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}>Users</button>
-          <button className={tab === "roles" ? "active" : ""} onClick={() => setTab("roles")}>Roles & Permissions</button>
-          <button className={tab === "approvals" ? "active" : ""} onClick={() => setTab("approvals")}>Workflow Approvals</button>
-          <button className={tab === "audit" ? "active" : ""} onClick={() => setTab("audit")}>Audit Logs</button>
+          <button className={tab === "overview" ? "active" : ""} onClick={() => setTab("overview")}><LayoutDashboard size={14} /><span>Overview</span></button>
+          <button className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}><Users size={14} /><span>Users</span></button>
+          <button className={tab === "roles" ? "active" : ""} onClick={() => setTab("roles")}><UserRoundCog size={14} /><span>Roles & Permissions</span></button>
+          <button className={tab === "approvals" ? "active" : ""} onClick={() => setTab("approvals")}><CheckSquare size={14} /><span>Workflow Approvals</span></button>
+          <button className={tab === "audit" ? "active" : ""} onClick={() => setTab("audit")}><Activity size={14} /><span>Audit Logs</span></button>
         </nav>
         <div className="admin-boundary-note">
           <strong>FDE ≠ Tenant Admin</strong>
@@ -186,15 +188,16 @@ export function AdminApp() {
         </div>
         <div className="sidebar-user">
           <div><strong>{user.display_name}</strong><small>{user.email}</small></div>
-          <button onClick={() => navigate("/app")}>사용자 앱</button>
-          <button onClick={handleLogout}>로그아웃</button>
+          <button onClick={() => navigate("/app")}><AppWindow size={12} /> 사용자 앱</button>
+          <button onClick={handleLogout}><LogOut size={12} /> 로그아웃</button>
         </div>
       </aside>
 
       <main className="admin-main">
+        <div className="admin-platform-bar"><span><ShieldCheck size={12} /> Tenant control plane</span><div><span>Ontology Dashboard</span><span>Production policy</span><strong>{user.display_name}</strong></div></div>
         <header className="admin-topbar">
-          <div><span className="eyebrow">TENANT ADMIN</span><h1>{tab === "overview" ? "관리자 Overview" : tab === "users" ? "사용자 승인과 접근 범위" : tab === "roles" ? "역할과 권한 경계" : tab === "approvals" ? "Template·Model 승인 요청" : "관리자 변경 감사"}</h1></div>
-          <button className="secondary" onClick={load}>새로고침</button>
+          <div><span className="eyebrow">TENANT ADMIN / {tab.toUpperCase()}</span><h1>{tab === "overview" ? "관리자 Overview" : tab === "users" ? "사용자 승인과 접근 범위" : tab === "roles" ? "역할과 권한 경계" : tab === "approvals" ? "Template·Model 승인 요청" : "관리자 변경 감사"}</h1><p>Tenant-level identity, policy, approval and audit resources.</p></div>
+          <button className="secondary" onClick={load}><RefreshCw size={12} /> 새로고침</button>
         </header>
 
         {error ? <div className="error-panel" role="alert"><strong>관리자 API 오류</strong><p>{error}</p></div> : null}

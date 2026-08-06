@@ -23,6 +23,8 @@ const NODE_TYPES = { analysisStep: AnalysisBoardCard };
 
 interface InsertEdgeData extends Record<string, unknown> {
   onInsert?: () => void;
+  contract?: string;
+  semantic?: "filter" | "join" | "transform";
 }
 
 function AnalysisInsertEdge(props: EdgeProps) {
@@ -32,19 +34,10 @@ function AnalysisInsertEdge(props: EdgeProps) {
     <>
       <BaseEdge path={edgePath} markerEnd={props.markerEnd} style={props.style} />
       <EdgeLabelRenderer>
-        <button
-          type="button"
-          className="analysis-edge-insert nodrag nopan"
-          style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)` }}
-          title="Add board after current step"
-          aria-label="Add board after current step"
-          onClick={(event) => {
-            event.stopPropagation();
-            data?.onInsert?.();
-          }}
-        >
-          <Plus size={11} />
-        </button>
+        <div className={`analysis-edge-label semantic-${data?.semantic ?? "transform"} nodrag nopan`} style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)` }}>
+          <span>{data?.contract ?? "rows<T>"}</span>
+          <button type="button" title="Add board after current step" aria-label="Add board after current step" onClick={(event) => { event.stopPropagation(); data?.onInsert?.(); }}><Plus size={11} /></button>
+        </div>
       </EdgeLabelRenderer>
     </>
   );
@@ -97,13 +90,25 @@ export function AnalysisPathCanvas({
     [nodes],
   );
   const insertEdges = useMemo(
-    () => edges.map((edge) => ({
-      ...edge,
-      type: "analysisInsert",
-      animated: false,
-      data: { ...(edge.data ?? {}), onInsert: onInsertStep },
-    })),
-    [edges, onInsertStep],
+    () => {
+      const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+      return edges.map((edge) => {
+        const source = nodeMap.get(edge.source);
+        const target = nodeMap.get(edge.target);
+        const semantic = source?.data.kind === "filter" ? "filter" : target?.data.kind === "join" ? "join" : "transform";
+        const contract = source?.data.kind === "filter" ? "matched rows" : target?.data.kind === "join" ? "join input" : source?.data.outputKind ?? "rows<T>";
+        return {
+          ...edge,
+          sourceHandle: "output",
+          targetHandle: "input",
+          type: "analysisInsert",
+          animated: false,
+          style: { strokeWidth: semantic === "join" ? 2 : 1.2, strokeDasharray: semantic === "filter" ? "4 3" : undefined },
+          data: { ...(edge.data ?? {}), onInsert: onInsertStep, contract, semantic },
+        };
+      });
+    },
+    [edges, nodes, onInsertStep],
   );
 
   return (

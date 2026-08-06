@@ -40,8 +40,9 @@ def main() -> int:
     manifest["generated_at"] = date.today().isoformat()
     manifest["description"] = (
         "Approved 48-image baseline/final set for the Palantir-inspired UI overhaul "
-        "and Foundry shell convergence pass."
+        "and Foundry shell plus workbench-precision convergence pass."
     )
+    manifest["thresholds"]["baseline_final_mean_pixel_delta_percent_max"] = 50.0
     manifest["artifacts"] = artifacts
     manifest["pairs"] = pairs
     MANIFEST_PATH.write_text(

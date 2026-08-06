@@ -77,7 +77,10 @@ async function capture(page: Page, viewportName: string, name: string, route: st
   if (name === "ontology") {
     const objectSearch = page.getByLabel("Ontology object property search");
     await objectSearch.fill("M-014");
-    await expect(page.locator(".ontology-object-table .fd-resource-table__row").filter({ hasText: "M-014" }).first()).toBeVisible({ timeout: 45_000 });
+    const objectRow = page.locator(".ontology-object-table .fd-resource-table__row").filter({ hasText: "M-014" }).first();
+    await expect(objectRow).toBeVisible({ timeout: 45_000 });
+    await objectRow.click();
+    await expect(page.locator(".ontology-object-entity-header")).toContainText("M-014");
   }
   if (name === "governance") {
     await page.getByRole("button", { name: "Access & Policy", exact: true }).click();
@@ -197,7 +200,7 @@ test("UI-08 Dataset and Governance use dense record tables with persistent entit
   await expect(page.getByRole("navigation", { name: "Dataset inspector sections" })).toBeVisible();
   await page.getByRole("button", { name: /Schema/ }).click();
   await expect(page.locator(".dataset-catalog-detail-pane .fd-property-table")).toBeVisible();
-  await page.getByRole("button", { name: /Projections/ }).click();
+  await page.getByRole("navigation", { name: "Dataset inspector sections" }).getByRole("button", { name: /Projections/ }).click();
   await expect(page.locator(".dataset-projection-inspector")).toBeVisible();
 
   await page.context().clearCookies();

@@ -168,9 +168,10 @@ test("dashboard edit mode persists a catalog text board and protects mandatory b
   await expect(mandatoryFrame.getByRole("button", { name: "삭제", exact: true })).toBeDisabled();
 
   await page.getByRole("button", { name: "Board Catalog", exact: true }).click();
-  const textCard = page.locator(".catalog-card").filter({ hasText: "Text Board" });
-  await textCard.getByRole("button", { name: "이 탭에 추가" }).click();
-  await page.locator(".board-catalog-panel").getByRole("button", { name: "닫기" }).click();
+  const catalog = page.getByRole("dialog", { name: "Board Catalog" });
+  await catalog.locator(".catalog-resource-row").filter({ hasText: "Text Board" }).click();
+  await catalog.locator(".catalog-add-selected").click();
+  await catalog.getByRole("button", { name: "닫기" }).click();
   const addedTextFrame = page.locator(".dashboard-board-frame").filter({ hasText: "Text Board" }).last();
   await expect(addedTextFrame).toBeVisible({ timeout: 20_000 });
   await addedTextFrame.click();
