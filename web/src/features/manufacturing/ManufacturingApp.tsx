@@ -36,11 +36,13 @@ import { DashboardShell } from "../dashboard/DashboardShell";
 import type {
   BoardCatalogDefinition,
   BoardCategory,
+  BoardVisualizationRuntime,
   DashboardBoard,
   DashboardMode,
   ResolvedDashboard,
   SavedView,
   SelectionFilter,
+  VisualizationSettings,
 } from "../dashboard/types";
 import { cloneDashboard } from "../dashboard/utils";
 import {
@@ -55,6 +57,8 @@ import type { DashboardDraftResponse } from "../planner/types";
 import { primaryRole, ROLE_LANDING } from "./roleLanding";
 import { useEventDetail, useRoleWorkspace, useWorkspaceCatalog } from "./useManufacturingData";
 import { useDashboardEditor } from "./useDashboardEditor";
+import { VisualizationSwitcher } from "../dashboard/visualization/VisualizationSwitcher";
+import { visualizationSettings } from "../dashboard/visualization/visualizationProfile";
 
 const AnalysisWorkbench = lazy(() =>
   import("../dashboard/AnalysisWorkbench").then((module) => ({ default: module.AnalysisWorkbench })),
@@ -218,6 +222,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
   const [fullscreenBoardId, setFullscreenBoardId] = useState<string | null>(null);
   const [affectedBoards, setAffectedBoards] = useState<string[]>([]);
   const [selectionFilters, setSelectionFilters] = useState<SelectionFilter[]>([]);
+  const [visualizationRuntimeByBoard, setVisualizationRuntimeByBoard] = useState<Record<string, BoardVisualizationRuntime>>({});
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogCategory, setCatalogCategory] = useState<BoardCategory | "all">("all");
@@ -437,6 +442,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     handleMoveBoard,
     handleLayoutChange,
     handleUpdateBoard,
+    handleUpdateBoardById,
     handleRemoveBoard,
     handleToggleHidden,
     handleToggleFavorite,
@@ -455,6 +461,23 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
     setError,
     onBeforeChange: pushDashboardHistory,
   });
+
+  const handleVisualizationRuntime = useCallback((boardId: string, runtime: BoardVisualizationRuntime) => {
+    setVisualizationRuntimeByBoard((current) => {
+      const previous = current[boardId];
+      if (previous
+        && previous.active_kind === runtime.active_kind
+        && previous.mode === runtime.mode
+        && previous.recommendation.profile_hash === runtime.recommendation.profile_hash) return current;
+      return { ...current, [boardId]: runtime };
+    });
+  }, []);
+
+  function handleVisualizationChange(boardId: string, visualization: VisualizationSettings) {
+    const board = draftDashboard?.tabs.flatMap((tab) => tab.boards).find((item) => item.id === boardId);
+    if (!board) return;
+    handleUpdateBoardById(boardId, { settings: { ...board.settings, visualization } });
+  }
 
   function handleUndo() {
     const previous = undoStack.at(-1);
@@ -1045,6 +1068,21 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
         selectedBoardId={selectedBoardId}
         fullscreenBoardId={fullscreenBoardId}
         affectedBoardIds={affectedBoards}
+        renderBoardHeader={(board) => {
+          const definition = definitionById.get(board.definition_id);
+          const visualizationCapable = definition?.renderer === "GenericDataBoard" || definition?.renderer === "AnalysisReference";
+          if (!visualizationCapable) return null;
+          const runtime = visualizationRuntimeByBoard[board.id];
+          if (!runtime) return <span className="visualization-switcher-skeleton" role="status" aria-label="Visualization profile loading" />;
+          return (
+            <VisualizationSwitcher
+              runtime={runtime}
+              settings={visualizationSettings(board.settings.visualization)}
+              onChange={(settings) => handleVisualizationChange(board.id, settings)}
+              compact
+            />
+          );
+        }}
         renderBoard={(board) => {
           const definition = definitionById.get(board.definition_id);
           if (!definition) return <div className="card"><p>Board definition을 찾을 수 없습니다: {board.definition_id}</p></div>;
@@ -1082,6 +1120,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
               roleWorkspaceData={roleWorkspaceData}
               onSelectEvent={handleSelectEvent}
               onSelectionFilter={handleSelectionFilter}
+              onVisualizationRuntime={handleVisualizationRuntime}
               onAuditCheckpoint={handleAuditCheckpoint}
               onFieldAction={handleFieldAction}
               onApplyPlannerDraft={(draft) => void handleApplyPlannerDraft(draft)}
@@ -1115,6 +1154,9 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       definition={selectedDefinition}
       tabs={draftDashboard.tabs}
       currentTabId={selectedBoardTabId}
+      visualizationRuntime={selectedBoardId ? visualizationRuntimeByBoard[selectedBoardId] ?? null : null}
+      workspaceId={selectedWorkspaceId}
+      dashboardId={draftDashboard.dashboard_id}
       onUpdate={handleUpdateBoard}
       onMove={(targetTabId) => selectedBoardId && handleMoveBoard(selectedBoardId, targetTabId)}
       onClose={() => setSelectedBoardId(null)}

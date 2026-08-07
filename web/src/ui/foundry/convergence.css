@@ -79,7 +79,7 @@
   border: 1px solid rgba(255,255,255,.16);
   border-radius: 2px;
   color: #fff;
-  background: #2d72d2;
+  background: var(--od-brand-primary);
   font-size: 9px;
   font-weight: 900;
   letter-spacing: .05em;

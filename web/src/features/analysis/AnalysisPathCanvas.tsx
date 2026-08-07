@@ -13,6 +13,7 @@ import {
 } from "@xyflow/react";
 import { Plus } from "lucide-react";
 import { ChartPanel } from "../../ui/foundry/ChartPanel";
+import { CHART_NEUTRAL, CHART_SERIES } from "../../ui/foundry/chartPalette";
 import { StatusPill } from "../../ui/foundry/StatusPill";
 import type { DashboardChartOption } from "../dashboard/EChartCanvas";
 import { EChartCanvas } from "../dashboard/EChartCanvas";
@@ -76,9 +77,9 @@ export function AnalysisPathCanvas({
     backgroundColor: "transparent",
     grid: { top: 18, right: 14, bottom: 30, left: 42 },
     tooltip: { trigger: "axis" },
-    xAxis: { type: "category", data: result.grouped.map((group) => group.key), axisLabel: { color: "#738091", fontSize: 9 } },
-    yAxis: { type: "value", max: 100, axisLabel: { formatter: "{value}%", color: "#738091", fontSize: 9 }, splitLine: { lineStyle: { color: "#e5e9ef" } } },
-    series: [{ type: "bar", data: result.grouped.map((group) => Number((group.averageRisk * 100).toFixed(2))), itemStyle: { color: "#2d72d2", borderRadius: [2, 2, 0, 0] }, barMaxWidth: 34 }],
+    xAxis: { type: "category", data: result.grouped.map((group) => group.key), axisLabel: { color: CHART_NEUTRAL.muted, fontSize: 9 } },
+    yAxis: { type: "value", max: 100, axisLabel: { formatter: "{value}%", color: CHART_NEUTRAL.muted, fontSize: 9 }, splitLine: { lineStyle: { color: CHART_NEUTRAL.border } } },
+    series: [{ type: "bar", data: result.grouped.map((group) => Number((group.averageRisk * 100).toFixed(2))), itemStyle: { color: CHART_SERIES[0], borderRadius: [2, 2, 0, 0] }, barMaxWidth: 34 }],
   }), [result.grouped]);
 
   const verticalNodes = useMemo(

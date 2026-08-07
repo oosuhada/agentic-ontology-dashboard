@@ -43,6 +43,7 @@ button, input, select, textarea { line-height: var(--od-leading-control); }
 }
 .od-workbench-toolbar, .dashboard-tabs > button { min-height: var(--od-toolbar-height); height: var(--od-toolbar-height); }
 .dashboard-board-header { min-height: var(--od-board-header-height); }
+.dashboard-board-actions { position: relative; z-index: 30; }
 .generic-data-table-head button, .generic-data-table-body > button,
 .fd-dense-table__head button, .fd-dense-table__row, .tanstack-grid-row {
   min-height: var(--od-table-row-height);

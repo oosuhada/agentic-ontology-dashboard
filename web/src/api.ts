@@ -4,6 +4,7 @@ import type {
   ExportArtifact,
   GroundedNarrativeResponse,
   ObjectQueryPlanResponse,
+  VisualizationPlannerResponse,
 } from "./features/planner/types";
 import type { AgentQueryInput, AgentRunPage, AgentRunResponse } from "./features/agent/types";
 import type {
@@ -28,6 +29,8 @@ import type {
 } from "./features/governance/types";
 import type {
   BoardCatalogDefinition,
+  VisualizationCandidate,
+  VisualizationFieldProfile,
   DashboardShareCreated,
   DashboardSharePayload,
   DashboardTab,
@@ -921,6 +924,21 @@ export function generateDashboardDraft(input: {
   return request<DashboardDraftResponse>("/api/planner/dashboard-drafts", {
     method: "POST",
     body: JSON.stringify({ use_llm: true, max_new_boards: 4, ...input }),
+  });
+}
+
+export function recommendVisualization(input: {
+  workspace_id: string;
+  dashboard_id: string;
+  board_id: string;
+  goal: string;
+  field_profile: VisualizationFieldProfile[];
+  deterministic_candidates: VisualizationCandidate[];
+  use_llm?: boolean;
+}): Promise<VisualizationPlannerResponse> {
+  return request<VisualizationPlannerResponse>("/api/planner/visualizations/recommend", {
+    method: "POST",
+    body: JSON.stringify({ use_llm: true, ...input }),
   });
 }
 

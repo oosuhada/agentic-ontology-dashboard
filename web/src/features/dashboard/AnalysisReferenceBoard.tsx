@@ -1,25 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ExternalLink, LoaderCircle } from "lucide-react";
+import { AlertTriangle, ExternalLink } from "lucide-react";
 import { getAnalysisNodeResult } from "../../api";
 import { navigate } from "../../routing";
+import { ChartPanel } from "../../ui/foundry/ChartPanel";
 import type { AnalysisNodeResultResponse } from "../analysis/types";
-import type { BoardSourceReference, RenderSpec, SelectionFilter } from "./types";
+import type { BoardVisualizationRuntime, DashboardBoard, RenderSpec, SelectionFilter } from "./types";
 import { DataTableRenderer, type DataTableColumn, type TableDatum } from "./renderers/DataTableRenderer";
 import { EChartsRenderer, type ChartDatum } from "./renderers/EChartsRenderer";
 import { MetricRenderer } from "./renderers/MetricRenderer";
+import { recommendVisualization, resolveVisualizationSpec, visualizationSettings } from "./visualization/visualizationProfile";
 
 interface AnalysisReferenceBoardProps {
-  boardId: string;
-  title: string;
-  source: BoardSourceReference | null | undefined;
+  board: DashboardBoard;
   workspaceId: string;
   onSelectionFilter?: (filter: SelectionFilter) => void;
+  onVisualizationRuntime?: (boardId: string, runtime: BoardVisualizationRuntime) => void;
 }
 
-const CHART_KINDS = new Set(["bar", "line", "pie", "histogram"]);
+const CHART_KINDS = new Set(["bar", "stacked_bar", "line", "area", "pie", "histogram", "scatter", "heatmap"]);
 
 function normalizeRenderSpec(value: Record<string, unknown>): RenderSpec {
-  const kind = typeof value.kind === "string" && ["metric", "bar", "line", "pie", "histogram", "table"].includes(value.kind)
+  const kind = typeof value.kind === "string" && ["metric", "table", "bar", "stacked_bar", "line", "area", "pie", "histogram", "scatter", "heatmap"].includes(value.kind)
     ? value.kind as RenderSpec["kind"]
     : "table";
   return {
@@ -60,12 +61,12 @@ function freshnessLabel(generatedAt: string, freshnessAt: string | null) {
 }
 
 export function AnalysisReferenceBoard({
-  boardId,
-  title,
-  source,
+  board,
   workspaceId,
   onSelectionFilter,
+  onVisualizationRuntime,
 }: AnalysisReferenceBoardProps) {
+  const source = board.source;
   const [payload, setPayload] = useState<AnalysisNodeResultResponse | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -95,16 +96,26 @@ export function AnalysisReferenceBoard({
   const rows = payload?.result.rows ?? [];
   const renderSpec = useMemo(() => normalizeRenderSpec(payload?.render_spec ?? {}), [payload]);
   const columns = useMemo(() => columnsFor(rows), [rows]);
+  const recommendation = useMemo(() => recommendVisualization(rows, renderSpec), [renderSpec, rows]);
+  const settings = useMemo(() => visualizationSettings(board.settings.visualization), [board.settings.visualization]);
+  const resolvedSpec = useMemo(() => resolveVisualizationSpec(renderSpec, recommendation, settings), [recommendation, renderSpec, settings]);
+  useEffect(() => {
+    onVisualizationRuntime?.(board.id, {
+      recommendation,
+      active_kind: resolvedSpec.kind as BoardVisualizationRuntime["active_kind"],
+      mode: settings.mode,
+    });
+  }, [board.id, onVisualizationRuntime, recommendation, resolvedSpec.kind, settings.mode]);
 
   if (!source) return <div className="od-non-ideal-state"><strong>Analysis reference missing</strong></div>;
-  if (loading && !payload) return <div className="od-non-ideal-state"><LoaderCircle className="spin" /><strong>Analysis result loading</strong></div>;
+  if (loading && !payload) return <ChartPanel state="loading" stateTitle="Analysis result loading" stateDetail="Published node result와 visualization profile을 불러오고 있습니다."><span /></ChartPanel>;
   if (error) return <div className="od-non-ideal-state"><AlertTriangle /><strong>Analysis result unavailable</strong><span>{error}</span></div>;
   if (!payload) return null;
 
   return (
     <section className="advanced-board analysis-reference-runtime">
       <header className="advanced-toolbar">
-        <div><strong>{title}</strong><small>Analysis v{payload.analysis_version} · run {payload.run_id}</small></div>
+        <div><strong>{board.title}</strong><small>Analysis v{payload.analysis_version} · run {payload.run_id}</small></div>
         <div className="advanced-toolbar-actions">
           <span className="runtime-badge">{source.version_policy}</span>
           <span className="runtime-badge">UTC · {freshnessLabel(payload.generated_at, payload.result.source_freshness_at)}</span>
@@ -112,15 +123,15 @@ export function AnalysisReferenceBoard({
         </div>
       </header>
       {payload.result.warnings.length ? <div className="analysis-reference-warnings">{payload.result.warnings.map((warning) => <span key={warning}><AlertTriangle size={11} />{warning}</span>)}</div> : null}
-      {CHART_KINDS.has(renderSpec.kind) ? (
+      {CHART_KINDS.has(resolvedSpec.kind) ? (
         <EChartsRenderer
-          boardId={boardId}
+          boardId={board.id}
           rows={rows as ChartDatum[]}
-          spec={renderSpec}
-          ariaLabel={`${title} analysis result chart`}
+          spec={resolvedSpec}
+          ariaLabel={`${board.title} analysis result chart`}
           onSelection={onSelectionFilter}
         />
-      ) : renderSpec.kind === "metric" ? (
+      ) : resolvedSpec.kind === "metric" ? (
         <MetricRenderer
           metrics={rows.slice(0, 6).map((row, index) => ({
             id: String(row.metric ?? row.id ?? index),
@@ -130,7 +141,7 @@ export function AnalysisReferenceBoard({
         />
       ) : (
         <DataTableRenderer
-          boardId={boardId}
+          boardId={board.id}
           rows={rows as TableDatum[]}
           columns={columns}
           rowKey={columns.find((column) => column.id === "event_id")?.id ?? columns[0]?.id ?? "id"}

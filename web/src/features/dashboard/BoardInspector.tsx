@@ -1,10 +1,14 @@
-import type { BoardCatalogDefinition, BoardWidth, DashboardBoard, DashboardTab } from "./types";
+import type { BoardCatalogDefinition, BoardVisualizationRuntime, BoardWidth, DashboardBoard, DashboardTab } from "./types";
+import { VisualizationInspector } from "./visualization/VisualizationInspector";
 
 interface BoardInspectorProps {
   board: DashboardBoard | null;
   definition: BoardCatalogDefinition | null;
   tabs: DashboardTab[];
   currentTabId: string | null;
+  visualizationRuntime?: BoardVisualizationRuntime | null;
+  workspaceId: string;
+  dashboardId: string;
   onUpdate: (update: Partial<DashboardBoard>) => void;
   onMove: (targetTabId: string) => void;
   onClose: () => void;
@@ -15,6 +19,9 @@ export function BoardInspector({
   definition,
   tabs,
   currentTabId,
+  visualizationRuntime = null,
+  workspaceId,
+  dashboardId,
   onUpdate,
   onMove,
   onClose,
@@ -45,7 +52,7 @@ export function BoardInspector({
       </header>
 
       <nav className="dashboard-inspector-nav" aria-label="Board inspector sections">
-        <a href="#board-configuration">Configuration</a><a href="#board-layout">Layout</a><a href="#board-contract">Data contract</a><a href="#board-runtime">Runtime</a>
+        <a href="#board-configuration">Configuration</a><a href="#board-layout">Layout</a>{visualizationRuntime ? <a href="#board-visualization">Visualization</a> : null}<a href="#board-contract">Data contract</a><a href="#board-runtime">Runtime</a>
       </nav>
 
       <div className="inspector-definition" id="board-configuration">
@@ -160,6 +167,16 @@ export function BoardInspector({
             placeholder="HTML과 script는 저장할 수 없습니다."
           />
         </label>
+      ) : null}
+
+      {visualizationRuntime ? (
+        <VisualizationInspector
+          board={board}
+          runtime={visualizationRuntime}
+          workspaceId={workspaceId}
+          dashboardId={dashboardId}
+          onUpdate={(visualization) => onUpdate({ settings: { ...board.settings, visualization } })}
+        />
       ) : null}
 
       <section className="inspector-section" id="board-runtime">

@@ -1,7 +1,7 @@
 .auth-page { display: grid; min-height: 100vh; grid-template-rows: 34px minmax(0,1fr); color: var(--fd-text); background: var(--fd-canvas); }
 .auth-platform-bar { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #344150; padding: 0 8px; color: #d7dee8; background: #18212d; }
 .auth-brand { display: flex; align-items: center; gap: 7px; border: 0; color: inherit; background: transparent; text-align: left; }
-.auth-brand .brand-mark { display: grid; width: 23px; height: 23px; place-items: center; border: 1px solid #64748b; border-radius: 2px; color: #fff; background: #2d72d2; font-size: 8px; font-weight: 900; }
+.auth-brand .brand-mark { display: grid; width: 23px; height: 23px; place-items: center; border: 1px solid var(--fd-border-strong); border-radius: 2px; color: #fff; background: var(--od-brand-primary); font-size: 8px; font-weight: 900; }
 .auth-brand > span:last-child { display: flex; flex-direction: column; gap: 0; }
 .auth-brand strong { font-size: 9px; }
 .auth-brand small { color: #94a3b8; font-size: 7px; }
