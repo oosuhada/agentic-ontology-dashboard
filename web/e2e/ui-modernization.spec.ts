@@ -94,7 +94,7 @@ test("analysis save publishes a server snapshot and dashboard table uses server 
   await expect(page.getByText(/Run .* succeeded/)).toBeVisible({ timeout: 45_000 });
   await expect(page.getByText("server run", { exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: /Save dataset/ }).click();
+  await page.getByRole("button", { name: /Dataset Version 생성|Save dataset|Create Dataset Version/ }).click();
   await expect(page.getByText(/생성 · .* rows/)).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/freshness ·/)).toBeVisible();
 

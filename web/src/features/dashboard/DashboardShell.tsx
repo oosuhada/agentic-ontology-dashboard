@@ -35,6 +35,9 @@ import { WorkbenchHeader, WorkbenchToolbar } from "../../ui/foundry/WorkbenchChr
 import { DisplayMenu } from "../../ui/foundry/DisplayMenu";
 import { useDisplayPreferences } from "../../ui/foundry/displayPreferences";
 import { FoundryProductNavigation } from "../../ui/foundry/FoundryProductNavigation";
+import { FoundryDrawer } from "../../ui/foundry/FoundryDrawer";
+import { useMediaQuery } from "../../ui/foundry/useMediaQuery";
+import { useI18n } from "../../ui/i18n/I18nProvider";
 import { FoundryDialog } from "../../ui/foundry/FoundryDialog";
 import { agentPath, datasetCatalogPath, governancePath, navigate, ontologyPath, projectHomePath } from "../../routing";
 import type { AppRole, AuthUser, DomainPack, Project, Workspace } from "../../types";
@@ -208,6 +211,8 @@ export function DashboardShell({
   const [mobileContextOpen, setMobileContextOpen] = useState(false);
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
+  const isCompactWorkbench = useMediaQuery("(max-width: 980px)");
+  const { t } = useI18n();
   const { preferences, setDensity } = useDisplayPreferences();
 
   const selectedProject = useMemo(() => projects.find((project) => project.id === selectedProjectId), [projects, selectedProjectId]);
@@ -297,19 +302,20 @@ export function DashboardShell({
         isAdmin={user.is_admin}
         onNavigate={(id) => openProductView(id as (typeof NAV_ITEMS)[number]["id"])}
         onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
+        onCloseMobile={() => setMobileNavOpen(false)}
         onAdmin={onAdmin}
         onLogout={onLogout}
       />
 
       <div className="od-shell-main">
         <header className="od-global-topbar">
-          <button type="button" className="od-mobile-menu" aria-label="Product navigation 열기" onClick={() => setMobileNavOpen((current) => !current)}><Menu size={17} /></button>
+          <button type="button" className="od-mobile-menu" aria-label={t("nav.open")} onClick={() => setMobileNavOpen((current) => !current)}><Menu size={17} /></button>
           <div className="od-breadcrumbs">
             <span>{selectedProject?.display_name ?? "Project"}</span><ChevronRight size={12} />
             <span>{selectedWorkspace?.display_name ?? "Workspace"}</span><ChevronRight size={12} />
             <strong>{workspaceView === "dashboard" ? activeTab?.title ?? "Dashboard" : "Analysis Path"}</strong>
           </div>
-          <button type="button" className="od-global-search" onClick={() => setCommandOpen(true)}><Search size={14} /><span>Search objects, boards, actions…</span><kbd>⌘K</kbd></button>
+          <button type="button" className="od-global-search" onClick={() => setCommandOpen(true)}><Search size={14} /><span>{t("nav.search")}</span><kbd>⌘K</kbd></button>
           <div className="od-topbar-actions">
             <DisplayMenu />
             <button type="button" title="테마 전환" onClick={() => setTheme((current) => current === "light" ? "dark" : "light")}>{theme === "light" ? <Moon size={15} /> : <Sun size={15} />}</button>
@@ -328,15 +334,15 @@ export function DashboardShell({
               subtitle={workspaceView === "dashboard"
                 ? `${selectedProject?.display_name ?? "Project"} / ${selectedWorkspace?.display_name ?? "Workspace"} · ${roleLabel}`
                 : `${selectedWorkspace?.display_name ?? "Workspace"} · Object set → transform → validate → publish`}
-              trailing={<div className="fd-entity-title__trailing"><span className="od-domain-pack-name">{domainPack?.display_name ?? "Manufacturing Operations"}</span><StatusPill intent={dirty ? "warning" : "success"}>{dirty ? "Unsaved changes" : "Saved"}</StatusPill></div>}
+              trailing={<div className="fd-entity-title__trailing"><span className="od-domain-pack-name">{domainPack?.display_name ?? "Manufacturing Operations"}</span><StatusPill intent={dirty ? "warning" : "success"}>{dirty ? t("common.unsaved") : t("common.saved")}</StatusPill></div>}
             />
           </div>}
           actions={<div className={`dashboard-scope-actions ${mobileScopeOpen ? "mobile-open" : ""}`}>
-            <button type="button" className="dashboard-mobile-scope-toggle" aria-expanded={mobileScopeOpen} aria-controls="dashboard-scope-controls" onClick={() => setMobileScopeOpen((current) => !current)}><Settings size={13} /> Scope</button>
+            <button type="button" className="dashboard-mobile-scope-toggle" aria-expanded={mobileScopeOpen} aria-controls="dashboard-scope-controls" onClick={() => setMobileScopeOpen((current) => !current)}><Settings size={13} /> {t("dashboard.scope")}</button>
             <div className="od-context-controls" id="dashboard-scope-controls">
-              <label>Project<select aria-label="Project" value={selectedProjectId} onChange={(event) => onProjectChange(event.target.value)}>{projects.map((project) => <option key={project.id} value={project.id}>{project.display_name}</option>)}</select></label>
-              <label>Workspace<select aria-label="Workspace" value={selectedWorkspaceId} onChange={(event) => onWorkspaceChange(event.target.value)}>{workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.display_name}</option>)}</select></label>
-              <label>Role<select aria-label="Role" value={activeRole} onChange={(event) => onActiveRoleChange(event.target.value as AppRole)}>{availableRoles.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}</select></label>
+              <label>{t("common.project")}<select aria-label={t("common.project")} value={selectedProjectId} onChange={(event) => onProjectChange(event.target.value)}>{projects.map((project) => <option key={project.id} value={project.id}>{project.display_name}</option>)}</select></label>
+              <label>{t("common.workspace")}<select aria-label={t("common.workspace")} value={selectedWorkspaceId} onChange={(event) => onWorkspaceChange(event.target.value)}>{workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.display_name}</option>)}</select></label>
+              <label>{t("common.role")}<select aria-label={t("common.role")} value={activeRole} onChange={(event) => onActiveRoleChange(event.target.value as AppRole)}>{availableRoles.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}</select></label>
             </div>
           </div>}
         />
@@ -351,8 +357,8 @@ export function DashboardShell({
         {workspaceView === "dashboard" ? (
           <WorkbenchToolbar
             className="dashboard-tab-toolbar od-workbench-toolbar"
-            label="Dashboard tabs and actions"
-            start={<nav className="dashboard-tabs" aria-label="Dashboard tabs">
+            label={t("dashboard.tabsActions")}
+            start={<nav className="dashboard-tabs" aria-label={t("dashboard.tabsActions")}>
               {tabs.filter((tab) => mode === "edit" || !tab.hidden).map((tab) => (
                 <button
                   key={tab.id}
@@ -370,26 +376,26 @@ export function DashboardShell({
                   }}
                   onClick={() => onActiveTabChange(tab.id)}
                 >
-                  {tab.title}{tab.custom ? <small>PERSONAL</small> : null}
+                  {tab.title}{tab.custom ? <small>{t("dashboard.personal").toUpperCase()}</small> : null}
                 </button>
               ))}
               {mode === "edit" ? <button type="button" className="add-tab-button" onClick={onAddTab}><Plus size={13} /> Tab</button> : null}
             </nav>}
             end={<div className="dashboard-edit-toolbar">
-              <div className="view-edit-switch" role="group" aria-label="Dashboard mode">
-                <button type="button" className={mode === "view" ? "active" : ""} onClick={() => onModeChange("view")}><Eye size={12} /> {mode === "edit" ? "완료" : "보기"}</button>
-                <button type="button" className={mode === "edit" ? "active" : ""} title="Dashboard 편집" onClick={() => onModeChange("edit")}><Blocks size={12} /> 편집</button>
+              <div className="view-edit-switch" role="group" aria-label={t("dashboard.mode")}>
+                <button type="button" className={mode === "view" ? "active" : ""} onClick={() => onModeChange("view")}><Eye size={12} /> {mode === "edit" ? t("common.done") : t("common.view")}</button>
+                <button type="button" className={mode === "edit" ? "active" : ""} title={t("common.edit")} onClick={() => onModeChange("edit")}><Blocks size={12} /> {t("common.edit")}</button>
               </div>
               {mode === "edit" ? <>
                 <button type="button" className="icon-button" aria-label="Undo dashboard edit" title="실행 취소 (⌘Z)" disabled={!canUndo} onClick={onUndo}><Undo2 size={13} /></button>
                 <button type="button" className="icon-button" aria-label="Redo dashboard edit" title="다시 실행 (⌘⇧Z)" disabled={!canRedo} onClick={onRedo}><Redo2 size={13} /></button>
-                <button type="button" className="secondary" aria-label="Board Catalog" onClick={onOpenCatalog}><Plus size={12} /> 보드 추가</button>
+                <button type="button" className="secondary" aria-label={t("dialog.boardCatalog")} onClick={onOpenCatalog}><Plus size={12} /> {t("dashboard.addBoard")}</button>
               </> : null}
-              <button type="button" className="secondary" aria-label="이름 있는 뷰 저장" onClick={onSaveView}><Sparkles size={12} /> 뷰 저장</button>
-              <button type="button" className="secondary" aria-label="공유 링크 만들기" onClick={onShare}><Share2 size={12} /> 공유</button>
-              <div className="dashboard-export-control"><select aria-label="내보내기 형식" value={exportFormat} onChange={(event) => setExportFormat(event.target.value as "json" | "csv" | "pdf")}><option value="pdf">PDF</option><option value="csv">CSV</option><option value="json">JSON</option></select><button type="button" className="secondary" disabled={exporting} onClick={() => onExport(exportFormat)}><Download size={12} />{exporting ? "내보내는 중" : "내보내기"}</button></div>
-              <button type="button" className="icon-button" title="역할 기본값 복원" onClick={onRestore}><RotateCcw size={13} /></button>
-              <button type="button" className="primary" aria-label={saving ? "저장 중" : dirty ? "개인 레이아웃 저장" : "개인 레이아웃 저장됨"} disabled={!dirty || saving} onClick={onSave}><Save size={13} />{saving ? "저장 중" : dirty ? "레이아웃 저장" : "저장됨"}</button>
+              <button type="button" className="secondary" aria-label={t("dashboard.saveView")} onClick={onSaveView}><Sparkles size={12} /> {t("dashboard.saveView")}</button>
+              <button type="button" className="secondary" aria-label={t("common.share")} onClick={onShare}><Share2 size={12} /> {t("common.share")}</button>
+              <div className="dashboard-export-control"><select aria-label={t("dashboard.exportFormat")} value={exportFormat} onChange={(event) => setExportFormat(event.target.value as "json" | "csv" | "pdf")}><option value="pdf">PDF</option><option value="csv">CSV</option><option value="json">JSON</option></select><button type="button" className="secondary" disabled={exporting} onClick={() => onExport(exportFormat)}><Download size={12} />{exporting ? t("common.exporting") : t("common.export")}</button></div>
+              <button type="button" className="icon-button" title={t("dashboard.restore")} onClick={onRestore}><RotateCcw size={13} /></button>
+              <button type="button" className="primary" aria-label={saving ? t("common.saving") : dirty ? t("dashboard.saveLayout") : t("common.saved")} disabled={!dirty || saving} onClick={onSave}><Save size={13} />{saving ? t("common.saving") : dirty ? t("dashboard.saveLayout") : t("common.saved")}</button>
             </div>}
           />
         ) : null}
@@ -406,52 +412,55 @@ export function DashboardShell({
           </nav>
         ) : null}
 
-        {notice ? <div className="notice dashboard-notice" role="status"><span>{notice}</span><button onClick={onDismissNotice}>닫기</button></div> : null}
-        {error ? <div className="error-panel dashboard-error" role="alert"><strong>Dashboard 오류</strong><p>{error}</p><button onClick={onRetry}>다시 불러오기</button></div> : null}
+        {notice ? <div className="notice dashboard-notice" role="status"><span>{notice}</span><button onClick={onDismissNotice}>{t("common.close")}</button></div> : null}
+        {error ? <div className="error-panel dashboard-error" role="alert"><strong>{t("dashboard.error")}</strong><p>{error}</p><button onClick={onRetry}>{t("common.retry")}</button></div> : null}
 
         <main className="od-workbench-main">
           {workspaceView === "dashboard" ? (
             <div className={`dashboard-workspace-layout ${mode === "edit" ? "with-inspector" : ""}`}>
-              <aside className={`dashboard-context-rail ${mobileContextOpen ? "mobile-open" : ""}`}>
-                <div className="dashboard-mobile-context-bar"><button type="button" aria-expanded={mobileContextOpen} onClick={() => setMobileContextOpen(true)}><SlidersHorizontal size={14} /> Context & filters</button></div>
-                {mobileContextOpen ? <button type="button" className="dashboard-context-backdrop" aria-label="Context 닫기" onClick={() => setMobileContextOpen(false)} /> : null}
-                <div className="dashboard-context-sheet">
-                  <header className="dashboard-context-sheet-header"><strong>Context & filters</strong><button type="button" aria-label="Context 닫기" onClick={() => setMobileContextOpen(false)}><X size={15} /></button></header>
-                  {contextPanel}
-                </div>
+              <aside className="dashboard-context-rail">
+                {isCompactWorkbench
+                  ? <div className="dashboard-mobile-context-bar"><button type="button" aria-expanded={mobileContextOpen} onClick={() => setMobileContextOpen(true)}><SlidersHorizontal size={14} /> {t("dashboard.context")}</button></div>
+                  : contextPanel}
               </aside>
               <section className="dashboard-canvas-region">{boardCanvas}</section>
               {mode === "edit" ? (
-                <div className={`dashboard-inspector-shell ${mobileInspectorOpen ? "mobile-open" : ""}`}>
-                  <button type="button" className="dashboard-mobile-inspector-trigger" aria-expanded={mobileInspectorOpen} onClick={() => setMobileInspectorOpen(true)}><Settings size={14} /> Inspector</button>
-                  {mobileInspectorOpen ? <button type="button" className="dashboard-inspector-backdrop" aria-label="Inspector 닫기" onClick={() => setMobileInspectorOpen(false)} /> : null}
-                  <div className="dashboard-inspector-sheet">
-                    <header className="dashboard-inspector-sheet-header"><strong>Board Inspector</strong><button type="button" aria-label="Inspector 닫기" onClick={() => setMobileInspectorOpen(false)}><X size={15} /></button></header>
-                    {inspector}
-                  </div>
-                </div>
+                isCompactWorkbench
+                  ? <button type="button" className="dashboard-mobile-inspector-trigger" aria-expanded={mobileInspectorOpen} onClick={() => setMobileInspectorOpen(true)}><Settings size={14} /> {t("dashboard.inspector")}</button>
+                  : inspector
               ) : null}
             </div>
           ) : <div className="analysis-workspace-region">{analysisWorkbench}</div>}
         </main>
 
+        {isCompactWorkbench && mobileContextOpen ? (
+          <FoundryDrawer ariaLabel={t("drawer.context")} title={t("drawer.context")} position="bottom" onClose={() => setMobileContextOpen(false)} className="dashboard-context-drawer">
+            {contextPanel}
+          </FoundryDrawer>
+        ) : null}
+        {isCompactWorkbench && mode === "edit" && mobileInspectorOpen ? (
+          <FoundryDrawer ariaLabel={t("drawer.inspector")} title={t("drawer.inspector")} position="bottom" onClose={() => setMobileInspectorOpen(false)} className="dashboard-inspector-drawer">
+            {inspector}
+          </FoundryDrawer>
+        ) : null}
+
         <footer className="footer-note">Ontology Dashboard · Organization → Project → Workspace → Role Dashboard · Object permissions and scope remain enforced.</footer>
         {workspaceView === "dashboard" ? catalog : null}
       </div>
 
-      {mobileNavOpen ? <button type="button" className="od-mobile-backdrop" aria-label="내비게이션 닫기" onClick={() => setMobileNavOpen(false)} /> : null}
+      {mobileNavOpen ? <button type="button" className="od-mobile-backdrop" aria-label={t("nav.close")} onClick={() => setMobileNavOpen(false)} /> : null}
 
       {commandOpen ? (
-        <FoundryDialog ariaLabel="Command palette" overlayClassName="command-palette-overlay" dialogClassName="command-palette" onClose={() => setCommandOpen(false)}>
-            <header><div><span className="section-label">COMMAND PALETTE</span><strong>Navigate and execute</strong></div><kbd>ESC</kbd></header>
-            <div className="command-search"><Search size={15} /><input data-dialog-initial-focus placeholder="명령, Object 또는 Board 검색" /></div>
+        <FoundryDialog ariaLabel={t("dialog.commandPalette")} overlayClassName="command-palette-overlay" dialogClassName="command-palette" onClose={() => setCommandOpen(false)}>
+            <header><div><span className="section-label">COMMAND PALETTE</span><strong>{t("dashboard.commandTitle")}</strong></div><kbd>ESC</kbd></header>
+            <div className="command-search"><Search size={15} /><input data-dialog-initial-focus placeholder={t("dashboard.command")} /></div>
             <div className="command-group"><span>Workspace</span>
-              <button type="button" onClick={() => runCommand(() => openWorkspace("dashboard"))}><b><LayoutDashboard size={14} /></b><div><strong>Open Dashboard</strong><small>역할별 운영 canvas</small></div><kbd>1</kbd></button>
-              <button type="button" onClick={() => runCommand(() => openWorkspace("analysis"))}><b><Workflow size={14} /></b><div><strong>Open Analysis Path</strong><small>변형·검증·dataset snapshot</small></div><kbd>2</kbd></button>
+              <button type="button" onClick={() => runCommand(() => openWorkspace("dashboard"))}><b><LayoutDashboard size={14} /></b><div><strong>{t("dashboard.openDashboard")}</strong><small>역할별 운영 canvas</small></div><kbd>1</kbd></button>
+              <button type="button" onClick={() => runCommand(() => openWorkspace("analysis"))}><b><Workflow size={14} /></b><div><strong>{t("dashboard.openAnalysis")}</strong><small>변형·검증·dataset snapshot</small></div><kbd>2</kbd></button>
             </div>
             <div className="command-group"><span>Dashboard actions</span>
-              <button type="button" onClick={() => runCommand(() => { openWorkspace("dashboard"); onModeChange("edit"); })}><b><Blocks size={14} /></b><div><strong>Edit canvas</strong><small>Board 이동, 복제, 크기 조정</small></div></button>
-              <button type="button" onClick={() => runCommand(() => { openWorkspace("dashboard"); onOpenCatalog(); })}><b><Plus size={14} /></b><div><strong>Add board</strong><small>Board Catalog 열기</small></div></button>
+              <button type="button" onClick={() => runCommand(() => { openWorkspace("dashboard"); onModeChange("edit"); })}><b><Blocks size={14} /></b><div><strong>{t("dashboard.editCanvas")}</strong><small>Board 이동, 복제, 크기 조정</small></div></button>
+              <button type="button" onClick={() => runCommand(() => { openWorkspace("dashboard"); onOpenCatalog(); })}><b><Plus size={14} /></b><div><strong>{t("dashboard.addBoard")}</strong><small>Board Catalog</small></div></button>
               <button type="button" disabled={!canUndo} onClick={() => runCommand(onUndo)}><b><Undo2 size={14} /></b><div><strong>Undo edit</strong><small>이전 Dashboard draft 복원</small></div><kbd>⌘Z</kbd></button>
               <button type="button" disabled={!canRedo} onClick={() => runCommand(onRedo)}><b><Redo2 size={14} /></b><div><strong>Redo edit</strong><small>취소한 Dashboard draft 재적용</small></div><kbd>⌘⇧Z</kbd></button>
               <button type="button" disabled={!dirty || saving} onClick={() => runCommand(onSave)}><b><Save size={14} /></b><div><strong>Save preferences</strong><small>현재 개인 revision 저장</small></div><kbd>⌘S</kbd></button>

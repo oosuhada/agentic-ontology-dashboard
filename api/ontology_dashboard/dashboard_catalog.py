@@ -1045,6 +1045,36 @@ def _template_tabs_v4(role: str) -> list[DashboardTab]:
     ]
 
 
+def _template_tabs_v5(role: str) -> list[DashboardTab]:
+    """Role information architecture layered on top of the v4 visual composition.
+
+    The settings are deliberately stored on each board so the client, Planner,
+    mobile renderer, and template Inspector share one semantic contract.
+    """
+    tabs = _template_tabs_v4(role)
+    for tab in tabs:
+        ordered = sorted(tab.boards, key=lambda item: item.order)
+        for board in ordered:
+            if board.mandatory or board.order < 3:
+                section = "focus"
+                priority = "primary"
+                collapsed_default = False
+            elif board.order < 6:
+                section = "evidence"
+                priority = "secondary"
+                collapsed_default = False
+            else:
+                section = "details"
+                priority = "supporting"
+                collapsed_default = True
+            board.settings.update({
+                "information_section": section,
+                "information_priority": priority,
+                "collapsed_default": collapsed_default,
+            })
+    return tabs
+
+
 def seed_templates() -> list[DashboardTemplateSnapshot]:
     created_at = datetime.now(timezone.utc).isoformat()
     templates: list[DashboardTemplateSnapshot] = []
@@ -1055,7 +1085,7 @@ def seed_templates() -> list[DashboardTemplateSnapshot]:
     )
     for workspace_id in fixture_workspaces:
         for role in ALL_ROLES:
-            tabs = _template_tabs_v4(role)
+            tabs = _template_tabs_v5(role)
             mandatory_board_ids = [
                 board.id for tab in tabs for board in tab.boards if board.mandatory
             ]
@@ -1065,7 +1095,7 @@ def seed_templates() -> list[DashboardTemplateSnapshot]:
                     workspace_id=workspace_id,
                     role_code=role,
                     display_name=f"{role.replace('_', ' ').title()} Default Dashboard",
-                    version=4,
+                    version=5,
                     tabs=tabs,
                     mandatory_board_ids=mandatory_board_ids,
                     parameter_definitions=PARAMETER_DEFINITIONS,

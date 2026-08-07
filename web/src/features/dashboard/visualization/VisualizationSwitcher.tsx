@@ -1,5 +1,6 @@
 import { Check, ChevronDown, RotateCcw } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import type { BoardVisualizationRuntime, VisualizationKind, VisualizationSettings } from "../types";
 import { VisualizationKindMark } from "./VisualizationKindMark";
 import { visualizationDefinition } from "./visualizationRegistry";
@@ -16,11 +17,13 @@ export function VisualizationSwitcher({ runtime, settings, onChange, compact = f
   const rootRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({ visibility: "hidden" });
   const menuId = useId();
   useEffect(() => {
     if (!open) return;
     const close = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (!rootRef.current?.contains(target) && !menuRef.current?.contains(target)) setOpen(false);
     };
     window.addEventListener("mousedown", close);
     return () => window.removeEventListener("mousedown", close);
@@ -32,12 +35,41 @@ export function VisualizationSwitcher({ runtime, settings, onChange, compact = f
 
   useEffect(() => {
     if (!open) return;
+    function positionMenu() {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const margin = 8;
+      const gap = 4;
+      const width = Math.min(360, window.innerWidth - margin * 2);
+      const left = Math.max(margin, Math.min(rect.right - width, window.innerWidth - width - margin));
+      const below = window.innerHeight - rect.bottom - margin - gap;
+      const above = rect.top - margin - gap;
+      if (below >= 220 || below >= above) {
+        setMenuStyle({ position: "fixed", top: rect.bottom + gap, bottom: "auto", left, right: "auto", width, maxHeight: Math.max(120, Math.min(520, below)), visibility: "visible" });
+      } else {
+        setMenuStyle({ position: "fixed", top: "auto", bottom: window.innerHeight - rect.top + gap, left, right: "auto", width, maxHeight: Math.max(120, Math.min(520, above)), visibility: "visible" });
+      }
+    }
+    const frame = window.requestAnimationFrame(positionMenu);
+    window.addEventListener("resize", positionMenu);
+    window.addEventListener("scroll", positionMenu, true);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", positionMenu);
+      window.removeEventListener("scroll", positionMenu, true);
+      setMenuStyle({ visibility: "hidden" });
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || menuStyle.visibility !== "visible") return;
     const frame = window.requestAnimationFrame(() => {
       const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>("[data-visualization-menu-item]") ?? []);
       (items.find((item) => item.dataset.kind === activeKind) ?? items[0])?.focus();
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [activeKind, open, runtime]);
+  }, [activeKind, menuStyle.visibility, open, runtime]);
 
   function closeMenu(restoreFocus = false) {
     setOpen(false);
@@ -106,8 +138,8 @@ export function VisualizationSwitcher({ runtime, settings, onChange, compact = f
         <span className="visualization-switcher-label">{compact ? activeDefinition.compactName : `${modeLabel} · ${activeDefinition.shortName}`}</span>
         <ChevronDown size={11} />
       </button>
-      {open ? (
-        <div ref={menuRef} id={menuId} className="visualization-menu" role="menu" aria-label="Visualize as" onKeyDown={handleMenuKeyDown}>
+      {open ? createPortal(
+        <div ref={menuRef} id={menuId} className="visualization-menu" style={menuStyle} role="menu" aria-label="Visualize as" onClick={(event) => event.stopPropagation()} onKeyDown={handleMenuKeyDown}>
           {runtime ? (
             <>
               <section className="visualization-menu-section is-recommended">
@@ -155,7 +187,8 @@ export function VisualizationSwitcher({ runtime, settings, onChange, compact = f
               <RotateCcw size={12} /> Reset to Auto
             </button>
           ) : null}
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   );

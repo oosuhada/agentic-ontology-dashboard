@@ -81,7 +81,7 @@ def test_role_templates_versions_preview_and_dependency_graph(client: TestClient
     resolved_schema = schema["$defs"]["resolvedDashboard"]
     resolved_schema = {**resolved_schema, "$defs": schema["$defs"]}
     assert list(Draft202012Validator(resolved_schema).iter_errors(manager)) == []
-    assert manager["template_version"] == 4
+    assert manager["template_version"] == 5
     assert [tab["title"] for tab in manager["tabs"]] == ["운영 판단", "근거와 후속"]
     manager_board_ids = {board["definition_id"] for tab in manager["tabs"] for board in tab["boards"]}
     assert {"manager-decision", "priority-list", "impact-summary"} <= manager_board_ids
@@ -96,7 +96,7 @@ def test_role_templates_versions_preview_and_dependency_graph(client: TestClient
         params={"workspace_id": WORKSPACE},
     )
     assert versions.status_code == 200
-    assert versions.json()["items"][0]["version"] == 4
+    assert versions.json()["items"][0]["version"] == 5
 
     preview = client.get(
         "/api/dashboard-templates/process_manager/preview",
@@ -382,12 +382,12 @@ def test_fde_template_publish_merges_existing_user_override(client: TestClient) 
         json={"decision": "approve", "note": "병합 테스트 승인"},
     )
     assert published.status_code == 200, published.text
-    assert published.json()["published_template"]["version"] == 5
+    assert published.json()["published_template"]["version"] == 6
 
     login(client, "manager@ontology.local", "Manager!2026")
     merged = resolved(client)
-    assert merged["template_version"] == 5
-    assert merged["preference_template_version"] == 4
+    assert merged["template_version"] == 6
+    assert merged["preference_template_version"] == 5
     assert merged["tabs"][0]["title"] == custom_title
     assert merged["merge_notices"]
     assert any(

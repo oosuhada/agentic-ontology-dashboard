@@ -1,4 +1,4 @@
-import { Button, Callout, Card, Spinner, Tag } from "@blueprintjs/core";
+import { Button, Callout, Card, Tag } from "@blueprintjs/core";
 import { useEffect, useMemo, useState } from "react";
 import {
   getDatasetCatalogPage,
@@ -17,6 +17,7 @@ import {
 import type { EventSummary, Project, Workspace } from "../../types";
 import { useAuth } from "../auth/AuthContext";
 import type { Project3IntegrationSnapshot } from "../ontology/types";
+import { WorkbenchState } from "../../ui/foundry/WorkbenchState";
 
 interface ProjectHomePageProps {
   projectId: string;
@@ -77,7 +78,7 @@ export function ProjectHomePage({ projectId }: ProjectHomePageProps) {
   const criticalEvents = events.filter((item) => item.status === "critical").length;
 
   if (loading && !project) {
-    return <main className="project-home-loading"><Spinner size={32} /><p>Project resources를 구성하고 있습니다.</p></main>;
+    return <main className="project-home-loading"><WorkbenchState kind="loading" title="Project resources를 구성하고 있습니다." /></main>;
   }
 
   return (

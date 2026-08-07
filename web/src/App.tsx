@@ -16,8 +16,9 @@ import { LoginPage } from "./features/auth/LoginPage";
 import { PendingPage } from "./features/auth/PendingPage";
 import { RegisterPage } from "./features/auth/RegisterPage";
 import { DisplayPreferencesProvider } from "./ui/foundry/displayPreferences";
+import { I18nProvider } from "./ui/i18n/I18nProvider";
 import { FoundryAppShell } from "./ui/foundry/FoundryAppShell";
-import { OntologyLifecycleLoader } from "./ui/foundry/OntologyLifecycleLoader";
+import { WorkbenchState } from "./ui/foundry/WorkbenchState";
 
 const AdminApp = lazy(() =>
   import("./features/admin/AdminApp").then((module) => ({ default: module.AdminApp })),
@@ -49,7 +50,7 @@ const LAST_VALID_PROJECT_KEY = "ontology-dashboard:last-valid-project";
 function RouteLoading({ operation, detail }: { operation: string; detail?: string }) {
   return (
     <div className="route-loading">
-      <OntologyLifecycleLoader variant="page" operation={operation} detail={detail} />
+      <WorkbenchState kind="loading" title={operation} detail={detail} />
     </div>
   );
 }
@@ -261,9 +262,11 @@ function AppRouter() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <DisplayScopedRouter />
-    </AuthProvider>
+    <I18nProvider>
+      <AuthProvider>
+        <DisplayScopedRouter />
+      </AuthProvider>
+    </I18nProvider>
   );
 }
 

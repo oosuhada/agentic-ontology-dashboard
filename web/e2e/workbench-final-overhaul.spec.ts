@@ -63,7 +63,7 @@ async function ensureVisualDataset(page: Page, viewportName: string) {
   await chartNode.click();
   await page.getByRole("button", { name: /Run path/ }).click();
   await expect(page.getByText(/Run .* succeeded/)).toBeVisible({ timeout: 45_000 });
-  await page.getByRole("button", { name: /Save dataset/ }).click();
+  await page.getByRole("button", { name: /Dataset Version 생성|Save dataset|Create Dataset Version/ }).click();
   await expect(page.getByText(/생성 · .* rows/)).toBeVisible({ timeout: 30_000 });
 }
 
@@ -194,7 +194,7 @@ test("UI-08 Dataset and Governance use dense record tables with persistent entit
   await page.goto("/app/analysis/final-dataset-materialization");
   await page.getByRole("button", { name: /Run path/ }).click();
   await expect(page.getByText(/Run .* succeeded/)).toBeVisible({ timeout: 45_000 });
-  await page.getByRole("button", { name: /Save dataset/ }).click();
+  await page.getByRole("button", { name: /Dataset Version 생성|Save dataset|Create Dataset Version/ }).click();
   await expect(page.getByText(/생성 · .* rows/)).toBeVisible({ timeout: 30_000 });
   await page.goto(`/app/projects/${projectId}/datasets`);
   await expect(page.locator(".dataset-resource-table .fd-resource-table__row").first()).toBeVisible({ timeout: 45_000 });

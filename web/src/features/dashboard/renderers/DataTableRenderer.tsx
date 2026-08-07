@@ -95,6 +95,7 @@ export function DataTableRenderer({
       for (const column of columns) {
         if (!column.hidden && !current.has(column.id)) next.add(column.id);
       }
+      if (next.size === current.size && [...next].every((id) => current.has(id))) return current;
       return next;
     });
   }, [columns]);

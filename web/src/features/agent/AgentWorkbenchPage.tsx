@@ -1,11 +1,15 @@
-import { Button, Callout, Card, HTMLSelect, InputGroup, Spinner, Tag } from "@blueprintjs/core";
-import { Bot } from "lucide-react";
+import { Button, Callout, Card, HTMLSelect, InputGroup, Tag } from "@blueprintjs/core";
+import { Bot, PanelRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getAgentRun, listAgentRuns, runAgentQuery } from "../../api";
 import { governancePath, navigate, ontologyPath } from "../../routing";
 import { EntityTitle } from "../../ui/foundry/EntityTitle";
+import { FoundryDrawer } from "../../ui/foundry/FoundryDrawer";
 import { StatusPill } from "../../ui/foundry/StatusPill";
 import { WorkbenchHeader } from "../../ui/foundry/WorkbenchChrome";
+import { WorkbenchState } from "../../ui/foundry/WorkbenchState";
+import { useMediaQuery } from "../../ui/foundry/useMediaQuery";
+import { useI18n } from "../../ui/i18n/I18nProvider";
 import { AgentQueryBoard } from "./AgentQueryBoard";
 import { AgentRunInspector } from "./AgentRunInspector";
 import { GroundedClaimList } from "./GroundedClaimList";
@@ -49,6 +53,8 @@ function currentSearch(): URLSearchParams {
 }
 
 export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPageProps) {
+  const { t } = useI18n();
+  const isMobile = useMediaQuery("(max-width: 760px)");
   const initial = useMemo(() => currentSearch(), []);
   const [run, setRun] = useState<AgentRunResponse | null>(null);
   const [recentRuns, setRecentRuns] = useState<RecentAgentRun[]>(() => loadRecent(projectId, workspaceId));
@@ -62,6 +68,7 @@ export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPag
   const [loading, setLoading] = useState(false);
   const [loadingRun, setLoadingRun] = useState(false);
   const [error, setError] = useState("");
+  const [inspectorOpen, setInspectorOpen] = useState(false);
 
   async function refreshRunList(nextOffset = runOffset) {
     setRunListLoading(true);
@@ -103,6 +110,7 @@ export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPag
     setSelectedEvidenceId(nextRun.state.evidence[0]?.evidence_id ?? null);
     setError("");
     remember(nextRun);
+    if (isMobile) setInspectorOpen(false);
     if (updateUrl) {
       const url = new URL(window.location.href);
       url.search = "";
@@ -158,7 +166,7 @@ export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPag
         actions={<div className="agent-header-actions"><Button icon="diagram-tree" onClick={() => navigate(ontologyPath(projectId, workspaceId))}>Ontology</Button><Button icon="shield" onClick={() => navigate(governancePath(projectId, workspaceId))}>Governance</Button><Button icon="dashboard" onClick={() => navigate(`/app/projects/${encodeURIComponent(projectId)}`)}>Dashboard</Button></div>}
       />
 
-      {error ? <Callout intent="danger" title="Agent Workbench error"><span>{error}</span> <Button minimal small onClick={() => setError("")}>Dismiss</Button></Callout> : null}
+      {error ? <Callout intent="danger" title="Agent Workbench error"><span>{error}</span> <Button minimal small onClick={() => setError("")}>{t("common.dismiss")}</Button></Callout> : null}
       <Callout intent="primary" icon="lock" title="Execution boundary">
         Project 2는 scope·routing·evidence merge·claim validation만 수행합니다. Text-to-Cypher와 graph RAG는 Project 3의 typed HTTP API 안에 유지되며 임의 SQL·Cypher 입력은 노출하지 않습니다.
       </Callout>
@@ -177,7 +185,7 @@ export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPag
               </HTMLSelect>
             </div>
             <div>
-              {runListLoading ? <p>Persisted runs loading…</p> : null}
+              {runListLoading ? <WorkbenchState kind="refreshing" compact /> : null}
               {runPage.items.map((item) => (
                 <button type="button" key={item.run_id} className={run?.state.run_id === item.run_id ? "active" : ""} onClick={() => void loadRun(item.run_id)}>
                   <strong>{item.question}</strong>
@@ -185,24 +193,24 @@ export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPag
                   <small>{item.route} · {item.status} · {item.evidence_count} evidence · {new Date(item.created_at).toLocaleString()}</small>
                 </button>
               ))}
-              {!runListLoading && !runPage.items.length ? <p>조건에 맞는 persisted run이 없습니다.</p> : null}
+              {!runListLoading && !runPage.items.length ? <WorkbenchState kind="empty" compact detail="조건에 맞는 persisted run이 없습니다." /> : null}
             </div>
             <footer className="agent-run-pagination">
-              <Button small icon="chevron-left" disabled={runOffset === 0 || runListLoading} onClick={() => void refreshRunList(Math.max(0, runOffset - runPage.limit))}>Previous</Button>
+              <Button small icon="chevron-left" disabled={runOffset === 0 || runListLoading} onClick={() => void refreshRunList(Math.max(0, runOffset - runPage.limit))}>{t("common.previous")}</Button>
               <span>{runPage.total ? `${runOffset + 1}-${Math.min(runOffset + runPage.items.length, runPage.total)} / ${runPage.total}` : "0 runs"}</span>
-              <Button small rightIcon="chevron-right" disabled={runOffset + runPage.items.length >= runPage.total || runListLoading} onClick={() => void refreshRunList(runOffset + runPage.limit)}>Next</Button>
+              <Button small rightIcon="chevron-right" disabled={runOffset + runPage.items.length >= runPage.total || runListLoading} onClick={() => void refreshRunList(runOffset + runPage.limit)}>{t("common.next")}</Button>
             </footer>
           </section>
           {recentRuns.length ? <small className="agent-local-history-note">Browser local history retained for offline recovery: {recentRuns.length}</small> : null}
         </aside>
 
         <section className="agent-answer-pane">
-          {!run && (loading || loadingRun) ? <div className="agent-loading"><Spinner size={30} /><p>Scoped evidence를 수집하고 있습니다.</p></div> : null}
+          {!run && (loading || loadingRun) ? <WorkbenchState kind="loading" title="Scoped evidence를 수집하고 있습니다." /> : null}
           {run ? (
             <>
               <div className="agent-pane-heading">
                 <div><small>GROUNDED ANSWER</small><strong>{run.state.run_id}</strong></div>
-                <div><Tag minimal>{run.state.evidence.length} evidence</Tag><Tag minimal>{run.state.claims.length} claims</Tag></div>
+                <div><Tag minimal>{run.state.evidence.length} evidence</Tag><Tag minimal>{run.state.claims.length} claims</Tag>{isMobile ? <button type="button" className="fd-toolbar-button" onClick={() => setInspectorOpen(true)}><PanelRight size={12} /> Inspector</button> : null}</div>
               </div>
               <div className="agent-answer-scroll">
                 <Card elevation={0} className="agent-answer-card">
@@ -242,8 +250,13 @@ export function AgentWorkbenchPage({ projectId, workspaceId }: AgentWorkbenchPag
           />
         </section>
 
-        <AgentRunInspector run={run} selectedEvidenceId={selectedEvidenceId} onSelectEvidence={setSelectedEvidenceId} />
+        {!isMobile ? <AgentRunInspector run={run} selectedEvidenceId={selectedEvidenceId} onSelectEvidence={setSelectedEvidenceId} /> : null}
       </section>
+      {isMobile && inspectorOpen ? (
+        <FoundryDrawer ariaLabel="Agent run inspector" title="Agent run inspector" position="bottom" onClose={() => setInspectorOpen(false)}>
+          <AgentRunInspector run={run} selectedEvidenceId={selectedEvidenceId} onSelectEvidence={setSelectedEvidenceId} />
+        </FoundryDrawer>
+      ) : null}
     </main>
   );
 }

@@ -1,5 +1,7 @@
+import { ListFilter, Rows3, Star } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { BoardFrame } from "../../ui/foundry/BoardFrame";
+import { useI18n } from "../../ui/i18n/I18nProvider";
 import {
   ResponsiveGridLayout,
   useContainerWidth,
@@ -7,8 +9,6 @@ import {
   type LayoutItem,
   type ResponsiveLayouts,
 } from "react-grid-layout";
-import "react-grid-layout/css/styles.css";
-import "react-resizable/css/styles.css";
 import type { DashboardBoard, DashboardMode, DashboardTab } from "./types";
 import { useDashboardArrangeMode } from "./dashboardArrange";
 import { legacyBoardToGridLayout } from "./gridLayout";
@@ -61,13 +61,12 @@ function responsiveLayouts(boards: DashboardBoard[]): ResponsiveLayouts<"lg" | "
       layout.min_h ?? 1,
       MIN_HEIGHT_UNITS_BY_DEFINITION[board.definition_id] ?? 1,
     );
-    const height = Math.max(layout.h, minimumHeight);
     return {
       i: board.id,
       x: layout.x,
       y: layout.y,
       w: layout.w,
-      h: height,
+      h: Math.max(layout.h, minimumHeight),
       minW: layout.min_w ?? 2,
       minH: minimumHeight,
       maxW: layout.max_w ?? 12,
@@ -111,18 +110,42 @@ export function DashboardGridCanvas({
   onToggleFavorite,
   saving = false,
 }: DashboardGridCanvasProps) {
+  const { t } = useI18n();
   const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1180 });
-  const visibleBoards = useMemo(
-    () => tab?.boards.filter((board) => mode === "edit" || !board.hidden) ?? [],
-    [mode, tab],
-  );
-  const layouts = useMemo(() => responsiveLayouts(visibleBoards), [visibleBoards]);
+  const [focusMode, setFocusMode] = useState<"all" | "focus" | "favorites" | "details">("all");
+  const [collapseOverrides, setCollapseOverrides] = useState<Record<string, boolean>>({});
+  const availableBoards = useMemo(() => tab?.boards.filter((board) => mode === "edit" || !board.hidden) ?? [], [mode, tab]);
+  const collapsedBoardIds = useMemo(() => {
+    const next = new Set(tab?.boards.filter((board) => board.settings.collapsed_default === true).map((board) => board.id) ?? []);
+    for (const [boardId, collapsed] of Object.entries(collapseOverrides)) {
+      if (collapsed) next.add(boardId); else next.delete(boardId);
+    }
+    return next;
+  }, [collapseOverrides, tab]);
+  const visibleBoards = useMemo(() => {
+    if (mode === "edit" || focusMode === "all") return availableBoards;
+    if (focusMode === "favorites") return availableBoards.filter((board) => board.settings.favorite === true);
+    if (focusMode === "focus") return availableBoards.filter((board) => board.settings.information_section === "focus" || (!board.settings.information_section && (board.mandatory || board.order < 3)));
+    return availableBoards.filter((board) => board.settings.information_section !== "focus" && (!board.mandatory || board.order >= 3));
+  }, [availableBoards, focusMode, mode]);
+  const collapsedBoards = useMemo(() => visibleBoards.filter((board) => collapsedBoardIds.has(board.id)), [collapsedBoardIds, visibleBoards]);
+  const gridBoards = useMemo(() => visibleBoards.filter((board) => !collapsedBoardIds.has(board.id)), [collapsedBoardIds, visibleBoards]);
+  const layouts = useMemo(() => responsiveLayouts(gridBoards), [gridBoards]);
   const [resizePreview, setResizePreview] = useState<{ boardId: string; width: number; height: number } | null>(null);
   const { phase, dispatch, longPressHandlers } = useDashboardArrangeMode({ mode, onEnter: onEnterArrange });
 
   useEffect(() => {
     dispatch({ type: saving ? "SAVE_START" : "SAVE_END" });
   }, [dispatch, saving]);
+
+  useEffect(() => {
+    setFocusMode("all");
+    setCollapseOverrides({});
+  }, [tab?.id]);
+
+  function toggleCollapsed(boardId: string) {
+    setCollapseOverrides((current) => ({ ...current, [boardId]: !collapsedBoardIds.has(boardId) }));
+  }
 
   if (!tab) return <div className="dashboard-empty-canvas">표시할 Dashboard 탭이 없습니다.</div>;
 
@@ -134,15 +157,63 @@ export function DashboardGridCanvas({
       aria-label={`${tab.title} board canvas`}
       {...longPressHandlers}
     >
+      {mode === "view" && availableBoards.length ? (
+        <div className="dashboard-focus-toolbar" role="toolbar" aria-label="Dashboard focus view">
+          <div className="dashboard-focus-segments" role="group" aria-label="Board visibility">
+            <button type="button" className={focusMode === "all" ? "active" : ""} onClick={() => setFocusMode("all")}><Rows3 size={12} />{t("dashboard.focus.all")}</button>
+            <button type="button" className={focusMode === "focus" ? "active" : ""} onClick={() => setFocusMode("focus")}><ListFilter size={12} />{t("dashboard.focus.focus")}</button>
+            <button type="button" className={focusMode === "favorites" ? "active" : ""} onClick={() => setFocusMode("favorites")}><Star size={12} />{t("dashboard.focus.favorites")}</button>
+            <button type="button" className={focusMode === "details" ? "active" : ""} onClick={() => setFocusMode("details")}>{t("dashboard.focus.details")}</button>
+          </div>
+          <label>{t("dashboard.focus.jump")}
+            <select defaultValue="" onChange={(event) => {
+              const boardId = event.target.value;
+              if (!boardId) return;
+              document.querySelector<HTMLElement>(`[data-board-id="${CSS.escape(boardId)}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+              event.target.value = "";
+            }}>
+              <option value="">—</option>
+              {visibleBoards.map((board) => <option key={board.id} value={board.id}>{board.title}</option>)}
+            </select>
+          </label>
+        </div>
+      ) : null}
       {mode === "edit" ? <div className="dashboard-arrange-hint" role="status">Arrange mode · drag board headers or resize from any edge · Esc/Done to finish</div> : null}
       {visibleBoards.length === 0 ? (
         <div className="dashboard-empty-canvas">
-          <strong>이 탭에 표시할 board가 없습니다.</strong>
-          <p>편집 모드에서 Board Catalog를 열어 board를 추가하세요.</p>
+          <strong>{t("dashboard.focus.noBoards")}</strong>
+          <button type="button" className="secondary" onClick={() => setFocusMode("all")}>{t("dashboard.focus.showAll")}</button>
         </div>
       ) : null}
 
-      {mounted && visibleBoards.length ? (
+      {collapsedBoards.length ? (
+        <div className="dashboard-collapsed-board-tray" aria-label="Collapsed boards">
+          {collapsedBoards.map((board) => (
+            <BoardFrame
+              key={board.id}
+              board={board}
+              mode={mode}
+              selected={selectedBoardId === board.id}
+              affected={affectedBoardIds.includes(board.id)}
+              fullscreen={false}
+              favorite={board.settings.favorite === true}
+              collapsed
+              headerActions={renderBoardHeader?.(board)}
+              onSelect={() => onSelectBoard(board.id)}
+              onToggleHidden={() => onToggleHidden(board.id, !board.hidden)}
+              onDuplicate={() => onDuplicateBoard(board.id)}
+              onRemove={() => onRemoveBoard(board.id)}
+              onToggleFavorite={() => onToggleFavorite(board.id)}
+              onToggleCollapsed={() => toggleCollapsed(board.id)}
+              onFullscreen={() => onFullscreen(board.id)}
+            >
+              {null}
+            </BoardFrame>
+          ))}
+        </div>
+      ) : null}
+
+      {mounted && gridBoards.length ? (
         <ResponsiveGridLayout<"lg" | "md" | "sm">
           width={width}
           breakpoint={mode === "edit" ? "lg" : undefined}
@@ -180,7 +251,7 @@ export function DashboardGridCanvas({
             if (mode === "edit") onLayoutChange(tab.id, mergeChangedItem(layout, newItem));
           }}
         >
-          {visibleBoards.map((board) => {
+          {gridBoards.map((board) => {
             const fullscreen = fullscreenBoardId === board.id;
             const selected = selectedBoardId === board.id;
             const affected = affectedBoardIds.includes(board.id);
@@ -193,6 +264,7 @@ export function DashboardGridCanvas({
                 affected={affected}
                 fullscreen={fullscreen}
                 favorite={board.settings.favorite === true}
+                collapsed={collapsedBoardIds.has(board.id)}
                 headerActions={renderBoardHeader?.(board)}
                 resizeLabel={resizePreview?.boardId === board.id ? `${resizePreview.width} columns × ${resizePreview.height} rows` : null}
                 onSelect={() => onSelectBoard(board.id)}
@@ -200,6 +272,7 @@ export function DashboardGridCanvas({
                 onDuplicate={() => onDuplicateBoard(board.id)}
                 onRemove={() => onRemoveBoard(board.id)}
                 onToggleFavorite={() => onToggleFavorite(board.id)}
+                onToggleCollapsed={() => toggleCollapsed(board.id)}
                 onFullscreen={() => onFullscreen(fullscreen ? null : board.id)}
               >
                 {renderBoard(board)}

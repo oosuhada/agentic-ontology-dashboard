@@ -11,7 +11,7 @@ async function login(page: Page, email = "fde@ontology.local", password = "FDE!2
 }
 
 async function openDisplay(page: Page) {
-  await page.locator('summary[aria-label="Display settings"]').click();
+  await page.locator(".od-display-menu > summary").click();
   return page.locator(".od-display-popover:visible");
 }
 
@@ -33,9 +33,10 @@ async function dragBy(page: Page, handle: Locator, dx: number, dy: number) {
 test("Display settings are independent and persist for guest and authenticated user", async ({ page }) => {
   await page.goto("/login");
   await expect(page.locator("html")).toHaveAttribute("data-text-size", "default");
-  await expect(page.locator("html")).toHaveAttribute("data-density", "compact");
+  await expect(page.locator("html")).toHaveAttribute("data-density", "standard");
 
   let display = await openDisplay(page);
+  await display.locator(".od-display-advanced > summary").click();
   await display.getByRole("button", { name: "Large", exact: true }).click();
   await display.getByRole("button", { name: "Comfortable", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-text-size", "large");
@@ -49,9 +50,10 @@ test("Display settings are independent and persist for guest and authenticated u
   await page.getByRole("button", { name: "로그인", exact: true }).click();
   await expect(page.locator(".react-grid-layout")).toBeVisible({ timeout: 45_000 });
   await expect(page.locator("html")).toHaveAttribute("data-text-size", "default");
-  await expect(page.locator("html")).toHaveAttribute("data-density", "compact");
+  await expect(page.locator("html")).toHaveAttribute("data-density", "standard");
 
   display = await openDisplay(page);
+  await display.locator(".od-display-advanced > summary").click();
   await display.getByRole("button", { name: "Extra large", exact: true }).click();
   await display.getByRole("button", { name: "Standard", exact: true }).click();
   await page.reload();
@@ -72,13 +74,30 @@ test("long press enters one arrange state and board layout plus favorite persist
   test.setTimeout(120_000);
   await login(page, "manager@ontology.local", "Manager!2026");
   const canvas = page.locator(".dashboard-board-canvas");
-  const initialBoard = page.locator(".dashboard-board-frame").first();
+  const initialBoard = page.locator(".react-grid-item.dashboard-board-frame").first();
 
   const interactive = initialBoard.locator(".dashboard-board-favorite");
   await interactive.dispatchEvent("pointerdown", { pointerId: 31, pointerType: "mouse", button: 0 });
   await page.waitForTimeout(560);
   await interactive.dispatchEvent("pointercancel", { pointerId: 31, pointerType: "mouse", button: 0 });
   await expect(canvas).toHaveAttribute("data-arrange-state", "view");
+
+  const boardIndex = await page.locator(".react-grid-item.dashboard-board-frame").evaluateAll((elements) => {
+    const index = elements.findIndex((element) => {
+      const x = Number(element.getAttribute("data-grid-x"));
+      const w = Number(element.getAttribute("data-grid-w"));
+      const h = Number(element.getAttribute("data-grid-h"));
+      const maxW = Number(element.getAttribute("data-grid-max-w"));
+      const maxH = Number(element.getAttribute("data-grid-max-h"));
+      return x + w < 12 && w < maxW && h < maxH;
+    });
+    return index >= 0 ? index : 0;
+  });
+  let board = page.locator(".react-grid-item.dashboard-board-frame").nth(boardIndex);
+  const boardId = await board.getAttribute("data-board-id");
+  expect(boardId).toBeTruthy();
+  await board.locator(".dashboard-board-favorite").click();
+  await expect(board).toHaveAttribute("data-favorite", "true");
 
   const title = initialBoard.locator(".dashboard-board-title");
   const titleBox = await title.boundingBox();
@@ -90,20 +109,7 @@ test("long press enters one arrange state and board layout plus favorite persist
   await expect(canvas).toHaveAttribute("data-arrange-state", "arranging");
   await expect(page.locator(".ontology-dashboard-shell")).toHaveClass(/mode-edit/);
 
-  const boardIndex = await page.locator(".dashboard-board-frame").evaluateAll((elements) => {
-    const index = elements.findIndex((element) => {
-      const x = Number(element.getAttribute("data-grid-x"));
-      const w = Number(element.getAttribute("data-grid-w"));
-      const h = Number(element.getAttribute("data-grid-h"));
-      const maxW = Number(element.getAttribute("data-grid-max-w"));
-      const maxH = Number(element.getAttribute("data-grid-max-h"));
-      return x + w < 12 && w < maxW && h < maxH;
-    });
-    return index >= 0 ? index : 0;
-  });
-  let board = page.locator(".dashboard-board-frame").nth(boardIndex);
-  const boardId = await board.getAttribute("data-board-id");
-  expect(boardId).toBeTruthy();
+  board = page.locator(`[data-board-id="${boardId}"]`);
   await expect(board.locator(".react-resizable-handle")).toHaveCount(8);
   expect(await board.evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
   expect(await board.evaluate((element) => getComputedStyle(element, "::after").animationName)).toBe("od-board-jiggle");
@@ -115,8 +121,7 @@ test("long press enters one arrange state and board layout plus favorite persist
     h: await gridValue(board, "h"),
   };
 
-  await board.locator(".dashboard-board-favorite").click();
-  await expect(board.locator(".dashboard-board-favorite")).toHaveAttribute("aria-pressed", "true");
+  await expect(board).toHaveAttribute("data-favorite", "true");
 
   if (before.w < 12) {
     await dragBy(page, board.locator(".react-resizable-handle-e"), 70, 0);
@@ -142,8 +147,8 @@ test("long press enters one arrange state and board layout plus favorite persist
     h: await gridValue(board, "h"),
   };
 
-  await page.getByRole("button", { name: "개인 레이아웃 저장", exact: true }).click();
-  await expect(page.getByRole("button", { name: "개인 레이아웃 저장됨", exact: true })).toBeDisabled({ timeout: 20_000 });
+  await page.getByRole("button", { name: "레이아웃 저장", exact: true }).click();
+  await expect(page.getByRole("button", { name: "저장됨", exact: true })).toBeDisabled({ timeout: 20_000 });
   await page.reload();
   await expect(page.locator(".react-grid-layout")).toBeVisible({ timeout: 45_000 });
   board = page.locator(`[data-board-id="${boardId}"]`);
@@ -153,7 +158,7 @@ test("long press enters one arrange state and board layout plus favorite persist
   expect(await gridValue(board, "x")).toBe(finalLayout.x);
   expect(await gridValue(board, "y")).toBe(finalLayout.y);
 
-  await page.getByRole("button", { name: /Edit|Arrange/ }).click();
+  await page.getByRole("button", { name: /Edit|Arrange|편집/ }).click();
   await expect(canvas).toHaveAttribute("data-arrange-state", "arranging");
   await page.keyboard.press("Escape");
   await expect(canvas).toHaveAttribute("data-arrange-state", "view");
@@ -176,8 +181,8 @@ test.describe("reduced motion", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await login(page);
     expect(await page.evaluate(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches)).toBe(true);
-    await page.getByRole("button", { name: /Edit|Arrange/ }).click();
-    const board = page.locator(".dashboard-board-frame").first();
+    await page.getByRole("button", { name: /Edit|Arrange|편집/ }).click();
+    const board = page.locator(".react-grid-item.dashboard-board-frame").first();
     expect(await board.evaluate((element) => getComputedStyle(element, "::after").animationName)).toBe("none");
   });
 });
@@ -186,6 +191,7 @@ test("720px extra-large comfortable display has no document overflow", async ({ 
   await page.setViewportSize({ width: 720, height: 500 });
   await login(page);
   const display = await openDisplay(page);
+  await display.locator(".od-display-advanced > summary").click();
   await display.getByRole("button", { name: "Extra large", exact: true }).click();
   await display.getByRole("button", { name: "Comfortable", exact: true }).click();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

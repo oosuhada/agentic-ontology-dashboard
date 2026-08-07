@@ -25,7 +25,7 @@ import {
 import { analysisPath, datasetCatalogPath, navigate } from "../../routing";
 import type { AppRole, Intent } from "../../types";
 import { useAuth } from "../auth/AuthContext";
-import { OntologyLifecycleLoader } from "../../ui/foundry/OntologyLifecycleLoader";
+import { WorkbenchState } from "../../ui/foundry/WorkbenchState";
 import type { AddAnalysisBoardRequest } from "../analysis/types";
 import { BoardCanvas } from "../dashboard/BoardCanvas";
 import { BoardCatalogPanel } from "../dashboard/BoardCatalogPanel";
@@ -1035,7 +1035,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
   }
 
   if (loading && !draftDashboard) {
-    return <div className="route-loading"><OntologyLifecycleLoader variant="page" operation="Resolving role Dashboard" detail="Merging governed template and personal preferences." /></div>;
+    return <div className="route-loading"><WorkbenchState kind="loading" title="Resolving role Dashboard" detail="Merging governed template and personal preferences." /></div>;
   }
 
   const contextPanel = draftDashboard ? (
@@ -1061,7 +1061,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
 
   const boardCanvas = draftDashboard && evidence && report && layout ? (
     <>
-      {detailLoading || roleWorkspaceLoading ? <div className="loading-panel"><OntologyLifecycleLoader variant="panel" operation={detailLoading ? "Refreshing object evidence" : "Refreshing role workspace"} /></div> : null}
+      {detailLoading || roleWorkspaceLoading ? <div className="loading-panel"><WorkbenchState kind="refreshing" title={detailLoading ? "Refreshing object evidence" : "Refreshing role workspace"} /></div> : null}
       <BoardCanvas
         tab={activeTab}
         mode={mode}
@@ -1093,7 +1093,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
               parameterState={draftDashboard.parameter_state}
               affected={affectedBoards.includes(board.id)}
             >
-              <Suspense fallback={<div className="loading-panel"><OntologyLifecycleLoader variant="board" operation="Loading board renderer" /></div>}>
+              <Suspense fallback={<div className="loading-panel"><WorkbenchState kind="loading" compact title="Loading board renderer" /></div>}>
                 <DashboardBoardRenderer
               board={board}
               definition={definition}
@@ -1146,7 +1146,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
         onFullscreen={setFullscreenBoardId}
       />
     </>
-  ) : <div className="loading-panel"><OntologyLifecycleLoader variant="panel" operation="Preparing Dashboard boards" /></div>;
+  ) : <div className="loading-panel"><WorkbenchState kind="loading" title="Preparing Dashboard boards" /></div>;
 
   const inspector = draftDashboard ? (
     <BoardInspector
@@ -1232,7 +1232,7 @@ export function ManufacturingApp({ initialWorkspaceView = "dashboard", analysisI
       canUndo={undoStack.length > 0}
       canRedo={redoStack.length > 0}
       analysisWorkbench={(
-        <Suspense fallback={<div className="loading-panel"><OntologyLifecycleLoader variant="panel" operation="Loading Analysis Workbench" /></div>}>
+        <Suspense fallback={<div className="loading-panel"><WorkbenchState kind="loading" title="Loading Analysis Workbench" /></div>}>
           <AnalysisWorkbench
             analysisId={analysisId}
             projectId={selectedProjectId}

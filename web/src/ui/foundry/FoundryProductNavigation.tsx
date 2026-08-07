@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ChevronLeft,
@@ -26,6 +27,7 @@ interface FoundryProductNavigationProps {
   isAdmin: boolean;
   onNavigate: (id: string) => void;
   onToggleCollapsed: () => void;
+  onCloseMobile: () => void;
   onAdmin: () => void;
   onLogout: () => void;
 }
@@ -42,14 +44,62 @@ export function FoundryProductNavigation({
   isAdmin,
   onNavigate,
   onToggleCollapsed,
+  onCloseMobile,
   onAdmin,
   onLogout,
 }: FoundryProductNavigationProps) {
+  const navigationRef = useRef<HTMLElement | null>(null);
   const activeItem = items.find((item) => item.id === activeId) ?? items[0];
   const ActiveIcon = activeItem.icon;
 
+  useEffect(() => {
+    if (!mobileOpen || !window.matchMedia("(max-width: 900px)").matches) return;
+    const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const navigation = navigationRef.current;
+    const shellMain = navigation?.parentElement?.querySelector<HTMLElement>(".od-shell-main");
+    const previousOverflow = document.body.style.overflow;
+    if (shellMain) shellMain.inert = true;
+    document.body.style.overflow = "hidden";
+    const frame = window.requestAnimationFrame(() => navigation?.querySelector<HTMLElement>("button:not([disabled])")?.focus());
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!navigationRef.current) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        onCloseMobile();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(navigationRef.current.querySelectorAll<HTMLElement>("button:not([disabled]),a[href],[tabindex]:not([tabindex='-1'])"));
+      if (!focusable.length) return;
+      const current = focusable.indexOf(document.activeElement as HTMLElement);
+      const next = event.shiftKey
+        ? (current <= 0 ? focusable.length - 1 : current - 1)
+        : (current === focusable.length - 1 ? 0 : current + 1);
+      event.preventDefault();
+      focusable[next]?.focus();
+    }
+
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", handleKeyDown, true);
+      if (shellMain) shellMain.inert = false;
+      document.body.style.overflow = previousOverflow;
+      window.requestAnimationFrame(() => returnFocus?.focus());
+    };
+  }, [mobileOpen, onCloseMobile]);
+
   return (
-    <aside className={`od-primary-sidebar fd-product-navigation ${mobileOpen ? "mobile-open" : ""}`}>
+    <aside
+      ref={navigationRef}
+      className={`od-primary-sidebar fd-product-navigation ${mobileOpen ? "mobile-open" : ""}`}
+      role={mobileOpen ? "dialog" : undefined}
+      aria-modal={mobileOpen ? "true" : undefined}
+      aria-label={mobileOpen ? "Product navigation" : undefined}
+      tabIndex={mobileOpen ? -1 : undefined}
+    >
       <div className="fd-platform-rail" aria-label="Platform rail">
         <div className="fd-platform-mark" title="Ontology Dashboard" aria-label="Ontology Dashboard">OD</div>
         <nav className="fd-platform-shortcuts" aria-label="Workbench shortcuts">
