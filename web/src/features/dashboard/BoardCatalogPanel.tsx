@@ -1,5 +1,6 @@
 import { Activity, Boxes, Database, LayoutTemplate, Plus, Search, ShieldCheck, SlidersHorizontal, Wrench } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { FoundryDialog } from "../../ui/foundry/FoundryDialog";
 import type { BoardCatalogDefinition, BoardCategory, DashboardTab } from "./types";
 
 const CATEGORY_LABELS: Record<BoardCategory, string> = {
@@ -64,8 +65,7 @@ export function BoardCatalogPanel({
   const categoryCounts = useMemo(() => Object.fromEntries(categories.map((item) => [item, items.filter((definition) => definition.category === item).length])), [categories, items]);
 
   return (
-    <div className="board-catalog-overlay" role="dialog" aria-modal="true" aria-label="Board Catalog">
-      <section className="board-catalog-panel">
+    <FoundryDialog ariaLabel="Board Catalog" overlayClassName="board-catalog-overlay" dialogClassName="board-catalog-panel" onClose={onClose}>
         <header>
           <div><span className="eyebrow">CONTOUR RESOURCE BROWSER</span><h2>Board resource 추가</h2><p>현재 역할에 허용된 Board를 탐색하고 contract를 확인한 뒤 canvas에 배치합니다.</p></div>
           <button type="button" className="secondary" onClick={onClose}>닫기</button>
@@ -74,7 +74,7 @@ export function BoardCatalogPanel({
         <div className="catalog-toolbar">
           <label className="catalog-search-field">
             <Search size={13} />
-            <input aria-label="Board catalog search" value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder="Search resources, renderers, object types…" />
+            <input data-dialog-initial-focus aria-label="Board catalog search" value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder="Search resources, renderers, object types…" />
           </label>
           <label>
             Target tab
@@ -129,7 +129,6 @@ export function BoardCatalogPanel({
             </> : <div className="empty-state">Select a Board resource.</div>}
           </aside>
         </div>
-      </section>
-    </div>
+    </FoundryDialog>
   );
 }

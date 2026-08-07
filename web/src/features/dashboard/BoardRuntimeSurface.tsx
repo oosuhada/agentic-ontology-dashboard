@@ -55,15 +55,15 @@ export function BoardRuntimeSurface({ board, definition, parameterState, affecte
   return (
     <div className={`board-runtime-surface renderer-${definition.renderer.toLowerCase()} ${affected ? "is-querying" : ""}`}>
       <div className="board-runtime-meta">
-        <span title="데이터 출처"><Database size={10} /> {dataSource}</span>
-        {activeBindings.length ? <span title="활성 parameter binding"><Link2 size={10} /> {activeBindings.length} bindings</span> : null}
-        <span title="Renderer"><Braces size={10} /> {definition.renderer}</span>
+        <span className="board-runtime-technical" title="데이터 출처"><Database size={10} /> {dataSource}</span>
+        {activeBindings.length ? <span className="board-runtime-technical" title="활성 parameter binding"><Link2 size={10} /> {activeBindings.length} bindings</span> : null}
+        <span className="board-runtime-technical" title="Renderer"><Braces size={10} /> {definition.renderer}</span>
         <StatusPill className="runtime-state" intent={affected ? "primary" : "success"}>{affected ? "querying" : "ready"}</StatusPill>
       </div>
       <div className="board-runtime-body">
         <BoardErrorBoundary boardTitle={board.title}>{children}</BoardErrorBoundary>
       </div>
-      <footer className="board-runtime-footer">
+      <footer className="board-runtime-footer board-runtime-technical">
         <span>{board.custom ? "Personal instance" : "Governed template"} · {sourceVersion}</span>
         <span>{definition.accepts.length ? `Accepts ${definition.accepts.join(" · ")}` : "No parameter dependency"} · {timezone}</span>
       </footer>

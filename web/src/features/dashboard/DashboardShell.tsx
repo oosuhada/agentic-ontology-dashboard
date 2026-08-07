@@ -20,11 +20,13 @@ import {
   Save,
   Search,
   Settings,
+  SlidersHorizontal,
   Share2,
   ShieldCheck,
   Sparkles,
   Sun,
   Workflow,
+  X,
 } from "lucide-react";
 import { featureFlags } from "../../featureFlags";
 import { EntityTitle } from "../../ui/foundry/EntityTitle";
@@ -33,6 +35,7 @@ import { WorkbenchHeader, WorkbenchToolbar } from "../../ui/foundry/WorkbenchChr
 import { DisplayMenu } from "../../ui/foundry/DisplayMenu";
 import { useDisplayPreferences } from "../../ui/foundry/displayPreferences";
 import { FoundryProductNavigation } from "../../ui/foundry/FoundryProductNavigation";
+import { FoundryDialog } from "../../ui/foundry/FoundryDialog";
 import { agentPath, datasetCatalogPath, governancePath, navigate, ontologyPath, projectHomePath } from "../../routing";
 import type { AppRole, AuthUser, DomainPack, Project, Workspace } from "../../types";
 import type { DashboardMode, DashboardTab } from "./types";
@@ -201,6 +204,9 @@ export function DashboardShell({
   const [commandOpen, setCommandOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [mobileScopeOpen, setMobileScopeOpen] = useState(false);
+  const [mobileContextOpen, setMobileContextOpen] = useState(false);
+  const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
   const { preferences, setDensity } = useDisplayPreferences();
 
@@ -325,13 +331,12 @@ export function DashboardShell({
               trailing={<div className="fd-entity-title__trailing"><span className="od-domain-pack-name">{domainPack?.display_name ?? "Manufacturing Operations"}</span><StatusPill intent={dirty ? "warning" : "success"}>{dirty ? "Unsaved changes" : "Saved"}</StatusPill></div>}
             />
           </div>}
-          actions={<div className="od-context-controls">
-            <label>Project<select aria-label="Project" value={selectedProjectId} onChange={(event) => onProjectChange(event.target.value)}>{projects.map((project) => <option key={project.id} value={project.id}>{project.display_name}</option>)}</select></label>
-            <label>Workspace<select aria-label="Workspace" value={selectedWorkspaceId} onChange={(event) => onWorkspaceChange(event.target.value)}>{workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.display_name}</option>)}</select></label>
-            <label>Role<select aria-label="Role" value={activeRole} onChange={(event) => onActiveRoleChange(event.target.value as AppRole)}>{availableRoles.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}</select></label>
-            <div className="workbench-switcher" role="group" aria-label="Workbench mode">
-              <button type="button" className={workspaceView === "dashboard" ? "active" : ""} onClick={() => openWorkspace("dashboard")}><LayoutDashboard size={13} /> Dashboard</button>
-              <button type="button" className={workspaceView === "analysis" ? "active" : ""} onClick={() => openWorkspace("analysis")}><Workflow size={13} /> Analysis</button>
+          actions={<div className={`dashboard-scope-actions ${mobileScopeOpen ? "mobile-open" : ""}`}>
+            <button type="button" className="dashboard-mobile-scope-toggle" aria-expanded={mobileScopeOpen} aria-controls="dashboard-scope-controls" onClick={() => setMobileScopeOpen((current) => !current)}><Settings size={13} /> Scope</button>
+            <div className="od-context-controls" id="dashboard-scope-controls">
+              <label>Project<select aria-label="Project" value={selectedProjectId} onChange={(event) => onProjectChange(event.target.value)}>{projects.map((project) => <option key={project.id} value={project.id}>{project.display_name}</option>)}</select></label>
+              <label>Workspace<select aria-label="Workspace" value={selectedWorkspaceId} onChange={(event) => onWorkspaceChange(event.target.value)}>{workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.display_name}</option>)}</select></label>
+              <label>Role<select aria-label="Role" value={activeRole} onChange={(event) => onActiveRoleChange(event.target.value as AppRole)}>{availableRoles.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}</select></label>
             </div>
           </div>}
         />
@@ -372,19 +377,19 @@ export function DashboardShell({
             </nav>}
             end={<div className="dashboard-edit-toolbar">
               <div className="view-edit-switch" role="group" aria-label="Dashboard mode">
-                <button type="button" className={mode === "view" ? "active" : ""} onClick={() => onModeChange("view")}><Eye size={12} /> {mode === "edit" ? "Done" : "View"}</button>
-                <button type="button" className={mode === "edit" ? "active" : ""} title="Arrange dashboard" onClick={() => onModeChange("edit")}><Blocks size={12} /> Edit</button>
+                <button type="button" className={mode === "view" ? "active" : ""} onClick={() => onModeChange("view")}><Eye size={12} /> {mode === "edit" ? "완료" : "보기"}</button>
+                <button type="button" className={mode === "edit" ? "active" : ""} title="Dashboard 편집" onClick={() => onModeChange("edit")}><Blocks size={12} /> 편집</button>
               </div>
               {mode === "edit" ? <>
                 <button type="button" className="icon-button" aria-label="Undo dashboard edit" title="실행 취소 (⌘Z)" disabled={!canUndo} onClick={onUndo}><Undo2 size={13} /></button>
                 <button type="button" className="icon-button" aria-label="Redo dashboard edit" title="다시 실행 (⌘⇧Z)" disabled={!canRedo} onClick={onRedo}><Redo2 size={13} /></button>
-                <button type="button" className="secondary" aria-label="Board Catalog" onClick={onOpenCatalog}><Plus size={12} /> Add board</button>
+                <button type="button" className="secondary" aria-label="Board Catalog" onClick={onOpenCatalog}><Plus size={12} /> 보드 추가</button>
               </> : null}
-              <button type="button" className="secondary" aria-label="View 저장" onClick={onSaveView}><Sparkles size={12} /> Save view</button>
-              <button type="button" className="secondary" aria-label="공유" onClick={onShare}><Share2 size={12} /> Share</button>
-              <div className="dashboard-export-control"><select aria-label="Export 형식" value={exportFormat} onChange={(event) => setExportFormat(event.target.value as "json" | "csv" | "pdf")}><option value="pdf">PDF</option><option value="csv">CSV</option><option value="json">JSON</option></select><button type="button" className="secondary" disabled={exporting} onClick={() => onExport(exportFormat)}><Download size={12} />{exporting ? "Exporting" : "Export"}</button></div>
+              <button type="button" className="secondary" aria-label="이름 있는 뷰 저장" onClick={onSaveView}><Sparkles size={12} /> 뷰 저장</button>
+              <button type="button" className="secondary" aria-label="공유 링크 만들기" onClick={onShare}><Share2 size={12} /> 공유</button>
+              <div className="dashboard-export-control"><select aria-label="내보내기 형식" value={exportFormat} onChange={(event) => setExportFormat(event.target.value as "json" | "csv" | "pdf")}><option value="pdf">PDF</option><option value="csv">CSV</option><option value="json">JSON</option></select><button type="button" className="secondary" disabled={exporting} onClick={() => onExport(exportFormat)}><Download size={12} />{exporting ? "내보내는 중" : "내보내기"}</button></div>
               <button type="button" className="icon-button" title="역할 기본값 복원" onClick={onRestore}><RotateCcw size={13} /></button>
-              <button type="button" className="primary" aria-label={saving ? "저장 중" : dirty ? "개인 설정 저장" : "저장됨"} disabled={!dirty || saving} onClick={onSave}><Save size={13} />{saving ? "Saving" : dirty ? "Save" : "Saved"}</button>
+              <button type="button" className="primary" aria-label={saving ? "저장 중" : dirty ? "개인 레이아웃 저장" : "개인 레이아웃 저장됨"} disabled={!dirty || saving} onClick={onSave}><Save size={13} />{saving ? "저장 중" : dirty ? "레이아웃 저장" : "저장됨"}</button>
             </div>}
           />
         ) : null}
@@ -407,9 +412,25 @@ export function DashboardShell({
         <main className="od-workbench-main">
           {workspaceView === "dashboard" ? (
             <div className={`dashboard-workspace-layout ${mode === "edit" ? "with-inspector" : ""}`}>
-              <div className="dashboard-context-rail">{contextPanel}</div>
+              <aside className={`dashboard-context-rail ${mobileContextOpen ? "mobile-open" : ""}`}>
+                <div className="dashboard-mobile-context-bar"><button type="button" aria-expanded={mobileContextOpen} onClick={() => setMobileContextOpen(true)}><SlidersHorizontal size={14} /> Context & filters</button></div>
+                {mobileContextOpen ? <button type="button" className="dashboard-context-backdrop" aria-label="Context 닫기" onClick={() => setMobileContextOpen(false)} /> : null}
+                <div className="dashboard-context-sheet">
+                  <header className="dashboard-context-sheet-header"><strong>Context & filters</strong><button type="button" aria-label="Context 닫기" onClick={() => setMobileContextOpen(false)}><X size={15} /></button></header>
+                  {contextPanel}
+                </div>
+              </aside>
               <section className="dashboard-canvas-region">{boardCanvas}</section>
-              {mode === "edit" ? inspector : null}
+              {mode === "edit" ? (
+                <div className={`dashboard-inspector-shell ${mobileInspectorOpen ? "mobile-open" : ""}`}>
+                  <button type="button" className="dashboard-mobile-inspector-trigger" aria-expanded={mobileInspectorOpen} onClick={() => setMobileInspectorOpen(true)}><Settings size={14} /> Inspector</button>
+                  {mobileInspectorOpen ? <button type="button" className="dashboard-inspector-backdrop" aria-label="Inspector 닫기" onClick={() => setMobileInspectorOpen(false)} /> : null}
+                  <div className="dashboard-inspector-sheet">
+                    <header className="dashboard-inspector-sheet-header"><strong>Board Inspector</strong><button type="button" aria-label="Inspector 닫기" onClick={() => setMobileInspectorOpen(false)}><X size={15} /></button></header>
+                    {inspector}
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : <div className="analysis-workspace-region">{analysisWorkbench}</div>}
         </main>
@@ -421,10 +442,9 @@ export function DashboardShell({
       {mobileNavOpen ? <button type="button" className="od-mobile-backdrop" aria-label="내비게이션 닫기" onClick={() => setMobileNavOpen(false)} /> : null}
 
       {commandOpen ? (
-        <div className="command-palette-overlay" role="presentation" onMouseDown={() => setCommandOpen(false)}>
-          <section className="command-palette" role="dialog" aria-modal="true" aria-label="Command palette" onMouseDown={(event) => event.stopPropagation()}>
+        <FoundryDialog ariaLabel="Command palette" overlayClassName="command-palette-overlay" dialogClassName="command-palette" onClose={() => setCommandOpen(false)}>
             <header><div><span className="section-label">COMMAND PALETTE</span><strong>Navigate and execute</strong></div><kbd>ESC</kbd></header>
-            <div className="command-search"><Search size={15} /><input autoFocus placeholder="명령, Object 또는 Board 검색" /></div>
+            <div className="command-search"><Search size={15} /><input data-dialog-initial-focus placeholder="명령, Object 또는 Board 검색" /></div>
             <div className="command-group"><span>Workspace</span>
               <button type="button" onClick={() => runCommand(() => openWorkspace("dashboard"))}><b><LayoutDashboard size={14} /></b><div><strong>Open Dashboard</strong><small>역할별 운영 canvas</small></div><kbd>1</kbd></button>
               <button type="button" onClick={() => runCommand(() => openWorkspace("analysis"))}><b><Workflow size={14} /></b><div><strong>Open Analysis Path</strong><small>변형·검증·dataset snapshot</small></div><kbd>2</kbd></button>
@@ -439,8 +459,7 @@ export function DashboardShell({
               <button type="button" onClick={() => runCommand(() => setDensity(preferences.density === "compact" ? "standard" : preferences.density === "standard" ? "comfortable" : "compact"))}><b><Settings size={14} /></b><div><strong>Cycle density</strong><small>{preferences.density} → {preferences.density === "compact" ? "standard" : preferences.density === "standard" ? "comfortable" : "compact"}</small></div></button>
               <button type="button" onClick={() => runCommand(() => setTheme((current) => current === "light" ? "dark" : "light"))}><b>{theme === "light" ? <Moon size={14} /> : <Sun size={14} />}</b><div><strong>Toggle theme</strong><small>{theme === "light" ? "Switch to dark" : "Switch to light"}</small></div></button>
             </div>
-          </section>
-        </div>
+        </FoundryDialog>
       ) : null}
     </div>
   );

@@ -11,22 +11,34 @@ export type DisplayTextSize = "small" | "default" | "large" | "extra-large";
 export type DisplayDensity = "compact" | "standard" | "comfortable";
 
 export interface DisplayPreferences {
-  version: 2;
+  version: 3;
   textSize: DisplayTextSize;
   density: DisplayDensity;
+  showTechnicalMetadata: boolean;
 }
+
+export type DisplayPreset = "compact" | "standard" | "accessible";
 
 interface DisplayPreferencesContextValue {
   preferences: DisplayPreferences;
   setTextSize: (value: DisplayTextSize) => void;
   setDensity: (value: DisplayDensity) => void;
+  setPreset: (value: DisplayPreset) => void;
+  setShowTechnicalMetadata: (value: boolean) => void;
   reset: () => void;
 }
 
 const DEFAULT_PREFERENCES: DisplayPreferences = {
-  version: 2,
+  version: 3,
   textSize: "default",
-  density: "compact",
+  density: "standard",
+  showTechnicalMetadata: false,
+};
+
+const PRESETS: Record<DisplayPreset, Pick<DisplayPreferences, "textSize" | "density">> = {
+  compact: { textSize: "default", density: "compact" },
+  standard: { textSize: "default", density: "standard" },
+  accessible: { textSize: "large", density: "comfortable" },
 };
 
 const TEXT_SIZES = new Set<DisplayTextSize>(["small", "default", "large", "extra-large"]);
@@ -34,7 +46,7 @@ const DENSITIES = new Set<DisplayDensity>(["compact", "standard", "comfortable"]
 const DisplayPreferencesContext = createContext<DisplayPreferencesContextValue | null>(null);
 
 export function displayPreferenceStorageKey(scope: string) {
-  return `ontology-dashboard:display:v2:${scope || "guest"}`;
+  return `ontology-dashboard:display:v3:${scope || "guest"}`;
 }
 
 export function normalizeDisplayPreferences(value: unknown): DisplayPreferences {
@@ -52,13 +64,21 @@ export function normalizeDisplayPreferences(value: unknown): DisplayPreferences 
   const density = DENSITIES.has(candidate.density as DisplayDensity)
     ? candidate.density as DisplayDensity
     : legacyDensity as DisplayDensity;
-  return { version: 2, textSize, density };
+  const version = Number(candidate.version ?? 2);
+  const migratedDensity = version < 3 && textSize === "default" && density === "compact" ? "standard" : density;
+  return {
+    version: 3,
+    textSize,
+    density: migratedDensity,
+    showTechnicalMetadata: candidate.showTechnicalMetadata === true,
+  };
 }
 
 export function loadDisplayPreferences(scope: string, storage: Pick<Storage, "getItem" | "setItem"> = window.localStorage) {
   const key = displayPreferenceStorageKey(scope);
   const candidates = [
     storage.getItem(key),
+    storage.getItem(`ontology-dashboard:display:v2:${scope || "guest"}`),
     storage.getItem(`ontology-dashboard:display:${scope || "guest"}`),
     scope === "guest" ? storage.getItem("ontology-dashboard-display") : null,
   ];
@@ -79,6 +99,7 @@ function applyDisplayPreferences(preferences: DisplayPreferences) {
   const root = document.documentElement;
   root.dataset.textSize = preferences.textSize;
   root.dataset.density = preferences.density;
+  root.dataset.technicalMetadata = preferences.showTechnicalMetadata ? "shown" : "hidden";
 }
 
 export function DisplayPreferencesProvider({ scope, children }: { scope: string; children: ReactNode }) {
@@ -93,6 +114,8 @@ export function DisplayPreferencesProvider({ scope, children }: { scope: string;
     preferences,
     setTextSize: (textSize) => setPreferences((current) => ({ ...current, textSize })),
     setDensity: (density) => setPreferences((current) => ({ ...current, density })),
+    setPreset: (preset) => setPreferences((current) => ({ ...current, ...PRESETS[preset] })),
+    setShowTechnicalMetadata: (showTechnicalMetadata) => setPreferences((current) => ({ ...current, showTechnicalMetadata })),
     reset: () => setPreferences({ ...DEFAULT_PREFERENCES }),
   }), [preferences]);
 
@@ -117,3 +140,16 @@ export const DISPLAY_DENSITY_OPTIONS: ReadonlyArray<{ value: DisplayDensity; lab
   { value: "standard", label: "Standard" },
   { value: "comfortable", label: "Comfortable" },
 ];
+
+export const DISPLAY_PRESET_OPTIONS: ReadonlyArray<{ value: DisplayPreset; label: string; detail: string }> = [
+  { value: "compact", label: "Compact", detail: "More data, smaller spacing" },
+  { value: "standard", label: "Standard", detail: "Balanced reading and density" },
+  { value: "accessible", label: "Accessible", detail: "Larger text and touch targets" },
+];
+
+export function displayPreset(preferences: DisplayPreferences): DisplayPreset | "custom" {
+  const match = (Object.entries(PRESETS) as Array<[DisplayPreset, Pick<DisplayPreferences, "textSize" | "density">]>).find(([, value]) => (
+    value.textSize === preferences.textSize && value.density === preferences.density
+  ));
+  return match?.[0] ?? "custom";
+}

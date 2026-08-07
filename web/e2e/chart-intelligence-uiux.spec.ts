@@ -12,16 +12,16 @@ async function login(page: Page) {
 async function ensureEditMode(page: Page) {
   const undo = page.getByRole("button", { name: "Undo dashboard edit" });
   if (!(await undo.isVisible().catch(() => false))) {
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.getByRole("button", { name: "편집", exact: true }).click();
     await expect(undo).toBeVisible();
   }
 }
 
 async function savePreferences(page: Page) {
-  const save = page.getByRole("button", { name: "개인 설정 저장", exact: true });
+  const save = page.getByRole("button", { name: "개인 레이아웃 저장", exact: true });
   if (await save.isVisible().catch(() => false)) {
     await save.click();
-    await expect(page.getByRole("button", { name: "저장됨", exact: true })).toBeDisabled({ timeout: 20_000 });
+    await expect(page.getByRole("button", { name: "개인 레이아웃 저장됨", exact: true })).toBeDisabled({ timeout: 20_000 });
   }
 }
 
@@ -122,7 +122,8 @@ test("chart switcher follows density, keyboard and responsive contracts", async 
       await ensureEditMode(page);
       const board = page.locator(`.dashboard-board-frame[data-board-id="${boardId}"]`);
       if (await board.count()) {
-        await board.getByRole("button", { name: "삭제" }).dispatchEvent("click");
+        await board.locator(".dashboard-board-more > summary").click();
+        await board.getByRole("menuitem", { name: "삭제" }).dispatchEvent("click");
         await expect(board).toHaveCount(0);
         await savePreferences(page);
       }

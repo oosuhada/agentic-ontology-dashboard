@@ -118,7 +118,7 @@ test("dashboard filter rail and board interactions remain functional", async ({ 
   await expect(page.locator(".cross-filter-summary")).toContainText("active cross-filter");
   await expect(page.locator(".dashboard-board-frame.is-affected").first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: "편집", exact: true }).click();
   await expect(page.getByRole("navigation", { name: "Dashboard editor regions" })).toBeVisible();
   await expect(page.locator(".dashboard-inspector")).toBeVisible();
   await expect(page.getByRole("button", { name: "Undo dashboard edit" })).toBeVisible();

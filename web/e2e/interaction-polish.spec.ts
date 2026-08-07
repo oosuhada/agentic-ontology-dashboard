@@ -142,8 +142,8 @@ test("long press enters one arrange state and board layout plus favorite persist
     h: await gridValue(board, "h"),
   };
 
-  await page.getByRole("button", { name: "개인 설정 저장", exact: true }).click();
-  await expect(page.getByRole("button", { name: "저장됨", exact: true })).toBeDisabled({ timeout: 20_000 });
+  await page.getByRole("button", { name: "개인 레이아웃 저장", exact: true }).click();
+  await expect(page.getByRole("button", { name: "개인 레이아웃 저장됨", exact: true })).toBeDisabled({ timeout: 20_000 });
   await page.reload();
   await expect(page.locator(".react-grid-layout")).toBeVisible({ timeout: 45_000 });
   board = page.locator(`[data-board-id="${boardId}"]`);

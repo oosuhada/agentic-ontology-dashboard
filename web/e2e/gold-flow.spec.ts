@@ -162,10 +162,11 @@ test("dashboard edit mode persists a catalog text board and protects mandatory b
   await expect(page.getByRole("button", { name: "운영 판단", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "근거와 후속", exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: "편집", exact: true }).click();
   const mandatoryFrame = page.locator(".dashboard-board-frame").filter({ hasText: "현재 사건 요약" });
   await mandatoryFrame.click();
-  await expect(mandatoryFrame.getByRole("button", { name: "삭제", exact: true })).toBeDisabled();
+  await mandatoryFrame.locator(".dashboard-board-more > summary").click();
+  await expect(mandatoryFrame.getByRole("menuitem", { name: "삭제", exact: true })).toBeDisabled();
 
   await page.getByRole("button", { name: "Board Catalog", exact: true }).click();
   const catalog = page.getByRole("dialog", { name: "Board Catalog" });
@@ -179,7 +180,7 @@ test("dashboard edit mode persists a catalog text board and protects mandatory b
   await expect(plainText).toBeVisible({ timeout: 20_000 });
   await plainText.fill("Playwright 개인 운영 메모");
 
-  await page.getByRole("button", { name: "개인 설정 저장" }).click();
+  await page.getByRole("button", { name: "개인 레이아웃 저장" }).click();
   await expect(page.getByText(/다음 로그인에서도 복원됩니다/)).toBeVisible();
   await page.reload();
   await expect(page.getByText("Playwright 개인 운영 메모", { exact: true })).toBeVisible();
@@ -202,7 +203,7 @@ test("cross-filter selection saved view and share preserve governed parameter st
     && response.ok()
   ));
   page.once("dialog", async (dialog) => dialog.accept("Playwright 공구 마모 View"));
-  await page.getByRole("button", { name: "View 저장", exact: true }).click();
+  await page.getByRole("button", { name: "이름 있는 뷰 저장", exact: true }).click();
   await savedViewCreated;
   await expect(page.getByRole("option", { name: "Playwright 공구 마모 View" })).toBeAttached({ timeout: 15_000 });
   await expect(page.getByText(/Saved View 'Playwright 공구 마모 View'/)).toBeVisible({ timeout: 15_000 });
@@ -264,7 +265,7 @@ test("FDE sees customer diagnostics and submits template changes for approval", 
   await expect(page.getByText("Customer Workspace Overview", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Deployment Checklist", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Diagnostic Events", { exact: true }).first()).toBeVisible();
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: "편집", exact: true }).click();
   await expect(page.getByRole("button", { name: "Template 승인 요청", exact: true })).toBeVisible();
   await expect(page.getByText(/Credential·secret 비노출/)).toBeVisible();
 });
@@ -289,7 +290,7 @@ test("FDE planner validates natural language and applies a non-persisted dashboa
 
 test("dashboard export creates a downloadable JSON artifact and checkpoint", async ({ page }) => {
   await login(page, "manager@ontology.local", "Manager!2026");
-  await page.getByLabel("Export 형식").selectOption("json");
+  await page.getByLabel("내보내기 형식").selectOption("json");
   const [download] = await Promise.all([
     page.waitForEvent("download"),
     page.getByRole("button", { name: "Export", exact: true }).click(),

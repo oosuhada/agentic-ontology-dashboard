@@ -187,7 +187,7 @@ test("archived Project deep links render a tombstone instead of silently switchi
 test("dashboard editor supports undo redo and reload draft recovery", async ({ page }) => {
   test.setTimeout(60_000);
   await login(page);
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: "편집", exact: true }).click();
 
   page.once("dialog", async (dialog) => dialog.accept("Recovered Operations"));
   await page.locator(".add-tab-button").click();
@@ -232,8 +232,8 @@ test("analysis route adds a pinned board reference to dashboard", async ({ page 
   await expect(page.getByText(/pinned reference/)).toBeVisible();
   await page.getByRole("button", { name: "Dashboards", exact: true }).click();
   await expect(page.locator(".analysis-reference-runtime")).toContainText("maintenance-risk-analysis");
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
-  await page.getByRole("button", { name: "개인 설정 저장" }).click();
+  await page.getByRole("button", { name: "편집", exact: true }).click();
+  await page.getByRole("button", { name: "개인 레이아웃 저장" }).click();
   await expect(page.getByText(/다음 로그인에서도 복원됩니다/)).toBeVisible();
   await page.reload();
   await expect(page.locator(".analysis-reference-runtime")).toContainText("maintenance-risk-analysis");
@@ -241,7 +241,7 @@ test("analysis route adds a pinned board reference to dashboard", async ({ page 
 
 test("react-grid-layout width persists through dashboard preferences", async ({ page }) => {
   await login(page);
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: "편집", exact: true }).click();
 
   const item = page.locator(".dashboard-board-title strong", { hasText: /^권장 조치$/ })
     .locator("xpath=ancestor::article[contains(@class,'dashboard-board-frame')]");
@@ -250,12 +250,12 @@ test("react-grid-layout width persists through dashboard preferences", async ({ 
   await page.getByLabel("Layout 폭").selectOption("6");
   await expect(item).toHaveAttribute("data-grid-w", "6");
 
-  const saveButton = page.getByRole("button", { name: "개인 설정 저장" });
+  const saveButton = page.getByRole("button", { name: "개인 레이아웃 저장" });
   await expect(saveButton).toBeVisible();
   await saveButton.click();
   await expect(page.getByText(/다음 로그인에서도 복원됩니다/)).toBeVisible();
   await page.reload();
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: "편집", exact: true }).click();
 
   const restoredFrame = page.locator(".dashboard-board-title strong", { hasText: /^권장 조치$/ })
     .locator("xpath=ancestor::article[contains(@class,'dashboard-board-frame')]");

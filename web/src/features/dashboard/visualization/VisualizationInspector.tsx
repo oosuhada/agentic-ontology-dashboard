@@ -112,7 +112,11 @@ export function VisualizationInspector({ board, runtime, workspaceId, dashboardI
           {plannerError ? <small className="visualization-ai-error">{plannerError}</small> : null}
           {plannerResult ? (
             <div className="visualization-ai-result">
-              <div><strong>{visualizationDefinition(plannerResult.recommended.kind).displayName}</strong><span>{plannerResult.mode} · {plannerResult.provider}</span></div>
+              <div className="visualization-ai-preview">
+                <VisualizationKindMark kind={plannerResult.recommended.kind} />
+                <span><strong>{visualizationDefinition(plannerResult.recommended.kind).displayName}</strong><small>{Object.entries(plannerResult.recommended.field_mapping).filter(([, value]) => Boolean(value)).map(([channel, value]) => `${channel}: ${value}`).join(" · ") || "Automatic field mapping"}</small></span>
+              </div>
+              <span>{plannerResult.mode} · {plannerResult.provider}</span>
               <p>{plannerResult.recommended.rationale}</p>
               <button type="button" onClick={() => onUpdate({
                 ...settings,
