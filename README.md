@@ -125,6 +125,15 @@ DB에는 Argon2id hash만 저장한다. 개발 DB에 계정이 없다면 `PYTHON
 | Counts | 672,553 canonical rows · 100 assets · 790 maintenance events · 100 Result Artifacts · 68,208 timeline rows |
 | Projection | relational ready · graph pending |
 
+데이터 패키지 다운로드와 구조 설명:
+
+- [GitHub Release — Predictive Maintenance Canonical V3.1](https://github.com/oosuhada/agentic-ontology-dashboard/releases/tag/predictive-maintenance-canonical-v3.1-20260805)
+- [Canonical V3.1 Data Guide](docs/10-product/predictive-maintenance-canonical-v3.1-data-guide.md)
+
+Data Guide에는 압축기–CNC 관계도, 파일별 행 수와 필드, 센서·생산·정비·고장
+정답·예측 데이터의 역할, 주요 조인 키, AI4I 물리 조건, Result Artifact 의미,
+ZIP checksum과 Dataset bundle checksum의 차이를 정리했다.
+
 비밀번호를 Git에 넣지 말고 ignored `.env`에 loopback PostgreSQL URL을 설정한다.
 프로젝트의 공식 컨테이너 경로는 `cd infra && docker compose --profile polyglot up -d postgres`다.
 이미 유효한 Homebrew PostgreSQL/volume이 있으면 그대로 재사용한다.
