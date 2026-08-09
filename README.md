@@ -257,6 +257,13 @@ tests/        backend contract/integration/safety tests
 
 외부 저장소는 구조와 패턴을 조사하기 위한 레퍼런스다. 라이선스가 없는 저장소의 코드는 복사하지 않았다. AI4I 원본 CSV와 재생성 가능한 모델 binary는 기본 Git 추적 대상이 아니다.
 
-## Topics
+## Architecture & Topics / 아키텍처 및 주제
 
-[`adapter-pattern`](https://github.com/topics/adapter-pattern) · [`agentic-ai`](https://github.com/topics/agentic-ai) · [`fastapi`](https://github.com/topics/fastapi) · [`idempotency`](https://github.com/topics/idempotency) · [`react`](https://github.com/topics/react) · [`repository-pattern`](https://github.com/topics/repository-pattern) · [`transactional-outbox`](https://github.com/topics/transactional-outbox) · [`typescript`](https://github.com/topics/typescript) · [`manufacturing`](https://github.com/topics/manufacturing) · [`industrial-ai`](https://github.com/topics/industrial-ai) · [`llm`](https://github.com/topics/llm) · [`dashboard`](https://github.com/topics/dashboard) · [`postgresql`](https://github.com/topics/postgresql) · [`event-driven-architecture`](https://github.com/topics/event-driven-architecture) · [`domain-driven-design`](https://github.com/topics/domain-driven-design) · [`full-stack`](https://github.com/topics/full-stack)
+**Architecture / 아키텍처**<br>
+[`domain-driven-design`](https://github.com/topics/domain-driven-design) · [`event-driven-architecture`](https://github.com/topics/event-driven-architecture) · [`transactional-outbox`](https://github.com/topics/transactional-outbox) · [`idempotency`](https://github.com/topics/idempotency) · [`repository-pattern`](https://github.com/topics/repository-pattern) · [`adapter-pattern`](https://github.com/topics/adapter-pattern) · [`role-based-ui`](https://github.com/topics/role-based-ui) · [`workspace-isolation`](https://github.com/topics/workspace-isolation) · [`permission-aware-actions`](https://github.com/topics/permission-aware-actions) · [`audit-log`](https://github.com/topics/audit-log) · [`four-eyes-principle`](https://github.com/topics/four-eyes-principle) · [`human-in-the-loop`](https://github.com/topics/human-in-the-loop)
+
+**Project context / 프로젝트 맥락**<br>
+[`agentic-ai`](https://github.com/topics/agentic-ai) · [`dashboard`](https://github.com/topics/dashboard) · [`full-stack`](https://github.com/topics/full-stack) · [`industrial-ai`](https://github.com/topics/industrial-ai) · [`llm`](https://github.com/topics/llm) · [`manufacturing`](https://github.com/topics/manufacturing)
+
+**Implementation stack / 구현 스택**<br>
+[`fastapi`](https://github.com/topics/fastapi) · [`postgresql`](https://github.com/topics/postgresql) · [`react`](https://github.com/topics/react) · [`typescript`](https://github.com/topics/typescript)
