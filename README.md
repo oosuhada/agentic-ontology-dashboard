@@ -2,13 +2,11 @@
 
 조직의 Object, Link, Evidence와 Action을 역할·권한·workspace 범위에 맞는 업무 화면으로 구성하는 온톨로지 기반 운영 애플리케이션 MVP다. 초기 제조 예지보전 vertical slice는 첫 번째 **Manufacturing Predictive Maintenance Pack**으로 유지한다.
 
-## 왜 만들었나 / Why I built it
+## Why I Built It / 만든 이유
 
-이 프로젝트는 개인 아이디어에서 출발한 것이 아니라, **비스텔리전스가 KOSA 팀 프로젝트로 제시한 제조 데이터 과제**에서 시작했다. 내가 이 과제에서 특히 풀고 싶었던 문제는 하나의 고정된 대시보드를 엔지니어, 매니저, 임원이 똑같이 보는 방식이었다.
+Engineers need raw numbers and evidence, managers need priorities, executives need conclusions — but one fixed dashboard can't serve all three. I built a dynamic dashboard where an LLM reshapes the same manufacturing data for each role.
 
-엔지니어에게는 개별 설비 수치와 근거가 중요하지만, 매니저는 무엇을 우선 처리해야 하는지, 임원은 결국 어떤 위험과 영향이 있고 무슨 결정을 내려야 하는지가 더 중요하다. 그래서 같은 데이터와 Evidence를 source of truth로 두되 **사용자의 역할과 질문에 따라 화면 구성과 LLM 리포트가 동적으로 달라지는 대시보드**를 만들고 싶었다.
-
-This began as a manufacturing-data team assignment from Bistel Intelligence during KOSA. The problem I wanted to solve was the assumption that engineers, managers, and executives should all consume the same dashboard. The project therefore keeps the underlying evidence consistent while adapting UI blocks, priorities, and LLM-generated reports to the role and decision being made.
+엔지니어는 수치와 근거를, 매니저는 우선순위를, 임원은 결론을 필요로 하는데, 하나의 고정된 대시보드로는 이 니즈가 동시에 충족되지 않는 문제가 있었습니다. 같은 제조 데이터를 각 역할에 맞게 LLM이 다시 구성하는 동적 대시보드를 만들었습니다.
 
 ## 구현 상태
 
