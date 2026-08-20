@@ -2,6 +2,14 @@
 
 조직의 Object, Link, Evidence와 Action을 역할·권한·workspace 범위에 맞는 업무 화면으로 구성하는 온톨로지 기반 운영 애플리케이션 MVP다. 초기 제조 예지보전 vertical slice는 첫 번째 **Manufacturing Predictive Maintenance Pack**으로 유지한다.
 
+## 왜 만들었나 / Why I built it
+
+이 프로젝트는 개인 아이디어에서 출발한 것이 아니라, **비스텔리전스가 KOSA 팀 프로젝트로 제시한 제조 데이터 과제**에서 시작했다. 내가 이 과제에서 특히 풀고 싶었던 문제는 하나의 고정된 대시보드를 엔지니어, 매니저, 임원이 똑같이 보는 방식이었다.
+
+엔지니어에게는 개별 설비 수치와 근거가 중요하지만, 매니저는 무엇을 우선 처리해야 하는지, 임원은 결국 어떤 위험과 영향이 있고 무슨 결정을 내려야 하는지가 더 중요하다. 그래서 같은 데이터와 Evidence를 source of truth로 두되 **사용자의 역할과 질문에 따라 화면 구성과 LLM 리포트가 동적으로 달라지는 대시보드**를 만들고 싶었다.
+
+This began as a manufacturing-data team assignment from Bistel Intelligence during KOSA. The problem I wanted to solve was the assumption that engineers, managers, and executives should all consume the same dashboard. The project therefore keeps the underlying evidence consistent while adapting UI blocks, priorities, and LLM-generated reports to the role and decision being made.
+
 ## 구현 상태
 
 2단계 데이터 계약부터 31단계 Ontology Planner·Export·보안·성능 릴리스 hardening까지 구현했다.
