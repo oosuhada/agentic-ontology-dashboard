@@ -256,3 +256,7 @@ tests/        backend contract/integration/safety tests
 ## 라이선스와 데이터
 
 외부 저장소는 구조와 패턴을 조사하기 위한 레퍼런스다. 라이선스가 없는 저장소의 코드는 복사하지 않았다. AI4I 원본 CSV와 재생성 가능한 모델 binary는 기본 Git 추적 대상이 아니다.
+
+## Topics
+
+[`adapter-pattern`](https://github.com/topics/adapter-pattern) · [`agentic-ai`](https://github.com/topics/agentic-ai) · [`fastapi`](https://github.com/topics/fastapi) · [`idempotency`](https://github.com/topics/idempotency) · [`react`](https://github.com/topics/react) · [`repository-pattern`](https://github.com/topics/repository-pattern) · [`transactional-outbox`](https://github.com/topics/transactional-outbox) · [`typescript`](https://github.com/topics/typescript)
