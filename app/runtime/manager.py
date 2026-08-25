@@ -108,11 +108,22 @@ class _RunContext:
             if observed_at >= self.producer.end_at:
                 self.finish("completed")
                 return self.state
-            if self.maintenance_event_file is not None:
-                try:
-                    self.overlay.consume_event_file(self.maintenance_event_file)
-                except Exception as exc:
-                    self._record_failure("runtime_overlay_event", exc)
+            try:
+                self.overlay.activate_due_started_events(observed_at)
+                if self.maintenance_event_file is not None:
+                    _processed, rejected = self.overlay.consume_event_file(
+                        self.maintenance_event_file,
+                        source_virtual_time=observed_at,
+                    )
+                    if rejected:
+                        self._record_failure(
+                            "runtime_overlay_event",
+                            RuntimeError(
+                                f"quarantined {rejected} invalid maintenance event(s)"
+                            ),
+                        )
+            except Exception as exc:
+                self._record_failure("runtime_overlay_event", exc)
             try:
                 result = self.producer.produce_tick(
                     observed_at,
@@ -124,6 +135,14 @@ class _RunContext:
                 self._refresh_counts()
                 self._write_manifest()
                 return self.state
+
+            try:
+                self.overlay.record_canonical_observations(
+                    observed_at,
+                    {record.asset_id for record in result.records},
+                )
+            except Exception as exc:
+                self._record_failure("runtime_overlay_checkpoint", exc)
 
             for record in result.records:
                 try:

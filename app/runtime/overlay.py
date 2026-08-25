@@ -25,7 +25,7 @@ from physics_engine import Runtime
 MAINTENANCE_CONTRACT_VERSION = "maintenance-replay-v1"
 AVAILABLE_CONTRACT_VERSION = "runtime-overlay-observation-v1-preview"
 OVERLAY_SOURCE_KIND = "maintenance_replay_overlay"
-CHECKPOINT_VERSION = 4
+CHECKPOINT_VERSION = 5
 
 _EVENT_TYPES = {
     "maintenance.started",
@@ -88,6 +88,10 @@ class OverlayConflict(OverlayContractError):
 
 class StaleOverlayEvent(OverlayContractError):
     """Raised when an older state version arrives after a newer state."""
+
+
+class LateOverlayEvent(OverlayContractError):
+    """Raised when Canonical output already crossed maintenance_started_at."""
 
 
 def _parse_datetime(value: Any, field: str) -> datetime:
@@ -303,17 +307,23 @@ class OverlayObservationStore:
                 try:
                     row = json.loads(raw_line)
                     observation_id = str(row["observation_id"])
-                    digest = str(row["observation_sha256"])
+                    declared_digest = str(row["observation_sha256"])
                 except (json.JSONDecodeError, KeyError, TypeError) as exc:
                     raise OverlayContractError(
                         f"invalid stored overlay observation at {path}:{line_number}"
                     ) from exc
+                actual_digest = _semantic_observation_hash(row)
+                if declared_digest != actual_digest:
+                    raise OverlayConflict(
+                        "stored observation checksum mismatch at "
+                        f"{path}:{line_number}: {observation_id}"
+                    )
                 existing = index.get(observation_id)
-                if existing is not None and existing != digest:
+                if existing is not None and existing != actual_digest:
                     raise OverlayConflict(
                         f"stored observation identity conflict: {observation_id}"
                     )
-                index[observation_id] = digest
+                index[observation_id] = actual_digest
         self._index[path] = index
         return index
 
@@ -362,12 +372,18 @@ class RuntimeOverlayCoordinator:
         self.available_event_path = (
             output_root / "runtime_overlay" / "observations_available.jsonl"
         )
+        self.rejected_event_path = (
+            output_root / "runtime_overlay" / "rejected_maintenance_events.jsonl"
+        )
         self.branches: dict[str, OverlayBranch] = {}
         self.branch_by_equipment: dict[str, str] = {}
         self.processed_events: dict[str, str] = {}
         self.processed_event_ids: dict[str, str] = {}
+        self.pending_started_events: dict[str, dict[str, Any]] = {}
+        self.last_canonical_observed_at: dict[str, datetime] = {}
         self.pending_available_events: dict[str, dict[str, Any]] = {}
         self._available_event_index: dict[str, str] | None = None
+        self._rejected_event_hashes: set[str] | None = None
         self._restore_checkpoint()
 
     @property
@@ -418,6 +434,11 @@ class RuntimeOverlayCoordinator:
                 "simulation_session_id": self.simulation_session_id,
                 "processed_events": self.processed_events,
                 "processed_event_ids": self.processed_event_ids,
+                "pending_started_events": self.pending_started_events,
+                "last_canonical_observed_at": {
+                    equipment_id: observed_at.isoformat()
+                    for equipment_id, observed_at in self.last_canonical_observed_at.items()
+                },
                 "pending_available_events": self.pending_available_events,
                 "branches": branches,
             },
@@ -440,6 +461,31 @@ class RuntimeOverlayCoordinator:
             str(key): str(value)
             for key, value in payload.get("processed_event_ids", {}).items()
         }
+        stored_source_run_id = str(payload.get("source_run_id") or "")
+        stored_session_id = str(payload.get("simulation_session_id") or "")
+        same_active_run = (
+            stored_source_run_id == self.canonical_producer.run_id
+            and stored_session_id == self.simulation_session_id
+        )
+        pending_started = payload.get("pending_started_events", {})
+        if not isinstance(pending_started, dict):
+            raise OverlayContractError("pending_started_events must be an object")
+        if same_active_run:
+            self.pending_started_events = {
+                str(key): dict(event)
+                for key, event in pending_started.items()
+                if isinstance(event, dict)
+            }
+        stored_last_observed = payload.get("last_canonical_observed_at", {})
+        if not isinstance(stored_last_observed, dict):
+            raise OverlayContractError(
+                "last_canonical_observed_at must be an object"
+            )
+        if same_active_run:
+            self.last_canonical_observed_at = {
+                str(equipment_id): _parse_datetime(value, "canonical_observed_at")
+                for equipment_id, value in stored_last_observed.items()
+            }
         pending = payload.get("pending_available_events", {})
         if not isinstance(pending, dict):
             raise OverlayContractError("pending_available_events must be an object")
@@ -448,15 +494,9 @@ class RuntimeOverlayCoordinator:
             for event_id, event in pending.items()
             if isinstance(event, dict)
         }
-        stored_source_run_id = str(payload.get("source_run_id") or "")
-        stored_session_id = str(payload.get("simulation_session_id") or "")
         stored_branches = payload.get("branches", {})
         if not isinstance(stored_branches, dict):
             raise OverlayContractError("Runtime Overlay checkpoint branches must be an object")
-        same_active_run = (
-            stored_source_run_id == self.canonical_producer.run_id
-            and stored_session_id == self.simulation_session_id
-        )
         for key, item in stored_branches.items():
             if not same_active_run:
                 continue
@@ -633,18 +673,116 @@ class RuntimeOverlayCoordinator:
         self.processed_event_ids[str(event["event_id"])] = digest
         self._checkpoint()
 
-    def _branch_for_event(self, event: dict[str, Any]) -> OverlayBranch:
-        key = ":".join(
+    @staticmethod
+    def _event_branch_key(event: dict[str, Any]) -> str:
+        return ":".join(
             (
                 str(event["simulation_session_id"]),
                 str(event["equipment_id"]),
                 str(event["maintenance_action_id"]),
             )
         )
+
+    def _branch_for_event(self, event: dict[str, Any]) -> OverlayBranch:
+        key = self._event_branch_key(event)
         branch = self.branches.get(key)
         if branch is None:
             raise OverlayContractError(f"maintenance.started branch not found: {key}")
         return branch
+
+    def _assert_started_event_is_not_late(
+        self,
+        *,
+        equipment_id: str,
+        maintenance_started_at: datetime,
+    ) -> None:
+        last_observed_at = self.last_canonical_observed_at.get(equipment_id)
+        if last_observed_at is not None and last_observed_at >= maintenance_started_at:
+            raise LateOverlayEvent(
+                "maintenance.started arrived after Canonical output crossed its "
+                f"effective time: equipment_id={equipment_id}, "
+                f"maintenance_started_at={maintenance_started_at.isoformat()}, "
+                f"last_canonical_observed_at={last_observed_at.isoformat()}"
+            )
+
+    def _activate_started_event(self, event: dict[str, Any]) -> OverlayBranch:
+        equipment_id = str(event["equipment_id"])
+        key = self._event_branch_key(event)
+        if key in self.branches:
+            raise OverlayConflict(f"maintenance branch already exists: {key}")
+        if equipment_id in self.branch_by_equipment:
+            raise OverlayConflict(
+                f"equipment already has an active overlay branch: {equipment_id}"
+            )
+        maintenance_started_at = _parse_datetime(
+            event["maintenance_started_at"], "maintenance_started_at"
+        )
+        self._assert_started_event_is_not_late(
+            equipment_id=equipment_id,
+            maintenance_started_at=maintenance_started_at,
+        )
+        runtime_snapshot = copy.deepcopy(
+            self.canonical_producer.runtimes[equipment_id]
+        )
+        branch = OverlayBranch(
+            simulation_session_id=str(event["simulation_session_id"]),
+            equipment_id=equipment_id,
+            maintenance_action_id=str(event["maintenance_action_id"]),
+            action_code=str(event["action_code"]),
+            maintenance_started_at=maintenance_started_at,
+            runtime=runtime_snapshot,
+            base_source_sha256=_base_source_snapshot_sha256(
+                base_dataset_version=self.base_dataset_version,
+                source_run_id=self.canonical_producer.run_id,
+                simulation_session_id=self.simulation_session_id,
+                equipment_id=equipment_id,
+                maintenance_started_at=maintenance_started_at,
+                runtime=runtime_snapshot,
+            ),
+            state_version=int(event["state_version"]),
+        )
+        self.branches[key] = branch
+        self.branch_by_equipment[equipment_id] = key
+        return branch
+
+    def activate_due_started_events(self, source_virtual_time: datetime) -> int:
+        """Snapshot queued starts immediately before the first due source tick."""
+        if source_virtual_time.tzinfo is None:
+            raise OverlayContractError(
+                "source_virtual_time must include timezone information"
+            )
+        activated = 0
+        for key, event in list(self.pending_started_events.items()):
+            started_at = _parse_datetime(
+                event["maintenance_started_at"], "maintenance_started_at"
+            )
+            if started_at > source_virtual_time:
+                continue
+            self._activate_started_event(event)
+            del self.pending_started_events[key]
+            activated += 1
+        if activated:
+            self._checkpoint()
+        return activated
+
+    def record_canonical_observations(
+        self,
+        observed_at: datetime,
+        equipment_ids: set[str],
+    ) -> None:
+        """Persist the latest runtime state already exposed as Canonical output."""
+        if observed_at.tzinfo is None:
+            raise OverlayContractError("observed_at must include timezone information")
+        changed = False
+        for equipment_id in equipment_ids:
+            if equipment_id not in self.assets:
+                raise OverlayContractError(f"unknown equipment_id: {equipment_id}")
+            previous = self.last_canonical_observed_at.get(equipment_id)
+            if previous is None or observed_at > previous:
+                self.last_canonical_observed_at[equipment_id] = observed_at
+                changed = True
+        if changed:
+            self._checkpoint()
 
     @staticmethod
     def _assert_newer_version(branch: OverlayBranch, event: dict[str, Any]) -> int:
@@ -657,7 +795,12 @@ class RuntimeOverlayCoordinator:
             raise OverlayConflict(f"state_version_conflict: {version}")
         return version
 
-    def process_event(self, event: dict[str, Any]) -> dict[str, Any]:
+    def process_event(
+        self,
+        event: dict[str, Any],
+        *,
+        source_virtual_time: datetime | None = None,
+    ) -> dict[str, Any]:
         """Apply one versioned Maintenance event to source-side overlay state."""
         self._validate_contract(event)
         if str(event["simulation_session_id"]) != self.simulation_session_id:
@@ -668,6 +811,16 @@ class RuntimeOverlayCoordinator:
         if equipment_id not in self.assets or equipment_id not in self.canonical_producer.runtimes:
             raise OverlayContractError(f"unknown equipment_id: {equipment_id}")
         if self._event_replay(event):
+            key = self._event_branch_key(event)
+            if (
+                str(event["event_type"]) == "maintenance.started"
+                and key in self.pending_started_events
+            ):
+                return {
+                    "replayed": True,
+                    "phase": "pending",
+                    "state_version": int(event["state_version"]),
+                }
             branch = self._branch_for_event(event)
             return {
                 "replayed": True,
@@ -677,44 +830,39 @@ class RuntimeOverlayCoordinator:
 
         event_type = str(event["event_type"])
         if event_type == "maintenance.started":
-            key = ":".join(
-                (
-                    str(event["simulation_session_id"]),
-                    equipment_id,
-                    str(event["maintenance_action_id"]),
-                )
-            )
-            if key in self.branches:
-                raise OverlayConflict(f"maintenance branch already exists: {key}")
-            if equipment_id in self.branch_by_equipment:
+            key = self._event_branch_key(event)
+            if key in self.pending_started_events or any(
+                str(pending["equipment_id"]) == equipment_id
+                for pending in self.pending_started_events.values()
+            ):
                 raise OverlayConflict(
-                    f"equipment already has an active overlay branch: {equipment_id}"
+                    f"equipment already has a pending overlay branch: {equipment_id}"
                 )
             maintenance_started_at = _parse_datetime(
                 event["maintenance_started_at"], "maintenance_started_at"
             )
-            runtime_snapshot = copy.deepcopy(
-                self.canonical_producer.runtimes[equipment_id]
+            effective_virtual_time = (
+                source_virtual_time
+                if source_virtual_time is not None
+                else self.canonical_producer.start_at
             )
-            branch = OverlayBranch(
-                simulation_session_id=str(event["simulation_session_id"]),
-                equipment_id=equipment_id,
-                maintenance_action_id=str(event["maintenance_action_id"]),
-                action_code=str(event["action_code"]),
-                maintenance_started_at=maintenance_started_at,
-                runtime=runtime_snapshot,
-                base_source_sha256=_base_source_snapshot_sha256(
-                    base_dataset_version=self.base_dataset_version,
-                    source_run_id=self.canonical_producer.run_id,
-                    simulation_session_id=self.simulation_session_id,
+            if effective_virtual_time.tzinfo is None:
+                raise OverlayContractError(
+                    "source_virtual_time must include timezone information"
+                )
+            if maintenance_started_at > effective_virtual_time:
+                self._assert_started_event_is_not_late(
                     equipment_id=equipment_id,
                     maintenance_started_at=maintenance_started_at,
-                    runtime=runtime_snapshot,
-                ),
-                state_version=int(event["state_version"]),
-            )
-            self.branches[key] = branch
-            self.branch_by_equipment[equipment_id] = key
+                )
+                self.pending_started_events[key] = copy.deepcopy(event)
+                self._record_event(event)
+                return {
+                    "replayed": False,
+                    "phase": "pending",
+                    "state_version": int(event["state_version"]),
+                }
+            branch = self._activate_started_event(event)
         else:
             branch = self._branch_for_event(event)
             version = self._assert_newer_version(branch, event)
@@ -1000,31 +1148,104 @@ class RuntimeOverlayCoordinator:
             recovered += 1
         return recovered
 
-    def consume_event_file(self, path: Path) -> int:
+    def _load_rejected_event_hashes(self) -> set[str]:
+        if self._rejected_event_hashes is not None:
+            return self._rejected_event_hashes
+        hashes: set[str] = set()
+        if self.rejected_event_path.exists():
+            for line_number, raw_line in enumerate(
+                self.rejected_event_path.read_text(encoding="utf-8").splitlines(),
+                start=1,
+            ):
+                if not raw_line.strip():
+                    continue
+                try:
+                    rejection = json.loads(raw_line)
+                    rejected_sha256 = str(rejection["rejected_event_sha256"])
+                except (json.JSONDecodeError, KeyError, TypeError) as exc:
+                    raise OverlayContractError(
+                        "invalid rejected-event record at "
+                        f"{self.rejected_event_path}:{line_number}"
+                    ) from exc
+                hashes.add(rejected_sha256)
+        self._rejected_event_hashes = hashes
+        return hashes
+
+    def _quarantine_event_line(
+        self,
+        *,
+        source_path: Path,
+        line_number: int,
+        raw_line: str,
+        error: Exception,
+    ) -> bool:
+        rejected_sha256 = hashlib.sha256(raw_line.encode("utf-8")).hexdigest()
+        hashes = self._load_rejected_event_hashes()
+        if rejected_sha256 in hashes:
+            return False
+        _durable_append(
+            self.rejected_event_path,
+            {
+                "rejected_event_sha256": rejected_sha256,
+                "source_file": str(source_path),
+                "source_line_number": line_number,
+                "reason_type": type(error).__name__,
+                "reason": str(error),
+                "rejected_at": self.generated_at().isoformat(),
+                "raw_event": raw_line,
+            },
+        )
+        hashes.add(rejected_sha256)
+        return True
+
+    def consume_event_file(
+        self,
+        path: Path,
+        *,
+        source_virtual_time: datetime | None = None,
+    ) -> tuple[int, int]:
         """Consume the idempotent JSONL inbox produced by Backend Outbox dispatch."""
         if not path.exists():
-            return 0
+            return 0, 0
+        effective_virtual_time = (
+            source_virtual_time
+            if source_virtual_time is not None
+            else self.canonical_producer.start_at
+        )
+        self.activate_due_started_events(effective_virtual_time)
         processed = 0
+        rejected = 0
+        rejected_hashes = self._load_rejected_event_hashes()
         for line_number, raw_line in enumerate(
             path.read_text(encoding="utf-8").splitlines(), start=1
         ):
             if not raw_line.strip():
                 continue
+            raw_sha256 = hashlib.sha256(raw_line.encode("utf-8")).hexdigest()
+            if raw_sha256 in rejected_hashes:
+                continue
             try:
                 event = json.loads(raw_line)
-            except json.JSONDecodeError as exc:
-                raise OverlayContractError(
-                    f"invalid maintenance event JSON at {path}:{line_number}"
-                ) from exc
-            if (
-                isinstance(event, dict)
-                and str(event.get("simulation_session_id") or "")
-                != self.simulation_session_id
-            ):
-                continue
-            result = self.process_event(event)
-            processed += int(not result["replayed"])
-        return processed
+                if (
+                    isinstance(event, dict)
+                    and str(event.get("simulation_session_id") or "")
+                    != self.simulation_session_id
+                ):
+                    continue
+                result = self.process_event(
+                    event,
+                    source_virtual_time=effective_virtual_time,
+                )
+                processed += int(not result["replayed"])
+            except (json.JSONDecodeError, OverlayContractError, KeyError, TypeError) as exc:
+                if self._quarantine_event_line(
+                    source_path=path,
+                    line_number=line_number,
+                    raw_line=raw_line,
+                    error=exc,
+                ):
+                    rejected += 1
+        return processed, rejected
 
     def outputs(self) -> dict[str, Any]:
         branch_files = [
@@ -1035,6 +1256,7 @@ class RuntimeOverlayCoordinator:
         return {
             "checkpoint": str(self.checkpoint_path),
             "observations_available": str(self.available_event_path),
+            "rejected_maintenance_events": str(self.rejected_event_path),
             "branches": branch_files,
             "active_equipment_ids": list(self.active_equipment_ids),
         }

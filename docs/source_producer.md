@@ -158,14 +158,21 @@ project-scoped JSONL inbox를 읽는다. 실행 시작 시 `simulation_session_i
 run에 명시적으로 바인딩하고 그 ID가 일치하는 이벤트만 적용한다. 생략 시 `run_id`를
 기본값으로 사용하지만 두 ID를 같은 개념으로 정의하지 않는다.
 
-- `maintenance.started`: 대상 설비 Runtime snapshot을 만들고 해당 시점부터 Canonical
+- `maintenance.started`: 미래 시각 이벤트는 pending으로 보존하고 첫 Source tick이 해당
+  시각에 도달하기 직전에 Runtime snapshot을 만든다. 그 tick부터 Canonical
   Source/OPC UA/CSV projection에서 대상 설비만 제외한다.
+- 대상 설비의 Canonical Observation이 이미 `maintenance_started_at` 이상으로 출력된
+  late event는 과거 상태를 추정하지 않고 격리한다.
 - `maintenance.completed`: action별 whitelist를 검증한 뒤 snapshot에 `state_patch`를
   적용한다.
 - `maintenance.replay_requested`: `restart_at`부터 branch-local clock으로 Observation을
   생성한다.
 - 다른 설비의 global simulation clock과 출력은 계속 진행한다.
 - event ID/idempotency key/state version과 append-only observation hash를 검증한다.
+  저장 파일을 다시 열 때는 선언된 hash를 신뢰하지 않고 실제 payload의 semantic
+  SHA-256을 재계산한다.
+- 잘못된 inbox line은 `rejected_maintenance_events.jsonl`에 raw-line SHA-256과 사유를
+  한 번만 기록하고, 같은 파일의 이후 정상 이벤트 처리를 계속한다.
 - checkpoint에 먼저 기록된 pending availability는 Overlay coordinator 재구성 시 JSONL
   outbox로 복구한다. 전체 `RuntimeManager` run resume는 별도 runtime lifecycle 범위다.
 
@@ -179,6 +186,7 @@ field로도 투영한다. 외부 DTO의 `source_kind`는 `maintenance_replay_ove
 output/runtime_overlay/
 ├── runtime_overlay_state.json
 ├── observations_available.jsonl
+├── rejected_maintenance_events.jsonl
 └── {simulation_session_id}/{overlay_branch_id}.jsonl
 ```
 

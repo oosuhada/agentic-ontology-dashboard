@@ -327,6 +327,213 @@ class RuntimeOverlayV2Test(unittest.TestCase):
             1,
         )
 
+    def test_future_start_snapshots_at_first_due_tick_without_canonical_overlap(self):
+        coordinator = self.coordinator()
+        future_start = self.started()
+        future_started_at = START + timedelta(minutes=15)
+        future_start["maintenance_started_at"] = future_started_at.isoformat()
+
+        accepted = coordinator.process_event(
+            future_start,
+            source_virtual_time=START,
+        )
+        self.assertEqual(accepted["phase"], "pending")
+        self.assertEqual(coordinator.active_equipment_ids, ())
+
+        for observed_at in (START, START + timedelta(minutes=10)):
+            result = self.producer.produce_tick(observed_at)
+            coordinator.record_canonical_observations(
+                observed_at,
+                {record.asset_id for record in result.records},
+            )
+        runtime_at_boundary = self.producer.runtimes[self.target["asset_id"]]
+        wear_at_boundary = runtime_at_boundary.tool_wear_min
+
+        coordinator.activate_due_started_events(START + timedelta(minutes=20))
+        branch = coordinator.branches[
+            coordinator.branch_by_equipment[self.target["asset_id"]]
+        ]
+        self.assertEqual(branch.runtime.tool_wear_min, wear_at_boundary)
+        self.assertEqual(
+            coordinator.excluded_equipment_ids(START + timedelta(minutes=20)),
+            {self.target["asset_id"]},
+        )
+
+        due_result = self.producer.produce_tick(
+            START + timedelta(minutes=20),
+            excluded_asset_ids=coordinator.excluded_equipment_ids(
+                START + timedelta(minutes=20)
+            ),
+        )
+        self.assertNotIn(
+            self.target["asset_id"],
+            {record.asset_id for record in due_result.records},
+        )
+        self.assertLess(
+            coordinator.last_canonical_observed_at[self.target["asset_id"]],
+            future_started_at,
+        )
+
+    def test_pending_future_start_is_restored_before_due_tick(self):
+        coordinator = self.coordinator()
+        future_start = self.started()
+        future_started_at = START + timedelta(minutes=20)
+        future_start["maintenance_started_at"] = future_started_at.isoformat()
+        coordinator.process_event(future_start, source_virtual_time=START)
+
+        resumed_producer = producer()
+        resumed_producer.runtimes[self.target["asset_id"]].tool_wear_min = 123.4
+        resumed = self.coordinator(resumed_producer)
+        self.assertEqual(len(resumed.pending_started_events), 1)
+        self.assertEqual(resumed.active_equipment_ids, ())
+
+        for observed_at in (START, START + timedelta(minutes=10)):
+            result = resumed_producer.produce_tick(observed_at)
+            resumed.record_canonical_observations(
+                observed_at,
+                {record.asset_id for record in result.records},
+            )
+        resumed.activate_due_started_events(future_started_at)
+        self.assertEqual(
+            resumed.active_equipment_ids,
+            (self.target["asset_id"],),
+        )
+        self.assertEqual(resumed.pending_started_events, {})
+
+    def test_late_start_is_quarantined_once_and_never_activates(self):
+        coordinator = self.coordinator()
+        result = self.producer.produce_tick(START)
+        coordinator.record_canonical_observations(
+            START,
+            {record.asset_id for record in result.records},
+        )
+        event_path = self.root / "maintenance-replay-late.jsonl"
+        event_path.write_text(json.dumps(self.started()) + "\n", encoding="utf-8")
+
+        self.assertEqual(
+            coordinator.consume_event_file(
+                event_path,
+                source_virtual_time=START + timedelta(minutes=10),
+            ),
+            (0, 1),
+        )
+        self.assertEqual(coordinator.active_equipment_ids, ())
+        self.assertEqual(
+            coordinator.consume_event_file(
+                event_path,
+                source_virtual_time=START + timedelta(minutes=10),
+            ),
+            (0, 0),
+        )
+        rejected = coordinator.rejected_event_path.read_text(
+            encoding="utf-8"
+        ).splitlines()
+        self.assertEqual(len(rejected), 1)
+        self.assertEqual(json.loads(rejected[0])["reason_type"], "LateOverlayEvent")
+
+    def test_stored_observation_payload_must_match_declared_checksum(self):
+        coordinator = self.coordinator()
+        self.prepare_branch(coordinator)
+        rows, _available = coordinator.advance_branch_to(
+            self.target["asset_id"],
+            self.restart_at,
+        )
+        self.assertEqual(len(rows), 1)
+        branch = coordinator.branches[
+            coordinator.branch_by_equipment[self.target["asset_id"]]
+        ]
+        observation_path = coordinator.store.path_for(branch)
+        tampered = json.loads(observation_path.read_text(encoding="utf-8"))
+        tampered["tool_wear_min"] = 999.0
+        observation_path.write_text(
+            json.dumps(tampered, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        stored_line_count = len(
+            observation_path.read_text(encoding="utf-8").splitlines()
+        )
+
+        resumed = self.coordinator(producer())
+        with self.assertRaisesRegex(OverlayConflict, "checksum mismatch"):
+            resumed.advance_branch_to(
+                self.target["asset_id"],
+                self.restart_at + timedelta(minutes=10),
+            )
+        self.assertEqual(
+            len(observation_path.read_text(encoding="utf-8").splitlines()),
+            stored_line_count,
+        )
+
+    def test_poison_line_is_quarantined_without_blocking_later_valid_event(self):
+        event_path = self.root / "maintenance-replay-poison.jsonl"
+        event_path.write_text(
+            "{not-valid-json}\n" + json.dumps(self.started()) + "\n",
+            encoding="utf-8",
+        )
+        manager = RuntimeManager(
+            output_root=self.root,
+            mapping_path=MAPPING,
+            opcua_endpoint="opc.tcp://127.0.0.1:48501/gen-data/",
+            maintenance_event_file=event_path,
+        )
+        manager.start_run(
+            run_id="DEMO-001",
+            start_at=START,
+            duration_hours=1,
+            continuous=False,
+            publish_opcua=False,
+        )
+        rejected_path: Path | None = None
+        try:
+            first = manager.tick("DEMO-001")
+            self.assertEqual(first["source_record_count"], 99)
+            self.assertEqual(first["status"], "partial_failure")
+            outputs = manager.outputs("DEMO-001")
+            self.assertEqual(
+                outputs["runtime_overlay"]["active_equipment_ids"],
+                [self.target["asset_id"]],
+            )
+            rejected_path = Path(
+                outputs["runtime_overlay"]["rejected_maintenance_events"]
+            )
+            self.assertEqual(
+                len(rejected_path.read_text(encoding="utf-8").splitlines()),
+                1,
+            )
+
+            second = manager.tick("DEMO-001")
+            self.assertEqual(second["source_record_count"], 198)
+            self.assertEqual(
+                len(rejected_path.read_text(encoding="utf-8").splitlines()),
+                1,
+            )
+            manifest = json.loads(
+                (self.root / "runs" / "DEMO-001" / "run_manifest.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            overlay_failures = [
+                failure
+                for failure in manifest["partial_failures"]
+                if failure["stage"] == "runtime_overlay_event"
+            ]
+            self.assertEqual(len(overlay_failures), 1)
+        finally:
+            manager.stop("DEMO-001")
+        self.assertIsNotNone(rejected_path)
+        resumed = self.coordinator(producer())
+        self.assertEqual(
+            resumed.consume_event_file(
+                event_path,
+                source_virtual_time=START + timedelta(minutes=20),
+            ),
+            (0, 0),
+        )
+        self.assertEqual(
+            len(rejected_path.read_text(encoding="utf-8").splitlines()),
+            1,
+        )
+
     def test_runtime_manager_consumes_backend_jsonl_and_keeps_target_out_of_canonical(self):
         event_path = self.root / "maintenance-replay.jsonl"
         event_path.write_text(

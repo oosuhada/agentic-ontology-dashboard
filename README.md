@@ -141,12 +141,18 @@ run identity와 같은 개념으로 간주하지 않습니다.
 
 ```text
 maintenance.started
-→ 대상 설비 Canonical 출력만 중단
+→ 미래 이벤트는 시작 시각까지 pending
+→ 첫 due tick 직전에 snapshot 후 대상 설비 Canonical 출력만 중단
 → maintenance.completed의 허용된 state_patch를 snapshot에 적용
 → maintenance.replay_requested 이후 대상 branch clock만 진행
 → output/runtime_overlay/{session}/{branch}.jsonl
 → output/runtime_overlay/observations_available.jsonl
 ```
+
+시작 시각 이후 Canonical row가 이미 출력된 late event와 계약을 위반한 inbox line은
+`output/runtime_overlay/rejected_maintenance_events.jsonl`에 중복 없이 격리합니다. 한
+줄의 오류가 같은 inbox의 이후 정상 이벤트를 막지 않습니다. 저장된 Overlay Observation은
+재사용 전에 payload 기준 SHA-256을 다시 계산해 변조 여부를 확인합니다.
 
 Overlay Observation은 `SensorRecord v2`의 `measurements` envelope를 재사용하되 외부
 DTO에서 `source_kind=maintenance_replay_overlay`, `branch_kind=overlay`와 source lineage를
