@@ -43,9 +43,10 @@ source kind를 기반으로 생성된다. 이 ID는 gen_data source record와 pr
 source reference로 보존할 수 있지만, 각 도메인의 최종 Observation/Object ID와
 동일한 값으로 간주하거나 그 ID 생성 규칙을 gen_data에 위임하지 않는다.
 
-`branch_kind`는 현재 모든 producer/collector 출력에서 `canonical`이다.
-향후 overlay branch는 같은 observation contract를 유지하며 다음 형태의
-optional `overlay` 객체를 사용한다.
+일반 simulation/collector 출력의 `branch_kind`는 `canonical`이다. Maintenance Runtime
+Overlay 출력은 SensorRecord v2의 measurement envelope를 재사용하지만 별도의 외부
+Overlay DTO로 투영한다. 이 DTO는 `source_kind=maintenance_replay_overlay`,
+`branch_kind=overlay`와 다음 `overlay` 객체를 사용한다.
 
 ```json
 {
@@ -54,7 +55,10 @@ optional `overlay` 객체를 사용한다.
     "overlay_id": "...",
     "parent_branch": "canonical",
     "maintenance_event_id": "...",
-    "state_patch_reference": "..."
+    "state_patch_reference": "...",
+    "simulation_session_id": "...",
+    "history_segment_id": "...",
+    "state_version": 3
   }
 }
 ```
@@ -119,10 +123,11 @@ Generator prediction은 `observation_id`, `run_id`, `sequence`, `mapping_version
 `schema_version`을 source lineage로 전달한다. Canonical CSV는 운영 inference 입력이
 아니며, Backend/Ontology 도메인 ID는 각 owner domain에서 별도로 만든다.
 
-향후 overlay 실행은 Maintenance가 `overlay_id`, `parent_branch`,
-`maintenance_event_id`, `state_patch_reference`를 입력으로 제공하고 gen_data는 그 값을
-판단하거나 생성하지 않은 채 source/protocol lineage에 보존한다. 현재 PR은
-`branch_kind=canonical`, `overlay=null` 기본값과 v2 필드 자리만 제공한다.
+Overlay identity는 Maintenance handoff의 `simulation_session_id`,
+`maintenance_action_id`, `maintenance_event_id`, `state_version`에서 파생·보존한다.
+`gen_data`는 action 의미를 확장하지 않고 현재 MVP whitelist인 `TOOL_REPLACEMENT`의
+`tool_wear_min reset -> 0 min`만 적용한다. 추론 readiness와 정비 성공 여부는 판단하지
+않는다.
 
 최소 수집 안전장치는 다음과 같다.
 
@@ -145,6 +150,37 @@ stop 시 writer flush와 OPC UA client/subscription cleanup을 수행한다.
 writer와 새 run 디렉터리를 rollback한다. stop timeout 뒤 worker가 남아 있으면 상태를
 `stopping`으로 유지하고 writer를 닫지 않는다. collector/session과 worker가 실제로
 종료된 뒤에만 writer를 flush/close하고 terminal 상태를 확정한다.
+
+### Runtime Overlay integration
+
+simulation run은 `GEN_DATA_RUNTIME_OVERLAY_EVENT_FILE`이 설정된 경우에만 Backend의
+project-scoped JSONL inbox를 읽는다. 실행 시작 시 `simulation_session_id`를 Source
+run에 명시적으로 바인딩하고 그 ID가 일치하는 이벤트만 적용한다. 생략 시 `run_id`를
+기본값으로 사용하지만 두 ID를 같은 개념으로 정의하지 않는다.
+
+- `maintenance.started`: 대상 설비 Runtime snapshot을 만들고 해당 시점부터 Canonical
+  Source/OPC UA/CSV projection에서 대상 설비만 제외한다.
+- `maintenance.completed`: action별 whitelist를 검증한 뒤 snapshot에 `state_patch`를
+  적용한다.
+- `maintenance.replay_requested`: `restart_at`부터 branch-local clock으로 Observation을
+  생성한다.
+- 다른 설비의 global simulation clock과 출력은 계속 진행한다.
+- event ID/idempotency key/state version과 append-only observation hash를 검증한다.
+- checkpoint에 먼저 기록된 pending availability는 Overlay coordinator 재구성 시 JSONL
+  outbox로 복구한다. 전체 `RuntimeManager` run resume는 별도 runtime lifecycle 범위다.
+
+Overlay branch 파일은 SensorRecord v2 payload와 동일한 `measurements`를 정본으로
+보존한다. 현재 Backend Runtime Overlay reader의 전환 기간에는 같은 measurement를 flat
+field로도 투영한다. 외부 DTO의 `source_kind`는 `maintenance_replay_overlay`이며,
+`base_source_sha256`은 `maintenance.started` 시점의 분기 전 source runtime snapshot을
+결정론적으로 식별한다. 이 projection은 호환용이며 별도 Physics 계산 경로가 아니다.
+
+```text
+output/runtime_overlay/
+├── runtime_overlay_state.json
+├── observations_available.jsonl
+└── {simulation_session_id}/{overlay_branch_id}.jsonl
+```
 
 FastAPI는 control layer만 담당한다.
 

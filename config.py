@@ -61,3 +61,9 @@ GEN_DATA_OPCUA_ENDPOINT = os.environ.get(
 )
 GEN_DATA_API_HOST = os.environ.get("GEN_DATA_API_HOST", str(_settings["GEN_DATA_API_HOST"]))
 GEN_DATA_API_PORT = int(os.environ.get("GEN_DATA_API_PORT", _settings["GEN_DATA_API_PORT"]))
+_raw_overlay_event_file = os.environ.get(
+    "GEN_DATA_RUNTIME_OVERLAY_EVENT_FILE", ""
+).strip()
+GEN_DATA_RUNTIME_OVERLAY_EVENT_FILE = (
+    Path(_raw_overlay_event_file) if _raw_overlay_event_file else None
+)

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from app.protocol.opcua import OpcUaCollector, OpcUaMapping, OpcUaPublisher
+from app.runtime.overlay import RuntimeOverlayCoordinator
 from app.runtime.state import RunState
 from app.simulation.producer import SimulationProducer
 from app.storage.canonical_writer import CanonicalWriter
@@ -29,6 +30,7 @@ class _RunContext:
         self,
         *,
         run_id: str,
+        simulation_session_id: str,
         output_root: Path,
         mapping_path: Path,
         opcua_endpoint: str,
@@ -41,8 +43,10 @@ class _RunContext:
         speed: float,
         continuous: bool,
         publish_opcua: bool,
+        maintenance_event_file: Path | None,
     ) -> None:
         self.run_id = run_id
+        self.simulation_session_id = simulation_session_id
         self.output_root = output_root
         self.run_dir = output_root / "runs" / run_id
         self.run_dir.mkdir(parents=True, exist_ok=False)
@@ -64,6 +68,13 @@ class _RunContext:
             seed=seed,
             rate_profile=rate_profile,
         )
+        self.maintenance_event_file = maintenance_event_file
+        self.overlay = RuntimeOverlayCoordinator(
+            canonical_producer=self.producer,
+            simulation_session_id=simulation_session_id,
+            output_root=output_root,
+        )
+        self.overlay.recover_pending_available_events()
         self.source_writer = SourceRecordWriter(self.run_dir / "source" / "sensor_records.jsonl")
         self.protocol_writer = ProtocolRecordWriter(self.run_dir / "protocol")
         self.canonical_writer = CanonicalWriter(self.run_dir / "canonical")
@@ -77,6 +88,7 @@ class _RunContext:
             started_at=now,
             current_observed_at=start_at,
             source_kind="simulation",
+            simulation_session_id=simulation_session_id,
         )
         self._closed = False
         if publish_opcua:
@@ -96,8 +108,16 @@ class _RunContext:
             if observed_at >= self.producer.end_at:
                 self.finish("completed")
                 return self.state
+            if self.maintenance_event_file is not None:
+                try:
+                    self.overlay.consume_event_file(self.maintenance_event_file)
+                except Exception as exc:
+                    self._record_failure("runtime_overlay_event", exc)
             try:
-                result = self.producer.produce_tick(observed_at)
+                result = self.producer.produce_tick(
+                    observed_at,
+                    excluded_asset_ids=self.overlay.excluded_equipment_ids(observed_at),
+                )
             except Exception as exc:
                 self._record_failure("sensor_calculation", exc)
                 self.state.current_observed_at += timedelta(minutes=self.interval_minutes)
@@ -135,6 +155,11 @@ class _RunContext:
                     self.canonical_writer.write_maintenance(event)
                 except Exception as exc:
                     self._record_failure("canonical_maintenance", exc)
+
+            try:
+                self.overlay.advance_active_branches_to(observed_at)
+            except Exception as exc:
+                self._record_failure("runtime_overlay", exc)
 
             self.state.last_sequence = self.producer.sequence
             self.state.current_observed_at += timedelta(minutes=self.interval_minutes)
@@ -198,6 +223,7 @@ class _RunContext:
             "protocol_errors": str(self.protocol_writer.error_path),
             "protocol_quarantine": str(self.protocol_writer.quarantine_path),
             "canonical": {path.name: str(path) for path in self.canonical_writer.paths},
+            "runtime_overlay": self.overlay.outputs(),
             "counts": {
                 "source_records": self.source_writer.count,
                 "protocol_datavalues": self.protocol_writer.datavalue_count,
@@ -249,6 +275,7 @@ class _RunContext:
             {
                 "schema_version": RUN_MANIFEST_SCHEMA_VERSION,
                 "run_id": self.run_id,
+                "simulation_session_id": self.simulation_session_id,
                 "source_kind": "simulation",
                 "seed": self.seed,
                 "scenario": self.rate_profile,
@@ -477,11 +504,13 @@ class RuntimeManager:
         mapping_path: Path,
         opcua_endpoint: str,
         worker_join_timeout_seconds: float = 5.0,
+        maintenance_event_file: Path | None = None,
     ) -> None:
         self.output_root = output_root
         self.mapping_path = mapping_path
         self.opcua_endpoint = opcua_endpoint
         self.worker_join_timeout_seconds = max(0.0, worker_join_timeout_seconds)
+        self.maintenance_event_file = maintenance_event_file
         self._runs: dict[str, _RunContext | _OpcUaRunContext] = {}
         self._lock = threading.RLock()
 
@@ -489,6 +518,7 @@ class RuntimeManager:
         self,
         *,
         run_id: str | None = None,
+        simulation_session_id: str | None = None,
         seed: int = 42,
         start_at: datetime | None = None,
         duration_hours: int = 24,
@@ -510,6 +540,9 @@ class RuntimeManager:
         if duration_hours <= 0:
             raise ValueError("duration_hours must be positive")
         resolved_id = run_id or f"run-{uuid.uuid4().hex[:12]}"
+        resolved_session_id = simulation_session_id or resolved_id
+        if not resolved_session_id.strip():
+            raise ValueError("simulation_session_id must not be blank")
         resolved_start = start_at or datetime.now(tz=timezone.utc).replace(microsecond=0)
         if resolved_start.tzinfo is None:
             raise ValueError("start_at must include a timezone")
@@ -520,6 +553,10 @@ class RuntimeManager:
             if active:
                 raise RuntimeError(f"another run is active: {active[0].run_id}")
             if source_kind == "opcua":
+                if simulation_session_id is not None:
+                    raise ValueError(
+                        "simulation_session_id is only supported for simulation source runs"
+                    )
                 if not continuous:
                     raise ValueError("OPC UA source runs require continuous=true")
                 if not opcua_node_ids:
@@ -537,6 +574,7 @@ class RuntimeManager:
             else:
                 context = _RunContext(
                     run_id=resolved_id,
+                    simulation_session_id=resolved_session_id,
                     output_root=self.output_root,
                     mapping_path=self.mapping_path,
                     opcua_endpoint=self.opcua_endpoint,
@@ -549,6 +587,7 @@ class RuntimeManager:
                     speed=speed,
                     continuous=continuous,
                     publish_opcua=publish_opcua,
+                    maintenance_event_file=self.maintenance_event_file,
                 )
             self._runs[resolved_id] = context
             if continuous:
@@ -598,6 +637,17 @@ class RuntimeManager:
     def outputs(self, run_id: str) -> dict[str, Any]:
         return self._get(run_id).outputs()
 
+    def process_maintenance_event(
+        self,
+        run_id: str,
+        event: dict[str, Any],
+    ) -> dict[str, Any]:
+        context = self._get(run_id)
+        if not isinstance(context, _RunContext):
+            raise RuntimeError("Runtime Overlay is only supported for simulation source runs")
+        with context.lock:
+            return context.overlay.process_event(event)
+
     def ready(self) -> bool:
         return self.mapping_path.is_file() and self.output_root.parent.exists()
 
@@ -606,7 +656,7 @@ class RuntimeManager:
             if not context._closed:
                 self.stop(context.run_id)
 
-    def _get(self, run_id: str) -> _RunContext:
+    def _get(self, run_id: str) -> _RunContext | _OpcUaRunContext:
         try:
             return self._runs[run_id]
         except KeyError as exc:

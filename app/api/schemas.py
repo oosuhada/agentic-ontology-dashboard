@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 class StartRunRequest(BaseModel):
     run_id: str | None = None
+    simulation_session_id: str | None = Field(default=None, min_length=1, max_length=240)
     seed: int = 42
     start_at: datetime | None = None
     duration_hours: int = Field(default=24, ge=1)

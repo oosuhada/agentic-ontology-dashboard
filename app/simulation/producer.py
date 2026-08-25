@@ -59,6 +59,7 @@ class SimulationProducer:
         product_cycle_minutes: int,
         seed: int,
         rate_profile: str = "balanced_demo",
+        initial_sequence: int = 0,
     ) -> None:
         if start_at.tzinfo is None or end_at.tzinfo is None:
             raise ValueError("start_at and end_at must be timezone-aware")
@@ -66,6 +67,8 @@ class SimulationProducer:
             raise ValueError("interval_minutes must be positive")
         if product_cycle_minutes % interval_minutes:
             raise ValueError("product cycle must be a multiple of observation interval")
+        if initial_sequence < 0:
+            raise ValueError("initial_sequence must not be negative")
         self.run_id = run_id
         self.start_at = start_at
         self.end_at = end_at
@@ -95,21 +98,41 @@ class SimulationProducer:
             )
             for asset in self.assets
         }
-        self._sequence = 0
+        self._sequence = initial_sequence
         self._written_failures: set[str] = set()
 
     @property
     def sequence(self) -> int:
         return self._sequence
 
-    def produce_tick(self, observed_at: datetime) -> TickResult:
+    def produce_tick(
+        self,
+        observed_at: datetime,
+        *,
+        included_asset_ids: set[str] | None = None,
+        excluded_asset_ids: set[str] | None = None,
+    ) -> TickResult:
         if observed_at.tzinfo is None:
             raise ValueError("observed_at must be timezone-aware")
+        if included_asset_ids is not None and excluded_asset_ids is not None:
+            raise ValueError("included_asset_ids and excluded_asset_ids are mutually exclusive")
+        known_asset_ids = {str(asset["asset_id"]) for asset in self.assets}
+        selected_asset_ids = included_asset_ids or excluded_asset_ids or set()
+        unknown_asset_ids = sorted(selected_asset_ids - known_asset_ids)
+        if unknown_asset_ids:
+            raise ValueError(
+                "unknown asset_id(s): " + ", ".join(unknown_asset_ids)
+            )
         result = TickResult()
         tick = timedelta(minutes=self.interval_minutes)
         product_ticks = self.product_cycle_minutes // self.interval_minutes
 
         for asset in self.assets:
+            asset_id = str(asset["asset_id"])
+            if included_asset_ids is not None and asset_id not in included_asset_ids:
+                continue
+            if excluded_asset_ids is not None and asset_id in excluded_asset_ids:
+                continue
             runtime = self.runtimes[asset["asset_id"]]
             asset_episodes = self.episodes_by_asset[asset["asset_id"]]
             if runtime.tool_reset_at and observed_at >= runtime.tool_reset_at:

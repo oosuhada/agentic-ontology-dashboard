@@ -24,7 +24,7 @@ gen_data/
 │   ├── observation/         # SensorRecord 내부 계약
 │   ├── protocol/            # asyncua OPC UA publisher + configured-node collector
 │   ├── storage/             # source/protocol/canonical writer
-│   ├── runtime/             # run lifecycle / manual tick / safe stop
+│   ├── runtime/             # run lifecycle / Runtime Overlay / safe stop
 │   └── api/                 # FastAPI control routes
 ├── mappings/                # versioned OPC UA NodeId/DataType/unit mapping
 ├── canonical/
@@ -130,6 +130,31 @@ OPC UA source run 예시:
 DataValue 묶음을 기존 flat Canonical V3.1 row로 위조하지 않습니다. 기존 canonical
 CSV/manifest 계약은 완전한 simulation asset/tick snapshot에서 그대로 유지됩니다.
 
+### Maintenance Runtime Overlay
+
+`GEN_DATA_RUNTIME_OVERLAY_EVENT_FILE`을 설정하면 simulation run이 Backend Outbox에서
+전달된 `maintenance-replay-v1` JSONL을 opt-in으로 소비합니다. 이벤트의
+`simulation_session_id`는 실행 시작 요청의 동명 필드로 Source run에 명시적으로
+바인딩합니다. 생략하면 `run_id`를 기본값으로 사용하며, 다른 Session의 이벤트는 해당
+run이 소비하지 않습니다. 이 값은 Diagnosis/Maintenance replay 상관 ID이고 Source
+run identity와 같은 개념으로 간주하지 않습니다.
+
+```text
+maintenance.started
+→ 대상 설비 Canonical 출력만 중단
+→ maintenance.completed의 허용된 state_patch를 snapshot에 적용
+→ maintenance.replay_requested 이후 대상 branch clock만 진행
+→ output/runtime_overlay/{session}/{branch}.jsonl
+→ output/runtime_overlay/observations_available.jsonl
+```
+
+Overlay Observation은 `SensorRecord v2`의 `measurements` envelope를 재사용하되 외부
+DTO에서 `source_kind=maintenance_replay_overlay`, `branch_kind=overlay`와 source lineage를
+명시합니다. 분기 전 runtime snapshot의 결정론적 SHA-256도 함께 기록합니다. 현재 Backend
+reader를 위한 동일 값의 flat measurement projection도 함께 기록하지만 Physics를 다시
+계산하지 않습니다. `gen_data`는 Observation availability만 알리며 Model Artifact, history
+requirement, Prediction 또는 Result/Evidence를 생성하지 않습니다.
+
 ## 빠른 검증
 
 현재 checkout의 source/reference baseline을 검증합니다.
@@ -165,6 +190,7 @@ PR과 `main` push에서는 `.github/workflows/source-validation.yml`이 다음 �
 - Canonical/source 및 reference fixture package validation
 - seed 기반 full reproducibility validation
 - SensorRecord/OPC UA/runtime/FastAPI/canonical regression test
+- Runtime Overlay 대상 설비 격리·멱등성·checkpoint 복구 regression test
 - Canonical generator와 Source Data Producer import smoke
 - Python compile 및 whitespace 검증
 - validation output이 checkout의 기준 파일과 일치하는지 확인
