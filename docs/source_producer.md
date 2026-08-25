@@ -191,13 +191,17 @@ Overlay branch 파일은 SensorRecord v2 payload와 동일한 `measurements`를 
 `contract_version=runtime-overlay-observations-available-v1`을 사용한다. 여기서
 `batch_rows`는 해당 이벤트의 delta, `generated_rows`는 branch 누적값이며,
 `storage_reference`는 producer 머신의 절대경로가 아닌 output root 기준 상대경로다.
+논리 session/branch ID 쌍은 compact JSON array의 unescaped UTF-8 byte에 대한 SHA-256으로
+경로화하며, 파일은 `runtime_overlay/sha256-<digest>.jsonl`에 저장한다. Overlay Observation
+checksum은 `generated_at`과 `observation_sha256`을 제외하고 key를 정렬한 compact JSON을
+`ensure_ascii=false`, `allow_nan=false`로 UTF-8 인코딩한 byte를 기준으로 한다.
 
 ```text
 output/runtime_overlay/
 ├── runtime_overlay_state.json
 ├── observations_available.jsonl
 ├── rejected_maintenance_events.jsonl
-└── {simulation_session_id}/{overlay_branch_id}.jsonl
+└── sha256-{session-and-branch-identity-digest}.jsonl
 ```
 
 FastAPI는 control layer만 담당한다.

@@ -186,16 +186,27 @@ def _semantic_observation_hash(payload: dict[str, Any]) -> str:
         for key, value in payload.items()
         if key not in {"generated_at", "observation_sha256"}
     }
-    return _payload_hash(semantic)
+    encoded = json.dumps(
+        semantic,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
-def _safe_path_component(value: str) -> str:
-    return "".join(
-        char
-        if (char.isascii() and char.isalnum()) or char in {"-", "_", "."}
-        else "_"
-        for char in str(value)
-    )
+def _storage_path_component(
+    simulation_session_id: str,
+    overlay_branch_id: str,
+) -> str:
+    identity = json.dumps(
+        [str(simulation_session_id), str(overlay_branch_id)],
+        ensure_ascii=False,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    return f"sha256-{hashlib.sha256(identity).hexdigest()}"
 
 
 def _validate_observation_output(
@@ -291,10 +302,11 @@ def _validate_available_output(payload: dict[str, Any]) -> None:
     observed_to = _parse_datetime(payload["observed_to"], "observed_to")
     if observed_to < observed_from:
         raise OverlayContractError("observed_to must be >= observed_from")
-    expected_reference = (
-        f"runtime_overlay/{_safe_path_component(payload['simulation_session_id'])}/"
-        f"{_safe_path_component(payload['overlay_branch_id'])}.jsonl"
+    component = _storage_path_component(
+        str(payload["simulation_session_id"]),
+        str(payload["overlay_branch_id"]),
     )
+    expected_reference = f"runtime_overlay/{component}.jsonl"
     if payload["storage_reference"] != expected_reference:
         raise OverlayContractError(
             "storage_reference must be stream-root-relative and match session/branch"
@@ -451,18 +463,25 @@ class OverlayObservationStore:
         self.root.mkdir(parents=True, exist_ok=True)
         self._index: dict[Path, dict[str, str]] = {}
 
-    @staticmethod
-    def _safe(value: str) -> str:
-        return _safe_path_component(value)
-
     def path_for(self, branch: OverlayBranch) -> Path:
         if not branch.overlay_branch_id:
             raise OverlayContractError(
                 "overlay_branch_id is required before writing observations"
             )
-        session = self._safe(branch.simulation_session_id)
-        branch_name = self._safe(branch.overlay_branch_id)
-        return self.root / session / f"{branch_name}.jsonl"
+        component = _storage_path_component(
+            branch.simulation_session_id,
+            branch.overlay_branch_id,
+        )
+        candidate = self.root / f"{component}.jsonl"
+        resolved_root = self.root.resolve()
+        resolved_candidate = candidate.resolve(strict=False)
+        try:
+            resolved_candidate.relative_to(resolved_root)
+        except ValueError as exc:
+            raise OverlayContractError(
+                "Runtime Overlay observation path must remain inside its storage root"
+            ) from exc
+        return candidate
 
     def _load_index(self, path: Path) -> dict[str, str]:
         if path in self._index:

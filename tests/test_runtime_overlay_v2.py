@@ -15,12 +15,15 @@ from app.runtime.overlay import (
     OverlayContractError,
     RuntimeOverlayCoordinator,
     StaleOverlayEvent,
+    _semantic_observation_hash,
+    _storage_path_component,
 )
 from app.simulation.producer import SimulationProducer
 
 
 START = datetime(2026, 8, 18, 1, 0, tzinfo=timezone.utc)
 MAPPING = Path("mappings/opcua_nodes.v1.json")
+CONTRACT_VECTOR = Path("tests/fixtures/runtime-overlay-output-v1")
 
 
 def producer(run_id: str = "DEMO-001") -> SimulationProducer:
@@ -235,10 +238,55 @@ class RuntimeOverlayV2Test(unittest.TestCase):
         self.assertEqual(available["generated_rows"], 3)
         self.assertEqual(
             available["storage_reference"],
-            "runtime_overlay/DEMO-001/MAINT-001_post.jsonl",
+            "runtime_overlay/"
+            "sha256-7a9b002b3f8d2692b4473e3e5140438602f09c7186f9b2b8f99bda126775360d.jsonl",
         )
         self.assertFalse(Path(available["storage_reference"]).is_absolute())
         self.assertNotIn("required_rows", available)
+
+    def test_official_unicode_checksum_contract_vector(self):
+        payload = json.loads(
+            (CONTRACT_VECTOR / "observation-unicode.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        expected = (
+            CONTRACT_VECTOR / "expected-observation-sha256.txt"
+        ).read_text(encoding="utf-8").strip()
+
+        self.assertEqual(_semantic_observation_hash(payload), expected)
+        self.assertEqual(payload["observation_sha256"], expected)
+
+        payload["generated_at"] = "2026-08-18T03:00:00+00:00"
+        self.assertEqual(_semantic_observation_hash(payload), expected)
+
+    def test_path_identity_contract_vector_is_collision_resistant_and_contained(
+        self,
+    ):
+        vector = json.loads(
+            (CONTRACT_VECTOR / "path-identities.json").read_text(encoding="utf-8")
+        )
+        references = []
+        for case in vector["cases"]:
+            component = _storage_path_component(
+                case["simulation_session_id"],
+                case["overlay_branch_id"],
+            )
+            actual = f"runtime_overlay/{component}.jsonl"
+            self.assertEqual(actual, case["expected_storage_reference"])
+            references.append(actual)
+        self.assertEqual(len(references), len(set(references)))
+
+        coordinator = self.coordinator()
+        self.prepare_branch(coordinator)
+        branch = coordinator.branches[
+            coordinator.branch_by_equipment[self.target["asset_id"]]
+        ]
+        branch.simulation_session_id = "."
+        branch.overlay_branch_id = ".."
+        path = coordinator.store.path_for(branch)
+        self.assertEqual(path.parent.resolve(), coordinator.store.root.resolve())
+        self.assertTrue(path.name.startswith("sha256-"))
 
     def test_contract_idempotency_version_and_unknown_field_guards(self):
         coordinator = self.coordinator()
@@ -840,8 +888,10 @@ class RuntimeOverlayV2Test(unittest.TestCase):
             overlay_path = (
                 self.root
                 / "runtime_overlay"
-                / "DEMO-001"
-                / "MAINT-001_post.jsonl"
+                / (
+                    _storage_path_component("DEMO-001", "MAINT-001:post")
+                    + ".jsonl"
+                )
             )
             overlay_rows = [
                 json.loads(line)

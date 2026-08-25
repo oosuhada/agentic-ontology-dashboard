@@ -165,6 +165,15 @@ reader를 위한 동일 값의 flat measurement projection도 함께 기록하�
 availability만 알리며 Model Artifact, history requirement, Prediction 또는
 Result/Evidence를 생성하지 않습니다.
 
+저장 경로 identity는 `[simulation_session_id, overlay_branch_id]`를 공백 없이 JSON으로
+직렬화하고 Unicode를 escape하지 않은 UTF-8 byte의 lowercase SHA-256을 사용해
+`runtime_overlay/sha256-<digest>.jsonl`로 만든다. 논리 ID를 경로 문자로 치환하지 않으므로
+`.`/`..` traversal과 replacement alias를 허용하지 않는다. `observation_sha256`은
+`generated_at`과 checksum 필드 자체를 제외한 payload를
+`ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False`로 직렬화한
+UTF-8 byte의 SHA-256이다. 공용 Unicode/path 기대값은
+`tests/fixtures/runtime-overlay-output-v1/`에 고정한다.
+
 ## 빠른 검증
 
 현재 checkout의 source/reference baseline을 검증합니다.
