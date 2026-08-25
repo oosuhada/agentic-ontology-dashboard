@@ -161,6 +161,9 @@ run에 명시적으로 바인딩하고 그 ID가 일치하는 이벤트만 적�
 - `maintenance.started`: 미래 시각 이벤트는 pending으로 보존하고 첫 Source tick이 해당
   시각에 도달하기 직전에 Runtime snapshot을 만든다. 그 tick부터 Canonical
   Source/OPC UA/CSV projection에서 대상 설비만 제외한다.
+- future started와 같은 stream의 `maintenance.completed` 및
+  `maintenance.replay_requested`가 먼저 도착하면 격리하지 않고 state version 순서로
+  함께 보존한다. started tick에 snapshot을 만든 뒤 queued lifecycle을 순차 적용한다.
 - 대상 설비의 Canonical Observation이 이미 `maintenance_started_at` 이상으로 출력된
   late event는 과거 상태를 추정하지 않고 격리한다.
 - `maintenance.completed`: action별 whitelist를 검증한 뒤 snapshot에 `state_patch`를
@@ -173,8 +176,9 @@ run에 명시적으로 바인딩하고 그 ID가 일치하는 이벤트만 적�
   SHA-256을 재계산한다.
 - 잘못된 inbox line은 `rejected_maintenance_events.jsonl`에 raw-line SHA-256과 사유를
   한 번만 기록하고, 같은 파일의 이후 정상 이벤트 처리를 계속한다.
-- checkpoint에 먼저 기록된 pending availability는 Overlay coordinator 재구성 시 JSONL
-  outbox로 복구한다. 전체 `RuntimeManager` run resume는 별도 runtime lifecycle 범위다.
+- pending lifecycle stream 전체는 checkpoint에서 복구한다. checkpoint에 먼저 기록된
+  pending availability는 Overlay coordinator 재구성 시 JSONL outbox로 복구한다. 전체
+  `RuntimeManager` run resume는 별도 runtime lifecycle 범위다.
 
 Overlay branch 파일은 SensorRecord v2 payload와 동일한 `measurements`를 정본으로
 보존한다. 현재 Backend Runtime Overlay reader의 전환 기간에는 같은 measurement를 flat

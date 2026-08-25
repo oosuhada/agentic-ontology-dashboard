@@ -25,7 +25,7 @@ from physics_engine import Runtime
 MAINTENANCE_CONTRACT_VERSION = "maintenance-replay-v1"
 AVAILABLE_CONTRACT_VERSION = "runtime-overlay-observation-v1-preview"
 OVERLAY_SOURCE_KIND = "maintenance_replay_overlay"
-CHECKPOINT_VERSION = 5
+CHECKPOINT_VERSION = 6
 
 _EVENT_TYPES = {
     "maintenance.started",
@@ -379,7 +379,7 @@ class RuntimeOverlayCoordinator:
         self.branch_by_equipment: dict[str, str] = {}
         self.processed_events: dict[str, str] = {}
         self.processed_event_ids: dict[str, str] = {}
-        self.pending_started_events: dict[str, dict[str, Any]] = {}
+        self.pending_event_streams: dict[str, list[dict[str, Any]]] = {}
         self.last_canonical_observed_at: dict[str, datetime] = {}
         self.pending_available_events: dict[str, dict[str, Any]] = {}
         self._available_event_index: dict[str, str] | None = None
@@ -389,6 +389,15 @@ class RuntimeOverlayCoordinator:
     @property
     def active_equipment_ids(self) -> tuple[str, ...]:
         return tuple(sorted(self.branch_by_equipment))
+
+    @property
+    def pending_started_events(self) -> dict[str, dict[str, Any]]:
+        """Compatibility view of the first event in each pending stream."""
+        return {
+            key: stream[0]
+            for key, stream in self.pending_event_streams.items()
+            if stream and stream[0].get("event_type") == "maintenance.started"
+        }
 
     def excluded_equipment_ids(self, observed_at: datetime) -> set[str]:
         return {
@@ -434,7 +443,7 @@ class RuntimeOverlayCoordinator:
                 "simulation_session_id": self.simulation_session_id,
                 "processed_events": self.processed_events,
                 "processed_event_ids": self.processed_event_ids,
-                "pending_started_events": self.pending_started_events,
+                "pending_event_streams": self.pending_event_streams,
                 "last_canonical_observed_at": {
                     equipment_id: observed_at.isoformat()
                     for equipment_id, observed_at in self.last_canonical_observed_at.items()
@@ -451,7 +460,8 @@ class RuntimeOverlayCoordinator:
             payload = json.loads(self.checkpoint_path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as exc:
             raise OverlayContractError("invalid Runtime Overlay checkpoint") from exc
-        if int(payload.get("checkpoint_version", 0)) != CHECKPOINT_VERSION:
+        checkpoint_version = int(payload.get("checkpoint_version", 0))
+        if checkpoint_version not in {5, CHECKPOINT_VERSION}:
             raise OverlayContractError("unsupported Runtime Overlay checkpoint version")
         self.processed_events = {
             str(key): str(value)
@@ -467,15 +477,32 @@ class RuntimeOverlayCoordinator:
             stored_source_run_id == self.canonical_producer.run_id
             and stored_session_id == self.simulation_session_id
         )
-        pending_started = payload.get("pending_started_events", {})
-        if not isinstance(pending_started, dict):
-            raise OverlayContractError("pending_started_events must be an object")
-        if same_active_run:
-            self.pending_started_events = {
-                str(key): dict(event)
+        if checkpoint_version == 5:
+            pending_started = payload.get("pending_started_events", {})
+            if not isinstance(pending_started, dict):
+                raise OverlayContractError("pending_started_events must be an object")
+            pending_streams: dict[str, Any] = {
+                str(key): [dict(event)]
                 for key, event in pending_started.items()
                 if isinstance(event, dict)
             }
+        else:
+            pending_streams = payload.get("pending_event_streams", {})
+            if not isinstance(pending_streams, dict):
+                raise OverlayContractError("pending_event_streams must be an object")
+        if same_active_run:
+            restored_streams: dict[str, list[dict[str, Any]]] = {}
+            for key, events in pending_streams.items():
+                if not isinstance(events, list) or not events:
+                    raise OverlayContractError(
+                        "pending event stream must be a non-empty array"
+                    )
+                if not all(isinstance(event, dict) for event in events):
+                    raise OverlayContractError(
+                        "pending event stream entries must be objects"
+                    )
+                restored_streams[str(key)] = [dict(event) for event in events]
+            self.pending_event_streams = restored_streams
         stored_last_observed = payload.get("last_canonical_observed_at", {})
         if not isinstance(stored_last_observed, dict):
             raise OverlayContractError(
@@ -746,20 +773,33 @@ class RuntimeOverlayCoordinator:
         return branch
 
     def activate_due_started_events(self, source_virtual_time: datetime) -> int:
-        """Snapshot queued starts immediately before the first due source tick."""
+        """Snapshot due starts and apply their queued lifecycle in version order."""
         if source_virtual_time.tzinfo is None:
             raise OverlayContractError(
                 "source_virtual_time must include timezone information"
             )
         activated = 0
-        for key, event in list(self.pending_started_events.items()):
+        due_streams = sorted(
+            self.pending_event_streams.items(),
+            key=lambda item: (
+                _parse_datetime(
+                    item[1][0]["maintenance_started_at"],
+                    "maintenance_started_at",
+                ),
+                item[0],
+            ),
+        )
+        for key, stream in due_streams:
+            event = stream[0]
             started_at = _parse_datetime(
                 event["maintenance_started_at"], "maintenance_started_at"
             )
             if started_at > source_virtual_time:
                 continue
-            self._activate_started_event(event)
-            del self.pending_started_events[key]
+            branch = self._activate_started_event(event)
+            for followup in stream[1:]:
+                self._apply_followup_event(branch, followup)
+            del self.pending_event_streams[key]
             activated += 1
         if activated:
             self._checkpoint()
@@ -795,6 +835,117 @@ class RuntimeOverlayCoordinator:
             raise OverlayConflict(f"state_version_conflict: {version}")
         return version
 
+    def _validate_pending_transition(
+        self,
+        stream: list[dict[str, Any]],
+        event: dict[str, Any],
+    ) -> None:
+        if not stream or stream[0].get("event_type") != "maintenance.started":
+            raise OverlayContractError(
+                "pending stream must begin with maintenance.started"
+            )
+        previous = stream[-1]
+        previous_version = int(previous["state_version"])
+        version = int(event["state_version"])
+        if version < previous_version:
+            raise StaleOverlayEvent(
+                f"stale state_version {version}; current={previous_version}"
+            )
+        if version == previous_version:
+            raise OverlayConflict(f"state_version_conflict: {version}")
+
+        expected = {
+            "maintenance.started": "maintenance.completed",
+            "maintenance.completed": "maintenance.replay_requested",
+        }.get(str(previous["event_type"]))
+        if expected is None or event["event_type"] != expected:
+            raise OverlayContractError(
+                "invalid pending maintenance transition: "
+                f"{previous['event_type']} -> {event['event_type']}"
+            )
+
+        started = stream[0]
+        if event["event_type"] == "maintenance.completed":
+            if event["action_code"] != started["action_code"]:
+                raise OverlayContractError(
+                    "action_code does not match pending maintenance.started"
+                )
+            completed_at = _parse_datetime(
+                event["maintenance_completed_at"], "maintenance_completed_at"
+            )
+            started_at = _parse_datetime(
+                started["maintenance_started_at"], "maintenance_started_at"
+            )
+            if completed_at < started_at:
+                raise OverlayContractError(
+                    "maintenance_completed_at must be >= maintenance_started_at"
+                )
+            return
+
+        if event["maintenance_event_id"] != previous["maintenance_event_id"]:
+            raise OverlayContractError(
+                "maintenance_event_id does not match pending completed event"
+            )
+        restart_at = _parse_datetime(event["restart_at"], "restart_at")
+        completed_at = _parse_datetime(
+            previous["maintenance_completed_at"],
+            "maintenance_completed_at",
+        )
+        if restart_at < completed_at:
+            raise OverlayContractError(
+                "restart_at must be >= maintenance_completed_at"
+            )
+
+    def _apply_followup_event(
+        self,
+        branch: OverlayBranch,
+        event: dict[str, Any],
+    ) -> None:
+        version = self._assert_newer_version(branch, event)
+        event_type = str(event["event_type"])
+        if event_type == "maintenance.completed":
+            if branch.phase != "maintenance":
+                raise OverlayContractError(
+                    "maintenance.completed requires maintenance phase"
+                )
+            completed_at = _parse_datetime(
+                event["maintenance_completed_at"], "maintenance_completed_at"
+            )
+            if completed_at < branch.maintenance_started_at:
+                raise OverlayContractError(
+                    "maintenance_completed_at must be >= maintenance_started_at"
+                )
+            self._apply_state_patch(branch, event)
+            branch.maintenance_event_id = str(event["maintenance_event_id"])
+            branch.maintenance_completed_at = completed_at
+            branch.phase = "completed"
+            branch.state_version = version
+            return
+
+        if event_type != "maintenance.replay_requested":
+            raise OverlayContractError(
+                f"unsupported follow-up maintenance event: {event_type}"
+            )
+        if branch.phase != "completed" or branch.maintenance_completed_at is None:
+            raise OverlayContractError(
+                "maintenance.replay_requested requires completed maintenance"
+            )
+        if str(event["maintenance_event_id"]) != branch.maintenance_event_id:
+            raise OverlayContractError(
+                "maintenance_event_id does not match completed branch"
+            )
+        restart_at = _parse_datetime(event["restart_at"], "restart_at")
+        if restart_at < branch.maintenance_completed_at:
+            raise OverlayContractError(
+                "restart_at must be >= maintenance_completed_at"
+            )
+        branch.restart_at = restart_at
+        branch.overlay_branch_id = f"{branch.maintenance_event_id}:post"
+        branch.history_segment_id = f"{branch.maintenance_event_id}:post"
+        branch.next_observed_at = restart_at
+        branch.phase = "restarting"
+        branch.state_version = version
+
     def process_event(
         self,
         event: dict[str, Any],
@@ -810,16 +961,15 @@ class RuntimeOverlayCoordinator:
         equipment_id = str(event["equipment_id"])
         if equipment_id not in self.assets or equipment_id not in self.canonical_producer.runtimes:
             raise OverlayContractError(f"unknown equipment_id: {equipment_id}")
+        event_type = str(event["event_type"])
+        key = self._event_branch_key(event)
         if self._event_replay(event):
-            key = self._event_branch_key(event)
-            if (
-                str(event["event_type"]) == "maintenance.started"
-                and key in self.pending_started_events
-            ):
+            if key in self.pending_event_streams:
+                stream = self.pending_event_streams[key]
                 return {
                     "replayed": True,
                     "phase": "pending",
-                    "state_version": int(event["state_version"]),
+                    "state_version": int(stream[-1]["state_version"]),
                 }
             branch = self._branch_for_event(event)
             return {
@@ -828,12 +978,14 @@ class RuntimeOverlayCoordinator:
                 "state_version": branch.state_version,
             }
 
-        event_type = str(event["event_type"])
         if event_type == "maintenance.started":
-            key = self._event_branch_key(event)
-            if key in self.pending_started_events or any(
-                str(pending["equipment_id"]) == equipment_id
-                for pending in self.pending_started_events.values()
+            if str(self.assets[equipment_id].get("asset_type")) != "cnc":
+                raise OverlayContractError(
+                    "TOOL_REPLACEMENT is only valid for CNC equipment"
+                )
+            if key in self.pending_event_streams or any(
+                str(stream[0]["equipment_id"]) == equipment_id
+                for stream in self.pending_event_streams.values()
             ):
                 raise OverlayConflict(
                     f"equipment already has a pending overlay branch: {equipment_id}"
@@ -855,7 +1007,7 @@ class RuntimeOverlayCoordinator:
                     equipment_id=equipment_id,
                     maintenance_started_at=maintenance_started_at,
                 )
-                self.pending_started_events[key] = copy.deepcopy(event)
+                self.pending_event_streams[key] = [copy.deepcopy(event)]
                 self._record_event(event)
                 return {
                     "replayed": False,
@@ -864,53 +1016,18 @@ class RuntimeOverlayCoordinator:
                 }
             branch = self._activate_started_event(event)
         else:
+            pending_stream = self.pending_event_streams.get(key)
+            if pending_stream is not None:
+                self._validate_pending_transition(pending_stream, event)
+                pending_stream.append(copy.deepcopy(event))
+                self._record_event(event)
+                return {
+                    "replayed": False,
+                    "phase": "pending",
+                    "state_version": int(event["state_version"]),
+                }
             branch = self._branch_for_event(event)
-            version = self._assert_newer_version(branch, event)
-            if event_type == "maintenance.completed":
-                self._required(
-                    event,
-                    "maintenance_event_id",
-                    "maintenance_completed_at",
-                    "action_code",
-                    "state_patch",
-                )
-                if branch.phase != "maintenance":
-                    raise OverlayContractError(
-                        "maintenance.completed requires maintenance phase"
-                    )
-                completed_at = _parse_datetime(
-                    event["maintenance_completed_at"], "maintenance_completed_at"
-                )
-                if completed_at < branch.maintenance_started_at:
-                    raise OverlayContractError(
-                        "maintenance_completed_at must be >= maintenance_started_at"
-                    )
-                self._apply_state_patch(branch, event)
-                branch.maintenance_event_id = str(event["maintenance_event_id"])
-                branch.maintenance_completed_at = completed_at
-                branch.phase = "completed"
-                branch.state_version = version
-            else:
-                self._required(event, "maintenance_event_id", "restart_at")
-                if branch.phase != "completed" or branch.maintenance_completed_at is None:
-                    raise OverlayContractError(
-                        "maintenance.replay_requested requires completed maintenance"
-                    )
-                if str(event["maintenance_event_id"]) != branch.maintenance_event_id:
-                    raise OverlayContractError(
-                        "maintenance_event_id does not match completed branch"
-                    )
-                restart_at = _parse_datetime(event["restart_at"], "restart_at")
-                if restart_at < branch.maintenance_completed_at:
-                    raise OverlayContractError(
-                        "restart_at must be >= maintenance_completed_at"
-                    )
-                branch.restart_at = restart_at
-                branch.overlay_branch_id = f"{branch.maintenance_event_id}:post"
-                branch.history_segment_id = f"{branch.maintenance_event_id}:post"
-                branch.next_observed_at = restart_at
-                branch.phase = "restarting"
-                branch.state_version = version
+            self._apply_followup_event(branch, event)
 
         self._record_event(event)
         return {

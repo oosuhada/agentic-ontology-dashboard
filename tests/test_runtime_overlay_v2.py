@@ -380,11 +380,14 @@ class RuntimeOverlayV2Test(unittest.TestCase):
         future_started_at = START + timedelta(minutes=20)
         future_start["maintenance_started_at"] = future_started_at.isoformat()
         coordinator.process_event(future_start, source_virtual_time=START)
+        coordinator.process_event(self.completed(), source_virtual_time=START)
+        coordinator.process_event(self.replay_requested(), source_virtual_time=START)
 
         resumed_producer = producer()
         resumed_producer.runtimes[self.target["asset_id"]].tool_wear_min = 123.4
         resumed = self.coordinator(resumed_producer)
         self.assertEqual(len(resumed.pending_started_events), 1)
+        self.assertEqual(len(next(iter(resumed.pending_event_streams.values()))), 3)
         self.assertEqual(resumed.active_equipment_ids, ())
 
         for observed_at in (START, START + timedelta(minutes=10)):
@@ -399,6 +402,235 @@ class RuntimeOverlayV2Test(unittest.TestCase):
             (self.target["asset_id"],),
         )
         self.assertEqual(resumed.pending_started_events, {})
+        branch = resumed.branches[
+            resumed.branch_by_equipment[self.target["asset_id"]]
+        ]
+        self.assertEqual(branch.phase, "restarting")
+        self.assertEqual(branch.state_version, 3)
+        self.assertEqual(branch.runtime.tool_wear_min, 0.0)
+        rows, _available = resumed.advance_branch_to(
+            self.target["asset_id"],
+            self.restart_at,
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["observed_at"], self.restart_at.isoformat())
+
+    def test_future_lifecycle_stream_is_not_quarantined_and_restarts_on_schedule(self):
+        coordinator = self.coordinator()
+        future_start = self.started()
+        future_started_at = START + timedelta(minutes=20)
+        future_start["maintenance_started_at"] = future_started_at.isoformat()
+        event_path = self.root / "maintenance-replay-future-stream.jsonl"
+        event_path.write_text(
+            "\n".join(
+                json.dumps(event)
+                for event in (
+                    future_start,
+                    self.completed(),
+                    self.replay_requested(),
+                )
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        self.assertEqual(
+            coordinator.consume_event_file(event_path, source_virtual_time=START),
+            (3, 0),
+        )
+        self.assertFalse(coordinator.rejected_event_path.exists())
+        self.assertEqual(coordinator.active_equipment_ids, ())
+        stream = next(iter(coordinator.pending_event_streams.values()))
+        self.assertEqual(
+            [event["event_type"] for event in stream],
+            [
+                "maintenance.started",
+                "maintenance.completed",
+                "maintenance.replay_requested",
+            ],
+        )
+
+        for observed_at in (START, START + timedelta(minutes=10)):
+            result = self.producer.produce_tick(observed_at)
+            coordinator.record_canonical_observations(
+                observed_at,
+                {record.asset_id for record in result.records},
+            )
+        coordinator.activate_due_started_events(future_started_at)
+        branch = coordinator.branches[
+            coordinator.branch_by_equipment[self.target["asset_id"]]
+        ]
+        self.assertEqual(branch.phase, "restarting")
+        self.assertEqual(branch.restart_at, self.restart_at)
+        self.assertEqual(branch.runtime.tool_wear_min, 0.0)
+        self.assertEqual(coordinator.pending_event_streams, {})
+
+        before_restart, available = coordinator.advance_branch_to(
+            self.target["asset_id"],
+            self.restart_at - timedelta(minutes=10),
+        )
+        self.assertEqual(before_restart, [])
+        self.assertIsNone(available)
+        rows, available = coordinator.advance_branch_to(
+            self.target["asset_id"],
+            self.restart_at,
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertIsNotNone(available)
+
+    def test_runtime_manager_applies_preloaded_future_stream_at_virtual_boundaries(self):
+        future_start = self.started()
+        future_start["maintenance_started_at"] = (
+            START + timedelta(minutes=20)
+        ).isoformat()
+        event_path = self.root / "maintenance-replay-manager-future.jsonl"
+        event_path.write_text(
+            "\n".join(
+                json.dumps(event)
+                for event in (
+                    future_start,
+                    self.completed(),
+                    self.replay_requested(),
+                )
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        manager = RuntimeManager(
+            output_root=self.root,
+            mapping_path=MAPPING,
+            opcua_endpoint="opc.tcp://127.0.0.1:48501/gen-data/",
+            maintenance_event_file=event_path,
+        )
+        manager.start_run(
+            run_id="SOURCE-FUTURE-001",
+            simulation_session_id="DEMO-001",
+            start_at=START,
+            duration_hours=1,
+            continuous=False,
+            publish_opcua=False,
+        )
+        try:
+            status = {}
+            for _ in range(5):
+                status = manager.tick("SOURCE-FUTURE-001")
+            self.assertEqual(status["source_record_count"], 497)
+
+            source_path = (
+                self.root
+                / "runs"
+                / "SOURCE-FUTURE-001"
+                / "source"
+                / "sensor_records.jsonl"
+            )
+            target_rows = [
+                json.loads(line)
+                for line in source_path.read_text(encoding="utf-8").splitlines()
+                if json.loads(line)["asset_id"] == self.target["asset_id"]
+            ]
+            self.assertEqual(
+                [row["observed_at"] for row in target_rows],
+                [START.isoformat(), (START + timedelta(minutes=10)).isoformat()],
+            )
+
+            outputs = manager.outputs("SOURCE-FUTURE-001")["runtime_overlay"]
+            self.assertFalse(Path(outputs["rejected_maintenance_events"]).exists())
+            overlay_rows = [
+                json.loads(line)
+                for line in Path(outputs["branches"][0]).read_text(
+                    encoding="utf-8"
+                ).splitlines()
+            ]
+            self.assertEqual(len(overlay_rows), 1)
+            self.assertEqual(
+                overlay_rows[0]["observed_at"],
+                self.restart_at.isoformat(),
+            )
+        finally:
+            manager.stop("SOURCE-FUTURE-001")
+
+    def test_pending_stream_replay_and_state_version_conflicts(self):
+        coordinator = self.coordinator()
+        future_start = self.started()
+        future_start["maintenance_started_at"] = (
+            START + timedelta(minutes=20)
+        ).isoformat()
+        first = coordinator.process_event(future_start, source_virtual_time=START)
+        replayed_start = coordinator.process_event(
+            future_start,
+            source_virtual_time=START,
+        )
+        self.assertFalse(first["replayed"])
+        self.assertTrue(replayed_start["replayed"])
+
+        completed = self.completed()
+        coordinator.process_event(completed, source_virtual_time=START)
+        self.assertTrue(
+            coordinator.process_event(
+                completed,
+                source_virtual_time=START,
+            )["replayed"]
+        )
+
+        identity_conflict = dict(completed)
+        identity_conflict["maintenance_event_id"] = "MAINT-DIFFERENT"
+        with self.assertRaises(OverlayConflict):
+            coordinator.process_event(
+                identity_conflict,
+                source_virtual_time=START,
+            )
+
+        version_conflict = dict(completed)
+        version_conflict["event_id"] = "00000000-0000-5000-8000-000000000202"
+        version_conflict["idempotency_key"] = "MAINTENANCE-001:VERSION-CONFLICT"
+        with self.assertRaisesRegex(OverlayConflict, "state_version_conflict"):
+            coordinator.process_event(
+                version_conflict,
+                source_virtual_time=START,
+            )
+
+        coordinator.process_event(self.replay_requested(), source_virtual_time=START)
+        self.assertEqual(len(next(iter(coordinator.pending_event_streams.values()))), 3)
+
+    def test_orphan_followups_are_quarantined_without_blocking_other_equipment(self):
+        coordinator = self.coordinator()
+        orphan_completed = self.completed()
+        orphan_replay = self.replay_requested()
+        other_started = self.started()
+        other_started.update(
+            {
+                "event_id": "00000000-0000-5000-8000-000000000301",
+                "idempotency_key": "MAINTENANCE-OTHER:1",
+                "maintenance_action_id": "ACTION-OTHER",
+                "work_order_id": "WO-OTHER",
+                "equipment_id": self.other["asset_id"],
+            }
+        )
+        event_path = self.root / "maintenance-replay-orphans.jsonl"
+        event_path.write_text(
+            "\n".join(
+                json.dumps(event)
+                for event in (orphan_completed, orphan_replay, other_started)
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        self.assertEqual(
+            coordinator.consume_event_file(event_path, source_virtual_time=START),
+            (1, 2),
+        )
+        self.assertEqual(coordinator.active_equipment_ids, (self.other["asset_id"],))
+        rejected = [
+            json.loads(line)
+            for line in coordinator.rejected_event_path.read_text(
+                encoding="utf-8"
+            ).splitlines()
+        ]
+        self.assertEqual(len(rejected), 2)
+        self.assertTrue(
+            all("maintenance.started branch not found" in row["reason"] for row in rejected)
+        )
 
     def test_late_start_is_quarantined_once_and_never_activates(self):
         coordinator = self.coordinator()

@@ -141,10 +141,10 @@ run identity와 같은 개념으로 간주하지 않습니다.
 
 ```text
 maintenance.started
-→ 미래 이벤트는 시작 시각까지 pending
+→ 미래 started와 같은 stream의 completed/replay는 시작 시각까지 함께 pending
 → 첫 due tick 직전에 snapshot 후 대상 설비 Canonical 출력만 중단
-→ maintenance.completed의 허용된 state_patch를 snapshot에 적용
-→ maintenance.replay_requested 이후 대상 branch clock만 진행
+→ queued maintenance.completed의 허용된 state_patch를 순서대로 적용
+→ queued maintenance.replay_requested의 restart_at부터 대상 branch clock만 진행
 → output/runtime_overlay/{session}/{branch}.jsonl
 → output/runtime_overlay/observations_available.jsonl
 ```
