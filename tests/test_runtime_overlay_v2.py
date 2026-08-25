@@ -185,6 +185,12 @@ class RuntimeOverlayV2Test(unittest.TestCase):
             )
         )
         self.assertTrue(
+            all(
+                row["contract_version"] == "runtime-overlay-observation-v1"
+                for row in rows
+            )
+        )
+        self.assertTrue(
             all(len(row["base_source_sha256"]) == 64 for row in rows)
         )
         self.assertTrue(
@@ -221,7 +227,17 @@ class RuntimeOverlayV2Test(unittest.TestCase):
         self.assertEqual(
             available["event_type"], "runtime_overlay.observations.available"
         )
+        self.assertEqual(
+            available["contract_version"],
+            "runtime-overlay-observations-available-v1",
+        )
         self.assertEqual(available["batch_rows"], 3)
+        self.assertEqual(available["generated_rows"], 3)
+        self.assertEqual(
+            available["storage_reference"],
+            "runtime_overlay/DEMO-001/MAINT-001_post.jsonl",
+        )
+        self.assertFalse(Path(available["storage_reference"]).is_absolute())
         self.assertNotIn("required_rows", available)
 
     def test_contract_idempotency_version_and_unknown_field_guards(self):

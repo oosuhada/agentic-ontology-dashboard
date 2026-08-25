@@ -181,10 +181,16 @@ run에 명시적으로 바인딩하고 그 ID가 일치하는 이벤트만 적�
   `RuntimeManager` run resume는 별도 runtime lifecycle 범위다.
 
 Overlay branch 파일은 SensorRecord v2 payload와 동일한 `measurements`를 정본으로
-보존한다. 현재 Backend Runtime Overlay reader의 전환 기간에는 같은 measurement를 flat
-field로도 투영한다. 외부 DTO의 `source_kind`는 `maintenance_replay_overlay`이며,
+보존한다. Backend Runtime Overlay reader에는 같은 measurement를 flat field로도 투영하고
+두 값이 다르면 발행을 거부한다. 외부 DTO는
+`contract_version=runtime-overlay-observation-v1`과
+`source_kind=maintenance_replay_overlay`를 사용하며,
 `base_source_sha256`은 `maintenance.started` 시점의 분기 전 source runtime snapshot을
 결정론적으로 식별한다. 이 projection은 호환용이며 별도 Physics 계산 경로가 아니다.
+`observations_available.jsonl`은
+`contract_version=runtime-overlay-observations-available-v1`을 사용한다. 여기서
+`batch_rows`는 해당 이벤트의 delta, `generated_rows`는 branch 누적값이며,
+`storage_reference`는 producer 머신의 절대경로가 아닌 output root 기준 상대경로다.
 
 ```text
 output/runtime_overlay/

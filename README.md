@@ -155,11 +155,15 @@ maintenance.started
 재사용 전에 payload 기준 SHA-256을 다시 계산해 변조 여부를 확인합니다.
 
 Overlay Observation은 `SensorRecord v2`의 `measurements` envelope를 재사용하되 외부
-DTO에서 `source_kind=maintenance_replay_overlay`, `branch_kind=overlay`와 source lineage를
-명시합니다. 분기 전 runtime snapshot의 결정론적 SHA-256도 함께 기록합니다. 현재 Backend
+DTO에서 `contract_version=runtime-overlay-observation-v1`,
+`source_kind=maintenance_replay_overlay`, `branch_kind=overlay`와 source lineage를
+명시합니다. 분기 전 runtime snapshot의 결정론적 SHA-256도 함께 기록합니다. Backend
 reader를 위한 동일 값의 flat measurement projection도 함께 기록하지만 Physics를 다시
-계산하지 않습니다. `gen_data`는 Observation availability만 알리며 Model Artifact, history
-requirement, Prediction 또는 Result/Evidence를 생성하지 않습니다.
+계산하지 않습니다. available 이벤트는
+`contract_version=runtime-overlay-observations-available-v1`을 사용하고
+`storage_reference`를 output root 기준 상대경로로 전달합니다. `gen_data`는 Observation
+availability만 알리며 Model Artifact, history requirement, Prediction 또는
+Result/Evidence를 생성하지 않습니다.
 
 ## 빠른 검증
 

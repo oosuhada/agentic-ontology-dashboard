@@ -23,7 +23,8 @@ from physics_engine import Runtime
 
 
 MAINTENANCE_CONTRACT_VERSION = "maintenance-replay-v1"
-AVAILABLE_CONTRACT_VERSION = "runtime-overlay-observation-v1-preview"
+OBSERVATION_CONTRACT_VERSION = "runtime-overlay-observation-v1"
+AVAILABLE_CONTRACT_VERSION = "runtime-overlay-observations-available-v1"
 OVERLAY_SOURCE_KIND = "maintenance_replay_overlay"
 CHECKPOINT_VERSION = 6
 
@@ -76,6 +77,66 @@ _TOOL_REPLACEMENT_PATCH = {
         "unit": "min",
     }
 }
+_CNC_MEASUREMENT_FIELDS = {
+    "air_temperature_k",
+    "process_temperature_k",
+    "rotational_speed_rpm",
+    "torque_nm",
+    "tool_wear_min",
+    "is_operating",
+    "operating_state",
+    "product_type",
+}
+_OBSERVATION_FIELDS = {
+    "contract_version",
+    "schema_version",
+    "run_id",
+    "sequence",
+    "asset_id",
+    "equipment_id",
+    "observed_at",
+    "generated_at",
+    "measurements",
+    "generator_version",
+    "asset_type",
+    "site_id",
+    "cell_id",
+    "source_kind",
+    "observation_id",
+    "observation_sha256",
+    "observed_at_source",
+    "branch_kind",
+    "overlay",
+    "record_kind",
+    "quality",
+    "base_dataset_version",
+    "base_source_sha256",
+    "simulation_session_id",
+    "overlay_branch_id",
+    "maintenance_event_id",
+    "maintenance_action_id",
+    "state_version",
+    "history_segment_id",
+    *_CNC_MEASUREMENT_FIELDS,
+}
+_AVAILABLE_FIELDS = {
+    "contract_version",
+    "event_type",
+    "event_id",
+    "simulation_session_id",
+    "equipment_id",
+    "maintenance_action_id",
+    "maintenance_event_id",
+    "overlay_branch_id",
+    "history_segment_id",
+    "source_kind",
+    "state_version",
+    "batch_rows",
+    "generated_rows",
+    "observed_from",
+    "observed_to",
+    "storage_reference",
+}
 
 
 class OverlayContractError(ValueError):
@@ -126,6 +187,118 @@ def _semantic_observation_hash(payload: dict[str, Any]) -> str:
         if key not in {"generated_at", "observation_sha256"}
     }
     return _payload_hash(semantic)
+
+
+def _safe_path_component(value: str) -> str:
+    return "".join(
+        char
+        if (char.isascii() and char.isalnum()) or char in {"-", "_", "."}
+        else "_"
+        for char in str(value)
+    )
+
+
+def _validate_observation_output(
+    payload: dict[str, Any],
+    *,
+    require_checksum: bool,
+) -> None:
+    expected_fields = _OBSERVATION_FIELDS if require_checksum else _OBSERVATION_FIELDS - {
+        "observation_sha256"
+    }
+    if set(payload) != expected_fields:
+        missing = sorted(expected_fields - set(payload))
+        unknown = sorted(set(payload) - expected_fields)
+        raise OverlayContractError(
+            f"invalid Runtime Overlay observation fields: missing={missing} unknown={unknown}"
+        )
+    if payload["contract_version"] != OBSERVATION_CONTRACT_VERSION:
+        raise OverlayContractError("unsupported Runtime Overlay observation contract")
+    if payload["schema_version"] != "2":
+        raise OverlayContractError("Runtime Overlay observation schema_version must be 2")
+    if payload["source_kind"] != OVERLAY_SOURCE_KIND or payload["branch_kind"] != "overlay":
+        raise OverlayContractError("Runtime Overlay observation source/branch kind is invalid")
+    if payload["asset_type"] != "cnc" or payload["record_kind"] != "full_observation":
+        raise OverlayContractError("Runtime Overlay v1 supports full CNC observations only")
+    if payload["asset_id"] != payload["equipment_id"]:
+        raise OverlayContractError("Runtime Overlay asset_id must equal equipment_id")
+    _parse_datetime(payload["observed_at"], "observed_at")
+    _parse_datetime(payload["generated_at"], "generated_at")
+    measurements = payload["measurements"]
+    if not isinstance(measurements, dict) or set(measurements) != _CNC_MEASUREMENT_FIELDS:
+        raise OverlayContractError("Runtime Overlay measurements must use the CNC v1 field set")
+    for field in _CNC_MEASUREMENT_FIELDS:
+        if payload[field] != measurements[field]:
+            raise OverlayContractError(
+                f"Runtime Overlay flat projection differs from measurements.{field}"
+            )
+    overlay = payload["overlay"]
+    if not isinstance(overlay, dict):
+        raise OverlayContractError("Runtime Overlay lineage must be an object")
+    expected_overlay_fields = {
+        "overlay_id",
+        "parent_branch",
+        "maintenance_event_id",
+        "state_patch_reference",
+        "simulation_session_id",
+        "history_segment_id",
+        "state_version",
+    }
+    if set(overlay) != expected_overlay_fields:
+        raise OverlayContractError("Runtime Overlay lineage fields are invalid")
+    mirrored = {
+        "overlay_id": "overlay_branch_id",
+        "maintenance_event_id": "maintenance_event_id",
+        "state_patch_reference": "maintenance_action_id",
+        "simulation_session_id": "simulation_session_id",
+        "history_segment_id": "history_segment_id",
+        "state_version": "state_version",
+    }
+    if overlay.get("parent_branch") != "canonical":
+        raise OverlayContractError("Runtime Overlay parent_branch must be canonical")
+    for nested, top_level in mirrored.items():
+        if overlay.get(nested) != payload[top_level]:
+            raise OverlayContractError(f"overlay.{nested} differs from {top_level}")
+    if require_checksum:
+        declared = str(payload["observation_sha256"])
+        actual = _semantic_observation_hash(payload)
+        if declared != actual:
+            raise OverlayConflict(
+                f"Runtime Overlay observation checksum mismatch: declared={declared} actual={actual}"
+            )
+
+
+def _validate_available_output(payload: dict[str, Any]) -> None:
+    if set(payload) != _AVAILABLE_FIELDS:
+        missing = sorted(_AVAILABLE_FIELDS - set(payload))
+        unknown = sorted(set(payload) - _AVAILABLE_FIELDS)
+        raise OverlayContractError(
+            f"invalid Runtime Overlay available fields: missing={missing} unknown={unknown}"
+        )
+    if payload["contract_version"] != AVAILABLE_CONTRACT_VERSION:
+        raise OverlayContractError("unsupported Runtime Overlay available contract")
+    if payload["event_type"] != "runtime_overlay.observations.available":
+        raise OverlayContractError("invalid Runtime Overlay available event type")
+    if payload["source_kind"] != OVERLAY_SOURCE_KIND:
+        raise OverlayContractError("invalid Runtime Overlay available source kind")
+    for field in ("state_version", "batch_rows", "generated_rows"):
+        value = payload[field]
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise OverlayContractError(f"{field} must be a positive integer")
+    if payload["generated_rows"] < payload["batch_rows"]:
+        raise OverlayContractError("generated_rows must be >= batch_rows")
+    observed_from = _parse_datetime(payload["observed_from"], "observed_from")
+    observed_to = _parse_datetime(payload["observed_to"], "observed_to")
+    if observed_to < observed_from:
+        raise OverlayContractError("observed_to must be >= observed_from")
+    expected_reference = (
+        f"runtime_overlay/{_safe_path_component(payload['simulation_session_id'])}/"
+        f"{_safe_path_component(payload['overlay_branch_id'])}.jsonl"
+    )
+    if payload["storage_reference"] != expected_reference:
+        raise OverlayContractError(
+            "storage_reference must be stream-root-relative and match session/branch"
+        )
 
 
 def _overlay_observation_id(
@@ -280,10 +453,7 @@ class OverlayObservationStore:
 
     @staticmethod
     def _safe(value: str) -> str:
-        return "".join(
-            char if char.isalnum() or char in {"-", "_", "."} else "_"
-            for char in value
-        )
+        return _safe_path_component(value)
 
     def path_for(self, branch: OverlayBranch) -> Path:
         if not branch.overlay_branch_id:
@@ -318,6 +488,7 @@ class OverlayObservationStore:
                         "stored observation checksum mismatch at "
                         f"{path}:{line_number}: {observation_id}"
                     )
+                _validate_observation_output(row, require_checksum=True)
                 existing = index.get(observation_id)
                 if existing is not None and existing != actual_digest:
                     raise OverlayConflict(
@@ -331,8 +502,10 @@ class OverlayObservationStore:
         path = self.path_for(branch)
         index = self._load_index(path)
         observation_id = str(observation["observation_id"])
+        _validate_observation_output(observation, require_checksum=False)
         digest = _semantic_observation_hash(observation)
         observation["observation_sha256"] = digest
+        _validate_observation_output(observation, require_checksum=True)
         existing = index.get(observation_id)
         if existing is not None:
             if existing != digest:
@@ -365,6 +538,7 @@ class RuntimeOverlayCoordinator:
         self.interval = timedelta(minutes=canonical_producer.interval_minutes)
         self.base_dataset_version = base_dataset_version
         self.generated_at = generated_at or (lambda: datetime.now(timezone.utc))
+        self.output_root = output_root
         self.store = OverlayObservationStore(output_root / "runtime_overlay")
         self.checkpoint_path = (
             output_root / "runtime_overlay" / "runtime_overlay_state.json"
@@ -1101,6 +1275,7 @@ class RuntimeOverlayCoordinator:
         observation = record.to_dict()
         observation.update(
             {
+                "contract_version": OBSERVATION_CONTRACT_VERSION,
                 "equipment_id": branch.equipment_id,
                 "observation_id": _overlay_observation_id(
                     branch,
@@ -1161,6 +1336,7 @@ class RuntimeOverlayCoordinator:
 
         branch.phase = "running"
         available = self._available_event(branch, written)
+        _validate_available_output(available)
         self.pending_available_events[str(available["event_id"])] = available
         self._checkpoint()
         return written, available
@@ -1186,6 +1362,7 @@ class RuntimeOverlayCoordinator:
         rows: list[dict[str, Any]],
     ) -> dict[str, Any]:
         path = self.store.path_for(branch)
+        storage_reference = path.relative_to(self.output_root).as_posix()
         return {
             "contract_version": AVAILABLE_CONTRACT_VERSION,
             "event_type": "runtime_overlay.observations.available",
@@ -1204,7 +1381,7 @@ class RuntimeOverlayCoordinator:
             "generated_rows": branch.generated_rows,
             "observed_from": rows[0]["observed_at"],
             "observed_to": rows[-1]["observed_at"],
-            "storage_reference": str(path),
+            "storage_reference": storage_reference,
         }
 
     def _load_available_event_index(self) -> dict[str, str]:
@@ -1225,6 +1402,7 @@ class RuntimeOverlayCoordinator:
                         f"invalid availability event at {self.available_event_path}:"
                         f"{line_number}"
                     ) from exc
+                _validate_available_output(event)
                 event_id = str(event.get("event_id") or "")
                 if not event_id:
                     raise OverlayContractError(
@@ -1241,6 +1419,7 @@ class RuntimeOverlayCoordinator:
         return index
 
     def persist_available_event(self, event: dict[str, Any]) -> None:
+        _validate_available_output(event)
         event_id = str(event.get("event_id") or "")
         if not event_id:
             raise OverlayContractError("availability event_id is required")
