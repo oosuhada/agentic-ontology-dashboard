@@ -20,6 +20,7 @@ def create_app(manager: RuntimeManager | None = None) -> FastAPI:
         output_root=Path(config.GEN_DATA_OUTPUT_DIR),
         mapping_path=ROOT / "mappings" / "opcua_nodes.v1.json",
         opcua_endpoint=config.GEN_DATA_OPCUA_ENDPOINT,
+        maintenance_event_file=config.GEN_DATA_RUNTIME_OVERLAY_EVENT_FILE,
     )
 
     @asynccontextmanager

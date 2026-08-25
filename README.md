@@ -24,7 +24,7 @@ gen_data/
 │   ├── observation/         # SensorRecord 내부 계약
 │   ├── protocol/            # asyncua OPC UA publisher + configured-node collector
 │   ├── storage/             # source/protocol/canonical writer
-│   ├── runtime/             # run lifecycle / manual tick / safe stop
+│   ├── runtime/             # run lifecycle / Runtime Overlay / safe stop
 │   └── api/                 # FastAPI control routes
 ├── mappings/                # versioned OPC UA NodeId/DataType/unit mapping
 ├── canonical/
@@ -130,6 +130,50 @@ OPC UA source run 예시:
 DataValue 묶음을 기존 flat Canonical V3.1 row로 위조하지 않습니다. 기존 canonical
 CSV/manifest 계약은 완전한 simulation asset/tick snapshot에서 그대로 유지됩니다.
 
+### Maintenance Runtime Overlay
+
+`GEN_DATA_RUNTIME_OVERLAY_EVENT_FILE`을 설정하면 simulation run이 Backend Outbox에서
+전달된 `maintenance-replay-v1` JSONL을 opt-in으로 소비합니다. 이벤트의
+`simulation_session_id`는 실행 시작 요청의 동명 필드로 Source run에 명시적으로
+바인딩합니다. 생략하면 `run_id`를 기본값으로 사용하며, 다른 Session의 이벤트는 해당
+run이 소비하지 않습니다. 이 값은 Diagnosis/Maintenance replay 상관 ID이고 Source
+run identity와 같은 개념으로 간주하지 않습니다.
+
+```text
+maintenance.started
+→ 미래 started와 같은 stream의 completed/replay는 시작 시각까지 함께 pending
+→ 첫 due tick 직전에 snapshot 후 대상 설비 Canonical 출력만 중단
+→ queued maintenance.completed의 허용된 state_patch를 순서대로 적용
+→ queued maintenance.replay_requested의 restart_at부터 대상 branch clock만 진행
+→ output/runtime_overlay/{session}/{branch}.jsonl
+→ output/runtime_overlay/observations_available.jsonl
+```
+
+시작 시각 이후 Canonical row가 이미 출력된 late event와 계약을 위반한 inbox line은
+`output/runtime_overlay/rejected_maintenance_events.jsonl`에 중복 없이 격리합니다. 한
+줄의 오류가 같은 inbox의 이후 정상 이벤트를 막지 않습니다. 저장된 Overlay Observation은
+재사용 전에 payload 기준 SHA-256을 다시 계산해 변조 여부를 확인합니다.
+
+Overlay Observation은 `SensorRecord v2`의 `measurements` envelope를 재사용하되 외부
+DTO에서 `contract_version=runtime-overlay-observation-v1`,
+`source_kind=maintenance_replay_overlay`, `branch_kind=overlay`와 source lineage를
+명시합니다. 분기 전 runtime snapshot의 결정론적 SHA-256도 함께 기록합니다. Backend
+reader를 위한 동일 값의 flat measurement projection도 함께 기록하지만 Physics를 다시
+계산하지 않습니다. available 이벤트는
+`contract_version=runtime-overlay-observations-available-v1`을 사용하고
+`storage_reference`를 output root 기준 상대경로로 전달합니다. `gen_data`는 Observation
+availability만 알리며 Model Artifact, history requirement, Prediction 또는
+Result/Evidence를 생성하지 않습니다.
+
+저장 경로 identity는 `[simulation_session_id, overlay_branch_id]`를 공백 없이 JSON으로
+직렬화하고 Unicode를 escape하지 않은 UTF-8 byte의 lowercase SHA-256을 사용해
+`runtime_overlay/sha256-<digest>.jsonl`로 만든다. 논리 ID를 경로 문자로 치환하지 않으므로
+`.`/`..` traversal과 replacement alias를 허용하지 않는다. `observation_sha256`은
+`generated_at`과 checksum 필드 자체를 제외한 payload를
+`ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False`로 직렬화한
+UTF-8 byte의 SHA-256이다. 공용 Unicode/path 기대값은
+`tests/fixtures/runtime-overlay-output-v1/`에 고정한다.
+
 ## 빠른 검증
 
 현재 checkout의 source/reference baseline을 검증합니다.
@@ -165,6 +209,7 @@ PR과 `main` push에서는 `.github/workflows/source-validation.yml`이 다음 �
 - Canonical/source 및 reference fixture package validation
 - seed 기반 full reproducibility validation
 - SensorRecord/OPC UA/runtime/FastAPI/canonical regression test
+- Runtime Overlay 대상 설비 격리·멱등성·checkpoint 복구 regression test
 - Canonical generator와 Source Data Producer import smoke
 - Python compile 및 whitespace 검증
 - validation output이 checkout의 기준 파일과 일치하는지 확인

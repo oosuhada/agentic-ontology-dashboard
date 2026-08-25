@@ -14,6 +14,7 @@ class RunState:
     started_at: datetime
     current_observed_at: datetime
     source_kind: str = "simulation"
+    simulation_session_id: str | None = None
     last_sequence: int = 0
     completed_at: datetime | None = None
     source_record_count: int = 0
@@ -26,6 +27,7 @@ class RunState:
             "run_id": self.run_id,
             "status": self.status,
             "source_kind": self.source_kind,
+            "simulation_session_id": self.simulation_session_id,
             "started_at": self.started_at.isoformat(timespec="seconds"),
             "current_observed_at": self.current_observed_at.isoformat(timespec="seconds"),
             "last_sequence": self.last_sequence,
