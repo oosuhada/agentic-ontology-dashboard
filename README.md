@@ -149,6 +149,15 @@ maintenance.started
 → output/runtime_overlay/observations_available.jsonl
 ```
 
+현재 MVP에서 허용하는 typed maintenance patch는 다음 두 가지입니다.
+
+- `TOOL_REPLACEMENT`: `tool_wear_min`을 `0 min`으로 reset
+- `COOLING_SYSTEM_RESTORE`: `cooling_system_state`를 `nominal`로 restore
+
+Cooling 복구는 Canonical에 없는 임의 온도 상태를 만들지 않습니다. 정비 전 failure
+episode를 제외한 Overlay branch에서 기존 CNC 물리를 정상 baseline으로 재개하고, 관련
+없는 `tool_wear_min`은 그대로 보존합니다.
+
 시작 시각 이후 Canonical row가 이미 출력된 late event와 계약을 위반한 inbox line은
 `output/runtime_overlay/rejected_maintenance_events.jsonl`에 중복 없이 격리합니다. 한
 줄의 오류가 같은 inbox의 이후 정상 이벤트를 막지 않습니다. 저장된 Overlay Observation은

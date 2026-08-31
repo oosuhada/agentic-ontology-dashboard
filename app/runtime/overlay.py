@@ -77,6 +77,17 @@ _TOOL_REPLACEMENT_PATCH = {
         "unit": "min",
     }
 }
+_COOLING_SYSTEM_RESTORE_PATCH = {
+    "cooling_system_state": {
+        "operation": "restore",
+        "value": "nominal",
+        "unit": "state",
+    }
+}
+_ACTION_STATE_PATCHES = {
+    "TOOL_REPLACEMENT": _TOOL_REPLACEMENT_PATCH,
+    "COOLING_SYSTEM_RESTORE": _COOLING_SYSTEM_RESTORE_PATCH,
+}
 _CNC_MEASUREMENT_FIELDS = {
     "air_temperature_k",
     "process_temperature_k",
@@ -820,12 +831,16 @@ class RuntimeOverlayCoordinator:
         for field in _TIMESTAMP_FIELDS:
             if field in event:
                 _parse_datetime(event[field], field)
-        if "action_code" in event and event["action_code"] != "TOOL_REPLACEMENT":
-            raise OverlayContractError("action_code must be TOOL_REPLACEMENT")
-        if "state_patch" in event and event["state_patch"] != _TOOL_REPLACEMENT_PATCH:
-            raise OverlayContractError(
-                "state_patch must contain the canonical TOOL_REPLACEMENT patch"
-            )
+        action_code = event.get("action_code")
+        if action_code is not None and action_code not in _ACTION_STATE_PATCHES:
+            raise OverlayContractError(f"unsupported maintenance action_code: {action_code}")
+        if "state_patch" in event:
+            if action_code is None:
+                raise OverlayContractError("state_patch requires action_code")
+            if event["state_patch"] != _ACTION_STATE_PATCHES[action_code]:
+                raise OverlayContractError(
+                    f"{action_code} requires its canonical state_patch"
+                )
         caused_by = event["caused_by"]
         if not isinstance(caused_by, dict) or set(caused_by) != _CAUSED_BY_FIELDS:
             raise OverlayContractError("caused_by must contain the canonical lineage fields")
@@ -860,6 +875,10 @@ class RuntimeOverlayCoordinator:
                 )
         else:
             cls._required(event, "maintenance_event_id", "restart_at")
+            if ("action_code" in event) != ("state_patch" in event):
+                raise OverlayContractError(
+                    "replay action_code and state_patch must be provided together"
+                )
             if (
                 "maintenance_completed_at" in event
                 and _parse_datetime(event["restart_at"], "restart_at")
@@ -1174,7 +1193,7 @@ class RuntimeOverlayCoordinator:
         if event_type == "maintenance.started":
             if str(self.assets[equipment_id].get("asset_type")) != "cnc":
                 raise OverlayContractError(
-                    "TOOL_REPLACEMENT is only valid for CNC equipment"
+                    f"{event['action_code']} is only valid for CNC equipment"
                 )
             if key in self.pending_event_streams or any(
                 str(stream[0]["equipment_id"]) == equipment_id
@@ -1236,18 +1255,26 @@ class RuntimeOverlayCoordinator:
             raise OverlayContractError(
                 "action_code does not match maintenance.started"
             )
-        if action_code != "TOOL_REPLACEMENT":
-            raise OverlayContractError(f"unsupported MVP action_code: {action_code}")
-        if event["state_patch"] != _TOOL_REPLACEMENT_PATCH:
-            raise OverlayContractError(
-                "TOOL_REPLACEMENT requires tool_wear_min reset -> 0 min"
-            )
         if str(branch.runtime.asset.get("asset_type")) != "cnc":
             raise OverlayContractError(
-                "TOOL_REPLACEMENT is only valid for CNC equipment"
+                f"{action_code} is only valid for CNC equipment"
             )
-        branch.runtime.tool_wear_min = 0.0
-        branch.runtime.tool_reset_at = None
+        expected_patch = _ACTION_STATE_PATCHES.get(action_code)
+        if expected_patch is None:
+            raise OverlayContractError(f"unsupported MVP action_code: {action_code}")
+        if event["state_patch"] != expected_patch:
+            raise OverlayContractError(
+                f"{action_code} requires its canonical state_patch"
+            )
+        if action_code == "TOOL_REPLACEMENT":
+            branch.runtime.tool_wear_min = 0.0
+            branch.runtime.tool_reset_at = None
+        elif action_code == "COOLING_SYSTEM_RESTORE":
+            # Cooling state is not a Canonical sensor field.  The post-maintenance
+            # branch removes the pre-maintenance failure episode and resumes the
+            # existing CNC physics at its normal baseline without fabricating a
+            # temperature reset or changing unrelated tool-wear state.
+            branch.runtime.noise_state.pop("process_residual_k", None)
         branch.runtime.planned_maintenance_until = None
 
     def _produce_overlay_record(
