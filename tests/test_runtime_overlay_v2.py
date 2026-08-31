@@ -130,6 +130,47 @@ class RuntimeOverlayV2Test(unittest.TestCase):
         coordinator.process_event(self.completed())
         coordinator.process_event(self.replay_requested())
 
+    def cooling_started(self):
+        return self.event(
+            "maintenance.started",
+            1,
+            work_order_id="WO-COOLING-001",
+            maintenance_started_at=self.started_at.isoformat(),
+            action_code="COOLING_SYSTEM_RESTORE",
+        )
+
+    def cooling_completed(self):
+        return self.event(
+            "maintenance.completed",
+            2,
+            maintenance_event_id="MAINT-COOLING-001",
+            maintenance_completed_at=self.completed_at.isoformat(),
+            action_code="COOLING_SYSTEM_RESTORE",
+            state_patch={
+                "cooling_system_state": {
+                    "operation": "restore",
+                    "value": "nominal",
+                    "unit": "state",
+                }
+            },
+        )
+
+    def cooling_replay_requested(self):
+        return self.event(
+            "maintenance.replay_requested",
+            3,
+            maintenance_event_id="MAINT-COOLING-001",
+            restart_at=self.restart_at.isoformat(),
+            action_code="COOLING_SYSTEM_RESTORE",
+            state_patch={
+                "cooling_system_state": {
+                    "operation": "restore",
+                    "value": "nominal",
+                    "unit": "state",
+                }
+            },
+        )
+
     def test_target_only_branch_preserves_canonical_runtime_and_other_assets(self):
         coordinator = self.coordinator()
         coordinator.process_event(self.started())
@@ -154,6 +195,63 @@ class RuntimeOverlayV2Test(unittest.TestCase):
         ]
         self.assertEqual(branch.runtime.tool_wear_min, 0.0)
         self.assertEqual(target_runtime.tool_wear_min, 123.4)
+
+    def test_cooling_restore_resumes_normal_overlay_without_resetting_tool_wear(self):
+        coordinator = self.coordinator()
+        coordinator.process_event(self.cooling_started())
+        coordinator.process_event(self.cooling_completed())
+
+        branch = coordinator.branches[
+            coordinator.branch_by_equipment[self.target["asset_id"]]
+        ]
+        self.assertEqual(branch.action_code, "COOLING_SYSTEM_RESTORE")
+        self.assertEqual(branch.runtime.tool_wear_min, 123.4)
+
+        coordinator.process_event(self.cooling_replay_requested())
+        rows, available = coordinator.advance_branch_to(
+            self.target["asset_id"],
+            self.restart_at + timedelta(minutes=20),
+        )
+
+        self.assertEqual(len(rows), 3)
+        self.assertIsNotNone(available)
+        self.assertTrue(all(row["tool_wear_min"] >= 123.4 for row in rows))
+        self.assertTrue(
+            all(
+                row["process_temperature_k"] - row["air_temperature_k"] >= 8.89
+                for row in rows
+            )
+        )
+        self.assertTrue(
+            all(row["maintenance_event_id"] == "MAINT-COOLING-001" for row in rows)
+        )
+
+    def test_action_and_state_patch_mismatch_is_rejected(self):
+        coordinator = self.coordinator()
+        coordinator.process_event(self.cooling_started())
+        mismatched = self.cooling_completed()
+        mismatched["state_patch"] = {
+            "tool_wear_min": {"operation": "reset", "value": 0, "unit": "min"}
+        }
+
+        with self.assertRaisesRegex(
+            OverlayContractError,
+            "COOLING_SYSTEM_RESTORE requires its canonical state_patch",
+        ):
+            coordinator.process_event(mismatched)
+
+    def test_replay_action_and_state_patch_must_be_provided_together(self):
+        coordinator = self.coordinator()
+        coordinator.process_event(self.cooling_started())
+        coordinator.process_event(self.cooling_completed())
+        invalid = self.replay_requested()
+        invalid["action_code"] = "COOLING_SYSTEM_RESTORE"
+
+        with self.assertRaisesRegex(
+            OverlayContractError,
+            "replay action_code and state_patch must be provided together",
+        ):
+            coordinator.process_event(invalid)
 
     def test_gap_then_branch_local_fast_forward_emits_flat_observations(self):
         coordinator = self.coordinator()
@@ -908,6 +1006,81 @@ class RuntimeOverlayV2Test(unittest.TestCase):
             self.assertEqual(
                 len(available_path.read_text(encoding="utf-8").splitlines()),
                 1,
+            )
+        finally:
+            manager.stop("SOURCE-RUN-001")
+
+    def test_runtime_manager_consumes_cooling_restore_jsonl(self):
+        event_path = self.root / "maintenance-replay-cooling.jsonl"
+        event_path.write_text(
+            "\n".join(
+                json.dumps(event, sort_keys=True)
+                for event in (
+                    self.cooling_started(),
+                    self.cooling_completed(),
+                    self.cooling_replay_requested(),
+                )
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        manager = RuntimeManager(
+            output_root=self.root,
+            mapping_path=MAPPING,
+            opcua_endpoint="opc.tcp://127.0.0.1:48501/gen-data/",
+            maintenance_event_file=event_path,
+        )
+        manager.start_run(
+            run_id="SOURCE-RUN-001",
+            simulation_session_id="DEMO-001",
+            start_at=START,
+            duration_hours=2,
+            continuous=False,
+            publish_opcua=False,
+        )
+
+        try:
+            for _ in range(5):
+                manager.tick("SOURCE-RUN-001")
+
+            overlay_path = (
+                self.root
+                / "runtime_overlay"
+                / (
+                    _storage_path_component(
+                        "DEMO-001", "MAINT-COOLING-001:post"
+                    )
+                    + ".jsonl"
+                )
+            )
+            overlay_rows = [
+                json.loads(line)
+                for line in overlay_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            self.assertEqual(len(overlay_rows), 1)
+            row = overlay_rows[0]
+            self.assertEqual(row["maintenance_event_id"], "MAINT-COOLING-001")
+            self.assertGreaterEqual(
+                row["process_temperature_k"] - row["air_temperature_k"],
+                8.89,
+            )
+
+            source_path = (
+                self.root
+                / "runs"
+                / "SOURCE-RUN-001"
+                / "source"
+                / "sensor_records.jsonl"
+            )
+            source_rows = [
+                json.loads(line)
+                for line in source_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            self.assertNotIn(
+                self.target["asset_id"],
+                {source_row["asset_id"] for source_row in source_rows},
             )
         finally:
             manager.stop("SOURCE-RUN-001")

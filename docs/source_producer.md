@@ -125,9 +125,15 @@ Generator prediction은 `observation_id`, `run_id`, `sequence`, `mapping_version
 
 Overlay identity는 Maintenance handoff의 `simulation_session_id`,
 `maintenance_action_id`, `maintenance_event_id`, `state_version`에서 파생·보존한다.
-`gen_data`는 action 의미를 확장하지 않고 현재 MVP whitelist인 `TOOL_REPLACEMENT`의
-`tool_wear_min reset -> 0 min`만 적용한다. 추론 readiness와 정비 성공 여부는 판단하지
-않는다.
+`gen_data`는 Maintenance가 확정한 Action 의미를 재해석하지 않고 현재 MVP whitelist인
+두 typed patch만 적용한다.
+
+- `TOOL_REPLACEMENT`: `tool_wear_min reset -> 0 min`
+- `COOLING_SYSTEM_RESTORE`: `cooling_system_state restore -> nominal`
+
+Cooling 복구는 임의 온도값을 주입하지 않는다. 정비 전 고장 episode를 제외한 대상 설비
+Overlay branch에서 기존 CNC 물리를 정상 baseline으로 재개하며, 공구 마모처럼 관련 없는
+상태는 변경하지 않는다. `gen_data`는 추론 readiness와 정비 성공 여부를 판단하지 않는다.
 
 최소 수집 안전장치는 다음과 같다.
 
