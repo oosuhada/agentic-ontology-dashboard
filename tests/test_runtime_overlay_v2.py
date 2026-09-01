@@ -342,6 +342,124 @@ class RuntimeOverlayV2Test(unittest.TestCase):
         self.assertFalse(Path(available["storage_reference"]).is_absolute())
         self.assertNotIn("required_rows", available)
 
+    def test_manager_fast_forward_targets_one_branch_without_advancing_global_clock(self):
+        manager = RuntimeManager(
+            output_root=self.root,
+            mapping_path=MAPPING,
+            opcua_endpoint="opc.tcp://127.0.0.1:48501/gen-data/",
+        )
+        manager.start_run(
+            run_id="DEMO-001",
+            simulation_session_id="DEMO-001",
+            start_at=START,
+            duration_hours=8,
+            continuous=False,
+            publish_opcua=False,
+        )
+        try:
+            context = manager._get("DEMO-001")
+            other_runtime = context.producer.runtimes[self.other["asset_id"]]
+            other_state_before = dict(vars(other_runtime))
+            manager.process_maintenance_event("DEMO-001", self.started())
+            manager.process_maintenance_event("DEMO-001", self.completed())
+            manager.process_maintenance_event("DEMO-001", self.replay_requested())
+
+            result = manager.fast_forward_overlay(
+                "DEMO-001",
+                equipment_id=self.target["asset_id"],
+                target_generated_rows=36,
+            )
+
+            self.assertFalse(result["global_clock_advanced"])
+            self.assertEqual(result["global_observed_at"], START.isoformat())
+            self.assertEqual(result["global_sequence"], 0)
+            self.assertEqual(result["generated_batch_rows"], 36)
+            self.assertEqual(result["total_generated_rows"], 36)
+            self.assertEqual(
+                result["latest_observed_at"],
+                (self.restart_at + timedelta(minutes=350)).isoformat(),
+            )
+            self.assertEqual(context.state.current_observed_at, START)
+            self.assertEqual(context.producer.sequence, 0)
+            self.assertEqual(dict(vars(other_runtime)), other_state_before)
+            self.assertEqual(result["available_event"]["batch_rows"], 36)
+
+            replay = manager.fast_forward_overlay(
+                "DEMO-001",
+                equipment_id=self.target["asset_id"],
+                target_generated_rows=36,
+            )
+            self.assertEqual(replay["generated_batch_rows"], 0)
+            self.assertEqual(replay["total_generated_rows"], 36)
+            self.assertIsNone(replay["available_event"])
+
+            next_status = manager.tick("DEMO-001")
+            branch = context.overlay.branches[
+                context.overlay.branch_by_equipment[self.target["asset_id"]]
+            ]
+            self.assertEqual(
+                next_status["current_observed_at"],
+                (START + timedelta(minutes=10)).isoformat(),
+            )
+            self.assertEqual(next_status["source_record_count"], 99)
+            self.assertEqual(next_status["canonical_observation_count"], 99)
+            self.assertEqual(branch.generated_rows, 37)
+            self.assertEqual(
+                branch.next_observed_at,
+                self.restart_at + timedelta(minutes=370),
+            )
+        finally:
+            manager.stop("DEMO-001")
+
+    def test_configured_fast_forward_runs_automatically_after_replay_event(self):
+        manager = RuntimeManager(
+            output_root=self.root,
+            mapping_path=MAPPING,
+            opcua_endpoint="opc.tcp://127.0.0.1:48501/gen-data/",
+            runtime_overlay_fast_forward_rows=36,
+        )
+        manager.start_run(
+            run_id="DEMO-001",
+            simulation_session_id="DEMO-001",
+            start_at=START,
+            duration_hours=8,
+            continuous=False,
+            publish_opcua=False,
+        )
+        try:
+            manager.process_maintenance_event("DEMO-001", self.started())
+            manager.process_maintenance_event("DEMO-001", self.completed())
+            manager.process_maintenance_event("DEMO-001", self.replay_requested())
+
+            status = manager.tick("DEMO-001")
+            context = manager._get("DEMO-001")
+            branch = context.overlay.branches[
+                context.overlay.branch_by_equipment[self.target["asset_id"]]
+            ]
+
+            self.assertEqual(
+                status["current_observed_at"],
+                (START + timedelta(minutes=10)).isoformat(),
+            )
+            self.assertEqual(status["source_record_count"], 99)
+            self.assertEqual(status["canonical_observation_count"], 99)
+            self.assertEqual(branch.generated_rows, 36)
+            self.assertEqual(
+                branch.next_observed_at,
+                self.restart_at + timedelta(minutes=360),
+            )
+            available_events = [
+                json.loads(line)
+                for line in context.overlay.available_event_path.read_text(
+                    encoding="utf-8"
+                ).splitlines()
+            ]
+            self.assertEqual(len(available_events), 1)
+            self.assertEqual(available_events[0]["batch_rows"], 36)
+            self.assertEqual(available_events[0]["generated_rows"], 36)
+        finally:
+            manager.stop("DEMO-001")
+
     def test_official_unicode_checksum_contract_vector(self):
         payload = json.loads(
             (CONTRACT_VECTOR / "observation-unicode.json").read_text(

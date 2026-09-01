@@ -1387,16 +1387,73 @@ class RuntimeOverlayCoordinator:
         self._checkpoint()
         return written, available
 
+    def advance_branch_to_generated_rows(
+        self,
+        equipment_id: str,
+        target_generated_rows: int,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+        """Advance only one branch to an absolute observation count.
+
+        The count is a source-generation target, not an inference-readiness
+        declaration. Generator/Backend consumers remain responsible for
+        evaluating their current Model Artifact history requirement.
+        """
+        if target_generated_rows < 1:
+            raise OverlayContractError("target_generated_rows must be positive")
+        key = self.branch_by_equipment.get(equipment_id)
+        if key is None:
+            raise OverlayContractError(
+                f"no overlay branch for equipment: {equipment_id}"
+            )
+        branch = self.branches[key]
+        if target_generated_rows <= branch.generated_rows:
+            return [], None
+        if branch.phase not in {"restarting", "running"} or branch.next_observed_at is None:
+            raise OverlayContractError(
+                "overlay branch must be replay-requested before fast-forward"
+            )
+        remaining_rows = target_generated_rows - branch.generated_rows
+        target_virtual_time = branch.next_observed_at + self.interval * (
+            remaining_rows - 1
+        )
+        return self.advance_branch_to(equipment_id, target_virtual_time)
+
     def advance_active_branches_to(
         self,
         target_virtual_time: datetime,
+        *,
+        minimum_generated_rows: int = 0,
     ) -> list[dict[str, Any]]:
+        if minimum_generated_rows < 0:
+            raise OverlayContractError("minimum_generated_rows must be >= 0")
         available_events: list[dict[str, Any]] = []
         for equipment_id in self.active_equipment_ids:
-            _rows, available = self.advance_branch_to(
-                equipment_id,
-                target_virtual_time,
-            )
+            branch = self.branches[self.branch_by_equipment[equipment_id]]
+            if (
+                minimum_generated_rows > branch.generated_rows
+                and branch.phase in {"restarting", "running"}
+            ):
+                _rows, available = self.advance_branch_to_generated_rows(
+                    equipment_id,
+                    minimum_generated_rows,
+                )
+            else:
+                effective_target = target_virtual_time
+                if (
+                    branch.phase == "running"
+                    and branch.generated_rows > 0
+                    and branch.next_observed_at is not None
+                    and branch.next_observed_at > target_virtual_time
+                ):
+                    # A branch-local fast-forward may put this equipment ahead
+                    # of the global simulation clock. Keep its local offset and
+                    # emit one normal-cadence row per source tick while unrelated
+                    # assets continue on the unchanged global clock.
+                    effective_target = branch.next_observed_at
+                _rows, available = self.advance_branch_to(
+                    equipment_id,
+                    effective_target,
+                )
             if available is not None:
                 self.persist_available_event(available)
                 available_events.append(available)

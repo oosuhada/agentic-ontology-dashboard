@@ -215,12 +215,22 @@ FastAPI는 control layer만 담당한다.
 ```text
 POST /api/runs
 POST /api/runs/{run_id}/tick
+POST /api/runs/{run_id}/runtime-overlay/fast-forward
 POST /api/runs/{run_id}/stop
 GET  /api/runs/{run_id}
 GET  /api/runs/{run_id}/outputs
 GET  /health/live
 GET  /health/ready
 ```
+
+`runtime-overlay/fast-forward`는 `equipment_id`와 절대 누적 목표인
+`target_generated_rows`를 받아 해당 post-maintenance branch만 빠르게 생성한다. 이 호출은
+global Simulation Clock, Canonical sequence, 다른 설비의 runtime state를 전진시키지 않는다.
+목표 행 수는 Source 생성 정책이며 inference readiness를 선언하지 않는다.
+Fast-forward 이후에는 branch-local 시차를 유지하며 일반 Source tick마다 해당 branch도 한 행씩
+계속 생성하므로, 전역 시각이 따라올 때까지 대상 설비 관측이 멈추지 않는다.
+데모 자동 진행은 `GEN_DATA_RUNTIME_OVERLAY_FAST_FORWARD_ROWS=36`처럼 생성 목표를
+설정한다. 기본값 `0`은 자동 가속을 비활성화하며 기존 Runtime Simulation 의미를 유지한다.
 
 ### Top-level compatibility imports
 

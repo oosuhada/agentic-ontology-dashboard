@@ -22,3 +22,10 @@ class StartRunRequest(BaseModel):
     opcua_source_endpoint: str | None = None
     opcua_node_ids: list[str] = Field(default_factory=list)
     reconnect_seconds: float = Field(default=1.0, gt=0)
+
+
+class FastForwardOverlayRequest(BaseModel):
+    """Advance one post-maintenance branch without moving the global clock."""
+
+    equipment_id: str = Field(min_length=1, max_length=240)
+    target_generated_rows: int = Field(ge=1, le=10_000)
