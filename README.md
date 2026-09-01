@@ -93,6 +93,7 @@ python3 -m venv .venv
 ```text
 POST /api/runs
 POST /api/runs/{run_id}/tick
+POST /api/runs/{run_id}/runtime-overlay/fast-forward
 POST /api/runs/{run_id}/stop
 GET  /api/runs/{run_id}
 GET  /api/runs/{run_id}/outputs
@@ -148,6 +149,13 @@ maintenance.started
 → output/runtime_overlay/{session}/{branch}.jsonl
 → output/runtime_overlay/observations_available.jsonl
 ```
+
+정비 후에는 Runtime Simulation의 기본 실행 정책으로 대상 Overlay branch에 Observation
+36개를 즉시 생성한다. 이는 별도 화면용 fixture가 아니라 Generator가 후속 예측에 소비할
+실제 Source Observation이며, 전체 Simulation Clock과 다른 설비의 상태는 전진시키지 않는다.
+기본값은 `GEN_DATA_RUNTIME_OVERLAY_FAST_FORWARD_ROWS`로 변경할 수 있고,
+`POST /api/runs` 요청의 `runtime_overlay_fast_forward_rows`로 실행별 `0..10000` 범위에서
+덮어쓸 수 있다. `0`은 해당 run의 자동 가속을 비활성화한다.
 
 현재 MVP에서 허용하는 typed maintenance patch는 다음 두 가지입니다.
 

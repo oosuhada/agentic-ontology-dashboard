@@ -23,6 +23,7 @@ from physics_engine import GENERATOR_VERSION
 
 
 RUN_MANIFEST_SCHEMA_VERSION = "1"
+MAX_RUNTIME_OVERLAY_FAST_FORWARD_ROWS = 10_000
 
 
 class _RunContext:
@@ -303,6 +304,9 @@ class _RunContext:
                 "source_kind": "simulation",
                 "seed": self.seed,
                 "scenario": self.rate_profile,
+                "runtime_overlay_fast_forward_rows": (
+                    self.runtime_overlay_fast_forward_rows
+                ),
                 "generator_version": GENERATOR_VERSION,
                 "mapping_version": self.mapping.mapping_version,
                 "started_at": self.state.started_at.isoformat(timespec="seconds"),
@@ -536,8 +540,11 @@ class RuntimeManager:
         self.opcua_endpoint = opcua_endpoint
         self.worker_join_timeout_seconds = max(0.0, worker_join_timeout_seconds)
         self.maintenance_event_file = maintenance_event_file
-        if runtime_overlay_fast_forward_rows < 0:
-            raise ValueError("runtime_overlay_fast_forward_rows must be >= 0")
+        if not 0 <= runtime_overlay_fast_forward_rows <= MAX_RUNTIME_OVERLAY_FAST_FORWARD_ROWS:
+            raise ValueError(
+                "runtime_overlay_fast_forward_rows must be between 0 and "
+                f"{MAX_RUNTIME_OVERLAY_FAST_FORWARD_ROWS}"
+            )
         self.runtime_overlay_fast_forward_rows = runtime_overlay_fast_forward_rows
         self._runs: dict[str, _RunContext | _OpcUaRunContext] = {}
         self._lock = threading.RLock()
@@ -560,6 +567,7 @@ class RuntimeManager:
         opcua_source_endpoint: str | None = None,
         opcua_node_ids: list[str] | None = None,
         reconnect_seconds: float = 1.0,
+        runtime_overlay_fast_forward_rows: int | None = None,
     ) -> dict[str, Any]:
         if source_kind not in {"simulation", "opcua"}:
             raise ValueError(f"unsupported source_kind: {source_kind}")
@@ -567,6 +575,16 @@ class RuntimeManager:
             raise ValueError("speed must be positive")
         if duration_hours <= 0:
             raise ValueError("duration_hours must be positive")
+        if (
+            runtime_overlay_fast_forward_rows is not None
+            and not 0
+            <= runtime_overlay_fast_forward_rows
+            <= MAX_RUNTIME_OVERLAY_FAST_FORWARD_ROWS
+        ):
+            raise ValueError(
+                "runtime_overlay_fast_forward_rows must be between 0 and "
+                f"{MAX_RUNTIME_OVERLAY_FAST_FORWARD_ROWS}"
+            )
         resolved_id = run_id or f"run-{uuid.uuid4().hex[:12]}"
         resolved_session_id = simulation_session_id or resolved_id
         if not resolved_session_id.strip():
@@ -581,6 +599,11 @@ class RuntimeManager:
             if active:
                 raise RuntimeError(f"another run is active: {active[0].run_id}")
             if source_kind == "opcua":
+                if runtime_overlay_fast_forward_rows is not None:
+                    raise ValueError(
+                        "runtime_overlay_fast_forward_rows is only supported for "
+                        "simulation source runs"
+                    )
                 if simulation_session_id is not None:
                     raise ValueError(
                         "simulation_session_id is only supported for simulation source runs"
@@ -618,6 +641,8 @@ class RuntimeManager:
                     maintenance_event_file=self.maintenance_event_file,
                     runtime_overlay_fast_forward_rows=(
                         self.runtime_overlay_fast_forward_rows
+                        if runtime_overlay_fast_forward_rows is None
+                        else runtime_overlay_fast_forward_rows
                     ),
                 )
             self._runs[resolved_id] = context

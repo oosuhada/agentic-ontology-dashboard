@@ -460,6 +460,40 @@ class RuntimeOverlayV2Test(unittest.TestCase):
         finally:
             manager.stop("DEMO-001")
 
+    def test_run_level_fast_forward_target_overrides_application_default(self):
+        manager = RuntimeManager(
+            output_root=self.root,
+            mapping_path=MAPPING,
+            opcua_endpoint="opc.tcp://127.0.0.1:48501/gen-data/",
+            runtime_overlay_fast_forward_rows=36,
+        )
+        manager.start_run(
+            run_id="DEMO-001",
+            simulation_session_id="DEMO-001",
+            start_at=START,
+            duration_hours=8,
+            continuous=False,
+            publish_opcua=False,
+            runtime_overlay_fast_forward_rows=12,
+        )
+        try:
+            manager.process_maintenance_event("DEMO-001", self.started())
+            manager.process_maintenance_event("DEMO-001", self.completed())
+            manager.process_maintenance_event("DEMO-001", self.replay_requested())
+
+            manager.tick("DEMO-001")
+            context = manager._get("DEMO-001")
+            branch = context.overlay.branches[
+                context.overlay.branch_by_equipment[self.target["asset_id"]]
+            ]
+            manifest = json.loads(context.manifest_path.read_text(encoding="utf-8"))
+
+            self.assertEqual(branch.generated_rows, 12)
+            self.assertEqual(context.runtime_overlay_fast_forward_rows, 12)
+            self.assertEqual(manifest["runtime_overlay_fast_forward_rows"], 12)
+        finally:
+            manager.stop("DEMO-001")
+
     def test_official_unicode_checksum_contract_vector(self):
         payload = json.loads(
             (CONTRACT_VECTOR / "observation-unicode.json").read_text(

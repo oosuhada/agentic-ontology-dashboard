@@ -68,7 +68,9 @@ GEN_DATA_RUNTIME_OVERLAY_EVENT_FILE = (
     Path(_raw_overlay_event_file) if _raw_overlay_event_file else None
 )
 GEN_DATA_RUNTIME_OVERLAY_FAST_FORWARD_ROWS = int(
-    os.environ.get("GEN_DATA_RUNTIME_OVERLAY_FAST_FORWARD_ROWS", "0")
+    os.environ.get("GEN_DATA_RUNTIME_OVERLAY_FAST_FORWARD_ROWS", "36")
 )
-if GEN_DATA_RUNTIME_OVERLAY_FAST_FORWARD_ROWS < 0:
-    raise ValueError("GEN_DATA_RUNTIME_OVERLAY_FAST_FORWARD_ROWS must be >= 0")
+if not 0 <= GEN_DATA_RUNTIME_OVERLAY_FAST_FORWARD_ROWS <= 10_000:
+    raise ValueError(
+        "GEN_DATA_RUNTIME_OVERLAY_FAST_FORWARD_ROWS must be between 0 and 10000"
+    )
