@@ -23,6 +23,7 @@ from physics_engine import GENERATOR_VERSION
 
 
 RUN_MANIFEST_SCHEMA_VERSION = "1"
+MAX_RUNTIME_OVERLAY_FAST_FORWARD_ROWS = 10_000
 
 
 class _RunContext:
@@ -44,6 +45,7 @@ class _RunContext:
         continuous: bool,
         publish_opcua: bool,
         maintenance_event_file: Path | None,
+        runtime_overlay_fast_forward_rows: int,
     ) -> None:
         self.run_id = run_id
         self.simulation_session_id = simulation_session_id
@@ -69,6 +71,7 @@ class _RunContext:
             rate_profile=rate_profile,
         )
         self.maintenance_event_file = maintenance_event_file
+        self.runtime_overlay_fast_forward_rows = runtime_overlay_fast_forward_rows
         self.overlay = RuntimeOverlayCoordinator(
             canonical_producer=self.producer,
             simulation_session_id=simulation_session_id,
@@ -176,7 +179,10 @@ class _RunContext:
                     self._record_failure("canonical_maintenance", exc)
 
             try:
-                self.overlay.advance_active_branches_to(observed_at)
+                self.overlay.advance_active_branches_to(
+                    observed_at,
+                    minimum_generated_rows=self.runtime_overlay_fast_forward_rows,
+                )
             except Exception as exc:
                 self._record_failure("runtime_overlay", exc)
 
@@ -298,6 +304,9 @@ class _RunContext:
                 "source_kind": "simulation",
                 "seed": self.seed,
                 "scenario": self.rate_profile,
+                "runtime_overlay_fast_forward_rows": (
+                    self.runtime_overlay_fast_forward_rows
+                ),
                 "generator_version": GENERATOR_VERSION,
                 "mapping_version": self.mapping.mapping_version,
                 "started_at": self.state.started_at.isoformat(timespec="seconds"),
@@ -524,12 +533,19 @@ class RuntimeManager:
         opcua_endpoint: str,
         worker_join_timeout_seconds: float = 5.0,
         maintenance_event_file: Path | None = None,
+        runtime_overlay_fast_forward_rows: int = 0,
     ) -> None:
         self.output_root = output_root
         self.mapping_path = mapping_path
         self.opcua_endpoint = opcua_endpoint
         self.worker_join_timeout_seconds = max(0.0, worker_join_timeout_seconds)
         self.maintenance_event_file = maintenance_event_file
+        if not 0 <= runtime_overlay_fast_forward_rows <= MAX_RUNTIME_OVERLAY_FAST_FORWARD_ROWS:
+            raise ValueError(
+                "runtime_overlay_fast_forward_rows must be between 0 and "
+                f"{MAX_RUNTIME_OVERLAY_FAST_FORWARD_ROWS}"
+            )
+        self.runtime_overlay_fast_forward_rows = runtime_overlay_fast_forward_rows
         self._runs: dict[str, _RunContext | _OpcUaRunContext] = {}
         self._lock = threading.RLock()
 
@@ -551,6 +567,7 @@ class RuntimeManager:
         opcua_source_endpoint: str | None = None,
         opcua_node_ids: list[str] | None = None,
         reconnect_seconds: float = 1.0,
+        runtime_overlay_fast_forward_rows: int | None = None,
     ) -> dict[str, Any]:
         if source_kind not in {"simulation", "opcua"}:
             raise ValueError(f"unsupported source_kind: {source_kind}")
@@ -558,6 +575,16 @@ class RuntimeManager:
             raise ValueError("speed must be positive")
         if duration_hours <= 0:
             raise ValueError("duration_hours must be positive")
+        if (
+            runtime_overlay_fast_forward_rows is not None
+            and not 0
+            <= runtime_overlay_fast_forward_rows
+            <= MAX_RUNTIME_OVERLAY_FAST_FORWARD_ROWS
+        ):
+            raise ValueError(
+                "runtime_overlay_fast_forward_rows must be between 0 and "
+                f"{MAX_RUNTIME_OVERLAY_FAST_FORWARD_ROWS}"
+            )
         resolved_id = run_id or f"run-{uuid.uuid4().hex[:12]}"
         resolved_session_id = simulation_session_id or resolved_id
         if not resolved_session_id.strip():
@@ -572,6 +599,11 @@ class RuntimeManager:
             if active:
                 raise RuntimeError(f"another run is active: {active[0].run_id}")
             if source_kind == "opcua":
+                if runtime_overlay_fast_forward_rows is not None:
+                    raise ValueError(
+                        "runtime_overlay_fast_forward_rows is only supported for "
+                        "simulation source runs"
+                    )
                 if simulation_session_id is not None:
                     raise ValueError(
                         "simulation_session_id is only supported for simulation source runs"
@@ -607,6 +639,11 @@ class RuntimeManager:
                     continuous=continuous,
                     publish_opcua=publish_opcua,
                     maintenance_event_file=self.maintenance_event_file,
+                    runtime_overlay_fast_forward_rows=(
+                        self.runtime_overlay_fast_forward_rows
+                        if runtime_overlay_fast_forward_rows is None
+                        else runtime_overlay_fast_forward_rows
+                    ),
                 )
             self._runs[resolved_id] = context
             if continuous:
@@ -666,6 +703,47 @@ class RuntimeManager:
             raise RuntimeError("Runtime Overlay is only supported for simulation source runs")
         with context.lock:
             return context.overlay.process_event(event)
+
+    def fast_forward_overlay(
+        self,
+        run_id: str,
+        *,
+        equipment_id: str,
+        target_generated_rows: int,
+    ) -> dict[str, Any]:
+        """Advance one Overlay branch while preserving the global run clock."""
+        context = self._get(run_id)
+        if not isinstance(context, _RunContext):
+            raise RuntimeError("Runtime Overlay is only supported for simulation source runs")
+        with context.lock:
+            if context._closed or context.state.status not in {
+                "running",
+                "partial_failure",
+            }:
+                raise RuntimeError(f"run {run_id} is not active")
+            global_observed_at = context.state.current_observed_at
+            global_sequence = context.producer.sequence
+            rows, available = context.overlay.advance_branch_to_generated_rows(
+                equipment_id,
+                target_generated_rows,
+            )
+            if available is not None:
+                context.overlay.persist_available_event(available)
+            key = context.overlay.branch_by_equipment[equipment_id]
+            branch = context.overlay.branches[key]
+            context._refresh_counts()
+            context._write_manifest()
+            return {
+                "run_id": run_id,
+                "equipment_id": equipment_id,
+                "global_clock_advanced": False,
+                "global_observed_at": global_observed_at.isoformat(),
+                "global_sequence": global_sequence,
+                "generated_batch_rows": len(rows),
+                "total_generated_rows": branch.generated_rows,
+                "latest_observed_at": rows[-1]["observed_at"] if rows else None,
+                "available_event": available,
+            }
 
     def ready(self) -> bool:
         return self.mapping_path.is_file() and self.output_root.parent.exists()

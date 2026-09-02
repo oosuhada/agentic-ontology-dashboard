@@ -215,12 +215,30 @@ FastAPI는 control layer만 담당한다.
 ```text
 POST /api/runs
 POST /api/runs/{run_id}/tick
+POST /api/runs/{run_id}/runtime-overlay/fast-forward
 POST /api/runs/{run_id}/stop
 GET  /api/runs/{run_id}
 GET  /api/runs/{run_id}/outputs
 GET  /health/live
 GET  /health/ready
 ```
+
+`runtime-overlay/fast-forward`는 `equipment_id`와 절대 누적 목표인
+`target_generated_rows`를 받아 해당 post-maintenance branch만 빠르게 생성한다. 이 호출은
+global Simulation Clock, Canonical sequence, 다른 설비의 runtime state를 전진시키지 않는다.
+목표 행 수는 Source 생성 정책이며 inference readiness를 선언하지 않는다.
+Fast-forward 이후에는 branch-local 시차를 유지하며 일반 Source tick마다 해당 branch도 한 행씩
+계속 생성하므로, 전역 시각이 따라올 때까지 대상 설비 관측이 멈추지 않는다.
+이 프로젝트의 정본 실행 환경은 합성 데이터 기반 Runtime Simulation이므로, 정비 완료 후
+예측 이력을 현실 시간만큼 기다리지 않도록 기본 생성 목표를
+`GEN_DATA_RUNTIME_OVERLAY_FAST_FORWARD_ROWS=36`으로 둔다. 이는 화면만 바꾸는 데모
+처리가 아니라 대상 설비의 Overlay Observation을 실제로 생성하는 Source 실행 정책이다.
+전체 Simulation Clock, Canonical sequence 및 다른 설비 상태는 가속하지 않는다.
+
+`POST /api/runs`의 `runtime_overlay_fast_forward_rows`로 실행별 목표를 `0..10000`
+범위에서 덮어쓸 수 있다. 필드를 생략하면 application 기본값 `36`을 사용하고, 명시적으로
+`0`을 전달하면 해당 run의 자동 가속만 비활성화한다. 실제 적용값은 Run Manifest의
+`runtime_overlay_fast_forward_rows`에 기록한다.
 
 ### Top-level compatibility imports
 

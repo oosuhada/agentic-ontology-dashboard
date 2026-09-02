@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
 
-from app.api.schemas import StartRunRequest
+from app.api.schemas import FastForwardOverlayRequest, StartRunRequest
 from app.runtime.manager import RuntimeManager
 
 
@@ -41,6 +41,22 @@ def stop_run(run_id: str, request: Request):
 def tick_run(run_id: str, request: Request):
     try:
         return _manager(request).tick(run_id)
+    except Exception as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post("/api/runs/{run_id}/runtime-overlay/fast-forward")
+def fast_forward_runtime_overlay(
+    run_id: str,
+    payload: FastForwardOverlayRequest,
+    request: Request,
+):
+    try:
+        return _manager(request).fast_forward_overlay(
+            run_id,
+            equipment_id=payload.equipment_id,
+            target_generated_rows=payload.target_generated_rows,
+        )
     except Exception as exc:
         raise _translate_error(exc) from exc
 
