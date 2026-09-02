@@ -61,6 +61,28 @@ class RuntimeManagerTest(unittest.TestCase):
             self.assertEqual(manifest["canonical_observation_count"], 100)
             self.assertEqual(manifest["protocol_datavalue_count"], 0)
 
+    def test_equipment_state_returns_latest_canonical_observation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runtime = manager(Path(temporary))
+            runtime.start_run(
+                run_id="equipment-state",
+                start_at=START,
+                duration_hours=1,
+                continuous=False,
+                publish_opcua=False,
+            )
+            runtime.tick("equipment-state")
+            state = runtime.equipment_state(
+                "equipment-state", "CNC-S01-L01-01"
+            )
+            self.assertEqual(state["operational_state"], "RUNNING")
+            self.assertFalse(state["held"])
+            self.assertTrue(state["usable_for_prediction"])
+            self.assertEqual(
+                state["current_observation"]["asset_id"], "CNC-S01-L01-01"
+            )
+            runtime.stop("equipment-state")
+
     def test_protocol_start_failure_does_not_remove_source_or_canonical(self):
         with tempfile.TemporaryDirectory() as temporary:
             tmp_path = Path(temporary)

@@ -143,6 +143,7 @@ class _RunContext:
                 self.overlay.record_canonical_observations(
                     observed_at,
                     {record.asset_id for record in result.records},
+                    {record.asset_id: record.to_dict() for record in result.records},
                 )
             except Exception as exc:
                 self._record_failure("runtime_overlay_checkpoint", exc)
@@ -249,6 +250,10 @@ class _RunContext:
             "protocol_quarantine": str(self.protocol_writer.quarantine_path),
             "canonical": {path.name: str(path) for path in self.canonical_writer.paths},
             "runtime_overlay": self.overlay.outputs(),
+            "equipment_states": {
+                equipment_id: self.overlay.equipment_state(equipment_id)
+                for equipment_id in self.overlay.active_equipment_ids
+            },
             "counts": {
                 "source_records": self.source_writer.count,
                 "protocol_datavalues": self.protocol_writer.datavalue_count,
@@ -692,6 +697,15 @@ class RuntimeManager:
 
     def outputs(self, run_id: str) -> dict[str, Any]:
         return self._get(run_id).outputs()
+
+    def equipment_state(self, run_id: str, equipment_id: str) -> dict[str, Any]:
+        context = self._get(run_id)
+        if not isinstance(context, _RunContext):
+            raise RuntimeError(
+                "equipment state is only supported for simulation source runs"
+            )
+        with context.lock:
+            return context.overlay.equipment_state(equipment_id)
 
     def process_maintenance_event(
         self,

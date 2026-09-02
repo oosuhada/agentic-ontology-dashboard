@@ -77,6 +77,14 @@ def run_outputs(run_id: str, request: Request):
         raise _translate_error(exc) from exc
 
 
+@router.get("/api/runs/{run_id}/equipment/{equipment_id}")
+def equipment_state(run_id: str, equipment_id: str, request: Request):
+    try:
+        return _manager(request).equipment_state(run_id, equipment_id)
+    except Exception as exc:
+        raise _translate_error(exc) from exc
+
+
 @router.get("/health/live")
 def health_live():
     return {"status": "ok"}

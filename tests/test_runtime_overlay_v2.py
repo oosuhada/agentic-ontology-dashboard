@@ -196,6 +196,57 @@ class RuntimeOverlayV2Test(unittest.TestCase):
         self.assertEqual(branch.runtime.tool_wear_min, 0.0)
         self.assertEqual(target_runtime.tool_wear_min, 123.4)
 
+    def test_maintenance_holds_last_observation_until_restarted_overlay_is_generated(self):
+        coordinator = self.coordinator()
+        first_tick = self.producer.produce_tick(START)
+        by_equipment = {
+            record.asset_id: record.to_dict() for record in first_tick.records
+        }
+        coordinator.record_canonical_observations(
+            START,
+            set(by_equipment),
+            by_equipment,
+        )
+        held_before = by_equipment[self.target["asset_id"]]
+
+        started = self.started()
+        started_at = START + timedelta(minutes=10)
+        started["maintenance_started_at"] = started_at.isoformat()
+        coordinator.process_event(started, source_virtual_time=started_at)
+
+        maintenance = coordinator.equipment_state(self.target["asset_id"])
+        self.assertEqual(maintenance["operational_state"], "MAINTENANCE")
+        self.assertTrue(maintenance["held"])
+        self.assertFalse(maintenance["usable_for_prediction"])
+        self.assertEqual(maintenance["current_observation"], held_before)
+
+        coordinator.process_event(self.completed(), source_virtual_time=started_at)
+        completed = coordinator.equipment_state(self.target["asset_id"])
+        self.assertEqual(
+            completed["operational_state"], "MAINTENANCE_COMPLETED"
+        )
+        self.assertEqual(completed["current_observation"], held_before)
+
+        coordinator.process_event(
+            self.replay_requested(), source_virtual_time=started_at
+        )
+        restarting = coordinator.equipment_state(self.target["asset_id"])
+        self.assertEqual(restarting["operational_state"], "RESTARTING")
+        self.assertTrue(restarting["held"])
+
+        rows, _available = coordinator.advance_branch_to(
+            self.target["asset_id"], self.restart_at
+        )
+        running = coordinator.equipment_state(self.target["asset_id"])
+        self.assertEqual(running["operational_state"], "RUNNING")
+        self.assertFalse(running["held"])
+        self.assertTrue(running["usable_for_prediction"])
+        self.assertEqual(running["current_observation"], rows[-1])
+        self.assertNotEqual(
+            running["current_observation"]["observed_at"],
+            held_before["observed_at"],
+        )
+
     def test_cooling_restore_resumes_normal_overlay_without_resetting_tool_wear(self):
         coordinator = self.coordinator()
         coordinator.process_event(self.cooling_started())

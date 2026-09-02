@@ -38,6 +38,11 @@ class FastApiControlTest(unittest.TestCase):
                 self.assertEqual(client.get("/api/runs/api-run").json()["source_record_count"], 100)
                 outputs = client.get("/api/runs/api-run/outputs").json()
                 self.assertEqual(outputs["counts"]["canonical_observations"], 100)
+                equipment = client.get(
+                    "/api/runs/api-run/equipment/CNC-S01-L01-01"
+                )
+                self.assertEqual(equipment.status_code, 200)
+                self.assertEqual(equipment.json()["operational_state"], "RUNNING")
                 stopped = client.post("/api/runs/api-run/stop")
                 self.assertEqual(stopped.json()["status"], "stopped")
 
