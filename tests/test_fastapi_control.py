@@ -120,3 +120,36 @@ class FastApiControlTest(unittest.TestCase):
                 )
                 self.assertEqual(response.status_code, 400)
                 self.assertIn("no overlay branch", response.json()["detail"])
+
+    def test_simulation_fast_forward_advances_complete_run(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            manager = RuntimeManager(
+                output_root=Path(temporary),
+                mapping_path=Path("mappings/opcua_nodes.v1.json"),
+                opcua_endpoint="opc.tcp://127.0.0.1:48502/gen-data/",
+            )
+            with TestClient(create_app(manager)) as client:
+                client.post(
+                    "/api/runs",
+                    json={
+                        "run_id": "api-global-fast-forward",
+                        "start_at": "2026-08-01T00:00:00+00:00",
+                        "duration_hours": 8,
+                        "continuous": False,
+                        "publish_opcua": False,
+                    },
+                )
+                response = client.post(
+                    "/api/runs/api-global-fast-forward/simulation/fast-forward",
+                    json={"target_elapsed_hours": 2},
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["ticks_processed"], 12)
+                self.assertEqual(response.json()["generated_records"], 1_200)
+                self.assertEqual(
+                    client.get("/api/runs/api-global-fast-forward").json()[
+                        "current_observed_at"
+                    ],
+                    "2026-08-01T02:00:00+00:00",
+                )
+                client.post("/api/runs/api-global-fast-forward/stop")

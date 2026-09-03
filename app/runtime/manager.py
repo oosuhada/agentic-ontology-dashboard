@@ -759,6 +759,68 @@ class RuntimeManager:
                 "available_event": available,
             }
 
+    def fast_forward_simulation(
+        self,
+        run_id: str,
+        *,
+        target_elapsed_hours: int,
+    ) -> dict[str, Any]:
+        """Advance every simulated asset by processing all intermediate ticks."""
+        context = self._get(run_id)
+        if not isinstance(context, _RunContext):
+            raise RuntimeError(
+                "Simulation fast-forward is only supported for simulation source runs"
+            )
+        if target_elapsed_hours <= 0:
+            raise ValueError("target_elapsed_hours must be positive")
+
+        with context.lock:
+            if context._closed or context.state.status not in {
+                "running",
+                "partial_failure",
+            }:
+                raise RuntimeError(f"run {run_id} is not active")
+
+            target_observed_at = context.producer.start_at + timedelta(
+                hours=target_elapsed_hours
+            )
+            if target_observed_at >= context.producer.end_at:
+                total_hours = int(
+                    (context.producer.end_at - context.producer.start_at).total_seconds()
+                    // 3600
+                )
+                raise ValueError(
+                    "simulation fast-forward target must remain before the run end "
+                    f"({total_hours} elapsed hours)"
+                )
+            if target_observed_at <= context.state.current_observed_at:
+                elapsed = (
+                    context.state.current_observed_at - context.producer.start_at
+                ).total_seconds() / 3600
+                raise ValueError(
+                    "simulation fast-forward target must be later than the current "
+                    f"elapsed time ({elapsed:g} hours)"
+                )
+
+            started_at = context.state.current_observed_at
+            starting_sequence = context.producer.sequence
+            ticks_processed = 0
+            while context.state.current_observed_at < target_observed_at:
+                context.process_tick()
+                ticks_processed += 1
+
+            return {
+                "run_id": run_id,
+                "global_clock_advanced": True,
+                "from_observed_at": started_at.isoformat(),
+                "target_observed_at": target_observed_at.isoformat(),
+                "current_observed_at": context.state.current_observed_at.isoformat(),
+                "target_elapsed_hours": target_elapsed_hours,
+                "ticks_processed": ticks_processed,
+                "generated_records": context.producer.sequence - starting_sequence,
+                "status": context.state.status,
+            }
+
     def ready(self) -> bool:
         return self.mapping_path.is_file() and self.output_root.parent.exists()
 

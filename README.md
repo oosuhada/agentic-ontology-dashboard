@@ -93,12 +93,24 @@ python3 -m venv .venv
 ```text
 POST /api/runs
 POST /api/runs/{run_id}/tick
+POST /api/runs/{run_id}/simulation/fast-forward
 POST /api/runs/{run_id}/runtime-overlay/fast-forward
 POST /api/runs/{run_id}/stop
 GET  /api/runs/{run_id}
 GET  /api/runs/{run_id}/outputs
 GET  /health/live
 GET  /health/ready
+```
+
+전체 Simulation을 특정 경과 시간으로 이동할 때는 다음 요청을 사용합니다. 시각만
+덮어쓰지 않고 모든 설비의 중간 tick을 순서대로 생성하며, run 종료 시각과 같거나 그
+이후인 목표는 거부합니다.
+
+```json
+POST /api/runs/{run_id}/simulation/fast-forward
+{
+  "target_elapsed_hours": 40
+}
 ```
 
 `source_kind=simulation`에서는 `RuntimeManager`가 기존 physics를 한 번 계산해
@@ -166,7 +178,8 @@ Cooling 복구는 Canonical에 없는 임의 온도 상태를 만들지 않습�
 episode를 제외한 Overlay branch에서 기존 CNC 물리를 정상 baseline으로 재개하고, 관련
 없는 `tool_wear_min`은 그대로 보존합니다.
 
-시작 시각 이후 Canonical row가 이미 출력된 late event와 계약을 위반한 inbox line은
+동일 Source Session의 늦게 도착한 시작 이벤트는 마지막 Canonical row 다음 Tick부터
+안전하게 적용하며 과거 Canonical row를 다시 쓰지 않는다. 계약을 위반한 inbox line은
 `output/runtime_overlay/rejected_maintenance_events.jsonl`에 중복 없이 격리합니다. 한
 줄의 오류가 같은 inbox의 이후 정상 이벤트를 막지 않습니다. 저장된 Overlay Observation은
 재사용 전에 payload 기준 SHA-256을 다시 계산해 변조 여부를 확인합니다.

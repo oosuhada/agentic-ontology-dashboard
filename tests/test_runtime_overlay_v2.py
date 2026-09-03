@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 from app.observation.models import SENSOR_RECORD_SCHEMA_VERSION, SensorRecord
 from app.runtime.manager import RuntimeManager
@@ -15,6 +17,7 @@ from app.runtime.overlay import (
     OverlayContractError,
     RuntimeOverlayCoordinator,
     StaleOverlayEvent,
+    _atomic_json,
     _semantic_observation_hash,
     _storage_path_component,
 )
@@ -76,6 +79,50 @@ class RuntimeOverlayV2Test(unittest.TestCase):
             output_root=self.root,
             generated_at=lambda: START + timedelta(hours=1),
         )
+
+    def test_atomic_checkpoint_retries_transient_windows_reader_collision(self):
+        checkpoint = self.root / "runtime_overlay_state.json"
+        checkpoint.write_text('{"old": true}', encoding="utf-8")
+        real_replace = os.replace
+        attempts = 0
+
+        def flaky_replace(source: str | Path, target: str | Path) -> None:
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise PermissionError("target is temporarily open by a reader")
+            real_replace(source, target)
+
+        with (
+            patch("app.runtime.overlay.os.replace", side_effect=flaky_replace),
+            patch("app.runtime.overlay.time.sleep") as sleep,
+        ):
+            _atomic_json(checkpoint, {"checkpoint_version": 7})
+
+        self.assertEqual(attempts, 2)
+        sleep.assert_called_once_with(0.01)
+        self.assertEqual(
+            json.loads(checkpoint.read_text(encoding="utf-8")),
+            {"checkpoint_version": 7},
+        )
+        self.assertEqual(list(self.root.glob(".*.tmp")), [])
+
+    def test_atomic_checkpoint_surfaces_persistent_permission_error(self):
+        checkpoint = self.root / "runtime_overlay_state.json"
+
+        with (
+            patch(
+                "app.runtime.overlay.os.replace",
+                side_effect=PermissionError("persistent access denial"),
+            ) as replace,
+            patch("app.runtime.overlay.time.sleep") as sleep,
+            self.assertRaisesRegex(PermissionError, "persistent access denial"),
+        ):
+            _atomic_json(checkpoint, {"checkpoint_version": 7})
+
+        self.assertEqual(replace.call_count, 8)
+        self.assertEqual(sleep.call_count, 7)
+        self.assertEqual(list(self.root.glob(".*.tmp")), [])
 
     def event(self, event_type: str, version: int, **extra: object):
         payload: dict[str, object] = {
@@ -997,7 +1044,7 @@ class RuntimeOverlayV2Test(unittest.TestCase):
             all("maintenance.started branch not found" in row["reason"] for row in rejected)
         )
 
-    def test_late_start_is_quarantined_once_and_never_activates(self):
+    def test_late_start_uses_next_source_tick_without_rewriting_canonical_history(self):
         coordinator = self.coordinator()
         result = self.producer.produce_tick(START)
         coordinator.record_canonical_observations(
@@ -1012,9 +1059,20 @@ class RuntimeOverlayV2Test(unittest.TestCase):
                 event_path,
                 source_virtual_time=START + timedelta(minutes=10),
             ),
-            (0, 1),
+            (1, 0),
         )
-        self.assertEqual(coordinator.active_equipment_ids, ())
+        self.assertEqual(
+            coordinator.active_equipment_ids,
+            (self.target["asset_id"],),
+        )
+        branch = coordinator.branches[
+            coordinator.branch_by_equipment[self.target["asset_id"]]
+        ]
+        self.assertEqual(branch.maintenance_started_at, START)
+        self.assertEqual(
+            branch.source_effective_started_at,
+            START + timedelta(minutes=10),
+        )
         self.assertEqual(
             coordinator.consume_event_file(
                 event_path,
@@ -1022,11 +1080,40 @@ class RuntimeOverlayV2Test(unittest.TestCase):
             ),
             (0, 0),
         )
-        rejected = coordinator.rejected_event_path.read_text(
-            encoding="utf-8"
-        ).splitlines()
-        self.assertEqual(len(rejected), 1)
-        self.assertEqual(json.loads(rejected[0])["reason_type"], "LateOverlayEvent")
+        self.assertFalse(coordinator.rejected_event_path.exists())
+
+    def test_late_completed_replay_starts_overlay_at_safe_source_time(self):
+        coordinator = self.coordinator()
+        last_canonical = START + timedelta(hours=2)
+        coordinator.record_canonical_observations(
+            last_canonical,
+            {self.target["asset_id"]},
+        )
+
+        coordinator.process_event(
+            self.started(), source_virtual_time=last_canonical + timedelta(minutes=10)
+        )
+        coordinator.process_event(
+            self.completed(), source_virtual_time=last_canonical + timedelta(minutes=10)
+        )
+        coordinator.process_event(
+            self.replay_requested(),
+            source_virtual_time=last_canonical + timedelta(minutes=10),
+        )
+        branch = coordinator.branches[
+            coordinator.branch_by_equipment[self.target["asset_id"]]
+        ]
+
+        self.assertEqual(
+            branch.source_effective_started_at,
+            last_canonical + timedelta(minutes=10),
+        )
+        self.assertEqual(branch.next_observed_at, branch.source_effective_started_at)
+        rows, _available = coordinator.advance_branch_to_generated_rows(
+            self.target["asset_id"], 36
+        )
+        self.assertEqual(rows[0]["observed_at"], branch.source_effective_started_at.isoformat())
+        self.assertEqual(len(rows), 36)
 
     def test_stored_observation_payload_must_match_declared_checksum(self):
         coordinator = self.coordinator()
