@@ -13,6 +13,8 @@ import hashlib
 import json
 import os
 import random
+import time
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -26,7 +28,10 @@ MAINTENANCE_CONTRACT_VERSION = "maintenance-replay-v1"
 OBSERVATION_CONTRACT_VERSION = "runtime-overlay-observation-v1"
 AVAILABLE_CONTRACT_VERSION = "runtime-overlay-observations-available-v1"
 OVERLAY_SOURCE_KIND = "maintenance_replay_overlay"
-CHECKPOINT_VERSION = 6
+CHECKPOINT_VERSION = 7
+_ATOMIC_REPLACE_ATTEMPTS = 8
+_ATOMIC_REPLACE_INITIAL_BACKOFF_SECONDS = 0.01
+_ATOMIC_REPLACE_MAX_BACKOFF_SECONDS = 0.2
 
 _EVENT_TYPES = {
     "maintenance.started",
@@ -160,10 +165,6 @@ class OverlayConflict(OverlayContractError):
 
 class StaleOverlayEvent(OverlayContractError):
     """Raised when an older state version arrives after a newer state."""
-
-
-class LateOverlayEvent(OverlayContractError):
-    """Raised when Canonical output already crossed maintenance_started_at."""
 
 
 def _parse_datetime(value: Any, field: str) -> datetime:
@@ -432,12 +433,34 @@ def _durable_append(path: Path, payload: dict[str, Any]) -> None:
 
 def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    with temporary.open("w", encoding="utf-8") as handle:
-        json.dump(payload, handle, ensure_ascii=False, indent=2, sort_keys=True)
-        handle.flush()
-        os.fsync(handle.fileno())
-    temporary.replace(path)
+    temporary = path.with_name(
+        f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
+    )
+    try:
+        with temporary.open("w", encoding="utf-8") as handle:
+            json.dump(payload, handle, ensure_ascii=False, indent=2, sort_keys=True)
+            handle.flush()
+            os.fsync(handle.fileno())
+
+        for attempt in range(_ATOMIC_REPLACE_ATTEMPTS):
+            try:
+                os.replace(temporary, path)
+                return
+            except PermissionError:
+                if attempt + 1 >= _ATOMIC_REPLACE_ATTEMPTS:
+                    raise
+                time.sleep(
+                    min(
+                        _ATOMIC_REPLACE_INITIAL_BACKOFF_SECONDS * (2**attempt),
+                        _ATOMIC_REPLACE_MAX_BACKOFF_SECONDS,
+                    )
+                )
+    finally:
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            # A failed cleanup must not hide the original checkpoint error.
+            pass
 
 
 @dataclass
@@ -447,6 +470,7 @@ class OverlayBranch:
     maintenance_action_id: str
     action_code: str
     maintenance_started_at: datetime
+    source_effective_started_at: datetime
     runtime: Runtime
     base_source_sha256: str
     state_version: int
@@ -458,6 +482,8 @@ class OverlayBranch:
     history_segment_id: str | None = None
     next_observed_at: datetime | None = None
     generated_rows: int = 0
+    hold_observation: dict[str, Any] | None = None
+    latest_observation: dict[str, Any] | None = None
 
     @property
     def key(self) -> str:
@@ -585,6 +611,7 @@ class RuntimeOverlayCoordinator:
         self.processed_event_ids: dict[str, str] = {}
         self.pending_event_streams: dict[str, list[dict[str, Any]]] = {}
         self.last_canonical_observed_at: dict[str, datetime] = {}
+        self.last_canonical_observations: dict[str, dict[str, Any]] = {}
         self.pending_available_events: dict[str, dict[str, Any]] = {}
         self._available_event_index: dict[str, str] | None = None
         self._rejected_event_hashes: set[str] | None = None
@@ -607,7 +634,46 @@ class RuntimeOverlayCoordinator:
         return {
             equipment_id
             for equipment_id, key in self.branch_by_equipment.items()
-            if observed_at >= self.branches[key].maintenance_started_at
+            if observed_at >= self.branches[key].source_effective_started_at
+        }
+
+    def equipment_state(self, equipment_id: str) -> dict[str, Any]:
+        """Return operational state without turning a held value into a new sample."""
+        if equipment_id not in self.assets:
+            raise OverlayContractError(f"unknown equipment_id: {equipment_id}")
+        key = self.branch_by_equipment.get(equipment_id)
+        if key is None:
+            observation = self.last_canonical_observations.get(equipment_id)
+            return {
+                "equipment_id": equipment_id,
+                "operational_state": "RUNNING",
+                "phase": "canonical",
+                "held": False,
+                "usable_for_prediction": observation is not None,
+                "current_observation": copy.deepcopy(observation),
+            }
+
+        branch = self.branches[key]
+        operational_state = {
+            "maintenance": "MAINTENANCE",
+            "completed": "MAINTENANCE_COMPLETED",
+            "restarting": "RESTARTING",
+            "running": "RUNNING",
+        }.get(branch.phase, branch.phase.upper())
+        held = branch.latest_observation is None
+        observation = branch.latest_observation or branch.hold_observation
+        return {
+            "equipment_id": equipment_id,
+            "operational_state": operational_state,
+            "phase": branch.phase,
+            "held": held,
+            "usable_for_prediction": not held and observation is not None,
+            "maintenance_action_id": branch.maintenance_action_id,
+            "maintenance_event_id": branch.maintenance_event_id,
+            "state_version": branch.state_version,
+            "overlay_branch_id": branch.overlay_branch_id,
+            "history_segment_id": branch.history_segment_id,
+            "current_observation": copy.deepcopy(observation),
         }
 
     def _checkpoint(self) -> None:
@@ -619,6 +685,9 @@ class RuntimeOverlayCoordinator:
                 "maintenance_action_id": branch.maintenance_action_id,
                 "action_code": branch.action_code,
                 "maintenance_started_at": branch.maintenance_started_at.isoformat(),
+                "source_effective_started_at": (
+                    branch.source_effective_started_at.isoformat()
+                ),
                 "base_source_sha256": branch.base_source_sha256,
                 "state_version": branch.state_version,
                 "phase": branch.phase,
@@ -637,6 +706,8 @@ class RuntimeOverlayCoordinator:
                     else None
                 ),
                 "generated_rows": branch.generated_rows,
+                "hold_observation": branch.hold_observation,
+                "latest_observation": branch.latest_observation,
                 "runtime": _runtime_checkpoint(branch.runtime),
             }
         _atomic_json(
@@ -652,6 +723,7 @@ class RuntimeOverlayCoordinator:
                     equipment_id: observed_at.isoformat()
                     for equipment_id, observed_at in self.last_canonical_observed_at.items()
                 },
+                "last_canonical_observations": self.last_canonical_observations,
                 "pending_available_events": self.pending_available_events,
                 "branches": branches,
             },
@@ -665,7 +737,7 @@ class RuntimeOverlayCoordinator:
         except (json.JSONDecodeError, OSError) as exc:
             raise OverlayContractError("invalid Runtime Overlay checkpoint") from exc
         checkpoint_version = int(payload.get("checkpoint_version", 0))
-        if checkpoint_version not in {5, CHECKPOINT_VERSION}:
+        if checkpoint_version not in {5, 6, CHECKPOINT_VERSION}:
             raise OverlayContractError("unsupported Runtime Overlay checkpoint version")
         self.processed_events = {
             str(key): str(value)
@@ -717,6 +789,16 @@ class RuntimeOverlayCoordinator:
                 str(equipment_id): _parse_datetime(value, "canonical_observed_at")
                 for equipment_id, value in stored_last_observed.items()
             }
+            stored_observations = payload.get("last_canonical_observations", {})
+            if not isinstance(stored_observations, dict):
+                raise OverlayContractError(
+                    "last_canonical_observations must be an object"
+                )
+            self.last_canonical_observations = {
+                str(equipment_id): dict(observation)
+                for equipment_id, observation in stored_observations.items()
+                if isinstance(observation, dict)
+            }
         pending = payload.get("pending_available_events", {})
         if not isinstance(pending, dict):
             raise OverlayContractError("pending_available_events must be an object")
@@ -745,6 +827,11 @@ class RuntimeOverlayCoordinator:
                 maintenance_started_at=_parse_datetime(
                     item["maintenance_started_at"], "maintenance_started_at"
                 ),
+                source_effective_started_at=_parse_datetime(
+                    item.get("source_effective_started_at")
+                    or item["maintenance_started_at"],
+                    "source_effective_started_at",
+                ),
                 runtime=_restore_runtime(asset, item["runtime"]),
                 base_source_sha256=str(item["base_source_sha256"]),
                 state_version=int(item["state_version"]),
@@ -771,6 +858,16 @@ class RuntimeOverlayCoordinator:
                     else None
                 ),
                 generated_rows=int(item.get("generated_rows", 0)),
+                hold_observation=(
+                    dict(item["hold_observation"])
+                    if isinstance(item.get("hold_observation"), dict)
+                    else None
+                ),
+                latest_observation=(
+                    dict(item["latest_observation"])
+                    if isinstance(item.get("latest_observation"), dict)
+                    else None
+                ),
             )
             self.branches[str(key)] = branch
             self.branch_by_equipment[equipment_id] = str(key)
@@ -929,22 +1026,12 @@ class RuntimeOverlayCoordinator:
             raise OverlayContractError(f"maintenance.started branch not found: {key}")
         return branch
 
-    def _assert_started_event_is_not_late(
+    def _activate_started_event(
         self,
+        event: dict[str, Any],
         *,
-        equipment_id: str,
-        maintenance_started_at: datetime,
-    ) -> None:
-        last_observed_at = self.last_canonical_observed_at.get(equipment_id)
-        if last_observed_at is not None and last_observed_at >= maintenance_started_at:
-            raise LateOverlayEvent(
-                "maintenance.started arrived after Canonical output crossed its "
-                f"effective time: equipment_id={equipment_id}, "
-                f"maintenance_started_at={maintenance_started_at.isoformat()}, "
-                f"last_canonical_observed_at={last_observed_at.isoformat()}"
-            )
-
-    def _activate_started_event(self, event: dict[str, Any]) -> OverlayBranch:
+        source_virtual_time: datetime,
+    ) -> OverlayBranch:
         equipment_id = str(event["equipment_id"])
         key = self._event_branch_key(event)
         if key in self.branches:
@@ -956,9 +1043,14 @@ class RuntimeOverlayCoordinator:
         maintenance_started_at = _parse_datetime(
             event["maintenance_started_at"], "maintenance_started_at"
         )
-        self._assert_started_event_is_not_late(
-            equipment_id=equipment_id,
-            maintenance_started_at=maintenance_started_at,
+        last_observed_at = self.last_canonical_observed_at.get(equipment_id)
+        source_effective_started_at = max(
+            maintenance_started_at,
+            (
+                last_observed_at + self.interval
+                if last_observed_at is not None
+                else source_virtual_time
+            ),
         )
         runtime_snapshot = copy.deepcopy(
             self.canonical_producer.runtimes[equipment_id]
@@ -969,16 +1061,20 @@ class RuntimeOverlayCoordinator:
             maintenance_action_id=str(event["maintenance_action_id"]),
             action_code=str(event["action_code"]),
             maintenance_started_at=maintenance_started_at,
+            source_effective_started_at=source_effective_started_at,
             runtime=runtime_snapshot,
             base_source_sha256=_base_source_snapshot_sha256(
                 base_dataset_version=self.base_dataset_version,
                 source_run_id=self.canonical_producer.run_id,
                 simulation_session_id=self.simulation_session_id,
                 equipment_id=equipment_id,
-                maintenance_started_at=maintenance_started_at,
+                maintenance_started_at=source_effective_started_at,
                 runtime=runtime_snapshot,
             ),
             state_version=int(event["state_version"]),
+            hold_observation=copy.deepcopy(
+                self.last_canonical_observations.get(equipment_id)
+            ),
         )
         self.branches[key] = branch
         self.branch_by_equipment[equipment_id] = key
@@ -1008,7 +1104,10 @@ class RuntimeOverlayCoordinator:
             )
             if started_at > source_virtual_time:
                 continue
-            branch = self._activate_started_event(event)
+            branch = self._activate_started_event(
+                event,
+                source_virtual_time=source_virtual_time,
+            )
             for followup in stream[1:]:
                 self._apply_followup_event(branch, followup)
             del self.pending_event_streams[key]
@@ -1021,6 +1120,7 @@ class RuntimeOverlayCoordinator:
         self,
         observed_at: datetime,
         equipment_ids: set[str],
+        observations: dict[str, dict[str, Any]] | None = None,
     ) -> None:
         """Persist the latest runtime state already exposed as Canonical output."""
         if observed_at.tzinfo is None:
@@ -1032,6 +1132,10 @@ class RuntimeOverlayCoordinator:
             previous = self.last_canonical_observed_at.get(equipment_id)
             if previous is None or observed_at > previous:
                 self.last_canonical_observed_at[equipment_id] = observed_at
+                if observations is not None and equipment_id in observations:
+                    self.last_canonical_observations[equipment_id] = copy.deepcopy(
+                        observations[equipment_id]
+                    )
                 changed = True
         if changed:
             self._checkpoint()
@@ -1154,7 +1258,10 @@ class RuntimeOverlayCoordinator:
         branch.restart_at = restart_at
         branch.overlay_branch_id = f"{branch.maintenance_event_id}:post"
         branch.history_segment_id = f"{branch.maintenance_event_id}:post"
-        branch.next_observed_at = restart_at
+        branch.next_observed_at = max(
+            restart_at,
+            branch.source_effective_started_at,
+        )
         branch.phase = "restarting"
         branch.state_version = version
 
@@ -1215,10 +1322,6 @@ class RuntimeOverlayCoordinator:
                     "source_virtual_time must include timezone information"
                 )
             if maintenance_started_at > effective_virtual_time:
-                self._assert_started_event_is_not_late(
-                    equipment_id=equipment_id,
-                    maintenance_started_at=maintenance_started_at,
-                )
                 self.pending_event_streams[key] = [copy.deepcopy(event)]
                 self._record_event(event)
                 return {
@@ -1226,7 +1329,10 @@ class RuntimeOverlayCoordinator:
                     "phase": "pending",
                     "state_version": int(event["state_version"]),
                 }
-            branch = self._activate_started_event(event)
+            branch = self._activate_started_event(
+                event,
+                source_virtual_time=effective_virtual_time,
+            )
         else:
             pending_stream = self.pending_event_streams.get(key)
             if pending_stream is not None:
@@ -1375,6 +1481,7 @@ class RuntimeOverlayCoordinator:
             observation = self._produce_overlay_record(branch, observed_at)
             self.store.append(branch, observation)
             written.append(observation)
+            branch.latest_observation = copy.deepcopy(observation)
             branch.generated_rows += 1
             branch.next_observed_at = observed_at + self.interval
         if not written:

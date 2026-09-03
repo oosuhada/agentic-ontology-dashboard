@@ -143,6 +143,7 @@ class _RunContext:
                 self.overlay.record_canonical_observations(
                     observed_at,
                     {record.asset_id for record in result.records},
+                    {record.asset_id: record.to_dict() for record in result.records},
                 )
             except Exception as exc:
                 self._record_failure("runtime_overlay_checkpoint", exc)
@@ -249,6 +250,10 @@ class _RunContext:
             "protocol_quarantine": str(self.protocol_writer.quarantine_path),
             "canonical": {path.name: str(path) for path in self.canonical_writer.paths},
             "runtime_overlay": self.overlay.outputs(),
+            "equipment_states": {
+                equipment_id: self.overlay.equipment_state(equipment_id)
+                for equipment_id in self.overlay.active_equipment_ids
+            },
             "counts": {
                 "source_records": self.source_writer.count,
                 "protocol_datavalues": self.protocol_writer.datavalue_count,
@@ -693,6 +698,15 @@ class RuntimeManager:
     def outputs(self, run_id: str) -> dict[str, Any]:
         return self._get(run_id).outputs()
 
+    def equipment_state(self, run_id: str, equipment_id: str) -> dict[str, Any]:
+        context = self._get(run_id)
+        if not isinstance(context, _RunContext):
+            raise RuntimeError(
+                "equipment state is only supported for simulation source runs"
+            )
+        with context.lock:
+            return context.overlay.equipment_state(equipment_id)
+
     def process_maintenance_event(
         self,
         run_id: str,
@@ -743,6 +757,68 @@ class RuntimeManager:
                 "total_generated_rows": branch.generated_rows,
                 "latest_observed_at": rows[-1]["observed_at"] if rows else None,
                 "available_event": available,
+            }
+
+    def fast_forward_simulation(
+        self,
+        run_id: str,
+        *,
+        target_elapsed_hours: int,
+    ) -> dict[str, Any]:
+        """Advance every simulated asset by processing all intermediate ticks."""
+        context = self._get(run_id)
+        if not isinstance(context, _RunContext):
+            raise RuntimeError(
+                "Simulation fast-forward is only supported for simulation source runs"
+            )
+        if target_elapsed_hours <= 0:
+            raise ValueError("target_elapsed_hours must be positive")
+
+        with context.lock:
+            if context._closed or context.state.status not in {
+                "running",
+                "partial_failure",
+            }:
+                raise RuntimeError(f"run {run_id} is not active")
+
+            target_observed_at = context.producer.start_at + timedelta(
+                hours=target_elapsed_hours
+            )
+            if target_observed_at >= context.producer.end_at:
+                total_hours = int(
+                    (context.producer.end_at - context.producer.start_at).total_seconds()
+                    // 3600
+                )
+                raise ValueError(
+                    "simulation fast-forward target must remain before the run end "
+                    f"({total_hours} elapsed hours)"
+                )
+            if target_observed_at <= context.state.current_observed_at:
+                elapsed = (
+                    context.state.current_observed_at - context.producer.start_at
+                ).total_seconds() / 3600
+                raise ValueError(
+                    "simulation fast-forward target must be later than the current "
+                    f"elapsed time ({elapsed:g} hours)"
+                )
+
+            started_at = context.state.current_observed_at
+            starting_sequence = context.producer.sequence
+            ticks_processed = 0
+            while context.state.current_observed_at < target_observed_at:
+                context.process_tick()
+                ticks_processed += 1
+
+            return {
+                "run_id": run_id,
+                "global_clock_advanced": True,
+                "from_observed_at": started_at.isoformat(),
+                "target_observed_at": target_observed_at.isoformat(),
+                "current_observed_at": context.state.current_observed_at.isoformat(),
+                "target_elapsed_hours": target_elapsed_hours,
+                "ticks_processed": ticks_processed,
+                "generated_records": context.producer.sequence - starting_sequence,
+                "status": context.state.status,
             }
 
     def ready(self) -> bool:

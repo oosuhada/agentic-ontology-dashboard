@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
 
-from app.api.schemas import FastForwardOverlayRequest, StartRunRequest
+from app.api.schemas import (
+    FastForwardOverlayRequest,
+    FastForwardSimulationRequest,
+    StartRunRequest,
+)
 from app.runtime.manager import RuntimeManager
 
 
@@ -61,6 +65,21 @@ def fast_forward_runtime_overlay(
         raise _translate_error(exc) from exc
 
 
+@router.post("/api/runs/{run_id}/simulation/fast-forward")
+def fast_forward_simulation(
+    run_id: str,
+    payload: FastForwardSimulationRequest,
+    request: Request,
+):
+    try:
+        return _manager(request).fast_forward_simulation(
+            run_id,
+            target_elapsed_hours=payload.target_elapsed_hours,
+        )
+    except Exception as exc:
+        raise _translate_error(exc) from exc
+
+
 @router.get("/api/runs/{run_id}")
 def run_status(run_id: str, request: Request):
     try:
@@ -73,6 +92,14 @@ def run_status(run_id: str, request: Request):
 def run_outputs(run_id: str, request: Request):
     try:
         return _manager(request).outputs(run_id)
+    except Exception as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.get("/api/runs/{run_id}/equipment/{equipment_id}")
+def equipment_state(run_id: str, equipment_id: str, request: Request):
+    try:
+        return _manager(request).equipment_state(run_id, equipment_id)
     except Exception as exc:
         raise _translate_error(exc) from exc
 

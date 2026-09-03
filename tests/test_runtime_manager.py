@@ -22,6 +22,59 @@ def manager(tmp_path: Path) -> RuntimeManager:
 
 
 class RuntimeManagerTest(unittest.TestCase):
+    def test_simulation_fast_forward_processes_every_global_tick(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            tmp_path = Path(temporary)
+            runtime = manager(tmp_path)
+            runtime.start_run(
+                run_id="global-fast-forward",
+                start_at=START,
+                duration_hours=8,
+                interval_minutes=10,
+                continuous=False,
+                publish_opcua=False,
+            )
+
+            result = runtime.fast_forward_simulation(
+                "global-fast-forward",
+                target_elapsed_hours=2,
+            )
+
+            self.assertTrue(result["global_clock_advanced"])
+            self.assertEqual(result["ticks_processed"], 12)
+            self.assertEqual(result["generated_records"], 1_200)
+            self.assertEqual(result["current_observed_at"], "2026-08-01T02:00:00+00:00")
+            status = runtime.status("global-fast-forward")
+            self.assertEqual(status["source_record_count"], 1_200)
+            self.assertEqual(status["canonical_observation_count"], 1_200)
+            runtime.stop("global-fast-forward")
+
+    def test_simulation_fast_forward_rejects_backward_or_terminal_target(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runtime = manager(Path(temporary))
+            runtime.start_run(
+                run_id="bounded-fast-forward",
+                start_at=START,
+                duration_hours=4,
+                continuous=False,
+                publish_opcua=False,
+            )
+            runtime.fast_forward_simulation(
+                "bounded-fast-forward",
+                target_elapsed_hours=2,
+            )
+            with self.assertRaisesRegex(ValueError, "later than the current"):
+                runtime.fast_forward_simulation(
+                    "bounded-fast-forward",
+                    target_elapsed_hours=1,
+                )
+            with self.assertRaisesRegex(ValueError, "before the run end"):
+                runtime.fast_forward_simulation(
+                    "bounded-fast-forward",
+                    target_elapsed_hours=4,
+                )
+            runtime.stop("bounded-fast-forward")
+
     def test_manual_tick_reuses_same_sensor_record_for_source_and_canonical(self):
         with tempfile.TemporaryDirectory() as temporary:
             tmp_path = Path(temporary)
@@ -60,6 +113,28 @@ class RuntimeManagerTest(unittest.TestCase):
             self.assertEqual(manifest["source_record_count"], 100)
             self.assertEqual(manifest["canonical_observation_count"], 100)
             self.assertEqual(manifest["protocol_datavalue_count"], 0)
+
+    def test_equipment_state_returns_latest_canonical_observation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runtime = manager(Path(temporary))
+            runtime.start_run(
+                run_id="equipment-state",
+                start_at=START,
+                duration_hours=1,
+                continuous=False,
+                publish_opcua=False,
+            )
+            runtime.tick("equipment-state")
+            state = runtime.equipment_state(
+                "equipment-state", "CNC-S01-L01-01"
+            )
+            self.assertEqual(state["operational_state"], "RUNNING")
+            self.assertFalse(state["held"])
+            self.assertTrue(state["usable_for_prediction"])
+            self.assertEqual(
+                state["current_observation"]["asset_id"], "CNC-S01-L01-01"
+            )
+            runtime.stop("equipment-state")
 
     def test_protocol_start_failure_does_not_remove_source_or_canonical(self):
         with tempfile.TemporaryDirectory() as temporary:

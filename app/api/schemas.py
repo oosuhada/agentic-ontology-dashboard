@@ -39,3 +39,15 @@ class FastForwardOverlayRequest(BaseModel):
 
     equipment_id: str = Field(min_length=1, max_length=240)
     target_generated_rows: int = Field(ge=1, le=10_000)
+
+
+class FastForwardSimulationRequest(BaseModel):
+    """Advance the complete simulation to an elapsed-hour target."""
+
+    target_elapsed_hours: int = Field(
+        ge=1,
+        description=(
+            "Elapsed simulation hour to reach by processing every intermediate "
+            "tick for every asset."
+        ),
+    )

@@ -170,8 +170,10 @@ run에 명시적으로 바인딩하고 그 ID가 일치하는 이벤트만 적�
 - future started와 같은 stream의 `maintenance.completed` 및
   `maintenance.replay_requested`가 먼저 도착하면 격리하지 않고 state version 순서로
   함께 보존한다. started tick에 snapshot을 만든 뒤 queued lifecycle을 순차 적용한다.
-- 대상 설비의 Canonical Observation이 이미 `maintenance_started_at` 이상으로 출력된
-  late event는 과거 상태를 추정하지 않고 격리한다.
+- 동일 Source Session에서 대상 설비의 Canonical Observation이 이미
+  `maintenance_started_at` 이상으로 출력된 late event는 과거 상태를 추정하거나
+  Canonical row를 다시 쓰지 않는다. 마지막 Canonical Tick의 다음 Tick을
+  `source_effective_started_at`으로 사용해 Overlay branch로 전환한다.
 - `maintenance.completed`: action별 whitelist를 검증한 뒤 snapshot에 `state_patch`를
   적용한다.
 - `maintenance.replay_requested`: `restart_at`부터 branch-local clock으로 Observation을
@@ -185,6 +187,9 @@ run에 명시적으로 바인딩하고 그 ID가 일치하는 이벤트만 적�
 - pending lifecycle stream 전체는 checkpoint에서 복구한다. checkpoint에 먼저 기록된
   pending availability는 Overlay coordinator 재구성 시 JSONL outbox로 복구한다. 전체
   `RuntimeManager` run resume는 별도 runtime lifecycle 범위다.
+- checkpoint는 write별 고유 임시 파일을 fsync한 뒤 원자적으로 교체한다. Windows에서
+  별도 reader가 target 파일을 잠깐 열어 발생하는 `PermissionError`는 제한된 지수
+  backoff로 재시도하고, 반복 실패는 `partial_failure`로 그대로 노출한다.
 
 Overlay branch 파일은 SensorRecord v2 payload와 동일한 `measurements`를 정본으로
 보존한다. Backend Runtime Overlay reader에는 같은 measurement를 flat field로도 투영하고
@@ -215,6 +220,7 @@ FastAPI는 control layer만 담당한다.
 ```text
 POST /api/runs
 POST /api/runs/{run_id}/tick
+POST /api/runs/{run_id}/simulation/fast-forward
 POST /api/runs/{run_id}/runtime-overlay/fast-forward
 POST /api/runs/{run_id}/stop
 GET  /api/runs/{run_id}
@@ -222,6 +228,11 @@ GET  /api/runs/{run_id}/outputs
 GET  /health/live
 GET  /health/ready
 ```
+
+`simulation/fast-forward`는 전체 Simulation Clock을 목표 경과 시간까지 진행한다. 모든
+설비의 중간 tick을 실제로 생성하므로 센서 상태, 고장 episode, 생산 및 정비 상태가
+보존된다. 현재보다 이전인 목표와 run 종료 시각 이상의 목표는 거부한다. 이 API는
+단일 정비 설비만 앞당기는 `runtime-overlay/fast-forward`와 별개의 제어 경계다.
 
 `runtime-overlay/fast-forward`는 `equipment_id`와 절대 누적 목표인
 `target_generated_rows`를 받아 해당 post-maintenance branch만 빠르게 생성한다. 이 호출은
