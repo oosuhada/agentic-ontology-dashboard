@@ -997,7 +997,7 @@ class RuntimeOverlayV2Test(unittest.TestCase):
             all("maintenance.started branch not found" in row["reason"] for row in rejected)
         )
 
-    def test_late_start_is_quarantined_once_and_never_activates(self):
+    def test_late_start_uses_next_source_tick_without_rewriting_canonical_history(self):
         coordinator = self.coordinator()
         result = self.producer.produce_tick(START)
         coordinator.record_canonical_observations(
@@ -1012,9 +1012,20 @@ class RuntimeOverlayV2Test(unittest.TestCase):
                 event_path,
                 source_virtual_time=START + timedelta(minutes=10),
             ),
-            (0, 1),
+            (1, 0),
         )
-        self.assertEqual(coordinator.active_equipment_ids, ())
+        self.assertEqual(
+            coordinator.active_equipment_ids,
+            (self.target["asset_id"],),
+        )
+        branch = coordinator.branches[
+            coordinator.branch_by_equipment[self.target["asset_id"]]
+        ]
+        self.assertEqual(branch.maintenance_started_at, START)
+        self.assertEqual(
+            branch.source_effective_started_at,
+            START + timedelta(minutes=10),
+        )
         self.assertEqual(
             coordinator.consume_event_file(
                 event_path,
@@ -1022,11 +1033,40 @@ class RuntimeOverlayV2Test(unittest.TestCase):
             ),
             (0, 0),
         )
-        rejected = coordinator.rejected_event_path.read_text(
-            encoding="utf-8"
-        ).splitlines()
-        self.assertEqual(len(rejected), 1)
-        self.assertEqual(json.loads(rejected[0])["reason_type"], "LateOverlayEvent")
+        self.assertFalse(coordinator.rejected_event_path.exists())
+
+    def test_late_completed_replay_starts_overlay_at_safe_source_time(self):
+        coordinator = self.coordinator()
+        last_canonical = START + timedelta(hours=2)
+        coordinator.record_canonical_observations(
+            last_canonical,
+            {self.target["asset_id"]},
+        )
+
+        coordinator.process_event(
+            self.started(), source_virtual_time=last_canonical + timedelta(minutes=10)
+        )
+        coordinator.process_event(
+            self.completed(), source_virtual_time=last_canonical + timedelta(minutes=10)
+        )
+        coordinator.process_event(
+            self.replay_requested(),
+            source_virtual_time=last_canonical + timedelta(minutes=10),
+        )
+        branch = coordinator.branches[
+            coordinator.branch_by_equipment[self.target["asset_id"]]
+        ]
+
+        self.assertEqual(
+            branch.source_effective_started_at,
+            last_canonical + timedelta(minutes=10),
+        )
+        self.assertEqual(branch.next_observed_at, branch.source_effective_started_at)
+        rows, _available = coordinator.advance_branch_to_generated_rows(
+            self.target["asset_id"], 36
+        )
+        self.assertEqual(rows[0]["observed_at"], branch.source_effective_started_at.isoformat())
+        self.assertEqual(len(rows), 36)
 
     def test_stored_observation_payload_must_match_declared_checksum(self):
         coordinator = self.coordinator()

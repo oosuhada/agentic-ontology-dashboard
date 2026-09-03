@@ -162,10 +162,6 @@ class StaleOverlayEvent(OverlayContractError):
     """Raised when an older state version arrives after a newer state."""
 
 
-class LateOverlayEvent(OverlayContractError):
-    """Raised when Canonical output already crossed maintenance_started_at."""
-
-
 def _parse_datetime(value: Any, field: str) -> datetime:
     if isinstance(value, datetime):
         result = value
@@ -447,6 +443,7 @@ class OverlayBranch:
     maintenance_action_id: str
     action_code: str
     maintenance_started_at: datetime
+    source_effective_started_at: datetime
     runtime: Runtime
     base_source_sha256: str
     state_version: int
@@ -610,7 +607,7 @@ class RuntimeOverlayCoordinator:
         return {
             equipment_id
             for equipment_id, key in self.branch_by_equipment.items()
-            if observed_at >= self.branches[key].maintenance_started_at
+            if observed_at >= self.branches[key].source_effective_started_at
         }
 
     def equipment_state(self, equipment_id: str) -> dict[str, Any]:
@@ -661,6 +658,9 @@ class RuntimeOverlayCoordinator:
                 "maintenance_action_id": branch.maintenance_action_id,
                 "action_code": branch.action_code,
                 "maintenance_started_at": branch.maintenance_started_at.isoformat(),
+                "source_effective_started_at": (
+                    branch.source_effective_started_at.isoformat()
+                ),
                 "base_source_sha256": branch.base_source_sha256,
                 "state_version": branch.state_version,
                 "phase": branch.phase,
@@ -799,6 +799,11 @@ class RuntimeOverlayCoordinator:
                 action_code=str(item["action_code"]),
                 maintenance_started_at=_parse_datetime(
                     item["maintenance_started_at"], "maintenance_started_at"
+                ),
+                source_effective_started_at=_parse_datetime(
+                    item.get("source_effective_started_at")
+                    or item["maintenance_started_at"],
+                    "source_effective_started_at",
                 ),
                 runtime=_restore_runtime(asset, item["runtime"]),
                 base_source_sha256=str(item["base_source_sha256"]),
@@ -994,22 +999,12 @@ class RuntimeOverlayCoordinator:
             raise OverlayContractError(f"maintenance.started branch not found: {key}")
         return branch
 
-    def _assert_started_event_is_not_late(
+    def _activate_started_event(
         self,
+        event: dict[str, Any],
         *,
-        equipment_id: str,
-        maintenance_started_at: datetime,
-    ) -> None:
-        last_observed_at = self.last_canonical_observed_at.get(equipment_id)
-        if last_observed_at is not None and last_observed_at >= maintenance_started_at:
-            raise LateOverlayEvent(
-                "maintenance.started arrived after Canonical output crossed its "
-                f"effective time: equipment_id={equipment_id}, "
-                f"maintenance_started_at={maintenance_started_at.isoformat()}, "
-                f"last_canonical_observed_at={last_observed_at.isoformat()}"
-            )
-
-    def _activate_started_event(self, event: dict[str, Any]) -> OverlayBranch:
+        source_virtual_time: datetime,
+    ) -> OverlayBranch:
         equipment_id = str(event["equipment_id"])
         key = self._event_branch_key(event)
         if key in self.branches:
@@ -1021,9 +1016,14 @@ class RuntimeOverlayCoordinator:
         maintenance_started_at = _parse_datetime(
             event["maintenance_started_at"], "maintenance_started_at"
         )
-        self._assert_started_event_is_not_late(
-            equipment_id=equipment_id,
-            maintenance_started_at=maintenance_started_at,
+        last_observed_at = self.last_canonical_observed_at.get(equipment_id)
+        source_effective_started_at = max(
+            maintenance_started_at,
+            (
+                last_observed_at + self.interval
+                if last_observed_at is not None
+                else source_virtual_time
+            ),
         )
         runtime_snapshot = copy.deepcopy(
             self.canonical_producer.runtimes[equipment_id]
@@ -1034,13 +1034,14 @@ class RuntimeOverlayCoordinator:
             maintenance_action_id=str(event["maintenance_action_id"]),
             action_code=str(event["action_code"]),
             maintenance_started_at=maintenance_started_at,
+            source_effective_started_at=source_effective_started_at,
             runtime=runtime_snapshot,
             base_source_sha256=_base_source_snapshot_sha256(
                 base_dataset_version=self.base_dataset_version,
                 source_run_id=self.canonical_producer.run_id,
                 simulation_session_id=self.simulation_session_id,
                 equipment_id=equipment_id,
-                maintenance_started_at=maintenance_started_at,
+                maintenance_started_at=source_effective_started_at,
                 runtime=runtime_snapshot,
             ),
             state_version=int(event["state_version"]),
@@ -1076,7 +1077,10 @@ class RuntimeOverlayCoordinator:
             )
             if started_at > source_virtual_time:
                 continue
-            branch = self._activate_started_event(event)
+            branch = self._activate_started_event(
+                event,
+                source_virtual_time=source_virtual_time,
+            )
             for followup in stream[1:]:
                 self._apply_followup_event(branch, followup)
             del self.pending_event_streams[key]
@@ -1227,7 +1231,10 @@ class RuntimeOverlayCoordinator:
         branch.restart_at = restart_at
         branch.overlay_branch_id = f"{branch.maintenance_event_id}:post"
         branch.history_segment_id = f"{branch.maintenance_event_id}:post"
-        branch.next_observed_at = restart_at
+        branch.next_observed_at = max(
+            restart_at,
+            branch.source_effective_started_at,
+        )
         branch.phase = "restarting"
         branch.state_version = version
 
@@ -1288,10 +1295,6 @@ class RuntimeOverlayCoordinator:
                     "source_virtual_time must include timezone information"
                 )
             if maintenance_started_at > effective_virtual_time:
-                self._assert_started_event_is_not_late(
-                    equipment_id=equipment_id,
-                    maintenance_started_at=maintenance_started_at,
-                )
                 self.pending_event_streams[key] = [copy.deepcopy(event)]
                 self._record_event(event)
                 return {
@@ -1299,7 +1302,10 @@ class RuntimeOverlayCoordinator:
                     "phase": "pending",
                     "state_version": int(event["state_version"]),
                 }
-            branch = self._activate_started_event(event)
+            branch = self._activate_started_event(
+                event,
+                source_virtual_time=effective_virtual_time,
+            )
         else:
             pending_stream = self.pending_event_streams.get(key)
             if pending_stream is not None:
