@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 from app.observation.models import SENSOR_RECORD_SCHEMA_VERSION, SensorRecord
 from app.runtime.manager import RuntimeManager
@@ -15,6 +17,7 @@ from app.runtime.overlay import (
     OverlayContractError,
     RuntimeOverlayCoordinator,
     StaleOverlayEvent,
+    _atomic_json,
     _semantic_observation_hash,
     _storage_path_component,
 )
@@ -76,6 +79,50 @@ class RuntimeOverlayV2Test(unittest.TestCase):
             output_root=self.root,
             generated_at=lambda: START + timedelta(hours=1),
         )
+
+    def test_atomic_checkpoint_retries_transient_windows_reader_collision(self):
+        checkpoint = self.root / "runtime_overlay_state.json"
+        checkpoint.write_text('{"old": true}', encoding="utf-8")
+        real_replace = os.replace
+        attempts = 0
+
+        def flaky_replace(source: str | Path, target: str | Path) -> None:
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise PermissionError("target is temporarily open by a reader")
+            real_replace(source, target)
+
+        with (
+            patch("app.runtime.overlay.os.replace", side_effect=flaky_replace),
+            patch("app.runtime.overlay.time.sleep") as sleep,
+        ):
+            _atomic_json(checkpoint, {"checkpoint_version": 7})
+
+        self.assertEqual(attempts, 2)
+        sleep.assert_called_once_with(0.01)
+        self.assertEqual(
+            json.loads(checkpoint.read_text(encoding="utf-8")),
+            {"checkpoint_version": 7},
+        )
+        self.assertEqual(list(self.root.glob(".*.tmp")), [])
+
+    def test_atomic_checkpoint_surfaces_persistent_permission_error(self):
+        checkpoint = self.root / "runtime_overlay_state.json"
+
+        with (
+            patch(
+                "app.runtime.overlay.os.replace",
+                side_effect=PermissionError("persistent access denial"),
+            ) as replace,
+            patch("app.runtime.overlay.time.sleep") as sleep,
+            self.assertRaisesRegex(PermissionError, "persistent access denial"),
+        ):
+            _atomic_json(checkpoint, {"checkpoint_version": 7})
+
+        self.assertEqual(replace.call_count, 8)
+        self.assertEqual(sleep.call_count, 7)
+        self.assertEqual(list(self.root.glob(".*.tmp")), [])
 
     def event(self, event_type: str, version: int, **extra: object):
         payload: dict[str, object] = {

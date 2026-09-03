@@ -187,6 +187,9 @@ run에 명시적으로 바인딩하고 그 ID가 일치하는 이벤트만 적�
 - pending lifecycle stream 전체는 checkpoint에서 복구한다. checkpoint에 먼저 기록된
   pending availability는 Overlay coordinator 재구성 시 JSONL outbox로 복구한다. 전체
   `RuntimeManager` run resume는 별도 runtime lifecycle 범위다.
+- checkpoint는 write별 고유 임시 파일을 fsync한 뒤 원자적으로 교체한다. Windows에서
+  별도 reader가 target 파일을 잠깐 열어 발생하는 `PermissionError`는 제한된 지수
+  backoff로 재시도하고, 반복 실패는 `partial_failure`로 그대로 노출한다.
 
 Overlay branch 파일은 SensorRecord v2 payload와 동일한 `measurements`를 정본으로
 보존한다. Backend Runtime Overlay reader에는 같은 measurement를 flat field로도 투영하고

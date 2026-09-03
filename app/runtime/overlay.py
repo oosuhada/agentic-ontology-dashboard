@@ -13,6 +13,8 @@ import hashlib
 import json
 import os
 import random
+import time
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -27,6 +29,9 @@ OBSERVATION_CONTRACT_VERSION = "runtime-overlay-observation-v1"
 AVAILABLE_CONTRACT_VERSION = "runtime-overlay-observations-available-v1"
 OVERLAY_SOURCE_KIND = "maintenance_replay_overlay"
 CHECKPOINT_VERSION = 7
+_ATOMIC_REPLACE_ATTEMPTS = 8
+_ATOMIC_REPLACE_INITIAL_BACKOFF_SECONDS = 0.01
+_ATOMIC_REPLACE_MAX_BACKOFF_SECONDS = 0.2
 
 _EVENT_TYPES = {
     "maintenance.started",
@@ -428,12 +433,34 @@ def _durable_append(path: Path, payload: dict[str, Any]) -> None:
 
 def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    with temporary.open("w", encoding="utf-8") as handle:
-        json.dump(payload, handle, ensure_ascii=False, indent=2, sort_keys=True)
-        handle.flush()
-        os.fsync(handle.fileno())
-    temporary.replace(path)
+    temporary = path.with_name(
+        f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
+    )
+    try:
+        with temporary.open("w", encoding="utf-8") as handle:
+            json.dump(payload, handle, ensure_ascii=False, indent=2, sort_keys=True)
+            handle.flush()
+            os.fsync(handle.fileno())
+
+        for attempt in range(_ATOMIC_REPLACE_ATTEMPTS):
+            try:
+                os.replace(temporary, path)
+                return
+            except PermissionError:
+                if attempt + 1 >= _ATOMIC_REPLACE_ATTEMPTS:
+                    raise
+                time.sleep(
+                    min(
+                        _ATOMIC_REPLACE_INITIAL_BACKOFF_SECONDS * (2**attempt),
+                        _ATOMIC_REPLACE_MAX_BACKOFF_SECONDS,
+                    )
+                )
+    finally:
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            # A failed cleanup must not hide the original checkpoint error.
+            pass
 
 
 @dataclass
