@@ -269,8 +269,8 @@ th { color: #667085; background: #f9fafb; }
 .demo-account-option { position: relative; display: grid; grid-template-columns: minmax(0,1fr) 32px; min-width: 0; border: 1px solid var(--fd-border); border-radius: 9px; background: var(--fd-surface-raised); transition: border-color .14s ease, box-shadow .14s ease, background .14s ease; }
 .demo-account-option:hover { border-color: color-mix(in srgb, var(--fd-accent), var(--fd-border) 45%); }
 .demo-account-option.is-selected { border-color: var(--fd-accent); box-shadow: 0 0 0 2px var(--fd-accent-soft); background: var(--fd-accent-soft); }
-.demo-account-card { display: flex; min-width: 0; min-height: 46px; align-items: center; border: 0; border-radius: 9px 0 0 9px; padding: 0 11px; color: var(--fd-text); background: transparent; text-align: left; cursor: pointer; }
-.demo-account-card strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.demo-account-card { display: flex; min-width: 0; min-height: 46px; align-items: center; justify-content: center; border: 0; border-radius: 9px 0 0 9px; padding: 0 11px; color: var(--fd-text); background: transparent; text-align: center; cursor: pointer; }
+.demo-account-card strong { width: 100%; overflow: hidden; font-size: 12px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .demo-account-info { position: relative; display: grid; place-items: center; }
 .demo-account-info-trigger { display: grid; width: 31px; height: 100%; min-height: 44px; place-items: center; border: 0; border-left: 1px solid var(--fd-border); border-radius: 0 8px 8px 0; color: var(--fd-text-muted); background: transparent; cursor: pointer; }
 .demo-account-info-trigger:hover, .demo-account-info-trigger:focus-visible, .demo-account-info.is-open .demo-account-info-trigger { color: var(--fd-accent); background: var(--fd-accent-soft); }
