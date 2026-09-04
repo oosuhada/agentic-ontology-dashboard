@@ -59,7 +59,7 @@ where = ["."]
 include = ["ontology_dashboard*", "app*"]
 
 [tool.setuptools.package-data]
-"app.diagnosis" = ["threshold_policy.json"]
+"app.diagnosis" = ["*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["../../tests", "tests"]
