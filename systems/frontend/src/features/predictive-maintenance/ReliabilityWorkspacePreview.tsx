@@ -99,6 +99,103 @@ function lifecycleLabel(step: OperationsClosedLoopLifecycleStep | null | undefin
   return LIFECYCLE_LABELS[step][english ? 1 : 0];
 }
 
+const CLOSED_LOOP_ACTION_LABELS: Record<string, [string, string]> = {
+  create_inspection_work_order: ["점검 작업요청 생성", "Create inspection work request"],
+  request_inspection_work_order: ["점검 작업요청 생성", "Create inspection work request"],
+  request_inspection: ["점검 요청", "Request inspection"],
+  approve_inspection_work_order: ["점검 승인", "Approve inspection work request"],
+  start_inspection_work_order: ["점검 시작", "Start inspection"],
+  start_inspection: ["점검 시작", "Start inspection"],
+  complete_inspection_work_order: ["점검 결과 기록·완료", "Record and complete inspection"],
+  complete_inspection: ["점검 결과 기록·완료", "Record and complete inspection"],
+  calculate_maintenance_cost: ["정비 비용 분석", "Run maintenance cost analysis"],
+  create_operations_manual_recommendation: ["정비안 생성", "Create maintenance recommendation"],
+  decide_operations_manual_recommendation: ["정비안 판단", "Review maintenance recommendation"],
+  approve_maintenance_work_order: ["정비 WorkOrder 승인", "Approve maintenance WorkOrder"],
+  start_maintenance_action: ["정비 시작", "Start maintenance"],
+  complete_maintenance_action: ["정비 완료", "Complete maintenance"],
+  request_maintenance_replay: ["정비 후 관측 재개", "Resume post-maintenance observation"],
+};
+
+function closedLoopActionLabel(actionId: string | null | undefined, fallback: string | null | undefined, english: boolean) {
+  if (!actionId) return fallback ?? null;
+  return CLOSED_LOOP_ACTION_LABELS[actionId]?.[english ? 1 : 0]
+    ?? (english ? actionId.replaceAll("_", " ") : fallback ?? actionId);
+}
+
+function closedLoopOwnerLabel(
+  role: "process_manager" | "process_engineer" | "maintenance_technician" | "unassigned" | null | undefined,
+  fallback: string | null | undefined,
+  english: boolean,
+) {
+  if (!english) return fallback ?? null;
+  if (role === "process_manager") return "Operations manager";
+  if (role === "process_engineer") return "Field engineer";
+  if (role === "maintenance_technician") return "Maintenance technician";
+  if (role === "unassigned") return "Unassigned";
+  return fallback ?? null;
+}
+
+const CLOSED_LOOP_ACTIVITY_LABELS: Record<string, [string, string]> = {
+  "work_order.requested": ["작업요청 생성", "Work request created"],
+  "work_order.approved": ["작업요청 승인", "Work request approved"],
+  "work_order.started": ["작업 시작", "Work started"],
+  "work_order.completed": ["작업 완료", "Work completed"],
+  "inspection.completed": ["점검 결과 기록", "Inspection result recorded"],
+  "recommendation.proposed": ["정비안 제안", "Maintenance recommendation proposed"],
+  "recommendation.decided": ["정비안 판단", "Maintenance recommendation decided"],
+  "maintenance.started": ["정비 시작", "Maintenance started"],
+  "maintenance.completed": ["정비 완료", "Maintenance completed"],
+  "maintenance.replay_requested": ["재평가 요청", "Re-evaluation requested"],
+};
+
+function closedLoopActivityLabel(eventType: string, fallback: string, english: boolean) {
+  return CLOSED_LOOP_ACTIVITY_LABELS[eventType]?.[english ? 1 : 0]
+    ?? (english ? eventType.replaceAll("_", " ").replaceAll(".", " ") : fallback);
+}
+
+const ENGLISH_FACTOR_LABELS: Record<string, string> = {
+  rotation_raw: "Rotation average",
+  vibration_raw: "Vibration average",
+  pressure_raw: "Pressure average",
+  voltage_raw: "Voltage",
+  current_raw: "Current",
+  relative_vibration_z: "Vibration anomaly",
+  spindle_vibration: "Spindle vibration",
+  air_pressure: "Air pressure",
+  flow_rate: "Flow rate",
+  air_temperature_k: "Intake air temperature",
+  process_temperature_k: "Process temperature",
+  rotational_speed_rpm: "Spindle speed",
+  torque_nm: "Torque",
+  tool_wear_min: "Tool wear",
+  mechanical_power_w: "Motor power",
+  power_w: "Motor power",
+  overstrain_index: "Overstrain index",
+  overstrain_load: "Overstrain index",
+  temperature_difference_k: "Process-air temperature gap",
+  temperature_gap_k: "Process-air temperature gap",
+  generator_failure_score: "Model risk score",
+  model_selected_threshold: "Risk decision threshold",
+  asset_criticality_adjustment: "Asset criticality adjustment",
+  generator_model_artifact_manifest: "Applied model release",
+};
+
+function englishFactorLabel(key: string) {
+  const base = key
+    .replace(/_(1h|6h|12h|24h|7d|30d)_(max_abs|abs_max|abs_mean|change|max|min|mean|std|last)$/, "")
+    .replace(/_(abs_current|current)$/, "");
+  return ENGLISH_FACTOR_LABELS[key] ?? ENGLISH_FACTOR_LABELS[base] ?? base.replaceAll("_", " ");
+}
+
+function factorExplanationLabel(value: string | null | undefined, english: boolean) {
+  if (!english) return displayExplanationMethod(value);
+  if (!value) return null;
+  if (value.includes("proxy_attribution") || value.includes("attribution")) return "Model contribution analysis";
+  if (value.includes("shap")) return "Model impact analysis";
+  return null;
+}
+
 function riskStatusLabel(status: OperationsEvent["status"] | null | undefined, english: boolean) {
   const labels: Record<NonNullable<OperationsEvent["status"]>, [string, string]> = {
     normal: ["정상", "Normal"],
@@ -146,21 +243,25 @@ function operationalImpactLabel(detail: OperationsEventDetailModel | null, engli
   return impact ? labels[impact][english ? 1 : 0] : (english ? "Production impact not available" : "생산 영향 미제공");
 }
 
-function factorValue(value: number | null, unit: string | null) {
+function factorValue(value: number | null, unit: string | null, english = false) {
   if (value === null) return null;
-  return `${value.toLocaleString()}${unit ? ` ${unit}` : ""}`;
+  return `${value.toLocaleString(english ? "en-US" : "ko-KR")}${unit ? ` ${unit}` : ""}`;
 }
 
 function evidenceItemLabel(
   item: OperationsAgentReviewPacket["model_expression_context"]["top_factors"][number],
+  english: boolean,
 ) {
   const rawValue = item.value === null || item.value === undefined
     ? null
     : typeof item.value === "number"
-      ? item.value.toLocaleString("ko-KR", { maximumFractionDigits: 3 })
+      ? item.value.toLocaleString(english ? "en-US" : "ko-KR", { maximumFractionDigits: 3 })
       : String(item.value);
   const unit = item.unit && item.unit !== "model unit" ? ` ${item.unit}` : "";
-  return `${displaySensorFactorLabel(item.feature, item.display_name)}${rawValue ? ` ${rawValue}${unit}` : ""}`;
+  const label = english
+    ? englishFactorLabel(item.feature)
+    : displaySensorFactorLabel(item.feature, item.display_name);
+  return `${label}${rawValue ? ` ${rawValue}${unit}` : ""}`;
 }
 
 function operationalFocusCopy(input: {
@@ -178,7 +279,9 @@ function operationalFocusCopy(input: {
   }
 
   const event = input.selectedEvent;
-  const eventAssetName = displayAssetName({ assetId: event.assetId, displayName: event.assetName });
+  const eventAssetName = input.english
+    ? (event.assetName || event.assetId)
+    : displayAssetName({ assetId: event.assetId, displayName: event.assetName });
   const risk = probability(event.failureProbability);
   const impact = operationalImpactLabel(input.detail, input.english);
   const action = input.primaryActionLabel;
@@ -442,8 +545,8 @@ export function ReliabilityWorkspacePreview({
   const primaryAction = detail?.closedLoop?.primaryAction ?? null;
   const focusPrimaryAction = primaryAction
     ? {
-      label: primaryAction.label,
-      ownerLabel: primaryAction.ownerLabel,
+      label: closedLoopActionLabel(primaryAction.actionId, primaryAction.label, english) ?? primaryAction.label,
+      ownerLabel: closedLoopOwnerLabel(primaryAction.ownerRole, primaryAction.ownerLabel, english),
       disabled: false,
       disabledReason: null,
     }
@@ -470,7 +573,9 @@ export function ReliabilityWorkspacePreview({
   const lifecycleCurrent = lifecycleSummary
     ? {
       id: lifecycleSummary.currentStep,
-      label: lifecycleSummary.currentStepLabel || lifecycleLabel(lifecycleSummary.currentStep, english) || lifecycleSummary.currentStep,
+      label: english
+        ? (lifecycleLabel(lifecycleSummary.currentStep, true) || lifecycleSummary.currentStep)
+        : (lifecycleSummary.currentStepLabel || lifecycleLabel(lifecycleSummary.currentStep, false) || lifecycleSummary.currentStep),
     }
     : null;
   const lifecycleNext = lifecycleSummary?.nextStep
@@ -496,16 +601,16 @@ export function ReliabilityWorkspacePreview({
   const lifecycleNextForDisplay = lifecycleNext ?? fallbackLifecycleNext;
   const lifecycleTimeline = detail?.closedLoop?.timeline.map((item) => ({
     id: item.timelineId,
-    label: item.label,
+    label: closedLoopActivityLabel(item.eventType, item.label, english),
     status: item.status,
     actor: item.actorDisplayName,
     occurredAt: item.occurredAt,
   })) ?? [];
   const evidence = detail?.topFactors.slice(0, 4).map((factor) => ({
     id: factor.id,
-    label: english ? (factor.label || displaySensorFactorLabel(factor.feature)) : fieldFactorItem(factor),
-    value: factorValue(factor.value, factor.unit),
-    detail: displayExplanationMethod(factor.explanationMethod),
+    label: english ? englishFactorLabel(factor.feature) : fieldFactorItem(factor),
+    value: factorValue(factor.value, factor.unit, english),
+    detail: factorExplanationLabel(factor.explanationMethod, english),
   })) ?? [];
   const freshnessObservedAt = detail?.assetDetailStatus?.lastUpdatedAt
     ?? selectedEvent?.observedAt
@@ -519,7 +624,7 @@ export function ReliabilityWorkspacePreview({
         ? item.role === "field_operator"
         : false
   ));
-  const packetEvidenceItems = agentPacket?.model_expression_context.top_factors.slice(0, 4).map(evidenceItemLabel) ?? [];
+  const packetEvidenceItems = agentPacket?.model_expression_context.top_factors.slice(0, 4).map((item) => evidenceItemLabel(item, english)) ?? [];
   const assistantEvidenceItems = packetEvidenceItems.length
     ? packetEvidenceItems
     : evidence.map((item) => `${item.label}${item.value ? ` ${item.value}` : ""}`);
@@ -731,7 +836,7 @@ export function ReliabilityWorkspacePreview({
           {selectedEvent ? <section className={`rw-preview-selection-anchor tone-${riskTone(selectedEvent.status)}`} aria-label={english ? "Selected case context" : "현재 선택 Case 문맥"}>
             <div className="rw-preview-selection-anchor__path">
               <span>{english ? "SELECTED CASE" : "선택 Case"}</span>
-              <strong>{displayLineLabel(selectedEvent.line)} <i>›</i> {displayAssetName({ assetId: selectedEvent.assetId, displayName: selectedEvent.assetName })}</strong>
+              <strong>{english ? selectedEvent.line : displayLineLabel(selectedEvent.line)} <i>›</i> {english ? (selectedEvent.assetName || selectedEvent.assetId) : displayAssetName({ assetId: selectedEvent.assetId, displayName: selectedEvent.assetName })}</strong>
             </div>
             <div className="rw-preview-selection-anchor__facts">
               <span>{english ? "Observation" : "관측 기준"} {displayDateTime(selectedEvent.observedAt, english)}</span>
@@ -750,8 +855,8 @@ export function ReliabilityWorkspacePreview({
             <OperationalFocus
               asset={{
                 id: selectedEvent?.assetId ?? context.workspaceId,
-                name: selectedEvent ? displayAssetName({ assetId: selectedEvent.assetId, displayName: selectedEvent.assetName }) : (english ? "Select an asset" : "설비를 선택하세요"),
-                contextLabel: selectedEvent ? displayLineLabel(selectedEvent.line) : context.workspaceName,
+                name: selectedEvent ? (english ? (selectedEvent.assetName || selectedEvent.assetId) : displayAssetName({ assetId: selectedEvent.assetId, displayName: selectedEvent.assetName })) : (english ? "Select an asset" : "설비를 선택하세요"),
+                contextLabel: selectedEvent ? (english ? selectedEvent.line : displayLineLabel(selectedEvent.line)) : context.workspaceName,
               }}
               situation={{
                 statusLabel: riskStatusLabel(selectedEvent?.status, english),

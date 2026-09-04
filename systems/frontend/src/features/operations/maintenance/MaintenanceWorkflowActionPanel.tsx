@@ -37,26 +37,32 @@ function optionalNumber(value: string): number | null {
 }
 
 const ACTION_LABEL = {
-  TOOL_REPLACEMENT: "공구 교체",
-  COOLING_SYSTEM_RESTORE: "냉각 시스템 복구",
+  TOOL_REPLACEMENT: ["공구 교체", "Tool replacement"],
+  COOLING_SYSTEM_RESTORE: ["냉각 시스템 복구", "Cooling system restore"],
 } as const;
+
+function localize(english: boolean, ko: string, en: string): string {
+  return english ? en : ko;
+}
 
 export function postMaintenancePollingFailure(
   reason: unknown,
   consecutiveFailures: number,
+  locale: "ko-KR" | "en-US" = "ko-KR",
 ): { message: string | null; stop: boolean } {
+  const english = locale === "en-US";
   const rendered = reason instanceof Error
     ? reason.message
-    : "정비 후 예측 결과 조회에 실패했습니다.";
+    : localize(english, "정비 후 예측 결과 조회에 실패했습니다.", "Unable to load the post-maintenance prediction result.");
   if (reason instanceof ApiError && reason.status >= 400 && reason.status < 500) {
     return {
-      message: `정비 후 결과 조회가 거부되었습니다: ${rendered}`,
+      message: localize(english, `정비 후 결과 조회가 거부되었습니다: ${rendered}`, `Post-maintenance result request was rejected: ${rendered}`),
       stop: true,
     };
   }
   return {
     message: consecutiveFailures >= 3
-      ? `정비 후 결과 조회가 ${consecutiveFailures}회 연속 실패했습니다: ${rendered}`
+      ? localize(english, `정비 후 결과 조회가 ${consecutiveFailures}회 연속 실패했습니다: ${rendered}`, `Post-maintenance result lookup failed ${consecutiveFailures} consecutive times: ${rendered}`)
       : null,
     stop: false,
   };
@@ -117,6 +123,7 @@ export function MaintenanceWorkflowActionPanel({
   canManage,
   canFieldExecute,
   canMaintenanceExecute,
+  locale = "ko-KR",
   onChanged,
   onStatusChanged,
   onPostMaintenancePrediction,
@@ -133,10 +140,12 @@ export function MaintenanceWorkflowActionPanel({
   canManage: boolean;
   canFieldExecute: boolean;
   canMaintenanceExecute: boolean;
+  locale?: "ko-KR" | "en-US";
   onChanged?: () => void;
   onStatusChanged?: (status: MaintenanceWorkflowDisplayStatus) => void;
   onPostMaintenancePrediction?: (prediction: PostMaintenancePredictionSummary) => void;
 }) {
+  const english = locale === "en-US";
   const [lineage, setLineage] = useState<MaintenanceEventLineageReadModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
@@ -165,11 +174,11 @@ export function MaintenanceWorkflowActionPanel({
       setLineage(next);
       onStatusChanged?.(displayStatus(next, Boolean(postMaintenancePrediction)));
     } catch (reason) {
-      setMessage({ tone: "error", text: reason instanceof Error ? reason.message : "작업 상태를 불러오지 못했습니다." });
+      setMessage({ tone: "error", text: reason instanceof Error ? reason.message : localize(english, "작업 상태를 불러오지 못했습니다.", "Unable to load workflow status.") });
     } finally {
       setLoading(false);
     }
-  }, [eventId, onStatusChanged, postMaintenancePrediction, projectId, workspaceId]);
+  }, [english, eventId, onStatusChanged, postMaintenancePrediction, projectId, workspaceId]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -235,11 +244,11 @@ export function MaintenanceWorkflowActionPanel({
       setSelectedActionCandidateId("");
       setMessage({
         tone: "error",
-        text: reason instanceof Error ? reason.message : "정비 Action 후보를 불러오지 못했습니다.",
+        text: reason instanceof Error ? reason.message : localize(english, "정비 Action 후보를 불러오지 못했습니다.", "Unable to load maintenance action candidates."),
       });
     });
     return () => controller.abort();
-  }, [projectId, role, state.inspectionResult?.inspection_result_id, state.inspectionResult?.outcome, workspaceId]);
+  }, [english, projectId, role, state.inspectionResult?.inspection_result_id, state.inspectionResult?.outcome, workspaceId]);
 
   useEffect(() => {
     setInspectionOutcome("maintenance_recommended");
@@ -284,7 +293,7 @@ export function MaintenanceWorkflowActionPanel({
           setPostMaintenancePrediction(prediction);
           onPostMaintenancePrediction?.(prediction);
           onStatusChanged?.("ready_for_reprediction");
-          setMessage({ tone: "success", text: "정비 후 관측과 예측 처리가 완료됐습니다." });
+          setMessage({ tone: "success", text: localize(english, "정비 후 관측과 예측 처리가 완료됐습니다.", "Post-maintenance observation and prediction processing is complete.") });
           return;
         }
         const runtimeLineage = await getMaintenanceEventLineage(
@@ -295,13 +304,13 @@ export function MaintenanceWorkflowActionPanel({
         );
         setLineage(runtimeLineage);
         if (runtimeLineage.runtime_status?.startsWith("failed_")) {
-          setPollingError(runtimeLineage.runtime_state?.failure_reason || "정비 후 재예측 처리에 실패했습니다.");
+          setPollingError(runtimeLineage.runtime_state?.failure_reason || localize(english, "정비 후 재예측 처리에 실패했습니다.", "Post-maintenance re-prediction processing failed."));
           return;
         }
       } catch (reason) {
         if (controller.signal.aborted) return;
         consecutiveFailures += 1;
-        const failure = postMaintenancePollingFailure(reason, consecutiveFailures);
+        const failure = postMaintenancePollingFailure(reason, consecutiveFailures, locale);
         if (failure.message) setPollingError(failure.message);
         if (failure.stop) return;
       }
@@ -322,7 +331,9 @@ export function MaintenanceWorkflowActionPanel({
     };
   }, [
     assetId,
+    english,
     eventId,
+    locale,
     onPostMaintenancePrediction,
     onStatusChanged,
     postMaintenancePrediction,
@@ -337,11 +348,11 @@ export function MaintenanceWorkflowActionPanel({
     setMessage(null);
     try {
       await command();
-      setMessage({ tone: "success", text: `${label} 처리가 완료됐습니다.` });
+      setMessage({ tone: "success", text: localize(english, `${label} 처리가 완료됐습니다.`, `${label} completed.`) });
       await refresh();
       onChanged?.();
     } catch (reason) {
-      setMessage({ tone: "error", text: reason instanceof Error ? reason.message : `${label} 처리에 실패했습니다.` });
+      setMessage({ tone: "error", text: reason instanceof Error ? reason.message : localize(english, `${label} 처리에 실패했습니다.`, `${label} failed.`) });
     } finally {
       setRunning(false);
     }
@@ -380,15 +391,17 @@ export function MaintenanceWorkflowActionPanel({
       && candidateCostBasisReady)
   );
 
-  let label = "다음 작업 대기";
-  let helper = "현재 역할에서 실행할 수 있는 다음 단계가 없습니다.";
+  let label = localize(english, "다음 작업 대기", "Waiting for next action");
+  let helper = localize(english, "현재 역할에서 실행할 수 있는 다음 단계가 없습니다.", "There is no next executable step for the current role.");
   let enabled = false;
   let command: (() => Promise<unknown>) | null = null;
 
   if (role === "process_manager") {
     if (!state.inspectionWorkOrder) {
-      label = "점검 작업요청 생성";
-      helper = snapshotBasis ? "현재 Product Result/Evidence 스냅샷을 기준으로 요청합니다." : "정본 근거가 로드될 때까지 기다려 주세요.";
+      label = localize(english, "점검 작업요청 생성", "Create inspection work request");
+      helper = snapshotBasis
+        ? localize(english, "현재 Product Result/Evidence 스냅샷을 기준으로 요청합니다.", "Creates the request from the current Product Result/Evidence snapshot.")
+        : localize(english, "정본 근거가 로드될 때까지 기다려 주세요.", "Wait until canonical evidence is loaded.");
       enabled = canManage && Boolean(snapshotBasis);
       command = snapshotBasis ? () => requestInspectionWorkOrder({
         projectId,
@@ -407,23 +420,23 @@ export function MaintenanceWorkflowActionPanel({
         idempotencyKey: commandKey(eventId, "inspection-request", snapshotBasis.artifactId ?? eventId),
       }) : null;
     } else if (state.inspectionWorkOrder.status === "requested") {
-      label = "현장 관리자 수락 대기";
-      helper = "현장 담당자가 요청을 수락하면 해당 담당자에게 자동 배정됩니다.";
+      label = localize(english, "현장 관리자 수락 대기", "Waiting for field acceptance");
+      helper = localize(english, "현장 담당자가 요청을 수락하면 해당 담당자에게 자동 배정됩니다.", "The request is assigned automatically when a field operator accepts it.");
     } else if (state.inspectionResult?.outcome === "no_action_required") {
-      label = "점검 완료 · 정비 불필요";
-      helper = "현장 점검 결과 추가 정비가 필요하지 않은 것으로 기록됐습니다.";
+      label = localize(english, "점검 완료 · 정비 불필요", "Inspection complete · no maintenance required");
+      helper = localize(english, "현장 점검 결과 추가 정비가 필요하지 않은 것으로 기록됐습니다.", "The field inspection recorded that no additional maintenance is required.");
     } else if (state.inspectionResult?.outcome === "data_check_required") {
-      label = "추가 데이터 확인 필요";
-      helper = "점검 결과만으로 정비 판단을 내리지 않고 추가 데이터 확인 상태로 유지합니다.";
+      label = localize(english, "추가 데이터 확인 필요", "Additional data review required");
+      helper = localize(english, "점검 결과만으로 정비 판단을 내리지 않고 추가 데이터 확인 상태로 유지합니다.", "The case remains in data review instead of making a maintenance decision from the inspection alone.");
     } else if (state.inspectionResult && !state.recommendation) {
-      label = "정비안 생성";
+      label = localize(english, "정비안 생성", "Create maintenance recommendation");
       helper = !state.hasReviewedCostAnalysis
-        ? "먼저 아래 비용 분석을 실행해 참고 결과를 확인하세요."
+        ? localize(english, "먼저 아래 비용 분석을 실행해 참고 결과를 확인하세요.", "Run the cost analysis below first and review the reference result.")
         : !state.selectedActionCandidate
-          ? "비용 분석을 참고한 뒤 Backend가 산출한 정비 Action 후보를 직접 선택하세요."
+          ? localize(english, "비용 분석을 참고한 뒤 Backend가 산출한 정비 Action 후보를 직접 선택하세요.", "After reviewing cost analysis, explicitly select a maintenance action candidate produced by the backend.")
           : state.costAnalysis
-            ? "비용은 참고값입니다. 선택한 Action 후보를 근거로 Operations 수동 정비안을 생성합니다."
-            : "선택한 Action 후보의 비용 분석을 먼저 실행해 참고 결과를 확인하세요.";
+            ? localize(english, "비용은 참고값입니다. 선택한 Action 후보를 근거로 Operations 수동 정비안을 생성합니다.", "Cost is reference information. An operations user explicitly creates the maintenance recommendation from the selected action candidate.")
+            : localize(english, "선택한 Action 후보의 비용 분석을 먼저 실행해 참고 결과를 확인하세요.", "Run cost analysis for the selected action candidate first and review the reference result.");
       enabled = canManage && Boolean(state.costAnalysis && state.selectedActionCandidate);
       command = state.costAnalysis && state.selectedActionCandidate ? () => createOperationsManualRecommendation({
         projectId,
@@ -439,8 +452,8 @@ export function MaintenanceWorkflowActionPanel({
         ),
       }) : null;
     } else if (state.recommendation && !state.maintenanceWorkOrder) {
-      label = "정비안 승인";
-      helper = "비용은 참고값이며 이 버튼이 사람의 명시적 정비 승인입니다.";
+      label = localize(english, "정비안 승인", "Approve maintenance recommendation");
+      helper = localize(english, "비용은 참고값이며 이 버튼이 사람의 명시적 정비 승인입니다.", "Cost is reference information; this button is the explicit human maintenance approval.");
       enabled = canManage && !["accepted", "rejected"].includes(state.recommendation.status);
       command = () => decideOperationsManualRecommendation({
         projectId,
@@ -450,8 +463,8 @@ export function MaintenanceWorkflowActionPanel({
         idempotencyKey: commandKey(eventId, "recommendation-accept", state.recommendation!.recommendation_id),
       });
     } else if (state.maintenanceWorkOrder?.status === "requested") {
-      label = "정비 WorkOrder 승인";
-      helper = "승인된 Product Result의 source runtime lineage를 이어 정비 Action을 계획합니다.";
+      label = localize(english, "정비 WorkOrder 승인", "Approve maintenance WorkOrder");
+      helper = localize(english, "승인된 Product Result의 source runtime lineage를 이어 정비 Action을 계획합니다.", "Plans the maintenance action while preserving the approved Product Result source runtime lineage.");
       enabled = canManage;
       command = () => approveMaintenanceWorkOrder({
         projectId,
@@ -463,34 +476,34 @@ export function MaintenanceWorkflowActionPanel({
     }
   } else {
     if (!state.inspectionWorkOrder) {
-      label = "운영 관리자 점검 요청 대기";
-      helper = "현재 Case의 근거는 준비되어 있습니다. 운영 관리자가 점검 작업요청을 생성하면 이 화면에서 수락할 수 있습니다.";
+      label = localize(english, "운영 관리자 점검 요청 대기", "Waiting for inspection request");
+      helper = localize(english, "현재 Case의 근거는 준비되어 있습니다. 운영 관리자가 점검 작업요청을 생성하면 이 화면에서 수락할 수 있습니다.", "Evidence for this case is ready. You can accept the inspection request here after an operations manager creates it.");
     } else if (state.inspectionWorkOrder?.status === "requested") {
-      label = "요청 수락·내게 배정";
-      helper = "수락과 동시에 이 점검 요청의 담당자로 배정됩니다.";
+      label = localize(english, "요청 수락·내게 배정", "Accept request and assign to me");
+      helper = localize(english, "수락과 동시에 이 점검 요청의 담당자로 배정됩니다.", "Accepting the request assigns you as its owner.");
       enabled = canFieldExecute;
       command = () => acceptInspectionWorkOrder({
         projectId, workspaceId, workOrderId: state.inspectionWorkOrder!.work_order_id,
         idempotencyKey: commandKey(eventId, "inspection-accept", state.inspectionWorkOrder!.work_order_id),
       });
     } else if (state.inspectionWorkOrder?.status === "approved") {
-      label = "점검 시작";
+      label = localize(english, "점검 시작", "Start inspection");
       const assignedToCurrentUser = state.inspectionWorkOrder.assigned_to === currentUserId;
       helper = assignedToCurrentUser
-        ? "SOP를 확인한 뒤 현장 점검을 시작합니다."
-        : `이 요청은 ${state.inspectionWorkOrder.assigned_to ?? "다른 담당자"}에게 배정되었습니다.`;
+        ? localize(english, "SOP를 확인한 뒤 현장 점검을 시작합니다.", "Review the SOP, then start the field inspection.")
+        : localize(english, `이 요청은 ${state.inspectionWorkOrder.assigned_to ?? "다른 담당자"}에게 배정되었습니다.`, `This request is assigned to ${state.inspectionWorkOrder.assigned_to ?? "another owner"}.`);
       enabled = canFieldExecute && assignedToCurrentUser;
       command = () => startInspectionWorkOrder({
         projectId, workspaceId, workOrderId: state.inspectionWorkOrder!.work_order_id,
         idempotencyKey: commandKey(eventId, "inspection-start", state.inspectionWorkOrder!.work_order_id),
       });
     } else if (state.inspectionWorkOrder?.status === "in_progress") {
-      label = "점검 결과 기록·완료";
+      label = localize(english, "점검 결과 기록·완료", "Record and complete inspection");
       helper = !supportsCncMaintenance
-        ? "현재 정비·Overlay 실행은 CNC 설비만 지원합니다. 이 설비의 점검 완료는 후속 계약이 필요합니다."
+        ? localize(english, "현재 정비·Overlay 실행은 CNC 설비만 지원합니다. 이 설비의 점검 완료는 후속 계약이 필요합니다.", "Maintenance and overlay execution currently support CNC assets only. Completing inspection for this asset requires a follow-up contract.")
         : inspectionReady
-          ? "입력한 점검 사실을 기록합니다. 정비 Action 후보는 Backend가 이 결과에서 산출합니다."
-          : "점검 판정, 체크리스트, 측정값과 발견 내용을 입력하세요.";
+          ? localize(english, "입력한 점검 사실을 기록합니다. 정비 Action 후보는 Backend가 이 결과에서 산출합니다.", "Records the inspection facts you entered. The backend derives maintenance action candidates from this result.")
+          : localize(english, "점검 판정, 체크리스트, 측정값과 발견 내용을 입력하세요.", "Enter the inspection outcome, checklist results, measurements, and findings.");
       enabled = canFieldExecute && supportsCncMaintenance && inspectionReady;
       command = supportsCncMaintenance && inspectionReady ? () => completeInspectionWorkOrder({
         projectId,
@@ -500,20 +513,20 @@ export function MaintenanceWorkflowActionPanel({
         idempotencyKey: commandKey(eventId, "inspection-complete", state.inspectionWorkOrder!.work_order_id),
       }) : null;
     } else if (state.action?.status === "planned") {
-      label = "정비 시작";
+      label = localize(english, "정비 시작", "Start maintenance");
       helper = canMaintenanceExecute
-        ? "승인된 정비 작업을 시작합니다."
-        : "정비 실행 권한이 있는 정비 담당자에게 인계된 단계입니다.";
+        ? localize(english, "승인된 정비 작업을 시작합니다.", "Starts the approved maintenance work.")
+        : localize(english, "정비 실행 권한이 있는 정비 담당자에게 인계된 단계입니다.", "This stage is handed off to a maintenance operator with execution permission.");
       enabled = canMaintenanceExecute;
       command = () => startMaintenanceAction({
         projectId, workspaceId, maintenanceActionId: state.action!.maintenance_action_id,
         idempotencyKey: commandKey(eventId, "maintenance-start", state.action!.maintenance_action_id),
       });
     } else if (state.action?.status === "in_progress") {
-      label = "정비 완료";
+      label = localize(english, "정비 완료", "Complete maintenance");
       helper = canMaintenanceExecute
-        ? "정비 결과를 기록하고 변경 불가능한 정비 이력을 생성합니다."
-        : "정비 완료 기록은 배정된 정비 담당자만 수행할 수 있습니다.";
+        ? localize(english, "정비 결과를 기록하고 변경 불가능한 정비 이력을 생성합니다.", "Records the maintenance result and creates an immutable maintenance history entry.")
+        : localize(english, "정비 완료 기록은 배정된 정비 담당자만 수행할 수 있습니다.", "Only the assigned maintenance operator can record maintenance completion.");
       enabled = canMaintenanceExecute;
       command = () => completeMaintenanceAction({
         projectId,
@@ -523,10 +536,10 @@ export function MaintenanceWorkflowActionPanel({
         idempotencyKey: commandKey(eventId, "maintenance-complete", state.action!.maintenance_action_id),
       });
     } else if (state.maintenanceEvent && !state.action?.restart_at) {
-      label = "정비 후 관측 재개";
+      label = localize(english, "정비 후 관측 재개", "Resume post-maintenance observation");
       helper = canMaintenanceExecute
-        ? "정비 결과를 반영한 설비 관측을 재개하고 실제 재예측을 요청합니다."
-        : "관측 재개는 정비 완료를 기록한 정비 담당자가 수행합니다.";
+        ? localize(english, "정비 결과를 반영한 설비 관측을 재개하고 실제 재예측을 요청합니다.", "Resumes asset observation with the maintenance result applied and requests an actual re-prediction.")
+        : localize(english, "관측 재개는 정비 완료를 기록한 정비 담당자가 수행합니다.", "Observation can be resumed by the maintenance operator who recorded completion.");
       enabled = canMaintenanceExecute;
       command = () => requestMaintenanceReplay({
         projectId,
@@ -540,126 +553,128 @@ export function MaintenanceWorkflowActionPanel({
   if (postMaintenancePrediction) {
     const percent = (postMaintenancePrediction.failureProbability * 100).toFixed(2);
     const isNormal = postMaintenancePrediction.statusGrade === "normal";
-    label = isNormal ? "정상 운영 중" : "정비 후 위험 지속";
+    label = isNormal ? localize(english, "정상 운영 중", "Operating normally") : localize(english, "정비 후 위험 지속", "Risk persists after maintenance");
     helper = isNormal
-      ? `정비 후 예측 위험도 ${percent}% · Overlay 공정이 계속 진행 중입니다.`
-      : `정비 후 예측 위험도 ${percent}% · 추가 점검 또는 정비 판단이 필요합니다.`;
+      ? localize(english, `정비 후 예측 위험도 ${percent}% · Overlay 공정이 계속 진행 중입니다.`, `Post-maintenance predicted risk ${percent}% · Overlay processing continues.`)
+      : localize(english, `정비 후 예측 위험도 ${percent}% · 추가 점검 또는 정비 판단이 필요합니다.`, `Post-maintenance predicted risk ${percent}% · Additional inspection or maintenance decision is required.`);
     enabled = false;
     command = null;
   } else if (state.action?.restart_at) {
     const runtimeStatus = lineage?.runtime_status;
-    label = runtimeStatus?.startsWith("failed_") ? "정비 후 재예측 확인 필요" : "정비 후 관측 수집 중";
+    label = runtimeStatus?.startsWith("failed_")
+      ? localize(english, "정비 후 재예측 확인 필요", "Post-maintenance re-prediction needs review")
+      : localize(english, "정비 후 관측 수집 중", "Collecting post-maintenance observations");
     helper = runtimeStatus?.startsWith("failed_")
-      ? (lineage?.runtime_state?.failure_reason || "Generator 처리 상태를 확인한 뒤 재시도해 주세요.")
+      ? (lineage?.runtime_state?.failure_reason || localize(english, "Generator 처리 상태를 확인한 뒤 재시도해 주세요.", "Check generator processing status, then retry."))
       : runtimeStatus === "history_insufficient" || runtimeStatus === "warming_up"
-        ? "재예측에 필요한 연속 관측 이력을 수집하고 있습니다."
-        : "정비 결과가 반영된 관측과 예측 결과를 기다리고 있습니다.";
+        ? localize(english, "재예측에 필요한 연속 관측 이력을 수집하고 있습니다.", "Collecting continuous observation history required for re-prediction.")
+        : localize(english, "정비 결과가 반영된 관측과 예측 결과를 기다리고 있습니다.", "Waiting for observations and prediction results with the maintenance outcome applied.");
     enabled = false;
     command = null;
   }
 
   return (
-    <section className="operations-maintenance-workflow-panel" aria-label="Closed-loop 작업 실행" data-event-id={eventId}>
-      <header><div><span>Closed-loop</span><strong>{role === "process_manager" ? "운영 관리자 작업" : "현장 점검 작업"}</strong></div><button type="button" className="operations-icon-button" onClick={() => void refresh()} aria-label="작업 상태 새로고침">↻</button></header>
-      <p>{loading ? "작업 상태를 확인하고 있습니다." : helper}</p>
+    <section className="operations-maintenance-workflow-panel" aria-label={localize(english, "Closed-loop 작업 실행", "Closed-loop workflow actions")} data-event-id={eventId}>
+      <header><div><span>Closed-loop</span><strong>{role === "process_manager" ? localize(english, "운영 관리자 작업", "Operations manager actions") : localize(english, "현장 점검 작업", "Field inspection actions")}</strong></div><button type="button" className="operations-icon-button" onClick={() => void refresh()} aria-label={localize(english, "작업 상태 새로고침", "Refresh workflow status")}>↻</button></header>
+      <p>{loading ? localize(english, "작업 상태를 확인하고 있습니다.", "Checking workflow status.") : helper}</p>
       {role === "process_manager"
         && state.inspectionResult?.outcome === "maintenance_recommended"
         && state.hasReviewedCostAnalysis
         && !state.recommendation ? (
         <label className="operations-field">
-          <span>정비 Action 판단</span>
+          <span>{localize(english, "정비 Action 판단", "Maintenance action decision")}</span>
           <select
             value={selectedActionCandidateId}
             onChange={(event) => setSelectedActionCandidateId(event.target.value)}
             disabled={!canManage || running}
           >
-            <option value="">Action 후보 선택</option>
+            <option value="">{localize(english, "Action 후보 선택", "Select action candidate")}</option>
             {actionCandidates.map((candidate) => (
               <option key={candidate.action_candidate_id} value={candidate.action_candidate_id}>
-                {ACTION_LABEL[candidate.action_code]}
+                {ACTION_LABEL[candidate.action_code][english ? 1 : 0]}
               </option>
             ))}
           </select>
-          <small>최저비용 option은 자동 선택되지 않으며, Action 판단은 생산 관리자가 명시적으로 수행합니다.</small>
+          <small>{localize(english, "최저비용 option은 자동 선택되지 않으며, Action 판단은 생산 관리자가 명시적으로 수행합니다.", "The lowest-cost option is never selected automatically; an operations manager explicitly chooses the action.")}</small>
         </label>
       ) : null}
       {role === "field_operator" && supportsCncMaintenance && state.inspectionWorkOrder?.status === "in_progress" ? (
         <fieldset className="operations-inspection-form" disabled={!canFieldExecute || running}>
-          <legend>현장 점검 사실</legend>
+          <legend>{localize(english, "현장 점검 사실", "Field inspection facts")}</legend>
           <label className="operations-field">
-            <span>점검 판정</span>
+            <span>{localize(english, "점검 판정", "Inspection outcome")}</span>
             <select value={inspectionOutcome} onChange={(event) => setInspectionOutcome(event.target.value as InspectionOutcome)}>
-              <option value="maintenance_recommended">정비 검토 필요</option>
-              <option value="no_action_required">추가 정비 불필요</option>
-              <option value="data_check_required">추가 데이터 확인 필요</option>
+              <option value="maintenance_recommended">{localize(english, "정비 검토 필요", "Maintenance review required")}</option>
+              <option value="no_action_required">{localize(english, "추가 정비 불필요", "No additional maintenance required")}</option>
+              <option value="data_check_required">{localize(english, "추가 데이터 확인 필요", "Additional data review required")}</option>
             </select>
           </label>
           <div className="operations-inspection-grid">
             <label className="operations-field">
-              <span>공구 마모 점검</span>
+              <span>{localize(english, "공구 마모 점검", "Tool-wear inspection")}</span>
               <select value={toolWearStatus} onChange={(event) => setToolWearStatus(event.target.value as InspectionChecklistStatus)}>
-                <option value="not_checked">미확인</option>
-                <option value="pass">정상</option>
-                <option value="fail">이상</option>
+                <option value="not_checked">{localize(english, "미확인", "Not checked")}</option>
+                <option value="pass">{localize(english, "정상", "Pass")}</option>
+                <option value="fail">{localize(english, "이상", "Fail")}</option>
               </select>
             </label>
             <label className="operations-field">
-              <span>공구 누적 사용시간 (분)</span>
-              <input type="number" min="0" step="1" value={toolWearMin} onChange={(event) => setToolWearMin(event.target.value)} placeholder="예: 220" />
+              <span>{localize(english, "공구 누적 사용시간 (분)", "Cumulative tool usage (min)")}</span>
+              <input type="number" min="0" step="1" value={toolWearMin} onChange={(event) => setToolWearMin(event.target.value)} placeholder={localize(english, "예: 220", "e.g. 220")} />
             </label>
             <label className="operations-field">
-              <span>냉각 경로 점검</span>
+              <span>{localize(english, "냉각 경로 점검", "Cooling-path inspection")}</span>
               <select value={coolingPathStatus} onChange={(event) => setCoolingPathStatus(event.target.value as InspectionChecklistStatus)}>
-                <option value="not_checked">미확인</option>
-                <option value="pass">정상</option>
-                <option value="fail">이상</option>
+                <option value="not_checked">{localize(english, "미확인", "Not checked")}</option>
+                <option value="pass">{localize(english, "정상", "Pass")}</option>
+                <option value="fail">{localize(english, "이상", "Fail")}</option>
               </select>
             </label>
             <label className="operations-field">
-              <span>냉각수 온도 (°C)</span>
-              <input type="number" min="0" step="0.1" value={coolantTemperatureC} onChange={(event) => setCoolantTemperatureC(event.target.value)} placeholder="예: 92" />
+              <span>{localize(english, "냉각수 온도 (°C)", "Coolant temperature (°C)")}</span>
+              <input type="number" min="0" step="0.1" value={coolantTemperatureC} onChange={(event) => setCoolantTemperatureC(event.target.value)} placeholder={localize(english, "예: 92", "e.g. 92")} />
             </label>
           </div>
           {inspectionOutcome === "maintenance_recommended" ? (
             <>
-              <strong className="operations-inspection-subtitle">비용 산정 기준 확인</strong>
+              <strong className="operations-inspection-subtitle">{localize(english, "비용 산정 기준 확인", "Cost-basis checks")}</strong>
               <div className="operations-inspection-grid">
                 <label className="operations-field">
-                  <span>사내 정비 가능</span>
+                  <span>{localize(english, "사내 정비 가능", "In-house maintenance available")}</span>
                   <select value={inHouseStatus} onChange={(event) => setInHouseStatus(event.target.value as "pass" | "fail" | "")}>
-                    <option value="">선택</option><option value="pass">예</option><option value="fail">아니오</option>
+                    <option value="">{localize(english, "선택", "Select")}</option><option value="pass">{localize(english, "예", "Yes")}</option><option value="fail">{localize(english, "아니오", "No")}</option>
                   </select>
                 </label>
                 <label className="operations-field">
-                  <span>교체용 인서트 확보</span>
+                  <span>{localize(english, "교체용 인서트 확보", "Replacement insert available")}</span>
                   <select value={sparePartAvailableStatus} onChange={(event) => setSparePartAvailableStatus(event.target.value as "pass" | "fail" | "")}>
-                    <option value="">선택</option><option value="pass">예</option><option value="fail">아니오</option>
+                    <option value="">{localize(english, "선택", "Select")}</option><option value="pass">{localize(english, "예", "Yes")}</option><option value="fail">{localize(english, "아니오", "No")}</option>
                   </select>
                 </label>
                 <label className="operations-field">
-                  <span>외부 업체 출동 필요</span>
+                  <span>{localize(english, "외부 업체 출동 필요", "Vendor dispatch required")}</span>
                   <select value={vendorDispatchRequiredStatus} onChange={(event) => setVendorDispatchRequiredStatus(event.target.value as "pass" | "fail" | "")}>
-                    <option value="">선택</option><option value="pass">예</option><option value="fail">아니오</option>
+                    <option value="">{localize(english, "선택", "Select")}</option><option value="pass">{localize(english, "예", "Yes")}</option><option value="fail">{localize(english, "아니오", "No")}</option>
                   </select>
                 </label>
                 <label className="operations-field">
-                  <span>냉각 계통 부품 교체 필요</span>
+                  <span>{localize(english, "냉각 계통 부품 교체 필요", "Cooling-system component replacement required")}</span>
                   <select value={componentReplacementRequiredStatus} onChange={(event) => setComponentReplacementRequiredStatus(event.target.value as "pass" | "fail" | "")}>
-                    <option value="">선택</option><option value="pass">예</option><option value="fail">아니오</option>
+                    <option value="">{localize(english, "선택", "Select")}</option><option value="pass">{localize(english, "예", "Yes")}</option><option value="fail">{localize(english, "아니오", "No")}</option>
                   </select>
                 </label>
               </div>
             </>
           ) : null}
           <label className="operations-field">
-            <span>발견 내용</span>
-            <textarea value={inspectionFindings} onChange={(event) => setInspectionFindings(event.target.value)} placeholder="현장에서 확인한 상태를 기록하세요." />
+            <span>{localize(english, "발견 내용", "Findings")}</span>
+            <textarea value={inspectionFindings} onChange={(event) => setInspectionFindings(event.target.value)} placeholder={localize(english, "현장에서 확인한 상태를 기록하세요.", "Record the condition verified on site.")} />
           </label>
           <label className="operations-field">
-            <span>추가 메모</span>
-            <textarea value={inspectionNote} onChange={(event) => setInspectionNote(event.target.value)} placeholder="필요할 때만 추가 근거를 남기세요." />
+            <span>{localize(english, "추가 메모", "Additional note")}</span>
+            <textarea value={inspectionNote} onChange={(event) => setInspectionNote(event.target.value)} placeholder={localize(english, "필요할 때만 추가 근거를 남기세요.", "Add supporting evidence only when needed.")} />
           </label>
-          <small>현장에서는 사실만 기록합니다. 정비 Action 후보는 Backend가 체크리스트와 측정값에서 산출합니다.</small>
+          <small>{localize(english, "현장에서는 사실만 기록합니다. 정비 Action 후보는 Backend가 체크리스트와 측정값에서 산출합니다.", "Record field facts only. The backend derives maintenance action candidates from checklist results and measurements.")}</small>
         </fieldset>
       ) : null}
       <button
@@ -668,7 +683,7 @@ export function MaintenanceWorkflowActionPanel({
         disabled={loading || running || !enabled || !command}
         onClick={() => command && void run(label, command)}
       >
-        {running ? "처리 중" : label}
+        {running ? localize(english, "처리 중", "Processing") : label}
       </button>
       {message ? <small className={message.tone === "error" ? "operations-cost-error" : "operations-workflow-success"}>{message.text}</small> : null}
       {pollingError ? <small className="operations-cost-error">{pollingError}</small> : null}

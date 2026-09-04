@@ -381,6 +381,7 @@ function workflowStatusLabel(value: string | null | undefined, english = false) 
     inspection_approved: ["점검 승인", "Inspection approved"],
     inspection_in_progress: ["점검 중", "Inspection in progress"],
     inspection_completed: ["점검 완료", "Inspection completed"],
+    recommendation_proposed: ["정비안 검토 대기", "Maintenance recommendation proposed"],
     maintenance_requested: ["정비 요청", "Maintenance requested"],
     maintenance_approved: ["정비 승인", "Maintenance approved"],
     maintenance_in_progress: ["정비 중", "Maintenance in progress"],
@@ -389,6 +390,32 @@ function workflowStatusLabel(value: string | null | undefined, english = false) 
     ready_for_reprediction: ["재예측 가능", "Ready for re-prediction"],
   };
   return value ? (labels[value]?.[english ? 1 : 0] ?? value.replaceAll("_", " ")) : localized(english, "대기", "Pending");
+}
+
+function workflowActionLabel(
+  action: { actionId: string; label?: string | null } | null | undefined,
+  english = false,
+) {
+  if (!action) return null;
+  if (!english) return action.label ?? action.actionId;
+  const labels: Record<string, string> = {
+    create_inspection_work_order: "Create inspection work request",
+    request_inspection_work_order: "Create inspection work request",
+    request_inspection: "Request inspection",
+    approve_inspection_work_order: "Approve inspection work request",
+    start_inspection_work_order: "Start inspection",
+    start_inspection: "Start inspection",
+    complete_inspection_work_order: "Record and complete inspection",
+    complete_inspection: "Record and complete inspection",
+    calculate_maintenance_cost: "Run maintenance cost analysis",
+    create_operations_manual_recommendation: "Create maintenance recommendation",
+    decide_operations_manual_recommendation: "Review maintenance recommendation",
+    approve_maintenance_work_order: "Approve maintenance WorkOrder",
+    start_maintenance_action: "Start maintenance",
+    complete_maintenance_action: "Complete maintenance",
+    request_maintenance_replay: "Resume post-maintenance observation",
+  };
+  return labels[action.actionId] ?? action.actionId.replaceAll("_", " ");
 }
 
 function average(values: Array<number | null | undefined>): number | null {
@@ -503,6 +530,7 @@ function RiskMetricsBlock({
       title={compact ? localized(english, "전체 운영 리스크", "Overall operational risk") : localized(english, "현재 운영 신호", "Current operating signals")}
       eyebrow="LIVE STATUS"
       icon={<Gauge size={15} />}
+      guidance={localized(english, "전체 설비 상태와 선택 Case의 작업·판단 대기 규모를 한눈에 확인하는 운영 요약입니다.", "An operational summary of fleet status plus work and decision backlog for the selected case.")}
       className={compact ? "span-6 executive-summary-card" : "span-12"}
     >
       <div className="rw-composed-metrics">
@@ -536,6 +564,7 @@ function FactoryMapBlock({
       title={localized(english, "공장 설비 상태맵", "Factory equipment status map")}
       eyebrow="REAL-TIME FACTORY STATUS"
       icon={<Building2 size={15} />}
+      guidance={localized(english, "라인별 설비의 현재 위험 상태와 고장 확률을 비교하고 클릭해 해당 Case로 전환합니다.", "Compares current risk state and failure probability by line; select an asset to open its case.")}
       className="span-12"
     >
       <div className="rw-factory-map">
@@ -1221,6 +1250,7 @@ function FeatureTrendBlock({
       title={localized(english, "실시간 피쳐 그래프", "Live feature trends")}
       eyebrow="FEATURE TREND"
       icon={<RadioTower size={15} />}
+      guidance={localized(english, "선택 Case의 고장 위험과 주요 센서 시계열을 같은 관측 기준으로 비교합니다. 예측 구간은 단기 추세 참고값입니다.", "Compares failure risk and key sensor time series on the selected case's observation basis. Forecast ranges are short-term trend references only.")}
       className="span-12"
     >
       {loading && !hasChartData ? (
@@ -1250,6 +1280,7 @@ function BusinessKpisBlock({
       title={localized(english, "경영 KPI 기준", "Business KPI basis")}
       eyebrow="BUSINESS CONTEXT"
       icon={<BriefcaseBusiness size={15} />}
+      guidance={localized(english, "현재 운영 판단을 경영 지표와 연결하기 위한 회사 기준 KPI 문맥입니다.", "Company KPI context used to connect the current operational decision to business impact.")}
       className="span-6"
     >
       {context?.business_metrics.length ? (
@@ -1437,6 +1468,7 @@ function RiskPortfolioBlock({
       title={localized(english, "운영 리스크 포트폴리오", "Operational risk portfolio")}
       eyebrow="RISK PORTFOLIO"
       icon={<ChartNoAxesCombined size={15} />}
+      guidance={localized(english, "고장 확률이 높은 이벤트를 우선순위 순으로 비교해 어떤 Case를 먼저 볼지 판단합니다.", "Ranks high-risk events to help decide which case should be reviewed first.")}
       className="span-6"
     >
       <div className="rw-composed-list">
@@ -1467,6 +1499,7 @@ function LineRiskBlock({ model }: { model: OperationsBootstrapModel }) {
       title={localized(english, "라인별 위험", "Risk by line")}
       eyebrow="LINE RISK"
       icon={<Activity size={15} />}
+      guidance={localized(english, "라인 단위 평균 위험도를 비교해 위험이 특정 설비에 국한됐는지 라인 전체로 확산됐는지 확인합니다.", "Compares average risk by line to show whether risk is isolated to one asset or broader across a line.")}
       className="span-6"
     >
       <div className="rw-composed-bars">
@@ -1504,6 +1537,7 @@ function RiskQueueBlock({
       title={localized(english, "우선 확인 큐", "Priority review queue")}
       eyebrow="PRIORITY QUEUE"
       icon={<ShieldAlert size={15} />}
+      guidance={localized(english, "위험도와 담당 정보를 함께 보여 현장 엔지니어가 먼저 확인할 설비 순서를 정합니다.", "Combines risk and ownership to prioritize which assets a field engineer should review first.")}
       className="span-6"
     >
       <div className="rw-composed-list">
@@ -1544,6 +1578,7 @@ function AssetBriefBlock({
       title={localized(english, "선택 설비", "Selected asset")}
       eyebrow="ASSET CONTEXT"
       icon={<Boxes size={15} />}
+      guidance={localized(english, "현재 선택한 설비의 위치·중요도·담당·위험·예상 정지를 Case 문맥으로 요약합니다.", "Summarizes the selected asset's location, criticality, owner, risk, and expected downtime as case context.")}
       className="span-6"
     >
       {asset ? (
@@ -1837,7 +1872,7 @@ function WorkflowLifecycleBlock({
     >
       {lifecycle ? (
         <div className="rw-composed-lifecycle">
-          <strong>{lifecycle.currentStepLabel}</strong>
+          <strong>{english ? workflowStatusLabel(lifecycle.currentStep, true) : lifecycle.currentStepLabel}</strong>
           <div>
             {lifecycle.completedSteps.map((step) => (
               <span key={step}>{workflowStatusLabel(step, english)}</span>
@@ -1929,7 +1964,7 @@ function CaseLineageBlock({ props }: { props: RoleComposedWorkspaceProps }) {
         : "pending",
       headline: latestWork
         ? `${latestWork.workType} · ${workflowStatusLabel(latestWork.status, english)}`
-        : (detail?.closedLoop?.primaryAction?.label ?? localized(english, "점검 작업요청 미생성", "Inspection work request not created")),
+        : (workflowActionLabel(detail?.closedLoop?.primaryAction, english) ?? localized(english, "점검 작업요청 미생성", "Inspection work request not created")),
       detail: latestWork
         ? `${latestWork.workOrderId} · ${latestWork.actorDisplayName ?? latestWork.assignedTo ?? localized(english, "담당 미정", "Owner pending")}`
         : localized(english, "승인된 점검·정비 작업이 연결됩니다.", "Approved inspection and maintenance work will be connected here."),
@@ -2037,6 +2072,7 @@ function WorkflowActionsBlock({
         canManage={props.canManageWorkflow}
         canFieldExecute={props.canExecuteFieldWorkflow}
         canMaintenanceExecute={props.experienceKind === "maintenance" && props.canExecuteFieldWorkflow}
+        locale={english ? "en-US" : "ko-KR"}
         onChanged={props.onWorkflowChanged}
       />
       <MaintenanceCostDecisionPanel
@@ -2044,6 +2080,7 @@ function WorkflowActionsBlock({
         workspaceId={props.model.context.workspaceId}
         eventId={props.selectedEvent.eventId}
         guidance={props.detail?.inspectionTargets.find((item) => item.inspectionGuidance)?.inspectionGuidance ?? null}
+        locale={english ? "en-US" : "ko-KR"}
         onChanged={props.onWorkflowChanged}
       />
       <OperationalDecisionSupportPanel
@@ -2055,6 +2092,7 @@ function WorkflowActionsBlock({
         riskStatus={props.selectedEvent.status}
         role={operationalDecisionBriefRole(props.role)}
         canMaterialize={props.canMaterializeAgentSummary}
+        locale={english ? "en-US" : "ko-KR"}
       />
     </Block>
   );
