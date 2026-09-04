@@ -9,6 +9,13 @@
 .rw-composed-block > header > div { display: flex; min-width: 0; flex-direction: column; gap: 1px; }
 .rw-composed-block > header span { color: var(--rw-muted, #8ea0b3); font-size: 8px; font-weight: 800; letter-spacing: .08em; }
 .rw-composed-block > header strong { color: var(--rw-text, #e7edf3); font-size: 11px; }
+.rw-composed-block > header > .rw-guidance-hint { position:relative; display:block; flex:0 0 auto; min-width:auto; margin-left:auto; color:inherit; font-size:inherit; font-weight:inherit; letter-spacing:normal; }
+.rw-guidance-hint > button { display:grid; width:26px; min-height:26px!important; place-items:center; border:1px solid transparent; border-radius:999px; padding:0; color:var(--rw-muted,#8ea0b3); background:transparent; cursor:help; }
+.rw-guidance-hint > button:hover,.rw-guidance-hint > button:focus-visible { border-color:rgba(96,165,250,.28); color:var(--rw-text,#e7edf3); background:rgba(59,130,246,.08); outline:none; }
+.rw-guidance-hint > span[role="tooltip"] { position:absolute; top:calc(100% + 7px); right:0; z-index:30; width:min(290px,70vw); padding:8px 9px; border:1px solid var(--rw-border,rgba(148,163,184,.22)); border-radius:7px; color:var(--rw-text,#e7edf3)!important; background:var(--rw-surface-strong,#0f172a); box-shadow:0 10px 30px rgba(15,23,42,.2); font-size:11px!important; font-weight:600!important; line-height:1.5!important; letter-spacing:normal!important; opacity:0; pointer-events:none; transform:translateY(-2px); visibility:hidden; transition:opacity .12s ease .85s,transform .12s ease .85s,visibility 0s linear .97s; }
+.rw-guidance-hint:hover > span[role="tooltip"] { opacity:1; transform:translateY(0); visibility:visible; transition-delay:.85s,.85s,.85s; }
+.rw-guidance-hint:focus-within > span[role="tooltip"] { opacity:1; transform:translateY(0); visibility:visible; transition-delay:0s; }
+:root[data-guidance="hidden"] .rw-guidance-hint { display:none!important; }
 .rw-composed-block__body { padding: 10px 11px; }
 .rw-composed-metrics { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--rw-border, rgba(148,163,184,.14)); border-radius: 7px; background: var(--rw-border, rgba(148,163,184,.14)); }
 .rw-composed-metrics > div { display: flex; min-height: 54px; flex-direction: column; justify-content: center; gap: 3px; padding: 7px 9px; background: var(--rw-surface-strong, rgba(15,23,42,.9)); }
