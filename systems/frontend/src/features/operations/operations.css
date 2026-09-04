@@ -244,6 +244,42 @@
   background: rgba(255,255,255,.025);
   cursor: help;
 }
+.operations-delayed-help > [role="tooltip"] {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 80;
+  width: min(380px, 72vw);
+  padding: 10px 12px;
+  border: 1px solid var(--operations-border-strong);
+  border-radius: 7px;
+  color: var(--operations-text);
+  background: var(--operations-surface-2);
+  box-shadow: 0 12px 30px rgba(0,0,0,.3);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.55;
+  text-align: left;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-3px);
+  transition: opacity 120ms ease, transform 120ms ease, visibility 0s linear 120ms;
+}
+.operations-delayed-help:hover > [role="tooltip"] {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition-delay: 1s, 1s, 1s;
+}
+.operations-delayed-help:focus-visible > [role="tooltip"] {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition-delay: 0s;
+}
+:root[data-guidance="hidden"] .operations-delayed-help { display: none; }
 .operations-panel-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .operations-panel-body { min-width: 0; padding: 14px; }
 

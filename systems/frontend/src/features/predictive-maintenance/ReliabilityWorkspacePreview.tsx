@@ -314,7 +314,7 @@ export function ReliabilityWorkspacePreview({
   children: ReactNode;
 }) {
   const { setLocale } = useI18n();
-  const { preferences, setPreset, setShowTechnicalMetadata, setTheme } = useDisplayPreferences();
+  const { preferences, setPreset, setShowGuidance, setTheme } = useDisplayPreferences();
   const [locale, setReliabilityLocaleState] = useState<"ko-KR" | "en-US">(initialReliabilityLocale);
   const english = locale === "en-US";
   const experience = useMemo(() => resolveReliabilityRoleExperience(user), [user]);
@@ -357,12 +357,6 @@ export function ReliabilityWorkspacePreview({
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0, behavior: "auto" });
   }, [activeNav.id]);
-
-  useEffect(() => {
-    if (experience.kind !== "engineering" && preferences.showTechnicalMetadata) {
-      setShowTechnicalMetadata(false);
-    }
-  }, [experience.kind, preferences.showTechnicalMetadata, setShowTechnicalMetadata]);
 
   useEffect(() => {
     window.localStorage.setItem(RELIABILITY_LOCALE_STORAGE_KEY, locale);
@@ -722,7 +716,7 @@ export function ReliabilityWorkspacePreview({
               <div className="rw-preview-settings-group"><span>{english ? "Language" : "언어"}</span><div className="rw-preview-segmented two"><button type="button" className={!english ? "is-active" : ""} onClick={() => setReliabilityLocale("ko-KR")}>한국어</button><button type="button" className={english ? "is-active" : ""} onClick={() => setReliabilityLocale("en-US")}>English</button></div></div>
               <div className="rw-preview-settings-group"><span>{english ? "Theme" : "화면 테마"}</span><div className="rw-preview-segmented three">{(["light", "dark", "system"] as const).map((value) => <button type="button" key={value} className={preferences.theme === value ? "is-active" : ""} onClick={() => setTheme(value)}>{value === "light" ? (english ? "Light" : "라이트") : value === "dark" ? (english ? "Dark" : "다크") : (english ? "System" : "시스템")}</button>)}</div></div>
               <div className="rw-preview-settings-group"><span>{english ? "Display preset" : "화면 프리셋"}</span><div className="rw-preview-segmented four">{(["compact", "standard", "large", "accessible"] as const).map((value) => <button type="button" key={value} className={preset === value ? "is-active" : ""} onClick={() => setPreset(value)}>{value === "compact" ? (english ? "Report" : "보고/프린트") : value === "standard" ? (english ? "Desktop" : "데스크톱") : value === "large" ? (english ? "Large" : "큰 글씨") : (english ? "Presentation" : "발표/프로젝터")}</button>)}</div></div>
-              {experience.kind === "engineering" ? <button type="button" className="rw-preview-settings-action" onClick={() => setShowTechnicalMetadata(!preferences.showTechnicalMetadata)}><span>{english ? "Technical metadata" : "기술 메타데이터"}</span><strong>{preferences.showTechnicalMetadata ? (english ? "Shown" : "표시") : (english ? "Hidden" : "숨김")}</strong></button> : null}
+              <button type="button" className="rw-preview-settings-action" onClick={() => setShowGuidance(!preferences.showGuidance)}><span>{english ? "Screen guidance" : "화면 도움말"}</span><strong>{preferences.showGuidance ? (english ? "Shown" : "표시") : (english ? "Hidden" : "숨김")}</strong></button>
               <button type="button" className="rw-preview-settings-action" onClick={onRefresh} disabled={refreshing}><span><RefreshCw size={12} />{english ? "Refresh data" : "최신 데이터 다시 확인"}</span></button>
               <button type="button" className="rw-preview-settings-action" onClick={() => { setLeftOpen(false); setAssistantOpen(false); setSettingsOpen(false); }}><span><Focus size={12} />{english ? "Focus mode" : "집중 모드"}</span></button>
               <button type="button" className="rw-preview-settings-action is-danger" onClick={() => void onLogout()}><span><LogOut size={12} />{english ? "Switch account" : "계정 전환"}</span></button>

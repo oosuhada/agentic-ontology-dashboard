@@ -245,11 +245,15 @@ class AdminUserUpdateRequest(BaseModel):
 class DisplayPreferenceUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    version: Literal[3] = 3
+    # Accept the previous payload during a rolling frontend/backend deploy. The
+    # legacy metadata switch is intentionally discarded instead of persisting
+    # it into the user-facing preference contract.
+    version: Literal[3, 4] = 4
     textSize: Literal["small", "default", "large", "extra-large"] = "default"
     density: Literal["compact", "standard", "comfortable"] = "standard"
     theme: Literal["light", "dark", "system"] = "light"
-    showTechnicalMetadata: bool = False
+    showGuidance: bool = True
+    showTechnicalMetadata: bool | None = Field(default=None, exclude=True)
 
 
 class Principal(BaseModel):

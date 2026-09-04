@@ -1,8 +1,8 @@
 /* Final cascade: readable type, density-aware controls, responsive containment, and safe hit targets. */
 
-:root[data-technical-metadata="hidden"] .board-runtime-technical { display: none !important; }
-:root[data-technical-metadata="hidden"] .board-runtime-meta { justify-content: flex-end; }
-:root[data-technical-metadata="hidden"] .board-runtime-meta .runtime-state { margin-left: 0; }
+:root:not([data-technical-metadata="shown"]) .board-runtime-technical { display: none !important; }
+:root:not([data-technical-metadata="shown"]) .board-runtime-meta { justify-content: flex-end; }
+:root:not([data-technical-metadata="shown"]) .board-runtime-meta .runtime-state { margin-left: 0; }
 
 .fd-state.state-degraded { color: var(--fd-warning); }
 .fd-state.intent-permission { color: var(--fd-text-secondary); background: var(--fd-surface-subtle); }

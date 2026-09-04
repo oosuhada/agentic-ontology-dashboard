@@ -15,7 +15,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   createOperationsAgentReviewSummary,
@@ -194,14 +194,16 @@ const FACTORY_LAYOUT_NOTICE = "공장 배치 기준 · 연결된 설비의 실�
 const LIVE_FEATURE_NOTICE = "센서명은 현장 용어로 표시하며, 관측 이력과 최신값 및 단기 추세 범위를 한 그래프에서 확인할 수 있습니다.";
 
 function DelayedHelp({ label, detail }: { label: string; detail: string }) {
+  const tooltipId = useId();
   return (
     <button
       type="button"
       className="operations-delayed-help"
       aria-label={label}
-      title={detail}
+      aria-describedby={tooltipId}
     >
       <Info size={14} aria-hidden="true" />
+      <span id={tooltipId} role="tooltip">{detail}</span>
     </button>
   );
 }

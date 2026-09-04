@@ -9,6 +9,7 @@ import type { AuthUser } from "../../types";
 import { useAuth } from "./AuthContext";
 import { AuthShell } from "./AuthShell";
 import { useI18n } from "../../ui/i18n/I18nProvider";
+import { useDisplayPreferences } from "../../ui/foundry/displayPreferences";
 import { Info } from "lucide-react";
 
 const DEMO_ACCOUNTS = [
@@ -85,6 +86,7 @@ function roleAwareLandingPath(user: AuthUser): string {
 export function LoginPage() {
   const { login } = useAuth();
   const { locale } = useI18n();
+  const { preferences } = useDisplayPreferences();
   const english = locale === "en-US";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -199,7 +201,7 @@ export function LoginPage() {
           <header
             className="demo-account-heading"
             tabIndex={0}
-            title={roleContextDescription}
+            title={preferences.showGuidance ? roleContextDescription : undefined}
             aria-label={`${english ? "Choose a role" : "역할 선택"}. ${roleContextDescription}`}
           >{english ? "Choose a role" : "역할 선택"}</header>
           <div
@@ -221,7 +223,7 @@ export function LoginPage() {
                     {english ? account.label.en : account.label.ko}
                   </strong>
                 </button>
-                <div
+                {preferences.showGuidance ? <div
                   className={`demo-account-info ${openInfo === account.email ? "is-open" : ""}`}
                 >
                   <button
@@ -253,7 +255,7 @@ export function LoginPage() {
                     </p>
                     <small>{account.email}</small>
                   </div>
-                </div>
+                </div> : null}
               </div>
             ))}
           </div>

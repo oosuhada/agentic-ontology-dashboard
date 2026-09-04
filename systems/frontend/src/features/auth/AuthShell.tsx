@@ -1,6 +1,6 @@
 import { navigate } from "../../routing";
 import { useEffect, useState } from "react";
-import { Activity, ArrowLeft, ArrowRight, BarChart3, ClipboardCheck, FileText, Gauge, LockKeyhole, MapPinned, ShieldCheck, Wrench } from "lucide-react";
+import { Activity, ArrowLeft, ArrowRight, BarChart3, ClipboardCheck, FileText, LockKeyhole, MapPinned, ShieldCheck } from "lucide-react";
 import { DisplayMenu } from "../../ui/foundry/DisplayMenu";
 import { useI18n } from "../../ui/i18n/I18nProvider";
 import { HanbitLogo } from "../../ui/foundry/HanbitLogo";
@@ -127,18 +127,13 @@ export function AuthShell({
       <div className="auth-control-plane">
         <aside className="auth-resource-context">
           <header><span><Activity size={20} /></span><div><strong>{english ? "Connect equipment risk to operational decisions" : "설비 리스크를 운영 의사결정으로 연결"}</strong><small>Live status → Decision Case → Outcome</small></div></header>
-          <section className={`auth-product-story${story.visual === "report" ? " has-value-strip" : ""}`} aria-roledescription="carousel" aria-label={english ? "Product capabilities" : "제품 주요 기능"}>
+          <section className="auth-product-story" aria-roledescription="carousel" aria-label={english ? "Product capabilities" : "제품 주요 기능"}>
             <div className="auth-story-copy" key={story.eyebrow.en}>
               <span className="section-label">{english ? story.eyebrow.en : story.eyebrow.ko}</span>
               <h1>{english ? story.title.en : story.title.ko}</h1>
               <p>{english ? story.detail.en : story.detail.ko}</p>
             </div>
             <ProductStoryVisual kind={story.visual} english={english} />
-            {story.visual === "report" ? <section className="auth-value-strip">
-              <span><Gauge size={15} /><strong>Live</strong><small>{english ? "Live equipment status" : "실시간 설비 상태"}</small></span>
-              <span><ShieldCheck size={15} /><strong>Traceable</strong><small>{english ? "Evidence-based decisions" : "근거 기반 판단"}</small></span>
-              <span><Wrench size={15} /><strong>Closed loop</strong><small>{english ? "Maintenance outcomes" : "정비 결과 확인"}</small></span>
-            </section> : null}
             <footer className="auth-story-controls">
               <div>{PRODUCT_STORIES.map((item, index) => <button type="button" key={item.eyebrow.en} className={index === storyIndex ? "is-active" : ""} onClick={() => setStoryIndex(index)} aria-label={english ? `Product story ${index + 1}` : `${index + 1}번째 제품 소개`} aria-current={index === storyIndex ? "true" : undefined} />)}</div>
               <span><button type="button" onClick={() => moveStory(-1)} aria-label={english ? "Previous" : "이전"}><ArrowLeft size={14} /></button><button type="button" onClick={() => moveStory(1)} aria-label={english ? "Next" : "다음"}><ArrowRight size={14} /></button></span>

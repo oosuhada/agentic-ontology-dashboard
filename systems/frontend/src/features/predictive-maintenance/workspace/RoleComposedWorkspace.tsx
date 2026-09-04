@@ -43,6 +43,7 @@ import type {
 import {
   displayExplanationMethod,
   displayArtifactKind,
+  displayEvidenceReference,
   displayInspectionAssociation,
   displayReportType,
   displaySensorFactorLabel,
@@ -2499,14 +2500,15 @@ function ReportSummaryBlock({
             </div>
           ) : null}
           {!compact ? (
-            <details className="rw-report-evidence rw-technical-metadata">
+            <details className="rw-report-evidence">
               <summary>
-                근거 데이터 확인 · {new Set(evidenceRefs).size} refs
+                세부 근거 · {new Set(evidenceRefs).size}건
               </summary>
               <ul>
                 {[...new Set(evidenceRefs)].slice(0, 12).map((ref) => (
                   <li key={ref}>
-                    <code>{ref}</code>
+                    <span>{displayEvidenceReference(ref)}</span>
+                    <code className="rw-technical-metadata">{ref}</code>
                   </li>
                 ))}
               </ul>

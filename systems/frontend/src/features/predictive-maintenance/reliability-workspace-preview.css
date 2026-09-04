@@ -545,7 +545,7 @@
     grid-template-columns: 56px minmax(0,1fr)!important;
   }
 }
-:root[data-technical-metadata="hidden"] .rw-technical-metadata { display:none!important; }
+:root:not([data-technical-metadata="shown"]) .rw-technical-metadata { display:none!important; }
 .rw-preview-shell .rw-preview-left .rw-preview-left-heading span,
 .rw-preview-shell .rw-preview-left .rw-preview-nav-group>header,
 .rw-preview-shell .rw-preview-left .rw-preview-scope span,

@@ -289,6 +289,18 @@ export function displayArtifactKind(value?: string | null): string {
   return "연결된 기술 근거";
 }
 
+export function displayEvidenceReference(value?: string | null): string {
+  if (!value) return "연결된 업무 근거";
+  const normalized = value.toLowerCase();
+  if (normalized.includes("inspection")) return "현장 점검 결과";
+  if (normalized.includes("maintenance")) return "정비 이력과 조치 결과";
+  if (normalized.includes("observation") || normalized.includes("sensor")) return "설비 센서 관측";
+  if (normalized.includes("prediction") || normalized.includes("result")) return "고장 위험 예측 결과";
+  if (normalized.includes("model")) return "적용 모델의 판단 근거";
+  if (normalized.includes("work-order") || normalized.includes("work_order")) return "연결된 작업 요청";
+  return "연결된 업무 근거";
+}
+
 export function displayDataSource(value?: string | null): string {
   if (!value) return "연결된 운영 데이터";
   const normalized = value.toLowerCase();

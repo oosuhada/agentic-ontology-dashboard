@@ -274,9 +274,12 @@ th { color: #667085; background: #f9fafb; }
 .demo-account-info { position: relative; display: grid; place-items: center; }
 .demo-account-info-trigger { display: grid; width: 27px; height: 100%; min-height: 44px; place-items: center; border: 0; border-left: 1px solid var(--fd-border); border-radius: 0 8px 8px 0; color: var(--fd-text-muted); background: transparent; cursor: pointer; }
 .demo-account-info-trigger:hover, .demo-account-info-trigger:focus-visible, .demo-account-info.is-open .demo-account-info-trigger { color: var(--fd-accent); background: var(--fd-accent-soft); }
-.demo-account-popover { position: absolute; right: -8px; bottom: calc(100% + 8px); z-index: 30; display: none; width: min(270px, calc(100vw - 36px)); padding: 12px 13px; border: 1px solid var(--fd-border-strong); border-radius: 10px; color: var(--fd-text); background: var(--fd-surface-raised); box-shadow: var(--fd-shadow-popover); }
+.demo-account-popover { position: absolute; right: -8px; bottom: calc(100% + 8px); z-index: 30; display: block; width: min(270px, calc(100vw - 36px)); padding: 12px 13px; border: 1px solid var(--fd-border-strong); border-radius: 10px; color: var(--fd-text); background: var(--fd-surface-raised); box-shadow: var(--fd-shadow-popover); opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(3px); transition: opacity 120ms ease, transform 120ms ease, visibility 0s linear 120ms; }
 .demo-account-option:first-child .demo-account-popover { right: auto; left: calc(100% + 8px); }
-.demo-account-info:hover .demo-account-popover, .demo-account-info:focus-within .demo-account-popover, .demo-account-info.is-open .demo-account-popover { display: block; }
+.demo-account-info:hover .demo-account-popover, .demo-account-info:focus-within .demo-account-popover { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0); transition-delay: 1s, 1s, 1s; }
+.demo-account-info.is-open .demo-account-popover { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0); transition-delay: 0s; }
+:root[data-guidance="hidden"] .demo-account-option { grid-template-columns: minmax(0,1fr); }
+:root[data-guidance="hidden"] .demo-account-card { border-radius: 9px; }
 .demo-account-popover strong { display: block; font-size: 11px; }
 .demo-account-popover p { margin: 6px 0 8px; color: var(--fd-text-secondary); font-size: 10px; line-height: 1.5; }
 .demo-account-popover small { color: var(--fd-text-muted); font-size: 9px; }

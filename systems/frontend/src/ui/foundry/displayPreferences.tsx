@@ -13,11 +13,11 @@ export type DisplayDensity = "compact" | "standard" | "comfortable";
 export type DisplayTheme = "light" | "dark" | "system";
 
 export interface DisplayPreferences {
-  version: 3;
+  version: 4;
   textSize: DisplayTextSize;
   density: DisplayDensity;
   theme: DisplayTheme;
-  showTechnicalMetadata: boolean;
+  showGuidance: boolean;
 }
 
 export type DisplayPreset = "compact" | "standard" | "large" | "accessible";
@@ -28,16 +28,16 @@ interface DisplayPreferencesContextValue {
   setDensity: (value: DisplayDensity) => void;
   setTheme: (value: DisplayTheme) => void;
   setPreset: (value: DisplayPreset) => void;
-  setShowTechnicalMetadata: (value: boolean) => void;
+  setShowGuidance: (value: boolean) => void;
   reset: () => void;
 }
 
 const DEFAULT_PREFERENCES: DisplayPreferences = {
-  version: 3,
+  version: 4,
   textSize: "default",
   density: "standard",
   theme: "light",
-  showTechnicalMetadata: false,
+  showGuidance: true,
 };
 
 const PRESETS: Record<DisplayPreset, Pick<DisplayPreferences, "textSize" | "density">> = {
@@ -53,7 +53,7 @@ const THEMES = new Set<DisplayTheme>(["light", "dark", "system"]);
 const DisplayPreferencesContext = createContext<DisplayPreferencesContextValue | null>(null);
 
 export function displayPreferenceStorageKey(scope: string) {
-  return `ontology-dashboard:display:v3:${scope || "guest"}`;
+  return `ontology-dashboard:display:v4:${scope || "guest"}`;
 }
 
 export function normalizeDisplayPreferences(value: unknown): DisplayPreferences {
@@ -74,11 +74,11 @@ export function normalizeDisplayPreferences(value: unknown): DisplayPreferences 
   const version = Number(candidate.version ?? 2);
   const migratedDensity = version < 3 && textSize === "default" && density === "compact" ? "standard" : density;
   return {
-    version: 3,
+    version: 4,
     textSize,
     density: migratedDensity,
     theme: THEMES.has(candidate.theme as DisplayTheme) ? candidate.theme as DisplayTheme : DEFAULT_PREFERENCES.theme,
-    showTechnicalMetadata: candidate.showTechnicalMetadata === true,
+    showGuidance: typeof candidate.showGuidance === "boolean" ? candidate.showGuidance : true,
   };
 }
 
@@ -86,6 +86,7 @@ export function loadDisplayPreferences(scope: string, storage: Pick<Storage, "ge
   const key = displayPreferenceStorageKey(scope);
   const candidates = [
     storage.getItem(key),
+    storage.getItem(`ontology-dashboard:display:v3:${scope || "guest"}`),
     storage.getItem(`ontology-dashboard:display:v2:${scope || "guest"}`),
     storage.getItem(`ontology-dashboard:display:${scope || "guest"}`),
     scope === "guest" ? storage.getItem("ontology-dashboard-display") : null,
@@ -107,7 +108,8 @@ function applyDisplayPreferences(preferences: DisplayPreferences) {
   const root = document.documentElement;
   root.dataset.textSize = preferences.textSize;
   root.dataset.density = preferences.density;
-  root.dataset.technicalMetadata = preferences.showTechnicalMetadata ? "shown" : "hidden";
+  root.dataset.guidance = preferences.showGuidance ? "shown" : "hidden";
+  root.dataset.technicalMetadata = new URLSearchParams(window.location.search).get("diagnostic_metadata") === "1" ? "shown" : "hidden";
   const resolvedTheme = preferences.theme === "system"
     ? window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
     : preferences.theme;
@@ -164,7 +166,7 @@ export function DisplayPreferencesProvider({ scope, children }: { scope: string;
     setDensity: (density) => setPreferences((current) => ({ ...current, density })),
     setTheme: (theme) => setPreferences((current) => ({ ...current, theme })),
     setPreset: (preset) => setPreferences((current) => ({ ...current, ...PRESETS[preset] })),
-    setShowTechnicalMetadata: (showTechnicalMetadata) => setPreferences((current) => ({ ...current, showTechnicalMetadata })),
+    setShowGuidance: (showGuidance) => setPreferences((current) => ({ ...current, showGuidance })),
     reset: () => setPreferences({ ...DEFAULT_PREFERENCES }),
   }), [preferences]);
 

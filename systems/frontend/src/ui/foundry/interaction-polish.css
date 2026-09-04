@@ -133,7 +133,7 @@ button, input, select, textarea { line-height: var(--od-leading-control); }
 .od-display-advanced { margin-bottom: 10px; border-top: 1px solid var(--fd-border); padding-top: 7px; }
 .od-display-advanced > summary { cursor: pointer; color: var(--fd-text-secondary); font-size: var(--od-type-2xs); font-weight: var(--od-weight-semibold); }
 .od-display-advanced[open] > summary { margin-bottom: 8px; color: var(--fd-text); }
-.od-display-metadata-toggle {
+.od-display-guidance-toggle {
   display: flex;
   width: 100%;
   min-height: var(--od-control-height);
@@ -148,10 +148,10 @@ button, input, select, textarea { line-height: var(--od-leading-control); }
   background: var(--fd-surface);
   text-align: left;
 }
-.od-display-metadata-toggle > span { display: flex; min-width: 0; flex-direction: column; gap: 1px; }
-.od-display-metadata-toggle strong { color: var(--fd-text); font-size: var(--od-type-xs); }
-.od-display-metadata-toggle small { color: var(--fd-text-muted); font-size: var(--od-type-2xs); }
-.od-display-metadata-toggle b { border-radius: 999px; padding: 2px 6px; color: var(--fd-accent); background: var(--fd-accent-soft); font-size: var(--od-type-2xs); }
+.od-display-guidance-toggle > span { display: flex; min-width: 0; flex-direction: column; gap: 1px; }
+.od-display-guidance-toggle strong { color: var(--fd-text); font-size: var(--od-type-xs); }
+.od-display-guidance-toggle small { color: var(--fd-text-muted); font-size: var(--od-type-2xs); }
+.od-display-guidance-toggle b { border-radius: 999px; padding: 2px 6px; color: var(--fd-accent); background: var(--fd-accent-soft); font-size: var(--od-type-2xs); }
 .od-display-options button, .od-display-reset {
   min-height: var(--od-control-height);
   white-space: nowrap;
@@ -196,12 +196,12 @@ button, input, select, textarea { line-height: var(--od-leading-control); }
   font-size: 12px!important;
 }
 .od-display-presets button strong,
-.od-display-metadata-toggle strong {
+.od-display-guidance-toggle strong {
   font-size: 13px!important;
 }
 .od-display-presets button small,
-.od-display-metadata-toggle small,
-.od-display-metadata-toggle b {
+.od-display-guidance-toggle small,
+.od-display-guidance-toggle b {
   font-size: 12px!important;
 }
 
@@ -365,12 +365,12 @@ button, input, select, textarea { line-height: var(--od-leading-control); }
 .od-display-popover legend,
 .od-display-popover p,
 .od-display-popover .od-display-advanced > summary,
-.od-display-popover .od-display-metadata-toggle small,
-.od-display-popover .od-display-metadata-toggle b {
+.od-display-popover .od-display-guidance-toggle small,
+.od-display-popover .od-display-guidance-toggle b {
   font-size: 11px !important;
 }
 .od-display-popover .od-display-options button,
 .od-display-popover .od-display-reset,
-.od-display-popover .od-display-metadata-toggle {
+.od-display-popover .od-display-guidance-toggle {
   min-height: 32px !important;
 }

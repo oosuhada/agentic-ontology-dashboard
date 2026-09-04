@@ -230,11 +230,11 @@ export async function getCurrentUser(signal?: AbortSignal): Promise<AuthUser> {
 }
 
 export interface ServerDisplayPreferences {
-  version: 3;
+  version: 4;
   textSize: "small" | "default" | "large" | "extra-large";
   density: "compact" | "standard" | "comfortable";
   theme: "light" | "dark" | "system";
-  showTechnicalMetadata: boolean;
+  showGuidance: boolean;
   updated_at?: string;
 }
 
