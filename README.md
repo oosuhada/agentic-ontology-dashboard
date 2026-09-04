@@ -152,6 +152,13 @@ Observation으로만 생성되어 Generator Runtime의 동일한 모델 경로�
 manifest에는 `scenario_profile`과 `simulation_session_id`가 함께 기록되므로 Backend의
 Product Result와 정비 이력을 Source run까지 추적할 수 있습니다.
 
+운영 호스트에서 control-plane과 Source run을 함께 유지하려면
+`GEN_DATA_AUTOSTART_CONTINUOUS=1`을 사용합니다. 시작 시 기본 168시간을 실제 simulation
+tick으로 backfill한 뒤 wall-clock 경계부터 지속 생성하며, 화면이나 Backend가 Result를
+직접 만들지 않습니다. 속도·backfill·실행 horizon은 각각
+`GEN_DATA_AUTOSTART_SPEED`, `GEN_DATA_AUTOSTART_BACKFILL_HOURS`,
+`GEN_DATA_AUTOSTART_DURATION_HOURS`로 조정합니다.
+
 `GEN_DATA_RUNTIME_OVERLAY_EVENT_FILE`을 설정하면 simulation run이 Backend Outbox에서
 전달된 `maintenance-replay-v1` JSONL을 opt-in으로 소비합니다. 이벤트의
 `simulation_session_id`는 실행 시작 요청의 동명 필드로 Source run에 명시적으로

@@ -74,3 +74,22 @@ if not 0 <= GEN_DATA_RUNTIME_OVERLAY_FAST_FORWARD_ROWS <= 10_000:
     raise ValueError(
         "GEN_DATA_RUNTIME_OVERLAY_FAST_FORWARD_ROWS must be between 0 and 10000"
     )
+
+GEN_DATA_AUTOSTART_CONTINUOUS = os.environ.get(
+    "GEN_DATA_AUTOSTART_CONTINUOUS", "0"
+).strip().lower() in {"1", "true", "yes", "on"}
+GEN_DATA_AUTOSTART_SPEED = float(os.environ.get("GEN_DATA_AUTOSTART_SPEED", "60"))
+GEN_DATA_AUTOSTART_BACKFILL_HOURS = int(
+    os.environ.get("GEN_DATA_AUTOSTART_BACKFILL_HOURS", "168")
+)
+GEN_DATA_AUTOSTART_DURATION_HOURS = int(
+    os.environ.get("GEN_DATA_AUTOSTART_DURATION_HOURS", "8760")
+)
+if GEN_DATA_AUTOSTART_SPEED <= 0:
+    raise ValueError("GEN_DATA_AUTOSTART_SPEED must be positive")
+if GEN_DATA_AUTOSTART_BACKFILL_HOURS < 6:
+    raise ValueError("GEN_DATA_AUTOSTART_BACKFILL_HOURS must be at least 6")
+if GEN_DATA_AUTOSTART_DURATION_HOURS <= GEN_DATA_AUTOSTART_BACKFILL_HOURS:
+    raise ValueError(
+        "GEN_DATA_AUTOSTART_DURATION_HOURS must exceed the backfill horizon"
+    )

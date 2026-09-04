@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -28,6 +29,35 @@ def create_app(manager: RuntimeManager | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
+        if config.GEN_DATA_AUTOSTART_CONTINUOUS:
+            now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+            interval_minutes = 10
+            aligned_now = now - timedelta(minutes=now.minute % interval_minutes)
+            session_id = f"continuous-reliability-{aligned_now.strftime('%Y%m%dT%H%MZ')}"
+            runtime_manager.start_run(
+                run_id=session_id,
+                simulation_session_id=session_id,
+                seed=42,
+                start_at=aligned_now - timedelta(
+                    hours=config.GEN_DATA_AUTOSTART_BACKFILL_HOURS
+                ),
+                duration_hours=config.GEN_DATA_AUTOSTART_DURATION_HOURS,
+                interval_minutes=interval_minutes,
+                product_cycle_minutes=20,
+                rate_profile="balanced_demo",
+                scenario_profile="continuous_reliability",
+                speed=config.GEN_DATA_AUTOSTART_SPEED,
+                continuous=True,
+                publish_opcua=False,
+                source_kind="simulation",
+                runtime_overlay_fast_forward_rows=(
+                    config.GEN_DATA_RUNTIME_OVERLAY_FAST_FORWARD_ROWS
+                ),
+            )
+            runtime_manager.fast_forward_simulation(
+                session_id,
+                target_elapsed_hours=config.GEN_DATA_AUTOSTART_BACKFILL_HOURS,
+            )
         yield
         runtime_manager.shutdown()
 
