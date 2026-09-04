@@ -1,0 +1,99 @@
+{
+  "schema_version": "pdm-evidence-package-v3.1-reference",
+  "event_id": "EVT-PDM-REF-004",
+  "scenario_id": "PDM-REF-004",
+  "asset_id": "CMP-S03-L03-01",
+  "asset_type": "compressor",
+  "observed_at": "2026-08-01T00:00:00+09:00",
+  "threshold": 0.65,
+  "equipment": {
+    "equipment_id": "CMP-S03-L03-01",
+    "display_name": "압축기 S03-L03-01",
+    "line": "S03-L03",
+    "criticality": "high",
+    "assigned_engineer": "최민호"
+  },
+  "model": {
+    "model_version": "canonical-ai4i-physics-v3.1",
+    "policy_version": "pdm-semantic-reference-policy",
+    "mode": "semantic_regression_reference"
+  },
+  "sensor_evidence": {
+    "window": {
+      "start": "2026-07-31T18:00:00+09:00",
+      "end": "2026-08-01T00:00:00+09:00"
+    },
+    "window_rows": 12,
+    "sensors": {
+      "rotation_raw": {
+        "display_name": "회전 상태",
+        "unit": "rpm",
+        "current": 1820.0,
+        "window_mean": 1795.25,
+        "z_score": -2.9,
+        "basis": {
+          "baseline_mean": 1600.0,
+          "baseline_std": 67.327,
+          "baseline_n": 240,
+          "baseline_reference": "all_valid_rows canonical-ai4i-physics-v3.1 compressor_sensor_observation.csv"
+        }
+      }
+    }
+  },
+  "top_factors": [
+    {
+      "evidence_field_id": "factor.1.rotation_raw",
+      "feature": "rotation_raw",
+      "display_name": "회전 상태",
+      "value": 1820.0,
+      "unit": "rpm",
+      "normal_range": "baseline z-score -2.0..2.0",
+      "direction": "risk_up",
+      "contribution": 0.42,
+      "source_type": "observed"
+    }
+  ],
+  "component_hypotheses": [
+    {
+      "component_id": "rotating_assembly",
+      "component_label": "회전/진동 계통",
+      "association": "inspection_candidate",
+      "basis": ["factor.1.rotation_raw", "sensor_evidence.sensors.rotation_raw"]
+    }
+  ],
+  "maintenance_context": {
+    "provider": "pdm-operations-semantic-reference",
+    "version": "2026-08-11",
+    "source_type": "semantic_regression_reference",
+    "source_refs": ["semantic-regression:pdm-operations-critical"],
+    "checklist": ["회전부 상태 확인", "진동 및 베어링 상태 확인"],
+    "recommended_actions": ["다음 교대 전 현장 점검", "필요 시 정지 검토"]
+  },
+  "recommended_actions": [
+    {
+      "action_id": "inspect_rotating_assembly",
+      "label": "회전/진동 계통 점검",
+      "kind": "inspect",
+      "requires_human_approval": true,
+      "basis": ["factor.1.rotation_raw", "sensor_evidence.sensors.rotation_raw"]
+    }
+  ],
+  "status_flags": {
+    "multiple_risk_factors": false,
+    "insufficient_data": false
+  },
+  "lineage": {
+    "fixture_id": "PDM-REF-004",
+    "fixture_schema_version": "pdm-semantic-reference-v1",
+    "sensor_source": "pdm-operations semantic regression reference",
+    "context_source": "pdm-operations-semantic-reference:2026-08-11",
+    "semantic_reference_file": "semantic_regression/pdm-operations-semantic-reference-critical.json"
+  },
+  "generated_at": "2026-08-01T00:00:00+09:00",
+  "evaluation_truth": {
+    "must_not_surface": true
+  },
+  "hidden_truth": {
+    "must_not_surface": true
+  }
+}

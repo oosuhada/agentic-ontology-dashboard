@@ -1,0 +1,198 @@
+{
+  "schema_version": "agent-review-packet-v1.0",
+  "project_id": "manufacturing-demo-project",
+  "asset_id": "CNC-S04-L05-01",
+  "asset_label": "4구역 · 5셀 · CNC 가공기 1",
+  "generated_at": "2026-08-01T00:00:00+09:00",
+  "snapshot_basis": {
+    "artifact_id": "RESULT#CNC-S04-L05-01#2026-08-01T00:00:00+09:00",
+    "evidence_payload_reference": "RESULT#CNC-S04-L05-01#2026-08-01T00:00:00+09:00",
+    "asset_id": "CNC-S04-L05-01",
+    "event_id": "EVT-GS-007",
+    "observed_at": "2026-08-01T00:00:00+09:00",
+    "model_version": "fixture-heuristic-v1",
+    "dataset_version": "fixture-compatibility",
+    "source_sha256": null
+  },
+  "risk_summary": {
+    "status_grade": null,
+    "failure_probability": null,
+    "prediction_horizon_hours": 24
+  },
+  "review_priority": null,
+  "review_draft": {
+    "title": "4구역 · 5셀 · CNC 가공기 1 담당자 검토 초안",
+    "summary": "CNC-S04-L05-01는 데이터 품질 보류 상태라 위험 등급과 예측 위험도를 확정하지 않습니다. 근거 공백이 있어 확정 판단보다 데이터 보강과 이력 조회가 우선입니다.",
+    "priority_label": "미확정",
+    "recommended_next_step": "근거 공백을 먼저 해소한 뒤 위험도와 검토 우선순위를 다시 산정합니다.",
+    "checklist": [
+      "근거 공백 항목을 먼저 확인하고 확정 판단에서 제외합니다."
+    ],
+    "history_summary": [
+      "최근 정비 이력: 최근 정비 이력 · 2026-07-25T00:00:00+09:00 · 7일 전",
+      "열린 작업요청: Closed-loop 이력 연결 전이라 확정하지 않음",
+      "최근 30일 유사 이벤트: 전용 이력 계약 미연결"
+    ],
+    "evidence_gap_count": 12,
+    "boundary_note": "이 초안은 담당자 검토를 돕기 위한 read-only 문서이며 작업요청 생성, 정비 승인, 자동 승인을 수행하지 않습니다."
+  },
+  "model_expression_context": {
+    "source_type": "runtime_inference",
+    "model_version": "fixture-heuristic-v1",
+    "dataset_version": "fixture-compatibility",
+    "failure_probability": null,
+    "threshold": 0.55,
+    "confidence_label": "",
+    "top_factors": [],
+    "source_refs": [
+      "RESULT#CNC-S04-L05-01#2026-08-01T00:00:00+09:00"
+    ]
+  },
+  "sop_retrieval": {
+    "provider": "local_sop_metadata_retriever",
+    "query": {
+      "asset_type": "cnc",
+      "failure_mode": "unavailable",
+      "factor_keys": [],
+      "component_ids": [],
+      "risk_grade": "data_quality_hold",
+      "criticality": "medium",
+      "production_impact": ""
+    },
+    "top_k": 5,
+    "returned_count": 0,
+    "mutation_allowed": false
+  },
+  "inspection_targets": [],
+  "sop_guidance": [],
+  "operation_context_summary": {
+    "production_impact": "low",
+    "estimated_downtime_minutes": 40,
+    "estimated_lost_units": null,
+    "product_variant": "M",
+    "basis": "80 assets, 16h/day, OEE 0.846, cycle 4.0min 기준",
+    "limitations": [
+      "This context is not a MES, ERP, APS, or customer-order record.",
+      "The calculated plan must not change failure_probability, status_grade, top_factors, or recommended_action.",
+      "AI4I provides Product Type L/M/H but no real SKU or product name.",
+      "Data-quality-hold events surface production impact as unavailable until the sensor issue is resolved.",
+      "Estimated lost units are planning impact estimates, not confirmed downtime or realized production loss."
+    ],
+    "source_ref": "operation-context://production-planning-context-v1"
+  },
+  "ontology_context": {
+    "provider": "manufacturing_fixture_ontology_context",
+    "mutation_allowed": false,
+    "traversals": [],
+    "source_refs": []
+  },
+  "maintenance_history_summary": {
+    "provider": "asset_detail_view_model_closed_loop_projection",
+    "mutation_allowed": false,
+    "last_maintenance_days_ago": 7,
+    "similar_events_30d": null,
+    "open_work_order_exists": null,
+    "work_orders": [],
+    "inspection_results": [],
+    "maintenance_actions": [],
+    "maintenance_events": [],
+    "activities": [],
+    "similar_events": [],
+    "recent_equipment_history": [
+      {
+        "description": "최근 정비 이력",
+        "occurred_at": "2026-07-25T00:00:00+09:00",
+        "source_ref": "equipment-history://1"
+      }
+    ],
+    "source_refs": [
+      "equipment-history://1"
+    ]
+  },
+  "history_review_items": [],
+  "evidence_gaps": [
+    {
+      "field": "top_factors",
+      "reason": "insufficient_context (required_source=observation_history, display_policy=show_limitation)",
+      "owner_domain": "diagnosis"
+    },
+    {
+      "field": "history[2].air_temperature_k",
+      "reason": "insufficient_context (required_source=valid_runtime_observation, display_policy=show_limitation)",
+      "owner_domain": "diagnosis"
+    },
+    {
+      "field": "history[2].torque_nm",
+      "reason": "insufficient_context (required_source=valid_runtime_observation, display_policy=show_limitation)",
+      "owner_domain": "diagnosis"
+    },
+    {
+      "field": "observation.air_temperature_k",
+      "reason": "insufficient_context (required_source=valid_runtime_observation, display_policy=show_limitation)",
+      "owner_domain": "diagnosis"
+    },
+    {
+      "field": "observation.torque_nm",
+      "reason": "insufficient_context (required_source=valid_runtime_observation, display_policy=show_limitation)",
+      "owner_domain": "diagnosis"
+    },
+    {
+      "field": "history.timestamp",
+      "reason": "insufficient_context (required_source=valid_runtime_observation, display_policy=show_limitation)",
+      "owner_domain": "diagnosis"
+    },
+    {
+      "field": "risk_series",
+      "reason": "Backend Diagnosis Runtime Prediction History Query is not materialized yet",
+      "owner_domain": "diagnosis"
+    },
+    {
+      "field": "maintenance_context.similar_events_30d",
+      "reason": "maintenance_context_missing_or_unresolved",
+      "owner_domain": "maintenance"
+    },
+    {
+      "field": "maintenance_context.open_work_order_exists",
+      "reason": "maintenance_context_missing_or_unresolved",
+      "owner_domain": "maintenance"
+    },
+    {
+      "field": "operation_context.load_level",
+      "reason": "operation_context_missing_or_unresolved",
+      "owner_domain": "operations"
+    },
+    {
+      "field": "operation_context.runtime_hours_7d",
+      "reason": "operation_context_missing_or_unresolved",
+      "owner_domain": "operations"
+    },
+    {
+      "field": "review_priority",
+      "reason": "review_priority_inputs_missing_or_unresolved",
+      "owner_domain": "report"
+    }
+  ],
+  "source_refs": [
+    "RESULT#CNC-S04-L05-01#2026-08-01T00:00:00+09:00",
+    "operation-context://production-planning-context-v1",
+    "equipment-history://1"
+  ],
+  "closed_loop_boundary": {
+    "mutation_allowed": false,
+    "available_action_ids": [],
+    "forbidden_actions": [
+      "create_work_order",
+      "approve_work_order",
+      "start_maintenance_action",
+      "complete_maintenance_action",
+      "create_maintenance_event",
+      "request_replay",
+      "auto_approve"
+    ],
+    "note": "This packet may reference available actions for context, but it cannot execute or approve them."
+  },
+  "limitations": [
+    "Agent Review Packet is read-only and does not mutate Recommendation, WorkOrder, MaintenanceAction, MaintenanceEvent, or Replay state.",
+    "SOP grounding supports inspection and replacement timing review drafts; it is not Product Evidence or a repair instruction."
+  ]
+}

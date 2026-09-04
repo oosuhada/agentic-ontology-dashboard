@@ -1,0 +1,22 @@
+{
+  "result_id": "agent-summary-validation-eval-2026-08-31",
+  "recorded_at": "2026-08-31",
+  "scope": "Agent Review Summary groundedness and boundary validation",
+  "command": "PYTHONPATH=systems/backend ONTOLOGY_DASHBOARD_ALLOW_HEURISTIC_MODEL_FALLBACK=1 python3 -m pytest tests/test_agent_review_summary_contract.py -q",
+  "status": "passed",
+  "summary": "33 passed in 1.18s",
+  "evidence_files": [
+    "tests/test_agent_review_summary_contract.py",
+    "contracts/schemas/agent-review-summary.schema.json",
+    "contracts/schemas/agent-review-packet.schema.json",
+    "systems/backend/app/operations/agent_review_summary.py"
+  ],
+  "verified_claims": [
+    "Unknown source_refs are rejected at top-level and nested paths.",
+    "Korean free-text repair, approval, causal certainty, downtime-saving, priority downgrade, and unsupported production-loss claims are rejected.",
+    "Data-quality hold summaries cannot invent inspection focus, confidence, or missing evidence.",
+    "Invalid LLM candidates fall back to deterministic summaries instead of being stored as trusted output.",
+    "Role summaries remain limited to the Operations roles and keep source refs grounded in the packet."
+  ],
+  "current_decision": "Validation remains a release gate before any stronger orchestration engine or richer domain tool pipeline is promoted."
+}

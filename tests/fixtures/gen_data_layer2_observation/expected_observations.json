@@ -1,0 +1,74 @@
+[
+  {
+    "asset_id": "CNC-S01-L01-01",
+    "observed_at": "2026-08-20T01:00:00Z",
+    "measurements": {
+      "torque_nm": 42.5,
+      "rotational_speed_rpm": null
+    },
+    "quality": {
+      "torque_nm": {
+        "quality_status": "good",
+        "source_status_code": "Good",
+        "reason": null
+      },
+      "rotational_speed_rpm": {
+        "quality_status": "bad",
+        "source_status_code": "Bad",
+        "reason": "sensor_timeout"
+      }
+    },
+    "source": {
+      "source_kind": "fixture_only_gen_data_layer2_log",
+      "node_ids": [
+        "CNC-S01-L01-01.torque_nm",
+        "CNC-S01-L01-01.rpm"
+      ],
+      "source_row_numbers": [1, 2],
+      "server_timestamps": [
+        "2026-08-20T01:00:02Z",
+        "2026-08-20T01:00:03Z"
+      ]
+    }
+  },
+  {
+    "asset_id": "CNC-S01-L01-01",
+    "observed_at": "2026-08-20T01:01:00Z",
+    "measurements": {
+      "torque_nm": 43.0
+    },
+    "quality": {
+      "torque_nm": {
+        "quality_status": "good",
+        "source_status_code": "Good",
+        "reason": null
+      }
+    },
+    "source": {
+      "source_kind": "fixture_only_gen_data_layer2_log",
+      "node_ids": ["CNC-S01-L01-01.torque_nm"],
+      "source_row_numbers": [3],
+      "server_timestamps": ["2026-08-20T01:01:02Z"]
+    }
+  },
+  {
+    "asset_id": "CNC-S01-L01-02",
+    "observed_at": "2026-08-20T01:00:00Z",
+    "measurements": {
+      "torque_nm": 38.2
+    },
+    "quality": {
+      "torque_nm": {
+        "quality_status": "good",
+        "source_status_code": "Good",
+        "reason": null
+      }
+    },
+    "source": {
+      "source_kind": "fixture_only_gen_data_layer2_log",
+      "node_ids": ["CNC-S01-L01-02.torque_nm"],
+      "source_row_numbers": [4],
+      "server_timestamps": ["2026-08-20T01:00:04Z"]
+    }
+  }
+]

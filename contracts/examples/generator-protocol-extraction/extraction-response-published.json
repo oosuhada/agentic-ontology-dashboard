@@ -1,0 +1,32 @@
+{
+  "request_id": "req-ext-20260828-001",
+  "run_id": "run-api-20260828-001",
+  "status": "succeeded",
+  "processed_sources": 1,
+  "succeeded_sources": 1,
+  "failed_sources": 0,
+  "sources": [
+    {
+      "source_uri": "sensor/facS01/lineL01/sensor_stream.jsonl",
+      "source_identity": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "status": "succeeded",
+      "start_offset": 12000,
+      "committed_offset": 15000,
+      "records_read": 25,
+      "observations_staged": 23,
+      "rejected_staged": 2,
+      "published_datasets": [
+        {
+          "dataset_id": "gen-data-S01-L01",
+          "dataset_version": "window-20260828T130000Z-map-a1b2c3d4",
+          "manifest_uri": "data/observations/gen-data-S01-L01/window-20260828T130000Z-map-a1b2c3d4/dataset_manifest.json"
+        }
+      ],
+      "pending_windows": [
+        "20260828T140000Z"
+      ],
+      "error_code": null,
+      "error_message": null
+    }
+  ]
+}

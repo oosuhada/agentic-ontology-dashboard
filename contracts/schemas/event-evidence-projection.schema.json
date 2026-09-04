@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/event-evidence-projection.schema.json",
+  "title": "Event Evidence Projection",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "contract_type",
+    "event_id",
+    "evidence_id",
+    "subject",
+    "artifact_reference",
+    "assessment",
+    "report_projection",
+    "provenance",
+    "limitations",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_version": {"const": "event-evidence-projection-v1"},
+    "contract_type": {"const": "event_evidence_projection"},
+    "event_id": {"type": "string", "minLength": 1},
+    "evidence_id": {"type": "string", "minLength": 1},
+    "scenario_id": {"type": ["string", "null"]},
+    "subject": {
+      "type": "object",
+      "required": ["equipment_id", "asset_type"],
+      "properties": {
+        "equipment_id": {"type": "string", "minLength": 1},
+        "asset_type": {"type": "string", "minLength": 1}
+      }
+    },
+    "artifact_reference": {
+      "type": "object",
+      "required": [
+        "event_id",
+        "artifact_id",
+        "artifact_schema_version",
+        "asset_id",
+        "asset_type"
+      ],
+      "properties": {
+        "event_id": {"type": "string", "minLength": 1},
+        "artifact_id": {"type": "string", "minLength": 1},
+        "artifact_schema_version": {"type": "string", "minLength": 1},
+        "asset_id": {"type": "string", "minLength": 1},
+        "asset_type": {"type": "string", "minLength": 1}
+      }
+    },
+    "assessment": {
+      "type": "object",
+      "required": [
+        "status",
+        "recommended_decision",
+        "operational_decision_kind",
+        "confidence",
+        "confidence_value",
+        "failure_probability",
+        "threshold",
+        "predicted_failure_type",
+        "top_factors",
+        "data_quality_warnings"
+      ],
+      "properties": {
+        "status": {"type": ["string", "null"]},
+        "recommended_decision": {"type": "string"},
+        "operational_decision_kind": {
+          "type": ["string", "null"],
+          "enum": [
+            "continue_monitoring",
+            "request_inspection",
+            "review_shutdown",
+            "hold_for_data_check",
+            null
+          ]
+        },
+        "confidence": {"type": "string"},
+        "confidence_value": {"type": ["number", "null"]},
+        "failure_probability": {"type": ["number", "null"]},
+        "threshold": {"type": ["number", "null"]},
+        "predicted_failure_type": {"type": ["string", "null"]},
+        "top_factors": {"type": "array"},
+        "data_quality_warnings": {"type": "array"}
+      }
+    },
+    "report_projection": {
+      "type": "object",
+      "required": ["recommended_actions"],
+      "properties": {
+        "recommended_actions": {
+          "type": "array",
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["action_id"],
+            "properties": {
+              "action_id": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["lineage"],
+      "properties": {
+        "lineage": {
+          "type": "object",
+          "required": ["policy_version"],
+          "properties": {
+            "policy_version": {"type": ["string", "null"], "minLength": 1}
+          }
+        }
+      }
+    },
+    "limitations": {"type": "array", "items": {"type": "string"}},
+    "generated_at": {"type": ["string", "null"]}
+  }
+}

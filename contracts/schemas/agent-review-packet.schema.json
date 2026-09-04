@@ -1,0 +1,455 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/agent-review-packet.schema.json",
+  "title": "Agent Review Packet",
+  "description": "Read-only agent review packet composed from AssetDetailViewModel and SOP grounding. The packet supports human review drafts only and must not create or mutate Closed-loop domain state.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project_id",
+    "asset_id",
+    "asset_label",
+    "generated_at",
+    "snapshot_basis",
+    "risk_summary",
+    "review_priority",
+    "review_draft",
+    "model_expression_context",
+    "sop_retrieval",
+    "inspection_targets",
+    "sop_guidance",
+    "ontology_context",
+    "maintenance_history_summary",
+    "history_review_items",
+    "evidence_gaps",
+    "source_refs",
+    "closed_loop_boundary",
+    "limitations"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "agent-review-packet-v1.0"},
+    "project_id": {"type": "string"},
+    "asset_id": {"type": "string"},
+    "asset_label": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "snapshot_basis": {"$ref": "#/$defs/evidenceSnapshotBasis"},
+    "domain_sections": {
+      "type": "array",
+      "description": "Read-only lineage map for domain sections assembled into this packet. This keeps domain boundaries explicit without splitting the public ViewModel/API shape prematurely.",
+      "items": {"$ref": "#/$defs/domainSection"}
+    },
+    "risk_summary": {
+      "type": "object",
+      "required": ["status_grade", "failure_probability", "prediction_horizon_hours"],
+      "additionalProperties": false,
+      "properties": {
+        "status_grade": {"type": ["string", "null"], "enum": ["normal", "attention", "warning", "critical", null]},
+        "failure_probability": {"type": ["number", "null"]},
+        "prediction_horizon_hours": {"type": ["number", "null"]}
+      }
+    },
+    "review_priority": {
+      "type": ["object", "null"],
+      "required": ["level", "reasons", "source_fields"],
+      "additionalProperties": false,
+      "properties": {
+        "level": {"enum": ["immediate", "high", "medium", "low"]},
+        "reasons": {"type": "array", "items": {"type": "string"}},
+        "source_fields": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "review_draft": {
+      "type": "object",
+      "description": "Deterministic human review draft generated from the read-only packet. It is copy-ready guidance, not an approval or mutation command.",
+      "required": ["title", "summary", "priority_label", "recommended_next_step", "checklist", "history_summary", "evidence_gap_count", "boundary_note"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {"type": "string"},
+        "summary": {"type": "string"},
+        "priority_label": {"type": "string"},
+        "recommended_next_step": {"type": "string"},
+        "checklist": {"type": "array", "items": {"type": "string"}},
+        "history_summary": {"type": "array", "items": {"type": "string"}},
+        "evidence_gap_count": {"type": "integer", "minimum": 0},
+        "boundary_note": {"type": "string"}
+      }
+    },
+    "model_expression_context": {
+      "type": "object",
+      "description": "Trusted model/result expressions promoted by Backend for AI wording. Raw Generator payload fields are not exposed here unless materialization validated and absorbed them.",
+      "required": ["source_type", "model_version", "dataset_version", "failure_probability", "threshold", "confidence_label", "top_factors", "source_refs"],
+      "additionalProperties": false,
+      "properties": {
+        "source_type": {"type": "string"},
+        "model_version": {"type": "string"},
+        "dataset_version": {"type": "string"},
+        "failure_probability": {"type": ["number", "null"]},
+        "threshold": {"type": ["number", "null"]},
+        "confidence_label": {"type": "string"},
+        "top_factors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["feature", "display_name", "value", "unit", "direction", "contribution", "explanation_method", "source_ref"],
+            "additionalProperties": false,
+            "properties": {
+              "feature": {"type": "string"},
+              "display_name": {"type": "string"},
+              "value": {"type": ["number", "string", "boolean", "null"]},
+              "unit": {"type": "string"},
+              "direction": {"type": "string"},
+              "contribution": {"type": ["number", "null"]},
+              "explanation_method": {"type": "string"},
+              "source_ref": {"type": "string"}
+            }
+          }
+        },
+        "source_refs": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "sop_retrieval": {
+      "type": "object",
+      "description": "Read-only SOP retrieval metadata. This records the lookup query and provider result count; it is not a mutation authority or repair decision.",
+      "required": ["provider", "query", "top_k", "returned_count", "mutation_allowed"],
+      "additionalProperties": false,
+      "properties": {
+        "provider": {"enum": ["local_sop_metadata_retriever"]},
+        "query": {
+          "type": "object",
+          "required": ["asset_type", "failure_mode", "factor_keys", "component_ids", "risk_grade", "criticality", "production_impact"],
+          "additionalProperties": false,
+          "properties": {
+            "asset_type": {"type": "string"},
+            "failure_mode": {"type": "string"},
+            "factor_keys": {"type": "array", "items": {"type": "string"}},
+            "component_ids": {"type": "array", "items": {"type": "string"}},
+            "risk_grade": {"type": "string"},
+            "criticality": {"type": "string"},
+            "production_impact": {"type": "string"}
+          }
+        },
+        "top_k": {"type": "integer"},
+        "returned_count": {"type": "integer"},
+        "mutation_allowed": {"const": false}
+      }
+    },
+    "sop_guidance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "target_id",
+          "component_id",
+          "component_label",
+          "location_label",
+          "inspection_method",
+          "location_source_ref",
+          "sop_id",
+          "source_type",
+          "maturity",
+          "checklist_draft",
+          "replacement_review_guidance",
+          "sensor_judgment",
+          "retrieval_score",
+          "matched_fields",
+          "disclaimer",
+          "source_ref"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "target_id": {"type": "string"},
+          "component_id": {"type": "string"},
+          "component_label": {"type": "string"},
+          "location_label": {"type": ["string", "null"]},
+          "inspection_method": {"type": ["string", "null"]},
+          "location_source_ref": {"type": ["string", "null"]},
+          "sop_id": {"type": "string"},
+          "source_type": {"enum": ["demo_sop_fixture", "site_sop"]},
+          "maturity": {"enum": ["fixture", "draft", "approved", "retired"]},
+          "checklist_draft": {"type": "array", "items": {"type": "string"}},
+          "replacement_review_guidance": {"$ref": "#/$defs/replacementReviewGuidance"},
+          "sensor_judgment": {"$ref": "#/$defs/sensorJudgment"},
+          "retrieval_score": {"type": "integer", "minimum": 0},
+          "matched_fields": {"type": "array", "items": {"type": "string"}},
+          "disclaimer": {"type": "string"},
+          "source_ref": {"type": "string"}
+        }
+      }
+    },
+    "operation_context_summary": {
+      "type": ["object", "null"],
+      "description": "Optional read-only operating context supplied by a domain adapter. This supports role-specific summaries but does not create production, MES, or Closed-loop facts.",
+      "required": ["production_impact", "estimated_downtime_minutes", "estimated_lost_units", "product_variant", "basis", "limitations", "source_ref"],
+      "additionalProperties": false,
+      "properties": {
+        "production_impact": {"type": ["string", "null"], "enum": ["none", "low", "medium", "high", null]},
+        "estimated_downtime_minutes": {"type": ["number", "null"]},
+        "estimated_lost_units": {"type": ["number", "null"]},
+        "product_variant": {"type": ["string", "null"]},
+        "basis": {"type": "string"},
+        "limitations": {"type": "array", "items": {"type": "string"}},
+        "source_ref": {"type": ["string", "null"]}
+      }
+    },
+    "ontology_context": {
+      "type": "object",
+      "description": "Read-only ontology traversal context supplied by a domain adapter. It explains how factors, components, inspection locations, and SOP candidates relate without granting query or mutation authority to the LLM.",
+      "required": ["provider", "mutation_allowed", "traversals", "source_refs"],
+      "additionalProperties": false,
+      "properties": {
+        "provider": {"type": "string"},
+        "mutation_allowed": {"const": false},
+        "traversals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["component_id", "component_label", "factor_refs", "location_label", "location_source_ref", "sop_ids", "spare_parts", "similar_events", "source_refs"],
+            "additionalProperties": false,
+            "properties": {
+              "component_id": {"type": "string"},
+              "component_label": {"type": "string"},
+              "factor_refs": {"type": "array", "items": {"type": "string"}},
+              "location_label": {"type": ["string", "null"]},
+              "location_source_ref": {"type": ["string", "null"]},
+              "sop_ids": {"type": "array", "items": {"type": "string"}},
+              "spare_parts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["part_id", "part_label", "replacement_scope", "availability", "lead_time_days", "replacement_window_minutes", "assumption_level", "source_ref"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "part_id": {"type": "string"},
+                    "part_label": {"type": "string"},
+                    "replacement_scope": {"type": "string"},
+                    "availability": {"type": "string", "enum": ["available_from_fixture", "unavailable_from_fixture", "unknown"]},
+                    "lead_time_days": {"type": ["number", "null"]},
+                    "replacement_window_minutes": {"type": ["number", "null"]},
+                    "assumption_level": {"type": "string"},
+                    "source_ref": {"type": "string"}
+                  }
+                }
+              },
+              "similar_events": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["similar_event_id", "asset_label", "observed_at", "matched_factor_keys", "action_taken", "outcome", "post_action_observation_window_hours", "assumption_level", "source_ref"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "similar_event_id": {"type": "string"},
+                    "asset_label": {"type": "string"},
+                    "observed_at": {"type": "string"},
+                    "matched_factor_keys": {"type": "array", "items": {"type": "string"}},
+                    "action_taken": {"type": "string"},
+                    "outcome": {"type": "string"},
+                    "post_action_observation_window_hours": {"type": ["number", "null"]},
+                    "assumption_level": {"type": "string"},
+                    "source_ref": {"type": "string"}
+                  }
+                }
+              },
+              "source_refs": {"type": "array", "items": {"type": "string"}}
+            }
+          }
+        },
+        "source_refs": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "maintenance_history_summary": {
+      "type": "object",
+      "description": "Read-only Closed-loop and maintenance-history projection for AI context. It may describe existing records but must not create approvals, work orders, maintenance actions, events, or replay commands.",
+      "required": ["provider", "mutation_allowed", "last_maintenance_days_ago", "similar_events_30d", "open_work_order_exists", "work_orders", "inspection_results", "maintenance_actions", "maintenance_events", "activities", "similar_events", "recent_equipment_history", "source_refs"],
+      "additionalProperties": false,
+      "properties": {
+        "provider": {"type": "string"},
+        "mutation_allowed": {"const": false},
+        "last_maintenance_days_ago": {"type": ["integer", "null"]},
+        "similar_events_30d": {"type": ["integer", "null"]},
+        "open_work_order_exists": {"type": ["boolean", "null"]},
+        "work_orders": {"type": "array", "items": {"$ref": "#/$defs/maintenanceHistoryRecord"}},
+        "inspection_results": {"type": "array", "items": {"$ref": "#/$defs/maintenanceHistoryRecord"}},
+        "maintenance_actions": {"type": "array", "items": {"$ref": "#/$defs/maintenanceHistoryRecord"}},
+        "maintenance_events": {"type": "array", "items": {"$ref": "#/$defs/maintenanceHistoryRecord"}},
+        "activities": {"type": "array", "items": {"$ref": "#/$defs/maintenanceHistoryRecord"}},
+        "similar_events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["similar_event_id", "asset_label", "observed_at", "action_taken", "outcome", "source_ref"],
+            "additionalProperties": false,
+            "properties": {
+              "similar_event_id": {"type": "string"},
+              "asset_label": {"type": "string"},
+              "observed_at": {"type": "string"},
+              "action_taken": {"type": "string"},
+              "outcome": {"type": "string"},
+              "source_ref": {"type": "string"}
+            }
+          }
+        },
+        "recent_equipment_history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["description", "occurred_at", "source_ref"],
+            "additionalProperties": false,
+            "properties": {
+              "description": {"type": "string"},
+              "occurred_at": {"type": "string"},
+              "source_ref": {"type": "string"}
+            }
+          }
+        },
+        "source_refs": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "inspection_targets": {
+      "type": "array",
+      "description": "Read-only inspection target summaries from AssetDetailViewModel component hypotheses. These help an agent explain why multiple risk factors can map to one field inspection target without creating actions or approvals.",
+      "items": {
+        "type": "object",
+        "required": [
+          "target_id",
+          "component_id",
+          "component_label",
+          "association",
+          "location_label",
+          "inspection_method",
+          "location_source_ref",
+          "basis_refs",
+          "source_ref",
+          "unavailable_reason"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "target_id": {"type": "string"},
+          "component_id": {"type": "string"},
+          "component_label": {"type": "string"},
+          "association": {"type": "string"},
+          "location_label": {"type": ["string", "null"]},
+          "inspection_method": {"type": ["string", "null"]},
+          "location_source_ref": {"type": ["string", "null"]},
+          "basis_refs": {"type": "array", "items": {"type": "string"}},
+          "source_ref": {"type": "string"},
+          "unavailable_reason": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "history_review_items": {"type": "array", "items": {"type": "string"}},
+    "evidence_gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["field", "reason", "owner_domain"],
+        "additionalProperties": false,
+        "properties": {
+          "field": {"type": "string"},
+          "reason": {"type": "string"},
+          "owner_domain": {"type": "string"}
+        }
+      }
+    },
+    "source_refs": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "closed_loop_boundary": {
+      "type": "object",
+      "required": ["mutation_allowed", "available_action_ids", "forbidden_actions", "note"],
+      "additionalProperties": false,
+      "properties": {
+        "mutation_allowed": {"const": false},
+        "available_action_ids": {"type": "array", "items": {"type": "string"}},
+        "forbidden_actions": {"type": "array", "items": {"type": "string"}},
+        "note": {"type": "string"}
+      }
+    },
+    "limitations": {"type": "array", "items": {"type": "string"}}
+  },
+  "$defs": {
+    "evidenceSnapshotBasis": {
+      "type": "object",
+      "description": "Shared evidence basis copied from AssetDetailViewModel so the read-only agent packet can be compared with the UI projection.",
+      "required": ["artifact_id", "evidence_payload_reference", "asset_id", "event_id", "observed_at", "model_version", "dataset_version", "source_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {"type": ["string", "null"]},
+        "evidence_payload_reference": {"type": "string"},
+        "asset_id": {"type": ["string", "null"]},
+        "event_id": {"type": ["string", "null"]},
+        "observed_at": {"type": ["string", "null"]},
+        "model_version": {"type": ["string", "null"]},
+        "dataset_version": {"type": ["string", "null"]},
+        "source_sha256": {"type": ["string", "null"]}
+      }
+    },
+    "replacementReviewGuidance": {
+      "type": "object",
+      "required": ["review_label", "review_triggers", "required_measurements", "operator_review_items", "decision_boundary"],
+      "additionalProperties": false,
+      "properties": {
+        "review_label": {"type": "string"},
+        "review_triggers": {"type": "array", "items": {"type": "string"}},
+        "required_measurements": {"type": "array", "items": {"type": "string"}},
+        "operator_review_items": {"type": "array", "items": {"type": "string"}},
+        "decision_boundary": {"type": "string"}
+      }
+    },
+    "sensorJudgment": {
+      "type": ["object", "null"],
+      "required": ["judgment_scope", "allowed_outcomes", "criteria", "inspection_result_mapping", "claim_boundaries"],
+      "additionalProperties": false,
+      "properties": {
+        "judgment_scope": {"enum": ["inspection_result", "maintenance_need_screening"]},
+        "allowed_outcomes": {"type": "array", "items": {"type": "string"}},
+        "criteria": {"type": "array", "items": {"type": "object"}},
+        "inspection_result_mapping": {
+          "type": "object",
+          "required": ["records_operational_fact", "does_not_create_maintenance_event", "manual_recommendation_requires_manager_acceptance"],
+          "additionalProperties": false,
+          "properties": {
+            "records_operational_fact": {"type": "boolean"},
+            "does_not_create_maintenance_event": {"type": "boolean"},
+            "manual_recommendation_requires_manager_acceptance": {"type": "boolean"}
+          }
+        },
+        "claim_boundaries": {
+          "type": "object",
+          "required": ["allowed_claims", "forbidden_claims"],
+          "additionalProperties": false,
+          "properties": {
+            "allowed_claims": {"type": "array", "items": {"type": "string"}},
+            "forbidden_claims": {"type": "array", "items": {"type": "string"}}
+          }
+        }
+      }
+    },
+    "maintenanceHistoryRecord": {
+      "type": "object",
+      "required": ["record_id", "record_type", "status", "activity_type", "recorded_at", "summary", "source_ref"],
+      "additionalProperties": false,
+      "properties": {
+        "record_id": {"type": "string"},
+        "record_type": {"type": "string"},
+        "status": {"type": "string"},
+        "activity_type": {"type": "string"},
+        "recorded_at": {"type": "string"},
+        "summary": {"type": "string"},
+        "source_ref": {"type": "string"}
+      }
+    },
+    "domainSection": {
+      "type": "object",
+      "required": ["section_id", "owner_domain", "source", "packet_paths", "mutation_allowed", "materialization"],
+      "additionalProperties": false,
+      "properties": {
+        "section_id": {"type": "string"},
+        "owner_domain": {"type": "string"},
+        "source": {"type": "string"},
+        "packet_paths": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "mutation_allowed": {"const": false},
+        "materialization": {"enum": ["inline_packet_section", "stored_summary_input", "future_external_adapter"]},
+        "notes": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

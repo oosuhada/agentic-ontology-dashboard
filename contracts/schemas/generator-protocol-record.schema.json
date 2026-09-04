@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/generator-protocol-record.schema.json",
+  "title": "Generator SensorRecord v2 Protocol Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "direction",
+    "schema_version",
+    "observation_id",
+    "source_kind",
+    "record_kind",
+    "quality",
+    "run_id",
+    "sequence",
+    "asset_id",
+    "measurement_key",
+    "node_id",
+    "data_type",
+    "unit",
+    "value",
+    "status_code",
+    "observed_at_source",
+    "branch_kind",
+    "overlay",
+    "mapping_version"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "published",
+        "received"
+      ],
+      "description": "Protocol measurement transmission direction"
+    },
+    "schema_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "SensorRecord protocol schema version, e.g. sensor-record-v2"
+    },
+    "observation_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._:-]+$",
+      "description": "Unique protocol observation record identifier"
+    },
+    "source_kind": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Originating source protocol kind, e.g. opc_ua, modbus, simulation"
+    },
+    "record_kind": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Record classification, e.g. observation, metric"
+    },
+    "quality": {
+      "type": "string",
+      "description": "Data quality flag, e.g. Good, Bad, Uncertain"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9._:-]+$",
+      "description": "Source protocol generation run identifier"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonically increasing sequence number within run"
+    },
+    "asset_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._:-]+$",
+      "description": "Equipment or machine asset identifier"
+    },
+    "measurement_key": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Raw sensor metric or protocol channel key"
+    },
+    "node_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Source protocol node or tag identifier, e.g. CNC-S01-L01-01.voltage"
+    },
+    "data_type": {
+      "type": "string",
+      "description": "Primitive data type of the measurement value"
+    },
+    "unit": {
+      "type": "string",
+      "description": "Measurement engineering unit, e.g. V, rpm, C"
+    },
+    "value": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Numeric sensor measurement reading or null if sensor error"
+    },
+    "status_code": {
+      "type": "string",
+      "description": "Equipment status or OPC UA status code string, e.g. Good, Bad"
+    },
+    "status_code_value": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Numeric OPC UA status code, e.g. 0 for Good"
+    },
+    "observed_at_source": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when observation occurred at source"
+    },
+    "source_timestamp": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "description": "Raw sensor source timestamp"
+    },
+    "server_timestamp": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "description": "Server reception timestamp"
+    },
+    "published_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "description": "Timestamp when record was published"
+    },
+    "received_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "description": "Timestamp when record was received"
+    },
+    "branch_kind": {
+      "type": "string",
+      "enum": [
+        "canonical",
+        "simulation_overlay",
+        "maintenance_replay_overlay"
+      ],
+      "description": "Branch lineage classification"
+    },
+    "overlay": {
+      "type": "boolean",
+      "description": "Flag indicating whether record is a simulation or replay overlay"
+    },
+    "mapping_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Protocol mapping schema version string"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "direction": {
+            "const": "published"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "source_timestamp",
+          "published_at"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "direction": {
+            "const": "received"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "source_timestamp",
+          "server_timestamp",
+          "received_at",
+          "status_code_value"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "branch_kind": {
+            "const": "canonical"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "overlay": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "branch_kind": {
+            "enum": [
+              "simulation_overlay",
+              "maintenance_replay_overlay"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "overlay": {
+            "const": true
+          }
+        }
+      }
+    }
+  ]
+}

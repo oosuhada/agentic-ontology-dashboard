@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/runtime-overlay-observations-available.schema.json",
+  "title": "Runtime Overlay Observations Available Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "event_type",
+    "event_id",
+    "simulation_session_id",
+    "equipment_id",
+    "maintenance_action_id",
+    "maintenance_event_id",
+    "overlay_branch_id",
+    "history_segment_id",
+    "source_kind",
+    "state_version",
+    "batch_rows",
+    "generated_rows",
+    "observed_from",
+    "observed_to",
+    "storage_reference"
+  ],
+  "properties": {
+    "contract_version": {"const": "runtime-overlay-observations-available-v1"},
+    "event_type": {"const": "runtime_overlay.observations.available"},
+    "event_id": {"type": "string", "minLength": 1, "maxLength": 512},
+    "simulation_session_id": {"type": "string", "minLength": 1, "maxLength": 240},
+    "equipment_id": {"type": "string", "minLength": 1, "maxLength": 240},
+    "maintenance_action_id": {"type": "string", "minLength": 1, "maxLength": 240},
+    "maintenance_event_id": {"type": "string", "minLength": 1, "maxLength": 240},
+    "overlay_branch_id": {"type": "string", "minLength": 1, "maxLength": 240},
+    "history_segment_id": {"type": "string", "minLength": 1, "maxLength": 240},
+    "source_kind": {"const": "maintenance_replay_overlay"},
+    "state_version": {"type": "integer", "minimum": 1},
+    "batch_rows": {"type": "integer", "minimum": 1},
+    "generated_rows": {"type": "integer", "minimum": 1},
+    "observed_from": {"type": "string", "format": "date-time"},
+    "observed_to": {"type": "string", "format": "date-time"},
+    "storage_reference": {
+      "type": "string",
+      "pattern": "^runtime_overlay/sha256-[a-f0-9]{64}\\.jsonl$"
+    }
+  }
+}

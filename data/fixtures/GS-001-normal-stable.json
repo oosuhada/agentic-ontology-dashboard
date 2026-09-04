@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "scenario_id": "GS-001",
   "event_id": "EVT-GS-001",
-  "equipment": {"equipment_id": "M-001", "display_name": "절삭 설비 01", "line": "가공 1라인", "criticality": "medium", "assigned_engineer": "박지민", "last_maintenance_date": "2026-07-20", "estimated_downtime_minutes": 45, "spare_part_available": true},
+  "equipment": {"equipment_id": "CNC-S01-L01-01", "display_name": "1구역 · 1셀 · CNC 가공기 1", "asset_type": "cnc", "site_id": "S01", "cell_id": "S01-L01", "line": "S01-L01", "criticality": "medium", "assigned_engineer": "박지민", "last_maintenance_date": "2026-07-20", "estimated_downtime_minutes": 45, "spare_part_available": true},
   "observation": {"timestamp": "2026-08-01T00:00:00+09:00", "product_type": "M", "air_temperature_k": 298.2, "process_temperature_k": 308.7, "rotational_speed_rpm": 1510, "torque_nm": 41.0, "tool_wear_min": 32},
   "history": [
     {"timestamp": "2026-07-31T23:45:00+09:00", "product_type": "M", "air_temperature_k": 298.1, "process_temperature_k": 308.5, "rotational_speed_rpm": 1504, "torque_nm": 40.6, "tool_wear_min": 29},
@@ -11,5 +11,17 @@
     {"timestamp": "2026-08-01T00:00:00+09:00", "product_type": "M", "air_temperature_k": 298.2, "process_temperature_k": 308.7, "rotational_speed_rpm": 1510, "torque_nm": 41.0, "tool_wear_min": 32}
   ],
   "runtime": {"llm_available": true, "planner_available": true, "context_provider": "fixture"},
+  "operation_context": {
+    "load_level": "normal",
+    "runtime_hours_7d": 102.5,
+    "production_impact": "none",
+    "context_id": "OPCTX-GS-001-2026-08-01",
+    "source_type": "capacity_model",
+    "temporal_scope": {"snapshot_id": "production-plan-2026-08-01", "timezone": "Asia/Seoul", "valid_from": "2026-08-01T00:00:00+09:00", "valid_to": "2026-08-02T00:00:00+09:00", "generated_at": "2026-08-01T00:00:00+09:00"},
+    "production_plan": {"plan_id": "PLAN-2026-08-01-CNC", "plan_date": "2026-08-01", "planned_units": 16200, "product_mix": [{"variant": "M", "share": 0.45, "planned_units": 7290}, {"variant": "L", "share": 0.35, "planned_units": 5670}, {"variant": "H", "share": 0.2, "planned_units": 3240}]},
+    "capacity_model": {"active_asset_count": 80, "planned_operating_hours": 16, "oee": 0.846, "standard_cycle_minutes_per_unit": 4.0, "asset_units_per_hour": 12.69, "daily_capacity_units": 16200, "basis": "80대 계획 설비, 16시간 계획, 표준 사이클 4.0분 기준의 계획 영향 추정"},
+    "event_impact": {"event_id": "EVT-GS-001", "equipment_id": "CNC-S01-L01-01", "line": "S01-L01", "product_variant": "M", "screen_priority": "none", "impact_status": "not_applicable", "estimated_lost_units": 0, "basis": {"estimated_downtime_minutes": 45, "asset_units_per_hour": 12.69, "formula": "normal fixture: no plan-at-risk loss applied"}},
+    "limitations": ["실제 MES 실적은 포함하지 않습니다.", "납기 영향은 확정하지 않습니다.", "정비 효과는 이 데이터에서 판단하지 않습니다."]
+  },
   "expected": {"risk_band": "normal", "recommended_decision": "continue_monitoring", "confidence": "high", "predicted_failure_type": "none"}
 }

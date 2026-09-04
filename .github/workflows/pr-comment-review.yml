@@ -1,0 +1,450 @@
+name: PR Comment Review
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+concurrency:
+  group: pr-comment-review-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    if: >-
+      ${{ github.event_name != 'pull_request' &&
+      (github.event_name != 'issue_comment' || github.event.issue.pull_request) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      pr_number: ${{ steps.event.outputs.pr_number }}
+      source_id: ${{ steps.event.outputs.source_id }}
+      source_kind: ${{ steps.event.outputs.source_kind }}
+      source_author: ${{ steps.event.outputs.source_author }}
+      author_association: ${{ steps.event.outputs.author_association }}
+      authorized: ${{ steps.event.outputs.authorized }}
+      classification: ${{ steps.event.outputs.classification }}
+      eligible: ${{ steps.event.outputs.eligible }}
+      same_repo: ${{ steps.repo.outputs.same_repo }}
+      head_sha: ${{ steps.repo.outputs.head_sha }}
+      base_sha: ${{ steps.repo.outputs.base_sha }}
+    steps:
+      - name: Checkout trusted default branch reviewer code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Read authoritative pull request review metadata
+        if: github.event_name == 'pull_request_review'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          PR_NUMBER="$(jq -r '.pull_request.number' "$GITHUB_EVENT_PATH")"
+          REVIEW_ID="$(jq -r '.review.id' "$GITHUB_EVENT_PATH")"
+          gh api \
+            "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews/${REVIEW_ID}" \
+            > /tmp/source-review.json
+
+      - name: Classify source comment without secrets
+        id: event
+        run: |
+          if [[ -f /tmp/source-review.json ]]; then
+            python3 scripts/ci/ai_review.py event-info \
+              --event "$GITHUB_EVENT_PATH" \
+              --review-json /tmp/source-review.json >> "$GITHUB_OUTPUT"
+          else
+            python3 scripts/ci/ai_review.py event-info \
+              --event "$GITHUB_EVENT_PATH" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Read pull request repository boundary for authorized technical comment
+        if: steps.event.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.event.outputs.pr_number }}
+        run: gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" > /tmp/pr.json
+
+      - name: Reject fork/untrusted head before OIDC job
+        if: steps.event.outputs.eligible == 'true'
+        id: repo
+        env:
+          PR_NUMBER: ${{ steps.event.outputs.pr_number }}
+        run: |
+          python3 scripts/ci/ai_review.py repo-gate \
+            --pr-json /tmp/pr.json \
+            --repository "$GITHUB_REPOSITORY" >> "$GITHUB_OUTPUT"
+
+  review-comment:
+    needs: gate
+    if: >-
+      needs.gate.outputs.authorized == 'true' &&
+      needs.gate.outputs.eligible == 'true' &&
+      needs.gate.outputs.same_repo == 'true' &&
+      needs.gate.outputs.classification != 'full_review_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GEMINI_REVIEW_MODEL: gemini-3.7-flash
+      GEMINI_REVIEW_MODEL_DISPLAY_NAME: Gemini 3.7 Flash
+      GEMINI_REVIEW_MAX_OUTPUT_TOKENS: 4000
+      GEMINI_REVIEW_THINKING_LEVEL: MEDIUM
+      VERTEX_LOCATION: global
+      PR_NUMBER: ${{ needs.gate.outputs.pr_number }}
+      SOURCE_ID: ${{ needs.gate.outputs.source_id }}
+      SOURCE_KIND: ${{ needs.gate.outputs.source_kind }}
+      SOURCE_AUTHOR: ${{ needs.gate.outputs.source_author }}
+      SOURCE_AUTHOR_ASSOCIATION: ${{ needs.gate.outputs.author_association }}
+      BASE_SHA: ${{ needs.gate.outputs.base_sha }}
+      HEAD_SHA: ${{ needs.gate.outputs.head_sha }}
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Checkout trusted default branch reviewer code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch PR objects without checking out untrusted head code
+        run: git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
+
+      - name: Collect PR metadata and existing automated responses
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" > /tmp/pr.json
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" \
+            --slurp > /tmp/comments-pages.json
+          jq '[.[][]]' /tmp/comments-pages.json > /tmp/comments.json
+
+      - name: Decide idempotent create/update/no-op before Vertex call
+        id: idem
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          CURRENT_HEAD_SHA="$(jq -r '.head.sha' /tmp/pr.json)"
+          CURRENT_STATE="$(jq -r '.state' /tmp/pr.json)"
+          if [[ "$CURRENT_STATE" != "open" || "$CURRENT_HEAD_SHA" != "$HEAD_SHA" ]]; then
+            {
+              echo "action=noop"
+              echo "existing_id="
+              echo "stale=true"
+            } >> "$GITHUB_OUTPUT"
+            {
+              echo "### Technical-comment review queue"
+              echo "- result: stale comment review discarded before model spend"
+              echo "- target head: \`$HEAD_SHA\`"
+              echo "- current head: \`$CURRENT_HEAD_SHA\`"
+              echo "- PR state: \`$CURRENT_STATE\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python3 scripts/ci/ai_review.py idempotency \
+            --comments-json /tmp/comments.json \
+            --source-kind "$SOURCE_KIND" \
+            --source-id "$SOURCE_ID" \
+            --head-sha "$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare trusted comment validity context
+        if: steps.idem.outputs.action != 'noop'
+        run: |
+          python3 scripts/ci/ai_review.py prepare-comment \
+            --event "$GITHUB_EVENT_PATH" \
+            --pr-json /tmp/pr.json \
+            --base-sha "$BASE_SHA" \
+            --head-sha "$HEAD_SHA" \
+            --output /tmp/comment-review-prompt.md
+
+      - name: Route decisive reviews to reasoning model
+        if: steps.idem.outputs.action != 'noop'
+        id: route
+        run: |
+          python3 scripts/ci/ai_review.py comment-route \
+            --event "$GITHUB_EVENT_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare bounded local semantic-review context
+        if: steps.idem.outputs.action != 'noop'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/ai_review.py local-prompt \
+            --kind comment \
+            --prompt /tmp/comment-review-prompt.md \
+            --output /tmp/local-comment-review-prompt.md
+
+      - name: Try local Qwen3-Coder-Next technical-comment review
+        if: steps.idem.outputs.action != 'noop'
+        id: local_review
+        continue-on-error: true
+        env:
+          LOCAL_REVIEW_TOKEN: ${{ secrets.LOCAL_REVIEW_TOKEN }}
+          LOCAL_REVIEW_URL: https://local-review.oosu.dev/v1/review
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$LOCAL_REVIEW_TOKEN"
+          echo "::add-mask::$LOCAL_REVIEW_TOKEN"
+          jq -n \
+            --arg kind comment \
+            --arg request_id "comment-${SOURCE_KIND}-${SOURCE_ID}-${HEAD_SHA}" \
+            --rawfile prompt /tmp/local-comment-review-prompt.md \
+            '{kind:$kind, request_id:$request_id, prompt:$prompt}' \
+            > /tmp/local-comment-review-request.json
+          if ! curl --fail-with-body --silent --show-error \
+            --retry 1 --retry-all-errors --retry-delay 2 --retry-max-time 90 \
+            --connect-timeout 4 --max-time 220 \
+            -H "Authorization: Bearer ${LOCAL_REVIEW_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/local-comment-review-request.json \
+            "$LOCAL_REVIEW_URL" > /tmp/local-comment-review-response.json; then
+            python3 - <<'PY'
+          import json
+          from pathlib import Path
+          try:
+              payload = json.loads(Path('/tmp/local-comment-review-response.json').read_text())
+              print('local reviewer gateway:', str(payload.get('error') or 'request failed')[:500])
+          except Exception:
+              print('local reviewer gateway: request failed without JSON error body')
+          PY
+            exit 1
+          fi
+          python3 scripts/ci/ai_review.py parse-local \
+            --kind comment \
+            --response /tmp/local-comment-review-response.json \
+            --output /tmp/local-comment-review-draft.md
+
+      - name: Classify local review consequence
+        if: >-
+          steps.idem.outputs.action != 'noop' &&
+          steps.local_review.outcome == 'success'
+        id: local_risk
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/ai_review.py local-escalation \
+            --kind comment \
+            --draft /tmp/local-comment-review-draft.md >> "$GITHUB_OUTPUT"
+
+      - name: Authenticate free-tier key lookup with GitHub OIDC
+        if: >-
+          steps.idem.outputs.action != 'noop' &&
+          steps.local_review.outcome == 'success'
+        id: free_auth
+        continue-on-error: true
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: flai-oosuhada-20260506
+          workload_identity_provider: projects/932697090428/locations/global/workloadIdentityPools/github-actions/providers/ontology-dashboard
+          service_account: ontology-gh-review@flai-oosuhada-20260506.iam.gserviceaccount.com
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/cloud-platform
+          create_credentials_file: false
+
+      - name: Falsify local technical-comment review with free Gemma
+        if: >-
+          steps.idem.outputs.action != 'noop' &&
+          steps.local_review.outcome == 'success' &&
+          steps.free_auth.outcome == 'success'
+        id: local_gate
+        continue-on-error: true
+        env:
+          GCP_ACCESS_TOKEN: ${{ steps.free_auth.outputs.access_token }}
+          FREE_API_KEY_RESOURCE: projects/395559345329/locations/global/keys/efe3579e-c4db-4e35-88b9-12188bb1a119
+        run: |
+          set -euo pipefail
+          GEMINI_FREE_API_KEY="$(
+            curl --fail-with-body --silent --show-error \
+              -H "Authorization: Bearer ${GCP_ACCESS_TOKEN}" \
+              "https://apikeys.googleapis.com/v2/${FREE_API_KEY_RESOURCE}/keyString" \
+              | jq -r '.keyString'
+          )"
+          test -n "$GEMINI_FREE_API_KEY" && test "$GEMINI_FREE_API_KEY" != "null"
+          echo "::add-mask::$GEMINI_FREE_API_KEY"
+          GEMINI_FREE_API_KEY="$GEMINI_FREE_API_KEY" \
+            python3 scripts/ci/free_review_falsifier.py \
+              --kind comment \
+              --prompt /tmp/comment-review-prompt.md \
+              --candidate /tmp/local-comment-review-draft.md \
+              --output /tmp/local-comment-falsifier.json
+
+      - name: Format locally accepted technical-comment review
+        if: >-
+          steps.idem.outputs.action != 'noop' &&
+          steps.route.outputs.reasoning != 'true' &&
+          steps.local_review.outcome == 'success' &&
+          steps.local_gate.outcome == 'success' &&
+          steps.local_risk.outputs.force_vertex != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/ai_review.py format-local-comment \
+            --draft /tmp/local-comment-review-draft.md \
+            --source-kind "$SOURCE_KIND" \
+            --source-id "$SOURCE_ID" \
+            --head-sha "$HEAD_SHA" \
+            --output /tmp/comment-review.md
+          {
+            echo "### Local technical-comment review"
+            echo "- primary: Qwen3-Coder-Next Q3_K_XL on MacBook Pro"
+            echo "- falsifier: Gemma 4 26B A4B free tier"
+            echo "- result: accepted without Vertex model invocation"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record local-review escalation
+        if: >-
+          steps.idem.outputs.action != 'noop' &&
+          (steps.route.outputs.reasoning == 'true' ||
+           steps.local_risk.outputs.force_vertex == 'true' ||
+           steps.local_review.outcome != 'success' ||
+           steps.free_auth.outcome != 'success' ||
+           steps.local_gate.outcome != 'success')
+        run: |
+          {
+            echo "### Local technical-comment review"
+            echo "- local outcome: ${{ steps.local_review.outcome }}"
+            echo "- local consequence requires Vertex: ${{ steps.local_risk.outputs.force_vertex }}"
+            echo "- local consequence reason: ${{ steps.local_risk.outputs.reason }}"
+            echo "- Gemma falsifier outcome: ${{ steps.local_gate.outcome }}"
+            echo "- high-risk/final-reasoning route: ${{ steps.route.outputs.reasoning }}"
+            echo "- result: Vertex Gemini 3.7 final adjudication"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Authenticate to Google Cloud with GitHub OIDC
+        if: >-
+          steps.idem.outputs.action != 'noop' &&
+          (steps.route.outputs.reasoning == 'true' ||
+           steps.local_risk.outputs.force_vertex == 'true' ||
+           steps.local_review.outcome != 'success' ||
+           steps.free_auth.outcome != 'success' ||
+           steps.local_gate.outcome != 'success')
+        id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: flai-oosuhada-20260506
+          workload_identity_provider: projects/932697090428/locations/global/workloadIdentityPools/github-actions/providers/ontology-dashboard
+          service_account: ontology-gh-review@flai-oosuhada-20260506.iam.gserviceaccount.com
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/cloud-platform
+          create_credentials_file: false
+
+      - name: Review comment validity with ${{ env.GEMINI_REVIEW_MODEL_DISPLAY_NAME }} on Vertex AI
+        if: >-
+          steps.idem.outputs.action != 'noop' &&
+          (steps.route.outputs.reasoning == 'true' ||
+           steps.local_risk.outputs.force_vertex == 'true' ||
+           steps.local_review.outcome != 'success' ||
+           steps.free_auth.outcome != 'success' ||
+           steps.local_gate.outcome != 'success')
+        env:
+          GCP_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/ai_review.py build-request \
+            --prompt /tmp/comment-review-prompt.md \
+            --output /tmp/vertex-request.json
+
+          CURRENT_HEAD_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq '.head.sha')"
+          if [[ "$CURRENT_HEAD_SHA" != "$HEAD_SHA" ]]; then
+            echo "PR advanced before Vertex spend; discard stale target ${HEAD_SHA} (current ${CURRENT_HEAD_SHA})"
+            exit 0
+          fi
+
+          curl --fail-with-body --silent --show-error \
+            --retry 3 --retry-delay 2 \
+            -X POST \
+            -H "Authorization: Bearer ${GCP_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/vertex-request.json \
+            "https://aiplatform.googleapis.com/v1/projects/flai-oosuhada-20260506/locations/${VERTEX_LOCATION}/publishers/google/models/${GEMINI_REVIEW_MODEL}:generateContent" \
+            > /tmp/vertex-response.json
+
+          python3 scripts/ci/ai_review.py parse-comment \
+            --response /tmp/vertex-response.json \
+            --source-kind "$SOURCE_KIND" \
+            --source-id "$SOURCE_ID" \
+            --head-sha "$HEAD_SHA" \
+            --model-display-name "$GEMINI_REVIEW_MODEL_DISPLAY_NAME" \
+            --model-id "$GEMINI_REVIEW_MODEL" \
+            --vertex-location "$VERTEX_LOCATION" \
+            --output /tmp/comment-review.md
+
+          {
+            echo "### Technical-comment review escalation"
+            echo "- result: Vertex Gemini 3.7 Flash fallback"
+            echo "- reason: decisive/high-risk routing or free-tier quality/quota fallback"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish or update one response for the source comment
+        if: steps.idem.outputs.action != 'noop'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTION: ${{ steps.idem.outputs.action }}
+          EXISTING_ID: ${{ steps.idem.outputs.existing_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" > /tmp/publish-pr.json
+          CURRENT_HEAD_SHA="$(jq -r '.head.sha' /tmp/publish-pr.json)"
+          CURRENT_STATE="$(jq -r '.state' /tmp/publish-pr.json)"
+          if [[ "$CURRENT_STATE" != "open" || "$CURRENT_HEAD_SHA" != "$HEAD_SHA" ]]; then
+            {
+              echo "### Technical-comment review queue"
+              echo "- result: stale completed response discarded before publish"
+              echo "- target head: \`$HEAD_SHA\`"
+              echo "- current head: \`$CURRENT_HEAD_SHA\`"
+              echo "- PR state: \`$CURRENT_STATE\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          jq -n --rawfile body /tmp/comment-review.md '{body: $body}' > /tmp/comment-payload.json
+          if [[ "$ACTION" == "update" ]]; then
+            gh api --method PATCH \
+              "repos/${GITHUB_REPOSITORY}/issues/comments/${EXISTING_ID}" \
+              --input /tmp/comment-payload.json
+          else
+            gh api --method POST \
+              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+              --input /tmp/comment-payload.json
+          fi
+
+  full-review-request:
+    needs: gate
+    if: >-
+      needs.gate.outputs.authorized == 'true' &&
+      needs.gate.outputs.eligible == 'true' &&
+      needs.gate.outputs.same_repo == 'true' &&
+      needs.gate.outputs.classification == 'full_review_request'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Convert /ai-review into one-shot label trigger
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ needs.gate.outputs.pr_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh label create ai-review \
+            --repo "$GITHUB_REPOSITORY" \
+            --color "5319E7" \
+            --description "Request one full Vertex AI PR review" \
+            --force
+          gh issue edit "$PR_NUMBER" \
+            --repo "$GITHUB_REPOSITORY" \
+            --add-label ai-review

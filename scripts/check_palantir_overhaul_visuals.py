@@ -15,7 +15,7 @@ from PIL import Image, ImageChops, ImageFilter, ImageStat
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE_ROOT = ROOT / "docs" / "ui" / "palantir-overhaul"
 MANIFEST_PATH = EVIDENCE_ROOT / "visual-manifest.json"
-DEFAULT_CANDIDATE_ROOT = ROOT / "web" / "test-results" / "palantir-overhaul-candidate"
+DEFAULT_CANDIDATE_ROOT = ROOT / "systems" / "frontend" / "test-results" / "palantir-overhaul-candidate"
 
 
 def image_metadata(path: Path) -> dict[str, Any]:

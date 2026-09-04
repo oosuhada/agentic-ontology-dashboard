@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/product-result-artifact.schema.json",
+  "title": "Ontology Dashboard Product Runtime Result Artifact",
+  "type": "object",
+  "required": [
+    "artifact_id",
+    "artifact_type",
+    "schema_version",
+    "asset_id",
+    "asset_type",
+    "observed_at",
+    "prediction_horizon_hours",
+    "prediction_task",
+    "failure_probability",
+    "predicted_failure_type",
+    "status_grade",
+    "confidence",
+    "top_factors",
+    "recommended_action",
+    "provenance"
+  ],
+  "allOf": [
+    {
+      "if": {"required": ["evidence_payload"]},
+      "then": {
+        "properties": {
+          "provenance": {"required": ["evidence_payload_reference"]}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "provenance": {"required": ["evidence_payload_reference"]}
+        }
+      },
+      "then": {"required": ["evidence_payload"]}
+    },
+    {
+      "if": {
+        "required": ["evidence_payload"],
+        "properties": {
+          "evidence_payload": {
+            "required": ["recommended_actions"],
+            "properties": {"recommended_actions": {"maxItems": 0}}
+          }
+        }
+      },
+      "then": {
+        "properties": {"recommended_action": {"type": "null"}}
+      }
+    },
+    {
+      "if": {
+        "required": ["evidence_payload"],
+        "properties": {
+          "evidence_payload": {
+            "required": ["recommended_actions"],
+            "properties": {"recommended_actions": {"minItems": 1}}
+          }
+        }
+      },
+      "then": {
+        "required": ["recommended_action"],
+        "properties": {"recommended_action": {"type": "object"}}
+      }
+    }
+  ],
+  "properties": {
+    "artifact_id": {"type": "string"},
+    "artifact_type": {"const": "predictive_maintenance_result"},
+    "schema_version": {"const": "result-artifact-v1.0"},
+    "asset_id": {"type": "string"},
+    "asset_type": {"type": "string"},
+    "observed_at": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "threshold": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "prediction_horizon_hours": {"type": "integer", "minimum": 1},
+    "prediction_task": {"const": "binary_failure_within_horizon"},
+    "failure_probability": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "predicted_failure_type": {"type": "string"},
+    "status_grade": {"enum": ["normal", "attention", "warning", "critical", "data_quality_hold"]},
+    "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "top_factors": {"type": "array", "items": {"type": "object"}},
+    "ranked_factor_evidence": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "evidence_field_id",
+          "feature",
+          "display_name",
+          "value",
+          "unit",
+          "normal_range",
+          "direction",
+          "contribution",
+          "source_type"
+        ],
+        "properties": {
+          "evidence_field_id": {"type": "string"},
+          "feature": {"type": "string"},
+          "display_name": {"type": "string"},
+          "value": {"type": ["number", "null"]},
+          "unit": {"type": "string"},
+          "normal_range": {"type": "string"},
+          "direction": {"type": "string"},
+          "contribution": {"type": "number", "minimum": 0},
+          "source_type": {"type": "string"}
+        }
+      }
+    },
+    "recommended_action": {"type": ["object", "null"]},
+    "evidence_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sensor_evidence",
+        "component_hypotheses",
+        "status_flags",
+        "recommended_actions",
+        "source_fields",
+        "evidence_gaps"
+      ],
+      "properties": {
+        "sensor_evidence": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["sensors"],
+          "properties": {
+            "window": {"type": "object"},
+            "window_rows": {"type": "integer", "minimum": 0},
+            "sensors": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": true,
+                "required": ["display_name", "unit", "current", "window_mean", "z_score", "basis"],
+                "properties": {
+                  "display_name": {"type": "string"},
+                  "unit": {"type": "string"},
+                  "current": {"type": ["number", "null"]},
+                  "window_mean": {"type": ["number", "null"]},
+                  "z_score": {"type": ["number", "null"]},
+                  "basis": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "required": ["baseline_mean", "baseline_std", "baseline_n", "baseline_reference"],
+                    "properties": {
+                      "baseline_mean": {"type": ["number", "null"]},
+                      "baseline_std": {"type": ["number", "null"]},
+                      "baseline_n": {"type": "integer", "minimum": 0},
+                      "baseline_reference": {"type": "string"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "component_hypotheses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["component_id", "component_label", "association", "basis"],
+            "properties": {
+              "component_id": {"type": "string"},
+              "component_label": {"type": "string"},
+              "association": {"type": "string"},
+              "basis": {"type": "array", "items": {"type": "string"}}
+            }
+          }
+        },
+        "status_flags": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["multiple_risk_factors", "insufficient_data"],
+          "properties": {
+            "multiple_risk_factors": {"type": "boolean"},
+            "insufficient_data": {"type": "boolean"}
+          }
+        },
+        "maintenance_context": {
+          "type": ["object", "null"],
+          "additionalProperties": true,
+          "required": ["provider", "version", "source_type", "source_refs", "checklist", "recommended_actions"],
+          "properties": {
+            "provider": {"type": "string"},
+            "version": {"type": "string"},
+            "source_type": {"type": "string"},
+            "source_refs": {"type": "array", "items": {"type": "string"}},
+            "checklist": {"type": "array", "items": {"type": "string"}},
+            "recommended_actions": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "recommended_actions": {
+          "type": "array",
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["action_id", "label", "kind", "requires_human_approval", "basis"],
+            "properties": {
+              "action_id": {"type": "string"},
+              "label": {"type": "string"},
+              "kind": {"type": "string"},
+              "requires_human_approval": {"type": "boolean"},
+              "basis": {"type": "array", "items": {"type": "string"}}
+            }
+          }
+        },
+        "source_fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["field_id", "source_path", "label", "description"],
+            "properties": {
+              "field_id": {"type": "string"},
+              "source_path": {"type": "string"},
+              "label": {"type": "string"},
+              "description": {"type": "string"}
+            }
+          }
+        },
+        "evidence_gaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["gap_id", "field", "reason", "required_source", "owner_domain", "display_policy"],
+            "properties": {
+              "gap_id": {"type": "string"},
+              "field": {"type": "string"},
+              "reason": {"enum": ["missing_source", "not_producer_owned", "not_in_week2_scope", "insufficient_context"]},
+              "required_source": {"type": "string"},
+              "owner_domain": {"enum": ["diagnosis", "generator", "dashboard", "operations", "maintenance", "aggregate", "unknown"]},
+              "display_policy": {"enum": ["show_as_unavailable", "hide_section", "show_limitation"]}
+            }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["dataset_version", "model_version", "prediction_id", "source_type", "canonical_source_mutated"],
+      "properties": {
+        "dataset_version": {"type": "string"},
+        "model_version": {"type": "string"},
+        "prediction_id": {"type": "string"},
+        "source_type": {"const": "product_runtime_inference"},
+        "canonical_source_mutated": {"const": false},
+        "model_artifact": {"type": ["object", "null"]},
+        "evidence_payload_reference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "reference", "generated_by"],
+          "properties": {
+            "source": {"const": "product_result_artifact"},
+            "reference": {"type": "string"},
+            "generated_by": {"type": "string"}
+          }
+        }
+      }
+    }
+  }
+}

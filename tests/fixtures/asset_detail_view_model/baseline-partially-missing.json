@@ -1,0 +1,158 @@
+{
+  "snapshot_basis": {
+    "artifact_id": "RESULT#CNC-S01-L01-01#2026-08-01T00:00:00+09:00",
+    "evidence_payload_reference": "producer-enriched-attention",
+    "asset_id": "CNC-S01-L01-01",
+    "event_id": null,
+    "observed_at": "2026-08-01T00:00:00+09:00",
+    "model_version": "canonical-ai4i-physics-v3.1",
+    "dataset_version": "canonical-ai4i-physics-v3.1",
+    "source_sha256": null
+  },
+  "asset": {
+    "asset_id": "CNC-S01-L01-01",
+    "asset_type": "cnc",
+    "display_name": "CNC S01-L01-01",
+    "site_id": "S01",
+    "cell_id": "L01",
+    "observed_at": "2026-08-01T00:00:00+09:00",
+    "criticality": null,
+    "criticality_basis": [],
+    "criticality_source": "unknown"
+  },
+  "risk": {
+    "current": 0.41,
+    "threshold": 0.65,
+    "status_grade": "attention",
+    "prediction_horizon_hours": 24
+  },
+  "risk_series": [
+    {
+      "observed_at": "2026-07-31T21:00:00+09:00",
+      "failure_probability": 0.33,
+      "status_grade": "attention",
+      "prediction_id": "CNC-S01-L01-01#2026-07-31T21:00:00+09:00",
+      "source_kind": "runtime_inference",
+      "source_ref": "diagnosis-runtime-history://CNC-S01-L01-01/2026-07-31T21:00:00+09:00"
+    },
+    {
+      "observed_at": "2026-08-01T00:00:00+09:00",
+      "failure_probability": 0.41,
+      "status_grade": "attention",
+      "prediction_id": "CNC-S01-L01-01#2026-08-01T00:00:00+09:00",
+      "source_kind": "runtime_inference",
+      "source_ref": "diagnosis-runtime-history://CNC-S01-L01-01/2026-08-01T00:00:00+09:00"
+    }
+  ],
+  "features": [
+    {
+      "key": "torque_nm",
+      "label": "토크",
+      "unit": "N·m",
+      "current": {
+        "observed_at": "2026-08-01T00:00:00+09:00",
+        "value": 46.8,
+        "quality_status": "good"
+      },
+      "baseline": {
+        "mean": 40.2,
+        "std": 3.1,
+        "lower": 34.0,
+        "upper": 46.4,
+        "reference": "all_valid_rows canonical-ai4i-physics-v3.1 cnc_sensor_observation.csv"
+      },
+      "history": {
+        "source_ref": "observation://CNC-S01-L01-01.torque_nm",
+        "points": [
+          {
+            "observed_at": "2026-07-31T21:00:00+09:00",
+            "value": 43.5,
+            "quality_status": "good"
+          }
+        ]
+      },
+      "top_factor": {
+        "rank": 1,
+        "contribution": 0.27,
+        "direction": "risk_up",
+        "explanation_method": "model_artifact_local_proxy_attribution",
+        "evidence_field_id": "factor.1.torque_nm"
+      }
+    },
+    {
+      "key": "tool_wear_min",
+      "label": "공구 마모",
+      "unit": "분",
+      "current": {
+        "observed_at": "2026-08-01T00:00:00+09:00",
+        "value": 128.0,
+        "quality_status": "good"
+      },
+      "baseline": null,
+      "history": {
+        "source_ref": "observation://CNC-S01-L01-01.tool_wear_min",
+        "points": [
+          {
+            "observed_at": "2026-07-31T21:00:00+09:00",
+            "value": 121.0,
+            "quality_status": "good"
+          }
+        ]
+      },
+      "top_factor": null
+    }
+  ],
+  "equipment_history": [
+    {
+      "occurred_at": "2026-07-20T09:00:00+09:00",
+      "kind": "maintenance_note",
+      "tone": "normal",
+      "description": "정기 공구 교체",
+      "source": "activity"
+    }
+  ],
+  "maintenance_context": {
+    "last_maintenance_days_ago": 12,
+    "similar_events_30d": null,
+    "open_work_order_exists": null
+  },
+  "operation_context": {
+    "load_level": null,
+    "runtime_hours_7d": null,
+    "production_impact": "low"
+  },
+  "review_priority": null,
+  "evidence": {
+    "artifact_id": "RESULT#CNC-S01-L01-01#2026-08-01T00:00:00+09:00",
+    "evidence_payload_reference": "producer-enriched-attention",
+    "model_version": "canonical-ai4i-physics-v3.1",
+    "dataset_version": "canonical-ai4i-physics-v3.1",
+    "source_kind": "runtime_inference",
+    "gaps": [
+      {
+        "field": "features[1].baseline",
+        "reason": "evidence_payload.sensor_evidence.sensors.tool_wear_min has no basis (baseline window rows unavailable for this feature); current value and series are still shown",
+        "owner_domain": "diagnosis"
+      },
+      {
+        "field": "asset.criticality",
+        "reason": "criticality_missing_or_unresolved",
+        "owner_domain": "equipment"
+      },
+      {
+        "field": "review_priority",
+        "reason": "review_priority_inputs_missing_or_unresolved",
+        "owner_domain": "report"
+      }
+    ]
+  },
+  "data_status": {
+    "source": "canonical",
+    "is_stale": false,
+    "is_data_quality_hold": false,
+    "last_updated_at": "2026-08-01T00:00:00+09:00",
+    "warnings": [
+      "features[1].baseline unavailable; range-crossing markers must not be computed for tool_wear_min"
+    ]
+  }
+}

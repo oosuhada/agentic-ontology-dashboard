@@ -1,0 +1,19 @@
+{
+  "model_set_id": "pdm-default",
+  "model_set_version": "1.0.0",
+  "updated_at": "2026-08-26T09:00:00Z",
+  "models": {
+    "lightgbm": {
+      "model_version": "1.0.0",
+      "required": true
+    },
+    "xgboost": {
+      "model_version": "1.0.0",
+      "required": true
+    },
+    "random_forest": {
+      "model_version": "1.0.0",
+      "required": true
+    }
+  }
+}

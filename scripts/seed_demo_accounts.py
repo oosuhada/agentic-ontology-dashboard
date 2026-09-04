@@ -5,8 +5,11 @@ import argparse
 import os
 from pathlib import Path
 
-from ontology_dashboard.identity import DEMO_ACCOUNTS, IdentityService
-from ontology_dashboard.settings import database_location
+from argon2 import PasswordHasher
+
+from app.identity import DEMO_ACCOUNTS, IdentityService
+from app.infra.db.identity_repository import IdentityRepository
+from app.infra.db.settings import database_location
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -23,7 +26,19 @@ def main() -> None:
     if app_env == "production":
         raise SystemExit("Refusing to seed demo accounts when APP_ENV=production")
 
-    service = IdentityService(args.database, app_env=app_env, seed_demo=True)
+    password_hasher = PasswordHasher(
+        time_cost=2,
+        memory_cost=19456,
+        parallelism=1,
+        hash_len=32,
+        salt_len=16,
+    )
+    service = IdentityService(
+        IdentityRepository(args.database, password_hasher=password_hasher),
+        app_env=app_env,
+        seed_demo=True,
+        rate_limit_namespace=f"identity:{args.database}",
+    )
     users = service.repository.list_users()
     seeded_emails = {account["email"] for account in DEMO_ACCOUNTS}
     available = sorted(user["email"] for user in users if user["email"] in seeded_emails)

@@ -1,0 +1,142 @@
+{
+  "artifact_id": "RESULT#CMP-S03-L03-01#2026-08-01T00:00:00+09:00",
+  "artifact_type": "predictive_maintenance_result",
+  "schema_version": "result-artifact-v1.0",
+  "asset_id": "CMP-S03-L03-01",
+  "asset_type": "compressor",
+  "observed_at": "2026-08-01T00:00:00+09:00",
+  "generated_at": "2026-08-01T00:00:00+09:00",
+  "threshold": 0.65,
+  "prediction_horizon_hours": 24,
+  "prediction_task": "binary_failure_within_horizon",
+  "failure_probability": 0.92,
+  "predicted_failure_type": "power_or_overstrain_failure",
+  "status_grade": "critical",
+  "confidence": 0.84,
+  "confidence_label": "high",
+  "top_factors": [
+    {
+      "rank": 1,
+      "feature": "rotation_raw",
+      "feature_value": 1820.0,
+      "signed_contribution": 0.42,
+      "direction": "risk_up",
+      "explanation_method": "deterministic_component_score"
+    }
+  ],
+  "ranked_factor_evidence": [
+    {
+      "evidence_field_id": "factor.1.rotation_raw",
+      "feature": "rotation_raw",
+      "display_name": "회전 상태",
+      "value": 1820.0,
+      "unit": "rpm",
+      "normal_range": "baseline z-score -2.0..2.0",
+      "direction": "risk_up",
+      "contribution": 0.42,
+      "source_type": "observed"
+    }
+  ],
+  "recommended_action": {
+    "action": "immediate_inspection_and_stop_review",
+    "priority": "urgent"
+  },
+  "evidence_payload": {
+    "sensor_evidence": {
+      "window": {
+        "start": "2026-07-31T18:00:00+09:00",
+        "end": "2026-08-01T00:00:00+09:00"
+      },
+      "window_rows": 12,
+      "sensors": {
+        "rotation_raw": {
+          "display_name": "회전 상태",
+          "unit": "rpm",
+          "current": 1820.0,
+          "window_mean": 1795.25,
+          "z_score": -2.9,
+          "basis": {
+            "baseline_mean": 1600.0,
+            "baseline_std": 67.327,
+            "baseline_n": 240,
+            "baseline_reference": "all_valid_rows canonical-ai4i-physics-v3.1 compressor_sensor_observation.csv"
+          }
+        }
+      }
+    },
+    "component_hypotheses": [
+      {
+        "component_id": "rotating_assembly",
+        "component_label": "회전/진동 계통",
+        "association": "inspection_candidate",
+        "basis": [
+          "factor.1.rotation_raw",
+          "sensor_evidence.sensors.rotation_raw"
+        ]
+      }
+    ],
+    "status_flags": {
+      "multiple_risk_factors": false,
+      "insufficient_data": false
+    },
+    "maintenance_context": {
+      "provider": "pdm-operations-reference",
+      "version": "2026-08-11",
+      "source_type": "semantic_regression_reference",
+      "source_refs": [
+        "semantic-regression:pdm-operations-critical"
+      ],
+      "checklist": [
+        "회전부 상태 확인",
+        "진동 및 베어링 상태 확인"
+      ],
+      "recommended_actions": [
+        "다음 교대 전 현장 점검",
+        "필요 시 정지 검토"
+      ]
+    },
+    "recommended_actions": [
+      {
+        "action_id": "review_shutdown",
+        "label": "정지 검토",
+        "kind": "inspect",
+        "requires_human_approval": true,
+        "basis": [
+          "factor.1.rotation_raw",
+          "sensor_evidence.sensors.rotation_raw"
+        ]
+      }
+    ],
+    "source_fields": [
+      {
+        "field_id": "factor.1.rotation_raw",
+        "source_path": "top_factors[0]",
+        "label": "회전 상태",
+        "description": "위험 판단에 사용된 상위 요인"
+      },
+      {
+        "field_id": "sensor_evidence.sensors.rotation_raw",
+        "source_path": "evidence_payload.sensor_evidence.sensors.rotation_raw",
+        "label": "회전 상태",
+        "description": "센서 관측 및 baseline 근거"
+      }
+    ],
+    "evidence_gaps": []
+  },
+  "provenance": {
+    "dataset_version": "canonical-ai4i-physics-v3.1",
+    "model_version": "canonical-ai4i-physics-v3.1",
+    "prediction_id": "CMP-S03-L03-01#2026-08-01T00:00:00+09:00",
+    "source_type": "product_runtime_inference",
+    "canonical_source_mutated": false,
+    "model_artifact": null,
+    "evidence_payload_reference": {
+      "source": "product_result_artifact",
+      "reference": "producer-enriched-critical",
+      "generated_by": "systems.backend.app.diagnosis.evidence_enrichment"
+    }
+  },
+  "evaluation_truth": {
+    "fixture_label": "critical"
+  }
+}

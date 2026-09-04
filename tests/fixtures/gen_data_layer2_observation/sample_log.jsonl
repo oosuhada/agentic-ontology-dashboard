@@ -1,0 +1,4 @@
+{"node_id":"CNC-S01-L01-01.torque_nm","source_timestamp":"2026-08-20T01:00:00Z","server_timestamp":"2026-08-20T01:00:02Z","value":42.5,"status_code":"Good","reason":null}
+{"node_id":"CNC-S01-L01-01.rpm","source_timestamp":"2026-08-20T01:00:00Z","server_timestamp":"2026-08-20T01:00:03Z","value":null,"status_code":"Bad","reason":"sensor_timeout"}
+{"node_id":"CNC-S01-L01-01.torque_nm","source_timestamp":"2026-08-20T01:01:00Z","server_timestamp":"2026-08-20T01:01:02Z","value":43.0,"status_code":"Good","reason":null}
+{"node_id":"CNC-S01-L01-02.torque_nm","source_timestamp":"2026-08-20T01:00:00Z","server_timestamp":"2026-08-20T01:00:04Z","value":38.2,"status_code":"Good","reason":null}

@@ -1,0 +1,24 @@
+{
+  "request_id": "req-ext-20260828-002",
+  "run_id": "run-api-20260828-002",
+  "status": "no_data",
+  "processed_sources": 1,
+  "succeeded_sources": 0,
+  "failed_sources": 0,
+  "sources": [
+    {
+      "source_uri": "sensor/facS01/lineL01/sensor_stream.jsonl",
+      "source_identity": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "status": "no_data",
+      "start_offset": 15000,
+      "committed_offset": 15000,
+      "records_read": 0,
+      "observations_staged": 0,
+      "rejected_staged": 0,
+      "published_datasets": [],
+      "pending_windows": [],
+      "error_code": null,
+      "error_message": null
+    }
+  ]
+}

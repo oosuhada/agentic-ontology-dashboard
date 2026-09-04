@@ -1,0 +1,48 @@
+{
+  "schema_version": "operational-relation-resolver-gate-v1.0",
+  "candidate": "typed_rdb_relation_resolver",
+  "current_decision": "keep_typed_rdb_resolver",
+  "production_kg": false,
+  "production_langgraph": false,
+  "questions": [
+    {
+      "id": "affected-delivery",
+      "path": "Evidence -> Asset -> Operation -> ProductionOrder -> WIP/Lot -> Delivery",
+      "required_relationships": [
+        "operation_assigned_to_order",
+        "order_contains_wip",
+        "wip_quality_state_reported_by_lot",
+        "order_commits_delivery"
+      ]
+    },
+    {
+      "id": "alternative-capacity",
+      "path": "Operation -> AlternativeResource",
+      "required_relationships": [
+        "operation_has_alternative_resource"
+      ]
+    },
+    {
+      "id": "maintenance-part-readiness",
+      "path": "ActionCandidate -> PartRequirement -> Part -> InventorySnapshot",
+      "required_relationships": [
+        "action_requires_part",
+        "part_requirement_accepts_part",
+        "inventory_snapshot_reports_part"
+      ]
+    }
+  ],
+  "adoption_gate": {
+    "knowledge_graph": [
+      "typed resolver cannot answer required multi-hop questions",
+      "relationship update/query complexity is measured as unsafe or unmaintainable",
+      "same question set shows measurable correctness or traceability improvement"
+    ],
+    "langgraph": [
+      "independent runtime tools require dynamic branching beyond bounded service orchestration",
+      "durable pause/resume or node-specific recovery is required",
+      "same gold set shows quality or failure-isolation improvement"
+    ]
+  },
+  "claim_boundary": "This gate validates a typed relation contract, not graph database performance or production necessity."
+}

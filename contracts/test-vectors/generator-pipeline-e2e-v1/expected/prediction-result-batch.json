@@ -1,0 +1,104 @@
+{
+  "contract_version": "prediction-result-batch-v1",
+  "batch_id": "batch-e2e-cnc01-d545f01d",
+  "producer": {
+    "system": "systems.generator",
+    "runtime_version": "1.0.0",
+    "outbox_id": "outbox-e2e-001"
+  },
+  "emitted_at": "2026-08-28T14:00:05Z",
+  "source_context": {
+    "dataset_id": "gen-data-S01-L01",
+    "dataset_version": "window-20260828T130000Z-map-d545f01d",
+    "source_uri": "data/observations/gen-data-S01-L01/window-20260828T130000Z-map-d545f01d/observations.jsonl",
+    "source_checksum": "ac5341e76c0c163faab2ac44f27566a811657554d64dee22d6b44f7f423a06a5",
+    "source_kind": "live_sensor",
+    "source_contract_version": "generator-dataset-input-v1",
+    "source_schema_version": "canonical-observation-v1",
+    "pipeline_contract_version": "generator-prediction-result-v1",
+    "lineage": {
+      "simulation_session_id": null,
+      "overlay_branch_id": null,
+      "history_segment_id": null,
+      "maintenance_event_id": null,
+      "maintenance_action_id": null,
+      "state_version": null
+    }
+  },
+  "model_set": {
+    "model_set_id": "model-set-v1",
+    "model_set_version": "1.0.0",
+    "models": [
+      {
+        "model_id": "pdm-lightgbm",
+        "model_version": "pdm-lightgbm-v1.0",
+        "required": true,
+        "model_artifact_manifest_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      }
+    ]
+  },
+  "results": [
+    {
+      "event_id": "evt-e2e-cnc01-131000",
+      "asset_id": "CNC-01",
+      "observed_at": "2026-08-28T13:10:00Z",
+      "source_kind": "live_sensor",
+      "source_ref": {
+        "uri": "data/observations/gen-data-S01-L01/window-20260828T130000Z-map-d545f01d/observations.jsonl",
+        "sha256": "ac5341e76c0c163faab2ac44f27566a811657554d64dee22d6b44f7f423a06a5"
+      },
+      "output_status": "predicted",
+      "score": 0.05,
+      "model_id": "pdm-lightgbm",
+      "model_version": "pdm-lightgbm-v1.0",
+      "model_artifact_manifest_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "feature_schema_version": "feature-schema-v1",
+      "history_requirement_version": "history-req-v1",
+      "label_schema_version": "label-schema-v1",
+      "feature_schema_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "history_requirement_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "label_schema_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "lineage": {
+        "simulation_session_id": null,
+        "overlay_branch_id": null,
+        "history_segment_id": null,
+        "maintenance_event_id": null,
+        "maintenance_action_id": null,
+        "state_version": null
+      },
+      "failure_reason": null,
+      "payload_sha256": "0f2dcb711dd35d4fee50cd27dbff114d71cc5bfbb93180acd80a8d60b6d82e6b"
+    },
+    {
+      "event_id": "evt-e2e-cnc01-134000",
+      "asset_id": "CNC-01",
+      "observed_at": "2026-08-28T13:40:00Z",
+      "source_kind": "live_sensor",
+      "source_ref": {
+        "uri": "data/observations/gen-data-S01-L01/window-20260828T130000Z-map-d545f01d/observations.jsonl",
+        "sha256": "ac5341e76c0c163faab2ac44f27566a811657554d64dee22d6b44f7f423a06a5"
+      },
+      "output_status": "predicted",
+      "score": 0.07,
+      "model_id": "pdm-lightgbm",
+      "model_version": "pdm-lightgbm-v1.0",
+      "model_artifact_manifest_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "feature_schema_version": "feature-schema-v1",
+      "history_requirement_version": "history-req-v1",
+      "label_schema_version": "label-schema-v1",
+      "feature_schema_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "history_requirement_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "label_schema_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "lineage": {
+        "simulation_session_id": null,
+        "overlay_branch_id": null,
+        "history_segment_id": null,
+        "maintenance_event_id": null,
+        "maintenance_action_id": null,
+        "state_version": null
+      },
+      "failure_reason": null,
+      "payload_sha256": "681ab33136ec1d41fe839813f9eafee30b28035ead5f4b8f63fc2c72e0659840"
+    }
+  ]
+}

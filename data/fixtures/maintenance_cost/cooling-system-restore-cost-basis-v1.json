@@ -1,0 +1,175 @@
+{
+  "schema_version": "maintenance-cost-input-basis-v1.0",
+  "basis_id": "cooling-restore-demo-economic-basis-2026-09",
+  "action_code": "COOLING_SYSTEM_RESTORE",
+  "applicability": {
+    "execution_mode": "in_house",
+    "vendor_dispatch_required": false,
+    "component_replacement_required": false
+  },
+  "description": "Demo economic inputs for an in-house cooling-path restoration. The scope is cleaning, clearing restrictions, and functional verification without replacing a fan, pump, chiller, or other component. Public references and explicit synthetic assumptions are not an actual site quotation, payroll record, MES result, or guaranteed maintenance cost.",
+  "restoration_scope": {
+    "component_id": "cooling_system",
+    "operation": "clean_clear_and_verify",
+    "included_operations": [
+      "safe stop and cooling-path access",
+      "cooling-path cleaning and restriction clearing",
+      "coolant circulation and heat-dissipation verification",
+      "test run and restart"
+    ],
+    "component_replacement_included": false,
+    "excluded_operations": [
+      "fan replacement",
+      "pump replacement",
+      "chiller replacement",
+      "heat-exchanger replacement",
+      "vendor dispatch"
+    ],
+    "scope_rule": "If inspection identifies a failed component that requires replacement or vendor service, this basis is not applicable and a separate quoted Action/basis is required."
+  },
+  "currency": "KRW",
+  "currency_minor_unit": 0,
+  "parts_cost": {
+    "reference_minor": 0,
+    "source_kind": "policy",
+    "confidence": "medium",
+    "applicable_when": "component_replacement_included=false",
+    "reasoning": "This bounded restoration Action cleans and clears the cooling path without replacing a fan, pump, chiller, heat exchanger, or other component. Zero is a structural non-incurrence, not a missing quote substitute."
+  },
+  "external_service_cost": {
+    "reference_minor": 0,
+    "source_kind": "policy",
+    "confidence": "medium",
+    "applicable_when": "execution_mode=in_house and vendor_dispatch_required=false",
+    "reasoning": "The bounded demo scope is performed in-house without vendor dispatch. If external service is required, this basis is not applicable."
+  },
+  "labor_rate_per_minute": {
+    "normal_minor": 292,
+    "night_minor": 438,
+    "confidence": "medium",
+    "source_kind": "official_wage_survey_reference",
+    "derivation": {
+      "occupation_code": 88,
+      "occupation_name": "기계장치정비원",
+      "survey_daily_wage_krw": 139942,
+      "survey_day_minutes": 480,
+      "formula": "round(139942 / (8 * 60)) = 292 KRW/min; round(292 * 1.5) = 438 KRW/min for the single night-work premium demo rate"
+    },
+    "limitations": [
+      "The survey wage is a manufacturing cost reference, not this site's ordinary wage or payroll rate.",
+      "The 438 KRW/min value applies one 50% night-work premium only. Overtime/holiday overlap, benefits, and contractor overhead are not calculated."
+    ]
+  },
+  "execution_time_policy": {
+    "timezone": "Asia/Seoul",
+    "planned_window_delay_hours": 12,
+    "night_window": {
+      "start_hour": 22,
+      "end_hour": 6
+    },
+    "normal_rate_minor_per_minute": 292,
+    "night_rate_minor_per_minute": 438,
+    "reasoning": "The Backend owns calculated_at. Immediate restoration uses that instant and the demo planned window uses calculated_at + 12 hours as cost-calculation assumptions, not approved Work Order schedules. Both are converted to Asia/Seoul before the 22:00-06:00 night-work band is selected.",
+    "source_ids": ["korean-labor-standards-act-article-56"],
+    "limitations": "This is a deterministic demo policy, not a payroll engine. It does not infer overtime from a shift calendar or stack overtime, holiday, and night premiums."
+  },
+  "demo_policy_inputs": {
+    "labor_duration_minutes": {
+      "sensitivity": {"low": 30, "base": 45, "high": 60},
+      "source_kind": "explicit_demo_assumption",
+      "confidence": "low",
+      "reasoning": "No governed site work history or manufacturer standard fixes the duration for this broad restoration Action. The 30-60 minute band is an explicit demo assumption covering safe stop, access, cleaning, circulation verification, test run, and restart.",
+      "source_ids": ["cooling-system-restore-domain-contract"]
+    },
+    "expected_downtime_minutes": {
+      "sensitivity": {"low": 45, "base": 60, "high": 90},
+      "source_kind": "explicit_demo_assumption",
+      "confidence": "low",
+      "reasoning": "Downtime includes the hands-on restoration duration plus isolation, verification, and restart margin. It is a demo sensitivity range and must be replaced by observed site Maintenance history.",
+      "source_ids": ["cooling-system-restore-domain-contract"]
+    },
+    "production_loss_rate_minor_per_minute": {
+      "sensitivity": {"low": 846, "base": 1058, "high": 1269},
+      "source_kind": "synthetic_scenario_estimate",
+      "confidence": "low",
+      "derivation": {
+        "oee": 0.846,
+        "standard_cycle_minutes_per_unit": 4.0,
+        "effective_units_per_minute": 0.2115,
+        "unit_contribution_margin_minor": {"low": 4000, "base": 5000, "high": 6000},
+        "formula": "round((0.846 / 4.0) * contribution_margin) = 846 / 1058 / 1269 KRW/min"
+      },
+      "reasoning": "The repository's synthetic capacity model supplies OEE and cycle time, while contribution margin remains an explicit demo assumption because AI4I contains no ERP economics.",
+      "source_ids": ["production-planning-context-v1", "uci-ai4i-dataset", "nist-design-for-cost"]
+    },
+    "expected_failure_loss_minor": {
+      "source_kind": "runtime_derived_synthetic_scenario",
+      "confidence": "low",
+      "scenario_values": {
+        "immediate": {"low": 0, "base": 0, "high": 0},
+        "planned_window": null,
+        "reinspect_after": null,
+        "no_action_baseline": null
+      },
+      "reasoning": "The immediate scenario begins restoration now and therefore assigns no additional waiting-period failure exposure. No cooling-specific future failure probability exists for the other timings, so they remain insufficient instead of borrowing the generic equipment risk or inventing a projection.",
+      "missing_probability_behavior": "Return insufficient for planned_window, reinspect_after, and no_action_baseline; do not estimate, interpolate, or substitute a probability."
+    }
+  },
+  "sources": [
+    {
+      "source_id": "kbiz-2026-first-half-manufacturing-wage-survey",
+      "source_kind": "official_reference",
+      "title": "2026년 상반기 중소제조업 직종별 임금조사 보고서 (2026년 하반기 적용)",
+      "url": "https://www.kbiz.or.kr/download.do?fleDwnDs=bbsAttachFile&orgalFle=32303236eb858420ec8381ebb098eab8b020eca491ec868ceca09ceca1b0ec978520eca781eca285ebb384ec9e84eab888eca1b0ec82ac20ebb3b4eab3a0ec849c2e706466&saveFle=178332478517291889.pdf&seq=92024",
+      "evidence": "기계장치정비원(직종코드 88) 조사노임 139,942원/일, 1일 8시간 기준",
+      "accessed_at": "2026-08-31"
+    },
+    {
+      "source_id": "korean-labor-standards-act-article-56",
+      "source_kind": "official_legal_reference",
+      "title": "근로기준법 제56조 연장·야간 및 휴일 근로",
+      "url": "https://law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1012828203",
+      "evidence": "Night work between 22:00 and 06:00 requires an additional payment of at least 50 percent of ordinary wages.",
+      "accessed_at": "2026-09-01"
+    },
+    {
+      "source_id": "production-planning-context-v1",
+      "source_kind": "internal_synthetic_fixture",
+      "title": "Production planning context v1",
+      "url": "data/fixtures/operation_context/production-planning-context-v1.json",
+      "evidence": "The synthetic capacity model records OEE 0.846, a four-minute demo cycle, and 12.69 units/hour per asset.",
+      "accessed_at": "2026-08-31"
+    },
+    {
+      "source_id": "uci-ai4i-dataset",
+      "source_kind": "dataset_documentation",
+      "title": "AI4I 2020 Predictive Maintenance Dataset",
+      "url": "https://archive.ics.uci.edu/dataset/601/ai4i",
+      "evidence": "AI4I documents sensor and failure variables but no price, margin, takt, MES, ERP, cooling-repair duration, or cooling-specific future failure probability.",
+      "accessed_at": "2026-08-31"
+    },
+    {
+      "source_id": "nist-design-for-cost",
+      "source_kind": "official_method_reference",
+      "title": "Design-for-Cost - An Approach for Distributed Manufacturing Cost Estimation",
+      "url": "https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=928028",
+      "evidence": "NIST describes labor cost as labor rate multiplied by labor operation time and notes that assumptions are required when source data are unavailable.",
+      "accessed_at": "2026-08-31"
+    },
+    {
+      "source_id": "cooling-system-restore-domain-contract",
+      "source_kind": "internal_contract",
+      "title": "COOLING_SYSTEM_RESTORE domain and runtime overlay contract",
+      "url": "docs/closed-loop-runtime-overlay-contract.md",
+      "evidence": "The Action restores cooling_system_state to nominal without Maintenance inventing a replacement component or sensor reset value.",
+      "accessed_at": "2026-09-01"
+    }
+  ],
+  "usage_policy": {
+    "allowed": "Demo decision-support calculation for the explicitly bounded in-house cooling-path restoration scope with exact assumption provenance.",
+    "forbidden": "Representing the values as an actual site quote, payroll, MES/ERP result, component-replacement estimate, guaranteed saving, recommendation, approval, or execution command.",
+    "component_failure_behavior": "If a fan, pump, chiller, heat exchanger, or vendor service is required, stop using this basis and obtain a separately versioned quote/action basis.",
+    "missing_future_probability_behavior": "Return insufficient for non-immediate timings until an authoritative cooling-specific probability or governed sensitivity input is available.",
+    "replacement_policy": "Replace demo assumptions with versioned site work history, payroll, MES, ERP, and supplier quote inputs before operational use."
+  }
+}

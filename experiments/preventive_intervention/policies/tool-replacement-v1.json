@@ -1,0 +1,15 @@
+{
+  "policy_version": "preventive-policy-v1.0",
+  "action_code": "TOOL_REPLACEMENT",
+  "asset_type": "cnc",
+  "tool_wear_after": 0.0,
+  "default_duration_minutes": 30,
+  "requires_shutdown": true,
+  "applicable_failure_modes": [
+    "tool_wear_failure",
+    "overstrain_failure"
+  ],
+  "cost_source_type": "missing",
+  "default_parts_cost": null,
+  "default_labor_cost": null
+}

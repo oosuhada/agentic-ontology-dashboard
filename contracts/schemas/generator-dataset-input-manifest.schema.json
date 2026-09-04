@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/generator-dataset-input-manifest.schema.json",
+  "title": "Generator Dataset Input Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "dataset_type",
+    "dataset_id",
+    "dataset_version",
+    "schema_version",
+    "created_at",
+    "files"
+  ],
+  "properties": {
+    "manifest_version": {
+      "type": "string",
+      "const": "generator-dataset-input-v1"
+    },
+    "dataset_type": {
+      "type": "string",
+      "enum": [
+        "observation",
+        "failure"
+      ]
+    },
+    "dataset_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$"
+    },
+    "dataset_version": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$"
+    },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "role",
+          "path",
+          "media_type",
+          "sha256",
+          "size_bytes"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "observations",
+              "failures"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$"
+          },
+          "media_type": {
+            "type": "string",
+            "enum": [
+              "text/csv",
+              "application/x-ndjson",
+              "application/jsonl"
+            ]
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "auxiliary_files": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "role",
+          "path",
+          "media_type",
+          "sha256",
+          "size_bytes"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "provenance",
+              "rejected"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$"
+          },
+          "media_type": {
+            "type": "string",
+            "enum": [
+              "text/csv",
+              "application/x-ndjson",
+              "application/jsonl"
+            ]
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "extraction_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_format",
+        "source_identity",
+        "source_uri",
+        "site_id",
+        "cell_id",
+        "window_start",
+        "window_end",
+        "source_start_offset",
+        "source_end_offset",
+        "mapping_id",
+        "mapping_version",
+        "mapping_sha256"
+      ],
+      "properties": {
+        "source_format": {
+          "type": "string"
+        },
+        "source_identity": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "site_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cell_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "window_start": {
+          "type": "string"
+        },
+        "window_end": {
+          "type": "string"
+        },
+        "source_start_offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_end_offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mapping_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mapping_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mapping_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_fragment_manifest_sha256": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "$schema": {
+      "type": "string"
+    }
+  }
+}

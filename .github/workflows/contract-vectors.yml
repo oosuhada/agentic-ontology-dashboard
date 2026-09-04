@@ -1,0 +1,83 @@
+name: contract-vectors
+
+on:
+  pull_request:
+    paths:
+      - "contracts/schemas/**"
+      - "contracts/examples/**"
+      - "contracts/test-vectors/**"
+      - "systems/verify_contract_vectors.py"
+      - "systems/verify_architecture.py"
+      - "tests/test_verify_contract_vectors.py"
+      - "requirements/contract-ci.txt"
+      - ".github/workflows/contract-vectors.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "contracts/schemas/**"
+      - "contracts/examples/**"
+      - "contracts/test-vectors/**"
+      - "systems/verify_contract_vectors.py"
+      - "systems/verify_architecture.py"
+      - "tests/test_verify_contract_vectors.py"
+      - "requirements/contract-ci.txt"
+      - ".github/workflows/contract-vectors.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: contract-vectors-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: contract-vectors / verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout tested revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check changed-file whitespace
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            git diff --check "$PR_BASE_SHA...$PR_HEAD_SHA"
+          elif [[ "$EVENT_NAME" == "push" ]]; then
+            git diff --check "$PUSH_BEFORE_SHA...$CURRENT_SHA"
+          else
+            if git rev-parse HEAD^ >/dev/null 2>&1; then
+              git diff --check HEAD^ HEAD
+            else
+              git show --check --format= HEAD
+            fi
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install minimal contract verification dependencies
+        run: python -m pip install --no-cache-dir --requirement requirements/contract-ci.txt
+
+      - name: Verify schemas, manifests, and contract test vectors
+        run: python systems/verify_contract_vectors.py
+
+      - name: Run contract vector verifier regression tests
+        run: python -m pytest -q tests/test_verify_contract_vectors.py
+
+      - name: Verify architecture invariants
+        run: python systems/verify_architecture.py

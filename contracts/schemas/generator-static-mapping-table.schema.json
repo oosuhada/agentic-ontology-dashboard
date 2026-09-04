@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/generator-static-mapping-table.schema.json",
+  "title": "Generator Static Mapping Table v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "mapping_id",
+    "mapping_version",
+    "mapping_sha256",
+    "status",
+    "source_schema_version",
+    "source_schema_fingerprint",
+    "fingerprint_algorithm_version",
+    "field_mappings"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "mapping_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$",
+      "description": "Unique mapping table identifier"
+    },
+    "mapping_version": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$",
+      "description": "Version string of this mapping configuration"
+    },
+    "mapping_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Canonical SHA-256 checksum over mapping definition payload excluding mapping_sha256 and $schema"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "draft",
+        "deprecated"
+      ],
+      "description": "Approval lifecycle state. Must be 'approved' for operational execution."
+    },
+    "source_format": {
+      "type": "string",
+      "enum": [
+        "sensor_record_v2",
+        "gen_data_sensor_stream"
+      ],
+      "description": "Source protocol format classification: sensor_record_v2 or gen_data_sensor_stream"
+    },
+    "protocol_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Target gen_data sensor protocol version (e.g. v2)"
+    },
+    "source_schema_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Expected source protocol schema version string"
+    },
+    "source_schema_fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Deterministic SHA-256 fingerprint of expected source schema structure"
+    },
+    "fingerprint_algorithm_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Schema fingerprint computation algorithm version (e.g. v1)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description and operational notes"
+    },
+    "field_mappings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_field",
+          "target_field",
+          "source_type",
+          "target_type",
+          "required",
+          "transform"
+        ],
+        "properties": {
+          "source_field": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Raw sensor measurement_key or channel key in source protocol stream"
+          },
+          "target_field": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Canonical observation top-level measurement sensor column name"
+          },
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "float",
+              "int",
+              "string",
+              "bool",
+              "number"
+            ],
+            "description": "Source data type in protocol stream"
+          },
+          "target_type": {
+            "type": "string",
+            "enum": [
+              "float",
+              "int",
+              "string",
+              "bool",
+              "datetime"
+            ],
+            "description": "Target converted data type"
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Whether missing value of this field rejects observation row"
+          },
+          "transform": {
+            "type": "string",
+            "enum": [
+              "identity",
+              "to_float",
+              "to_int",
+              "to_string",
+              "scale_10x",
+              "kelvin_to_celsius",
+              "celsius_to_kelvin"
+            ],
+            "description": "Allowlisted deterministic conversion transformation"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Target canonical unit"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "Target canonical timezone (e.g. UTC)"
+          }
+        }
+      }
+    }
+  }
+}

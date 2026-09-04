@@ -4,12 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from ontology_dashboard.dashboard_repository import DashboardRepository
-from ontology_dashboard.export_repository import ExportRepository
-from ontology_dashboard.identity import IdentityService
-from ontology_dashboard.migrations import migrate
-from ontology_dashboard.ontology_repository import OntologyActionRepository
-from ontology_dashboard.role_workflow_repository import RoleWorkflowRepository
+from app.infra.db.dashboard_repository import DashboardRepository
+from app.infra.db.report_repository import ExportRepository
+from app.identity import IdentityService
+from identity_test_support import build_identity_service
+from app.infra.db.migrations import migrate
+from app.infra.db.ontology_action_repository import OntologyActionRepository
+from app.infra.db.project_repository import SQLiteProjectContextResolver
+from app.infra.db.role_workflow_repository import RoleWorkflowRepository
 
 
 AZURE_PROJECT = "azure-fleet-maintenance-project"
@@ -23,7 +25,7 @@ USER_ID = "project-isolation-user"
 def database_path(tmp_path: Path) -> Path:
     path = tmp_path / "project-isolation-matrix.db"
     migrate(str(path))
-    IdentityService(path, app_env="test", seed_demo=True)
+    build_identity_service(path, app_env="test", seed_demo=True)
     return path
 
 
@@ -57,7 +59,10 @@ def test_dashboard_preferences_are_partitioned_by_project_workspace(database_pat
 
 
 def test_ontology_action_state_cannot_cross_project_boundary(database_path: Path) -> None:
-    repository = OntologyActionRepository(database_path)
+    repository = OntologyActionRepository(
+        database_path,
+        project_context=SQLiteProjectContextResolver(database_path),
+    )
     reserved, created = repository.reserve(
         idempotency_key="project-isolation-action",
         workspace_id=AZURE_WORKSPACE,

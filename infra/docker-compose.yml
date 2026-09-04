@@ -69,7 +69,7 @@ services:
     profiles: ["polyglot"]
     build:
       context: ..
-      dockerfile: api/Dockerfile
+      dockerfile: systems/backend/Dockerfile
       args:
         API_EXTRAS: polyglot
     environment:
@@ -93,7 +93,7 @@ services:
   api:
     build:
       context: ..
-      dockerfile: api/Dockerfile
+      dockerfile: systems/backend/Dockerfile
       args:
         API_EXTRAS: ${API_EXTRAS:-}
     environment:
@@ -104,6 +104,7 @@ services:
       ONTOLOGY_DASHBOARD_DB: /app/data/local/ontology_dashboard.db
       ONTOLOGY_DASHBOARD_DATABASE_URL: ${ONTOLOGY_DASHBOARD_DATABASE_URL:-}
       ONTOLOGY_DASHBOARD_REDIS_URL: ${ONTOLOGY_DASHBOARD_REDIS_URL:-}
+      ONTOLOGY_DASHBOARD_METRICS_TOKEN: ${ONTOLOGY_DASHBOARD_METRICS_TOKEN:-}
       ONTOLOGY_DASHBOARD_NEO4J_URI: ${ONTOLOGY_DASHBOARD_NEO4J_URI:-}
       ONTOLOGY_DASHBOARD_NEO4J_DATABASE: ${ONTOLOGY_DASHBOARD_NEO4J_DATABASE:-neo4j}
       ONTOLOGY_DASHBOARD_NEO4J_USERNAME: ${ONTOLOGY_DASHBOARD_NEO4J_USERNAME:-neo4j}
@@ -136,7 +137,7 @@ services:
   web:
     build:
       context: ..
-      dockerfile: web/Dockerfile
+      dockerfile: systems/frontend/Dockerfile
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://127.0.0.1:8100}
         VITE_FEATURE_ONTOLOGY_WORKBENCH: ${VITE_FEATURE_ONTOLOGY_WORKBENCH:-true}
@@ -146,7 +147,7 @@ services:
       api:
         condition: service_healthy
     ports:
-      - "${WEB_PORT:-3100}:3100"
+      - "${WEB_PORT:-3100}:8080"
 
 volumes:
   factory_signal_data:

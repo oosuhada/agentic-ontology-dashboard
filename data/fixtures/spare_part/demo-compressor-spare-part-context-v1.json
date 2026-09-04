@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "contract_id": "SPARE-DEMO-COMPRESSOR-001",
+  "source_kind": "synthetic_spare_part_planning_context",
+  "source_uri": "data/fixtures/spare_part/demo-compressor-spare-part-context-v1.json",
+  "assumption_level": "demo_planning_assumption",
+  "description": "Demo-only replacement candidate context for showing how compressor inventory or ERP adapters can enrich read-only agent review packets.",
+  "asset_types": ["compressor"],
+  "parts": [
+    {
+      "component_id": "vibration_path",
+      "part_id": "SP-CMP-BEARING-ISOLATOR-KIT",
+      "part_label": "베어링/방진 아이솔레이터 키트",
+      "replacement_scope": "베어링 진동 전달부 및 방진 체결부 교체 검토",
+      "lead_time_days": 3,
+      "replacement_window_minutes": 180
+    },
+    {
+      "component_id": "air_supply",
+      "part_id": "SP-CMP-PRESSURE-REGULATOR-SET",
+      "part_label": "압력 레귤레이터 세트",
+      "replacement_scope": "흡입/토출 압력 조절 계통 교체 검토",
+      "lead_time_days": 2,
+      "replacement_window_minutes": 120
+    },
+    {
+      "component_id": "electrical_supply",
+      "part_id": "SP-CMP-POWER-CONTACTOR-MODULE",
+      "part_label": "전원 컨택터 모듈",
+      "replacement_scope": "전원 공급 및 컨택터 계통 교체 검토",
+      "lead_time_days": 2,
+      "replacement_window_minutes": 90
+    },
+    {
+      "component_id": "rotating_assembly",
+      "part_id": "SP-CMP-ROTOR-COUPLING-KIT",
+      "part_label": "로터 커플링 키트",
+      "replacement_scope": "회전체 커플링 및 축정렬 계통 교체 검토",
+      "lead_time_days": 4,
+      "replacement_window_minutes": 240
+    }
+  ]
+}

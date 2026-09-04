@@ -1,0 +1,107 @@
+{
+  "eval_set_id": "agent-review-packet-gold-v1",
+  "purpose": "pre_llm_release_gate",
+  "description": "Minimal gold fixtures for the read-only Agent Review Packet before live LLM summarization. The set proves SOP grounding presence, SOP absence with field location, data-quality fail-closed behavior, citation availability, and closed-loop mutation boundaries.",
+  "owner_domain": "product_evidence",
+  "packet_schema_version": "agent-review-packet-v1.0",
+  "summary_schema_version": "agent-review-summary-v1.0",
+  "case_selection_policy": {
+    "minimum_cases": 3,
+    "selection_basis": [
+      "one case with displayable SOP guidance and field inspection location",
+      "one critical case with no displayable SOP but with a location-backed inspection target",
+      "one data-quality hold case that must fail closed without inventing risk or actions"
+    ],
+    "non_goals": [
+      "large-scale model benchmarking",
+      "LLM-as-judge scoring",
+      "RAG retrieval metric scoring",
+      "agent tool-call trajectory evaluation"
+    ]
+  },
+  "required_coverage": [
+    "sop_guidance_present",
+    "sop_guidance_absent",
+    "field_location_present",
+    "history_review_items_present",
+    "factor_bundle_to_single_inspection_target",
+    "data_quality_hold",
+    "data_quality_hold_review_draft",
+    "summary_structured_grounding",
+    "summary_natural_language_grounding",
+    "evidence_gap_completeness",
+    "inspection_focus_completeness",
+    "target_source_refs_grounded",
+    "closed_loop_available_action_readonly",
+    "closed_loop_boundary_readonly",
+    "no_inspection_target"
+  ],
+  "cases": [
+    {
+      "scenario_id": "GS-002",
+      "asset_id": "CNC-S04-L04-01",
+      "fixture_path": "tests/fixtures/agent_review_packets/GS-002.json",
+      "description": "Warning risk with displayable demo SOP guidance, inspection locations, and history review items.",
+      "covers": [
+        "sop_guidance_present",
+        "field_location_present",
+        "history_review_items_present",
+        "summary_structured_grounding",
+        "summary_natural_language_grounding",
+        "evidence_gap_completeness",
+        "inspection_focus_completeness",
+        "target_source_refs_grounded",
+        "closed_loop_boundary_readonly"
+      ]
+    },
+    {
+      "scenario_id": "GS-004",
+      "asset_id": "CNC-S04-L02-03",
+      "fixture_path": "tests/fixtures/agent_review_packets/GS-004.json",
+      "description": "Critical risk where three top factors map to one drive-power inspection target, no SOP is displayable, and a closed-loop action is only visible as read-only context.",
+      "covers": [
+        "sop_guidance_absent",
+        "field_location_present",
+        "factor_bundle_to_single_inspection_target",
+        "summary_structured_grounding",
+        "summary_natural_language_grounding",
+        "evidence_gap_completeness",
+        "inspection_focus_completeness",
+        "target_source_refs_grounded",
+        "closed_loop_available_action_readonly",
+        "closed_loop_boundary_readonly"
+      ]
+    },
+    {
+      "scenario_id": "GS-007",
+      "asset_id": "CNC-S04-L05-01",
+      "fixture_path": "tests/fixtures/agent_review_packets/GS-007.json",
+      "description": "Data-quality hold where the packet must not invent risk probability, priority, SOP guidance, inspection targets, or maintenance actions.",
+      "covers": [
+        "data_quality_hold",
+        "data_quality_hold_review_draft",
+        "summary_structured_grounding",
+        "summary_natural_language_grounding",
+        "evidence_gap_completeness",
+        "inspection_focus_completeness",
+        "sop_guidance_absent",
+        "no_inspection_target",
+        "closed_loop_boundary_readonly"
+      ]
+    }
+  ],
+  "forbidden_summary_claims": [
+    "실제 고장 예방 입증",
+    "정비로 downtime 절감",
+    "정비 완료 후 정상화",
+    "SOP가 자동 정비 승인",
+    "자동 승인 완료",
+    "create_work_order",
+    "approve_work_order",
+    "start_maintenance_action",
+    "complete_maintenance_action",
+    "create_maintenance_event",
+    "request_replay",
+    "auto_approve"
+  ]
+}

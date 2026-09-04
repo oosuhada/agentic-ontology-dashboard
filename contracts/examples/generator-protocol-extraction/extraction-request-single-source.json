@@ -1,0 +1,8 @@
+{
+  "source_mode": "gen_data_sensor_stream",
+  "source_uri": "sensor/facS01/lineL01/sensor_stream.jsonl",
+  "mapping_id": "gen-data-sensor-stream-canonical",
+  "mapping_version": "v1",
+  "mapping_sha256": "f1ab2ef5af3a015beba4eb7680254e6740a5e7f3c906a6aa16e45c8dba280df1",
+  "max_records": 1000
+}

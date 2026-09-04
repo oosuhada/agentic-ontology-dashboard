@@ -1,0 +1,12 @@
+{
+  "dataset_id": "example-observation",
+  "dataset_version": "v1.0",
+  "failure_source_mode": "external_dataset",
+  "failure_dataset_id": "example-failure",
+  "failure_dataset_version": "v1.0",
+  "preprocessing_plan_id": "pp-example-7c106819-cc59-46da-90dd-22c37c441ac9",
+  "preprocessing_plan_version": "preprocessing-plan-38f74cc175d5ad12",
+  "feature_schema_version": "ai4i-feature-v1",
+  "label_schema_version": "ai4i-label-24h-v1",
+  "prediction_horizon_hours": 24
+}

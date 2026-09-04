@@ -1,0 +1,23 @@
+{
+  "strategy": "asset_time_split",
+  "asset_count": 2,
+  "total_rows": 24,
+  "train": {
+    "row_count": 16,
+    "positive_count": 4,
+    "negative_count": 12,
+    "positive_ratio": 0.25
+  },
+  "val": {
+    "row_count": 4,
+    "positive_count": 2,
+    "negative_count": 2,
+    "positive_ratio": 0.5
+  },
+  "test": {
+    "row_count": 4,
+    "positive_count": 0,
+    "negative_count": 4,
+    "positive_ratio": 0.0
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "schema_version": "inspection-location-reference-v1.0",
+  "contract_id": "ILR-DEMO-COMPRESSOR-001",
+  "title": "압축기 현장 점검 위치 참고 계약",
+  "version": "demo-2026-08-30",
+  "owner_domain": "field_inspection_reference",
+  "maturity": "fixture",
+  "asset_types": ["compressor"],
+  "source_uri": "data/fixtures/inspection_location/demo-compressor-inspection-location-reference-v1.json",
+  "locations": [
+    {
+      "component_id": "vibration_path",
+      "component_label": "진동 계통",
+      "location_label": "베어링 하우징, 방진 마운트, 축정렬 기준점",
+      "inspection_method": "진동 원시값, 상대 진동 추세, 베어링 발열, 방진 마운트 유격을 함께 확인합니다.",
+      "access_note": "운전 상태와 정지 가능 시간을 확인한 뒤 베어링 하우징 주변에 접근",
+      "safety_note": "회전체 주변 접근 전 보호 커버와 에너지 차단 상태를 확인합니다."
+    },
+    {
+      "component_id": "air_supply",
+      "component_label": "압력/공압 계통",
+      "location_label": "흡입 필터, 압력 레귤레이터, 토출 라인",
+      "inspection_method": "압력 변동, 필터 막힘, 토출 라인 누설 여부를 점검합니다.",
+      "access_note": "라인 압력 해제 가능 여부와 우회 운전 조건을 먼저 확인",
+      "safety_note": "압력 잔류 여부를 확인하고 배관 접근 절차를 따릅니다."
+    },
+    {
+      "component_id": "electrical_supply",
+      "component_label": "전원 계통",
+      "location_label": "전원 패널, 컨택터, 전압 센서 결선부",
+      "inspection_method": "전압 흔들림, 컨택터 접점 상태, 센서 결선 이상 여부를 확인합니다.",
+      "access_note": "전원 패널 개방 전 전기 작업 권한과 LOTO 상태를 확인",
+      "safety_note": "활선 접근을 금지하고 전기 안전 절차를 따릅니다."
+    },
+    {
+      "component_id": "rotating_assembly",
+      "component_label": "회전/진동 계통",
+      "location_label": "로터 커플링, 축정렬부, 회전체 보호 커버",
+      "inspection_method": "회전 속도 변동, 커플링 체결, 축정렬 상태를 점검합니다.",
+      "access_note": "회전체 보호 커버 접근 전 정지 가능 시간과 작업 허가를 확인",
+      "safety_note": "회전체 접근 전 에너지 차단 상태를 확인합니다."
+    }
+  ],
+  "claim_boundaries": {
+    "allowed_claims": ["현장 확인 위치 참고", "점검 방법 참고", "압축기 도메인 어댑터 확장 가능성 검토"],
+    "forbidden_claims": ["정비 작업요청 생성", "정비 승인", "정비 완료", "고장 원인 확정", "자동 승인"]
+  }
+}

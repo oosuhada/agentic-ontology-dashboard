@@ -1,0 +1,47 @@
+# Feature Extraction Catalog (Ontology based)
+features:
+  # Compressor Sensors
+  Voltage:
+    - name: rolling_mean
+      window: 5
+    - name: rolling_std
+      window: 5
+  Rotation:
+    - name: rolling_mean
+      window: 5
+    - name: gradient
+  Pressure:
+    - name: lag
+      periods: 1
+    - name: moving_average
+      window: 10
+  Vibration:
+    - name: rolling_mean
+      window: 5
+    - name: ema
+      span: 10
+
+  # CNC Machine Sensors
+  AirTemperature:
+    - name: rolling_mean
+      window: 5
+    - name: rolling_std
+      window: 5
+  ProcessTemperature:
+    - name: rolling_mean
+      window: 5
+    - name: gradient
+  RotationalSpeed:
+    - name: rolling_mean
+      window: 5
+    - name: moving_average
+      window: 10
+  Torque:
+    - name: rolling_mean
+      window: 5
+    - name: rolling_std
+      window: 5
+  ToolWear:
+    - name: lag
+      periods: 1
+    - name: gradient

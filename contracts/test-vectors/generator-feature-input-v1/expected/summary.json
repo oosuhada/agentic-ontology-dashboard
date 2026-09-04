@@ -1,0 +1,7 @@
+{
+  "row_count": 10,
+  "feature_count": 5,
+  "positive_label_count": 2,
+  "negative_label_count": 8,
+  "excluded_active_failure_rows": 2
+}

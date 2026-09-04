@@ -1,0 +1,893 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/generator-pipeline-run-state.schema.json",
+  "title": "GeneratorPipelineRunState",
+  "type": "object",
+  "required": [
+    "run_id",
+    "job_id",
+    "status",
+    "source_ref",
+    "stages",
+    "prediction_results",
+    "errors"
+  ],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "job_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "queued",
+        "running",
+        "succeeded",
+        "succeeded_with_cleanup_warning",
+        "partially_succeeded",
+        "failed"
+      ]
+    },
+    "current_stage": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_ref": {
+      "$ref": "#/$defs/ArtifactReference"
+    },
+    "source_context": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/RuntimeSourceContext"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "stages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "status",
+          "attempt"
+        ],
+        "properties": {
+          "stage_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "succeeded",
+              "failed",
+              "skipped"
+            ]
+          },
+          "attempt": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "started_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "input_refs": {
+            "type": "array"
+          },
+          "output_refs": {
+            "type": "array"
+          },
+          "error_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error_message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "retryable": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "prediction_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "asset_id",
+          "model_id",
+          "model_version",
+          "status",
+          "observed_at",
+          "score_type",
+          "score_source"
+        ],
+        "properties": {
+          "asset_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "succeeded",
+              "failed",
+              "unknown"
+            ]
+          },
+          "observed_at": {
+            "type": "string"
+          },
+          "score_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "score_source": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "predict_proba",
+              "decision_function_compat",
+              "predict_compat",
+              null
+            ]
+          },
+          "score": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0.0,
+            "maximum": 1.0
+          },
+          "artifact_ref": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/ArtifactReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "feature_ref": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/ArtifactReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error_message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "prediction_delivery_status": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "not_required",
+        "pending",
+        "sent",
+        "failed",
+        null
+      ]
+    },
+    "prediction_event_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "prediction_events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "event_id",
+          "asset_id",
+          "status",
+          "attempt",
+          "max_attempts",
+          "updated_at"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "asset_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "sending",
+              "retry_wait",
+              "sent",
+              "failed"
+            ]
+          },
+          "attempt": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_attempts": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "next_retry_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_error_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_error_message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "started_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "finished_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "occurred_at"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "stage": {
+            "type": "string"
+          },
+          "details": {
+            "type": "array"
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "attempt": {
+            "type": "integer"
+          },
+          "occurred_at": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "last_completed_stage": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "next_stage": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "resume_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "resumed_from_stage": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "checkpoint_status": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "resumable",
+        "debug_only",
+        "cleanup_pending",
+        "completed",
+        "invalidated",
+        null
+      ]
+    },
+    "cleanup_status": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "not_started",
+        "cleanup_pending",
+        "cleaned",
+        "cleanup_failed",
+        "cleanup_skipped",
+        null
+      ]
+    },
+    "intermediate_outputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ArtifactReference"
+      }
+    },
+    "checkpoint": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/PipelineCheckpoint"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "batch_manifest_ref": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ArtifactReference"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "model_stage_outputs": {
+      "type": "object"
+    },
+    "delivery_outputs": {
+      "type": "object"
+    },
+    "cleanup_deleted_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cleanup_failed_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "model_set_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "model_set_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "checkpoint_status": {
+            "const": "resumable"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "checkpoint",
+          "source_context"
+        ],
+        "properties": {
+          "checkpoint": {
+            "$ref": "#/$defs/PipelineCheckpoint"
+          },
+          "source_context": {
+            "$ref": "#/$defs/RuntimeSourceContext"
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "Lineage": {
+      "type": "object",
+      "properties": {
+        "simulation_session_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "overlay_branch_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "history_segment_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "maintenance_event_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "maintenance_action_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "state_version": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "RuntimeSourceContext": {
+      "type": "object",
+      "required": [
+        "source_uri",
+        "source_checksum",
+        "source_kind",
+        "source_contract_version",
+        "source_schema_version",
+        "pipeline_contract_version",
+        "lineage"
+      ],
+      "properties": {
+        "source_uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_checksum": {
+          "type": "string",
+          "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+        },
+        "source_kind": {
+          "type": "string",
+          "enum": [
+            "live_sensor",
+            "simulation_overlay",
+            "maintenance_replay_overlay"
+          ]
+        },
+        "source_contract_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_schema_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pipeline_contract_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lineage": {
+          "$ref": "#/$defs/Lineage"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source_kind": {
+                "const": "maintenance_replay_overlay"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "lineage": {
+                "type": "object",
+                "required": [
+                  "simulation_session_id",
+                  "overlay_branch_id",
+                  "history_segment_id",
+                  "maintenance_event_id",
+                  "maintenance_action_id",
+                  "state_version"
+                ],
+                "properties": {
+                  "simulation_session_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "overlay_branch_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "history_segment_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "maintenance_event_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "maintenance_action_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "state_version": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "ArtifactReference": {
+      "type": "object",
+      "required": [
+        "uri",
+        "sha256"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "role": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "size_bytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "PipelineCheckpoint": {
+      "type": "object",
+      "required": [
+        "checkpoint_version",
+        "run_id",
+        "job_id",
+        "source_identity",
+        "source_uri",
+        "source_checksum",
+        "dataset_id",
+        "dataset_version",
+        "model_set_id",
+        "model_set_version",
+        "model_set_payload_sha256",
+        "pipeline_contract_version",
+        "source_kind",
+        "source_contract_version",
+        "source_schema_version",
+        "lineage_json",
+        "source_context",
+        "status",
+        "created_at",
+        "updated_at",
+        "stage_outputs",
+        "model_stage_outputs",
+        "delivery_outputs",
+        "model_snapshot",
+        "errors"
+      ],
+      "properties": {
+        "checkpoint_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "job_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_identity": {
+          "type": "string",
+          "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+        },
+        "source_uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_checksum": {
+          "type": "string",
+          "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+        },
+        "source_size_bytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "dataset_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dataset_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model_set_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model_set_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model_set_payload_sha256": {
+          "type": "string",
+          "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+        },
+        "pipeline_contract_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_kind": {
+          "type": "string",
+          "enum": [
+            "live_sensor",
+            "simulation_overlay",
+            "maintenance_replay_overlay"
+          ]
+        },
+        "source_contract_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_schema_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lineage_json": {
+          "type": "string"
+        },
+        "source_context": {
+          "$ref": "#/$defs/RuntimeSourceContext"
+        },
+        "last_completed_stage": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "source_validated",
+            "preprocessing",
+            "runtime_feature",
+            "runtime_prediction",
+            "batch_building",
+            "prediction_delivery",
+            null
+          ]
+        },
+        "next_stage": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "preprocessing",
+            "runtime_feature",
+            "runtime_prediction",
+            "batch_building",
+            "prediction_delivery",
+            "completed",
+            null
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "resumable",
+            "debug_only",
+            "cleanup_pending",
+            "completed",
+            "invalidated"
+          ]
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "stage_outputs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/ArtifactReference"
+            }
+          }
+        },
+        "model_stage_outputs": {
+          "type": "object"
+        },
+        "delivery_outputs": {
+          "type": "object"
+        },
+        "batch_manifest_ref": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ArtifactReference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model_snapshot": {
+          "type": "object"
+        },
+        "snapshot_validation_status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "valid",
+            "incompatible",
+            "partially_invalid",
+            "unvalidated",
+            null
+          ]
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "occurred_at"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "stage": {
+                "type": "string"
+              },
+              "details": {
+                "type": "array"
+              },
+              "retryable": {
+                "type": "boolean"
+              },
+              "attempt": {
+                "type": "integer"
+              },
+              "occurred_at": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

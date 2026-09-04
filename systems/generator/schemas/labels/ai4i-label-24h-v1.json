@@ -1,0 +1,11 @@
+{
+  "label_schema_version": "ai4i-label-24h-v1",
+  "description": "Standard 24-hour lookahead binary failure prediction label schema",
+  "prediction_task": "binary_failure_within_horizon",
+  "prediction_horizon_hours": 24,
+  "anchor": "failure_point",
+  "exclusion_end": "period_end",
+  "positive_window": "pre_failure",
+  "active_failure_policy": "exclude",
+  "target_name": "label"
+}

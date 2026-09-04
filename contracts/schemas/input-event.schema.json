@@ -1,0 +1,256 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/input-event.schema.json",
+  "title": "Ontology Dashboard Project Showcase Input Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "scenario_id", "event_id", "equipment", "observation", "history", "runtime", "expected"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "project_id": {"type": "string", "minLength": 1},
+    "workspace_id": {"type": "string", "minLength": 1},
+    "dataset_version": {"type": "string", "minLength": 1},
+    "scenario_id": {"type": "string", "pattern": "^(GS|AZ|MPT)-[0-9]{3}$"},
+    "event_id": {"type": "string", "minLength": 1},
+    "equipment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["equipment_id", "display_name", "line", "criticality", "assigned_engineer", "last_maintenance_date", "estimated_downtime_minutes"],
+      "properties": {
+        "equipment_id": {"type": "string"},
+        "display_name": {"type": "string"},
+        "asset_type": {"enum": ["compressor", "cnc"]},
+        "site_id": {"type": "string", "minLength": 1},
+        "cell_id": {"type": "string", "minLength": 1},
+        "line": {"type": "string"},
+        "criticality": {"enum": ["low", "medium", "high"]},
+        "assigned_engineer": {"type": "string"},
+        "last_maintenance_date": {"type": "string", "format": "date"},
+        "estimated_downtime_minutes": {"type": "integer", "minimum": 0},
+        "spare_part_available": {"type": "boolean"}
+      }
+    },
+    "observation": {"$ref": "#/$defs/observation"},
+    "history": {
+      "type": "array",
+      "minItems": 2,
+      "items": {"$ref": "#/$defs/observation"}
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["llm_available", "planner_available", "context_provider"],
+      "properties": {
+        "llm_available": {"type": "boolean"},
+        "planner_available": {"type": "boolean"},
+        "context_provider": {"enum": ["fixture", "project3_http", "none"]}
+      }
+    },
+    "operation_context": {"$ref": "#/$defs/operationContext"},
+    "closed_loop": {"$ref": "#/$defs/closedLoopSummary"},
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["risk_band", "recommended_decision", "confidence", "predicted_failure_type"],
+      "properties": {
+        "risk_band": {"enum": ["normal", "attention", "warning", "critical", "data_quality_hold"]},
+        "recommended_decision": {"enum": ["continue_monitoring", "request_inspection", "review_shutdown", "hold_for_data_check"]},
+        "confidence": {"enum": ["high", "medium", "low", "unavailable"]},
+        "predicted_failure_type": {"type": "string"}
+      }
+    }
+  },
+  "$defs": {
+    "nullableNumber": {"type": ["number", "null"]},
+    "operationContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["load_level", "runtime_hours_7d", "production_impact"],
+      "properties": {
+        "load_level": {"type": ["string", "null"], "enum": ["low", "normal", "high", null]},
+        "runtime_hours_7d": {"type": ["number", "null"]},
+        "production_impact": {"type": ["string", "null"], "enum": ["none", "low", "medium", "high", null]},
+        "context_id": {"type": "string"},
+        "source_type": {"enum": ["capacity_model"]},
+        "temporal_scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["snapshot_id", "timezone", "valid_from", "valid_to", "generated_at"],
+          "properties": {
+            "snapshot_id": {"type": "string"},
+            "timezone": {"type": "string"},
+            "valid_from": {"type": "string", "format": "date-time"},
+            "valid_to": {"type": "string", "format": "date-time"},
+            "generated_at": {"type": "string", "format": "date-time"}
+          }
+        },
+        "production_plan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["plan_id", "plan_date", "planned_units", "product_mix"],
+          "properties": {
+            "plan_id": {"type": "string"},
+            "plan_date": {"type": "string", "format": "date"},
+            "planned_units": {"type": "number"},
+            "product_mix": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["variant", "share", "planned_units"],
+                "properties": {
+                  "variant": {"type": "string"},
+                  "share": {"type": "number"},
+                  "planned_units": {"type": "number"}
+                }
+              }
+            }
+          }
+        },
+        "capacity_model": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["active_asset_count", "planned_operating_hours", "oee", "standard_cycle_minutes_per_unit", "asset_units_per_hour", "daily_capacity_units", "basis"],
+          "properties": {
+            "active_asset_count": {"type": "number"},
+            "planned_operating_hours": {"type": "number"},
+            "oee": {"type": "number"},
+            "standard_cycle_minutes_per_unit": {"type": "number"},
+            "asset_units_per_hour": {"type": "number"},
+            "daily_capacity_units": {"type": "number"},
+            "basis": {"type": "string"}
+          }
+        },
+        "event_impact": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["event_id", "equipment_id", "line", "product_variant", "screen_priority", "impact_status", "estimated_lost_units", "basis"],
+          "properties": {
+            "event_id": {"type": "string"},
+            "equipment_id": {"type": "string"},
+            "line": {"type": "string"},
+            "product_variant": {"type": "string"},
+            "screen_priority": {"enum": ["none", "monitor", "shift_inspection", "plan_at_risk", "data_check_required"]},
+            "impact_status": {"enum": ["not_applicable", "estimated", "withheld_data_quality_hold"]},
+            "estimated_lost_units": {"type": ["number", "null"]},
+            "basis": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["estimated_downtime_minutes", "asset_units_per_hour", "formula"],
+              "properties": {
+                "estimated_downtime_minutes": {"type": "number"},
+                "asset_units_per_hour": {"type": "number"},
+                "formula": {"type": "string"}
+              }
+            }
+          }
+        },
+        "limitations": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "closedLoopSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "work_orders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["work_order_id", "work_type", "status"],
+            "properties": {
+              "work_order_id": {"type": "string"},
+              "work_type": {"enum": ["inspection", "maintenance"]},
+              "status": {"enum": ["requested", "approved", "in_progress", "completed", "blocked", "failed", "cancelled"]},
+              "assigned_to": {"type": ["string", "null"]},
+              "actor_display_name": {"type": ["string", "null"]},
+              "created_at": {"type": ["string", "null"], "format": "date-time"},
+              "updated_at": {"type": ["string", "null"], "format": "date-time"}
+            }
+          }
+        },
+        "maintenance_actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["maintenance_action_id", "status"],
+            "properties": {
+              "maintenance_action_id": {"type": "string"},
+              "work_order_id": {"type": ["string", "null"]},
+              "status": {"enum": ["planned", "in_progress", "completed", "failed", "cancelled"]},
+              "actor_display_name": {"type": ["string", "null"]},
+              "started_at": {"type": ["string", "null"], "format": "date-time"},
+              "completed_at": {"type": ["string", "null"], "format": "date-time"}
+            }
+          }
+        },
+        "maintenance_events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["maintenance_event_id"],
+            "properties": {
+              "maintenance_event_id": {"type": "string"},
+              "maintenance_action_id": {"type": ["string", "null"]},
+              "work_order_id": {"type": ["string", "null"]},
+              "completed_at": {"type": ["string", "null"], "format": "date-time"},
+              "actor_display_name": {"type": ["string", "null"]}
+            }
+          }
+        },
+        "activities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["activity_id", "activity_type"],
+            "properties": {
+              "activity_id": {"type": "string"},
+              "activity_type": {"type": "string"},
+              "work_type": {"type": ["string", "null"], "enum": ["inspection", "maintenance", null]},
+              "actor_display_name": {"type": ["string", "null"]},
+              "before_status": {"type": ["string", "null"]},
+              "after_status": {"type": ["string", "null"]},
+              "created_at": {"type": ["string", "null"], "format": "date-time"},
+              "work_order_id": {"type": ["string", "null"]},
+              "maintenance_action_id": {"type": ["string", "null"]},
+              "maintenance_event_id": {"type": ["string", "null"]}
+            }
+          }
+        },
+        "available_actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["action_id", "target_type"],
+            "properties": {
+              "action_id": {"type": "string"},
+              "target_type": {"enum": ["recommendation", "work_order", "maintenance_action", "inspection_result", "event"]},
+              "target_id": {"type": ["string", "null"]},
+              "label": {"type": "string"},
+              "disabled_reason": {"type": ["string", "null"]}
+            }
+          }
+        },
+        "runtime_status": {"type": ["string", "null"], "enum": ["equipment_under_maintenance", "warming_up", "history_insufficient", "ready", "predicted", null]}
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timestamp", "product_type", "air_temperature_k", "process_temperature_k", "rotational_speed_rpm", "torque_nm", "tool_wear_min"],
+      "properties": {
+        "timestamp": {"type": "string", "format": "date-time"},
+        "product_type": {"type": "string", "minLength": 1, "maxLength": 80},
+        "air_temperature_k": {"$ref": "#/$defs/nullableNumber"},
+        "process_temperature_k": {"$ref": "#/$defs/nullableNumber"},
+        "rotational_speed_rpm": {"$ref": "#/$defs/nullableNumber"},
+        "torque_nm": {"$ref": "#/$defs/nullableNumber"},
+        "tool_wear_min": {"$ref": "#/$defs/nullableNumber"}
+      }
+    }
+  }
+}

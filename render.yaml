@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: ontology-dashboard-demo-api
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: main
+    autoDeployTrigger: checksPass
+    dockerfilePath: ./systems/backend/Dockerfile
+    dockerContext: .
+    dockerCommand: /bin/sh /app/systems/backend/render_start.sh
+    healthCheckPath: /health/live
+    buildFilter:
+      paths:
+        - systems/backend/**
+        - systems/generator/**
+        - ml/**
+        - contracts/schemas/**
+        - prompts/**
+        - data/fixtures/**
+        - render.yaml
+      ignoredPaths:
+        - docs/**
+    envVars:
+      - key: APP_ENV
+        value: demo
+      - key: SEED_DEMO_ACCOUNTS
+        value: "1"
+      - key: ONTOLOGY_DASHBOARD_SEED_REFERENCE_DATA
+        value: "true"
+      - key: ONTOLOGY_DASHBOARD_ALLOW_HEURISTIC_MODEL_FALLBACK
+        value: "1"
+      - key: ONTOLOGY_DASHBOARD_DATABASE_URL
+        sync: false
+      - key: ONTOLOGY_DASHBOARD_METRICS_TOKEN
+        sync: false
+      - key: ONTOLOGY_DASHBOARD_ALLOWED_ORIGIN_REGEX
+        value: ^https://.*\.vercel\.app$
+      - key: MAINTENANCE_CONTEXT_PROVIDER
+        value: fixture

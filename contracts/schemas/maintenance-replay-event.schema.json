@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/maintenance-replay-event.schema.json",
+  "title": "Closed-loop Maintenance Runtime Overlay Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "event_type",
+    "event_id",
+    "idempotency_key",
+    "state_version",
+    "simulation_session_id",
+    "maintenance_action_id",
+    "equipment_id",
+    "caused_by"
+  ],
+  "properties": {
+    "contract_version": {"const": "maintenance-replay-v1"},
+    "event_type": {
+      "enum": [
+        "maintenance.started",
+        "maintenance.completed",
+        "maintenance.replay_requested"
+      ]
+    },
+    "event_id": {"type": "string", "minLength": 1, "maxLength": 240},
+    "idempotency_key": {"type": "string", "minLength": 8, "maxLength": 200},
+    "state_version": {"type": "integer", "minimum": 1},
+    "simulation_session_id": {"type": "string", "minLength": 1, "maxLength": 240},
+    "maintenance_event_id": {"type": "string", "minLength": 1, "maxLength": 240},
+    "maintenance_action_id": {"type": "string", "minLength": 1, "maxLength": 240},
+    "work_order_id": {"type": "string", "minLength": 1, "maxLength": 240},
+    "equipment_id": {"type": "string", "minLength": 1, "maxLength": 240},
+    "maintenance_started_at": {"type": "string", "format": "date-time"},
+    "maintenance_completed_at": {"type": "string", "format": "date-time"},
+    "restart_at": {"type": "string", "format": "date-time"},
+    "action_code": {
+      "enum": ["TOOL_REPLACEMENT", "COOLING_SYSTEM_RESTORE"]
+    },
+    "state_patch": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tool_wear_min"],
+          "properties": {
+            "tool_wear_min": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["operation", "value", "unit"],
+              "properties": {
+                "operation": {"const": "reset"},
+                "value": {"const": 0},
+                "unit": {"const": "min"}
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cooling_system_state"],
+          "properties": {
+            "cooling_system_state": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["operation", "value", "unit"],
+              "properties": {
+                "operation": {"const": "restore"},
+                "value": {"const": "nominal"},
+                "unit": {"const": "state"}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "caused_by": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_product_result_id",
+        "source_evidence_id",
+        "decision_id"
+      ],
+      "properties": {
+        "source_product_result_id": {"type": "string", "minLength": 1, "maxLength": 240},
+        "source_evidence_id": {"type": "string", "minLength": 1, "maxLength": 240},
+        "decision_id": {"type": "string", "minLength": 1, "maxLength": 240}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"event_type": {"const": "maintenance.started"}}},
+      "then": {
+        "required": ["work_order_id", "maintenance_started_at", "action_code"],
+        "not": {"required": ["maintenance_event_id"]}
+      }
+    },
+    {
+      "if": {"properties": {"event_type": {"const": "maintenance.completed"}}},
+      "then": {
+        "required": [
+          "maintenance_event_id",
+          "maintenance_completed_at",
+          "action_code",
+          "state_patch"
+        ],
+        "oneOf": [
+          {
+            "properties": {
+              "action_code": {"const": "TOOL_REPLACEMENT"},
+              "state_patch": {"required": ["tool_wear_min"]}
+            }
+          },
+          {
+            "properties": {
+              "action_code": {"const": "COOLING_SYSTEM_RESTORE"},
+              "state_patch": {"required": ["cooling_system_state"]}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {"properties": {"event_type": {"const": "maintenance.replay_requested"}}},
+      "then": {
+        "required": ["maintenance_event_id", "restart_at"],
+        "oneOf": [
+          {
+            "not": {
+              "anyOf": [
+                {"required": ["action_code"]},
+                {"required": ["state_patch"]}
+              ]
+            }
+          },
+          {
+            "required": ["action_code", "state_patch"],
+            "oneOf": [
+              {
+                "properties": {
+                  "action_code": {"const": "TOOL_REPLACEMENT"},
+                  "state_patch": {"required": ["tool_wear_min"]}
+                }
+              },
+              {
+                "properties": {
+                  "action_code": {"const": "COOLING_SYSTEM_RESTORE"},
+                  "state_patch": {"required": ["cooling_system_state"]}
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from ontology_dashboard.datasets.repository import DatasetRepository
+from app.infra.db.dataset_repository import DatasetRepository
 from scripts.seed_demo_dataset_catalog import ORGANIZATION_ID, PROJECT_ID, seed
 
 

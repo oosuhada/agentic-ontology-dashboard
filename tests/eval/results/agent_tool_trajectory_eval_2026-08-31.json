@@ -1,0 +1,22 @@
+{
+  "result_id": "agent-tool-trajectory-eval-2026-08-31",
+  "recorded_at": "2026-08-31",
+  "scope": "LangGraph decision evidence and read-only tool trajectory",
+  "command": "PYTHONPATH=systems/backend ONTOLOGY_DASHBOARD_ALLOW_HEURISTIC_MODEL_FALLBACK=1 python3 -m pytest tests/eval/test_agent_tool_pipeline_eval.py -q",
+  "status": "passed",
+  "summary": "9 passed in 2.49s",
+  "evidence_files": [
+    "tests/eval/test_agent_tool_pipeline_eval.py",
+    "tests/eval/agent_tool_trajectory_gold.jsonl",
+    "tests/eval/langgraph_decision_gate.json",
+    "systems/backend/app/operations/agent_context_tool_pipeline.py"
+  ],
+  "verified_claims": [
+    "Different gold scenarios select different read-only tool plans.",
+    "The data-quality hold scenario suppresses SOP, location, spare-part, and similar-event fanout.",
+    "The experimental LangGraph path preserves the same tool trajectory as the simple engine when available, or reports an explicit fallback when unavailable.",
+    "Tool calls remain read-only, stay inside packet source_ref scope, and do not expose Closed-loop mutation tools.",
+    "Per-tool retry traces are observable for retryable adapter failures."
+  ],
+  "current_decision": "Keep simple workflow as production default; keep LangGraph behind the existing AgentReviewSummaryWorkflow boundary until runtime tools become independent release-gated calls."
+}

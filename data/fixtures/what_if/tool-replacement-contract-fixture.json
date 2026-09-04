@@ -1,0 +1,68 @@
+{
+  "schema_version": "what-if-result-v1.0",
+  "simulation_id": "SIM-CONTRACT-CNC-S01-L01-04-001",
+  "asset_id": "CNC-S01-L01-04",
+  "asset_type": "cnc",
+  "decision_at": "2026-08-07T17:00:00+09:00",
+  "rise_event": {
+    "started_at": "2026-08-07T13:00:00+09:00",
+    "peak_at": "2026-08-07T17:00:00+09:00",
+    "baseline_probability": 0.18,
+    "peak_probability": 0.82,
+    "probability_delta": 0.64,
+    "time_to_peak_hours": 4.0
+  },
+  "leading_indicators": [
+    {
+      "feature": "tool_wear_min",
+      "direction": "increase",
+      "baseline_value": 154.0,
+      "risk_window_value": 211.0,
+      "change_percent": 37.012987,
+      "signed_contribution": 0.73,
+      "source_reference": {
+        "source": "cnc_sensor_observation.csv",
+        "source_field": "tool_wear_min",
+        "asset_id": "CNC-S01-L01-04",
+        "period_from": "2026-08-06T17:00:00+09:00",
+        "period_to": "2026-08-07T17:00:00+09:00"
+      }
+    }
+  ],
+  "intervention": {
+    "action_code": "TOOL_REPLACEMENT",
+    "parameters": {
+      "tool_wear_after": 0.0
+    },
+    "estimated_downtime_minutes": 30,
+    "policy_version": "preventive-policy-v1.0"
+  },
+  "effect": {
+    "baseline_probability": 0.82,
+    "intervention_probability": 0.21,
+    "estimated_probability_reduction": 0.61
+  },
+  "economic_effect": {
+    "currency": "KRW",
+    "intervention_cost": null,
+    "baseline_expected_loss": null,
+    "intervention_expected_loss": null,
+    "estimated_net_benefit": null,
+    "calculation_scope": "synthetic_scenario_estimate",
+    "price_version": "economic-v1.0"
+  },
+  "effect_scope": "synthetic_counterfactual_simulation",
+  "limitations": [
+    {"code": "SYNTHETIC_DATA_ONLY"},
+    {"code": "NOT_CAUSAL_PROOF"},
+    {"code": "NOT_REAL_WORLD_EFFECT_GUARANTEE"},
+    {"code": "CONTRACT_FIXTURE_ONLY"}
+  ],
+  "provenance": {
+    "dataset_version": "canonical-ai4i-physics-v3.1",
+    "model_version": "independent-logreg-v3.1",
+    "simulation_policy_version": "preventive-policy-v1.0",
+    "source_type": "contract_fixture",
+    "canonical_source_mutated": false
+  }
+}

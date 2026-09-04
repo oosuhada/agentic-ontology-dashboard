@@ -6,12 +6,19 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from ontology_dashboard.adapters.service import AdapterService
-from ontology_dashboard.dependencies import get_adapter_service, get_project_service
-from ontology_dashboard.identity import CSRF_COOKIE, IdentityService
-from ontology_dashboard.main import app, get_identity_service, get_service
-from ontology_dashboard.projects import ProjectRepository, ProjectService
-from ontology_dashboard.service import ManufacturingPredictiveMaintenanceService
+from app.dependencies import (
+    build_adapter_service,
+    build_manufacturing_service,
+    get_adapter_service,
+    get_project_service,
+    get_identity_service,
+    get_service,
+)
+from app.identity import CSRF_COOKIE, IdentityService
+from app.main import app
+from app.project import ProjectService
+from app.infra.db.project_repository import ProjectRepository
+from identity_test_support import build_identity_service
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -22,10 +29,10 @@ def adapter_api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     data_root = tmp_path / "datasets"
     data_root.mkdir()
     monkeypatch.setenv("ONTOLOGY_DASHBOARD_DATA_ROOTS", str(data_root))
-    identity = IdentityService(database, app_env="test", seed_demo=True)
-    domain_service = ManufacturingPredictiveMaintenanceService(ROOT, database_path=database)
+    identity = build_identity_service(database, app_env="test", seed_demo=True)
+    domain_service = build_manufacturing_service(database, root=ROOT)
     project_service = ProjectService(ProjectRepository(database))
-    adapter_service = AdapterService(database, root=ROOT)
+    adapter_service = build_adapter_service(database, root=ROOT)
     app.dependency_overrides[get_identity_service] = lambda: identity
     app.dependency_overrides[get_service] = lambda: domain_service
     app.dependency_overrides[get_project_service] = lambda: project_service

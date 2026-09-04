@@ -1,0 +1,20 @@
+{
+  "manifest_version": "generator-protocol-run-v1",
+  "run_id": "run-gen-001",
+  "status": "completed",
+  "protocol_version": "v2",
+  "source_schema_version": "sensor-record-v2",
+  "finalized_at": "2026-08-27T01:05:00Z",
+  "total_records": 4,
+  "files": [
+    {
+      "role": "protocol_log",
+      "path": "contracts/test-vectors/generator-protocol-extraction-v1/input/protocol-records.jsonl",
+      "media_type": "application/x-ndjson",
+      "sha256": "cbaa49f83e103645e8c9e4338c1865d0f6c5a9c6d56b2483584d8f2daad4ce77",
+      "size_bytes": 2434,
+      "record_count": 4,
+      "last_sequence": 4
+    }
+  ]
+}

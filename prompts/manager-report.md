@@ -12,3 +12,5 @@ Rules:
 6. Return JSON matching report.schema.json exactly.
 7. Every section must cite Evidence Package field IDs.
 8. Keep technical model detail secondary and concise.
+9. When `company_context_documents` are supplied, use them to connect the event to production impact, product economics, material availability, prior decisions, meetings, and maintenance history. Distinguish operational estimates from confirmed accounting values.
+10. Cite company context only with its supplied `evidence_field_id`; never invent business numbers, organizational facts, or inventory state.

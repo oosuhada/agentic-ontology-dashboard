@@ -1,269 +1,328 @@
-# Ontology Dashboard
+# 온톨로지 기반 설비 예지보전 플랫폼 (`ontology_dashboard`)
 
-조직의 Object, Link, Evidence와 Action을 역할·권한·workspace 범위에 맞는 업무 화면으로 구성하는 온톨로지 기반 운영 애플리케이션 MVP다. 초기 제조 예지보전 vertical slice는 첫 번째 **Manufacturing Predictive Maintenance Pack**으로 유지한다.
+제조 설비의 센서·정비·예측 데이터를 온톨로지 기반으로 연결하고, 같은 분석 결과를
+Dashboard, Operations, Executive Brief, API에서 일관되게 활용하기 위한 팀 프로젝트입니다.
 
-## Why I Built It / 만든 이유
+이 저장소는 단순 예측 모델 저장소가 아니라 `Biz-CollabCraft/gen_data`가 생성한 source data를
+소비해 Feature/Model Artifact, runtime inference, Product Result Artifact/Evidence, 업무 Action,
+Frontend와 Report까지 연결하는 제품 실행 저장소입니다.
 
-Engineers need raw numbers and evidence, managers need priorities, executives need conclusions — but one fixed dashboard can't serve all three. I built a dynamic dashboard where an LLM reshapes the same manufacturing data for each role.
+## 1. 프로젝트 목표
 
-엔지니어는 수치와 근거를, 매니저는 우선순위를, 임원은 결론을 필요로 하는데, 하나의 고정된 대시보드로는 이 니즈가 동시에 충족되지 않는 문제가 있었습니다. 같은 제조 데이터를 각 역할에 맞게 LLM이 다시 구성하는 동적 대시보드를 만들었습니다.
-
-## 구현 상태
-
-2단계 데이터 계약부터 31단계 Ontology Planner·Export·보안·성능 릴리스 hardening까지 구현했다.
-
-- AI4I 2020 데이터 검증·누수 방지·재현 가능한 모델 학습
-- 모델 버전별 운영 임계값 정책
-- Evidence Package, Report, UI Block JSON Schema
-- 규칙 기반 역할별 리포트와 선택적 LLM Adapter
-- 미등록 컴포넌트를 차단하는 governed UI Planner
-- FastAPI, SQLite 감사 기록, 제한된 후속 질문
-- React 역할별 Ontology Dashboard와 Manufacturing Predictive Maintenance Pack
-- 기능별 frontend 분리: `features/auth`, `features/manufacturing`, `features/dashboard`, `features/roles`, `features/planner`, `features/admin`, `features/ontology`
-- `/login`, `/register`, `/pending`, protected `/app`, tenant-admin-only `/admin`
-- SQLite identity/session/RBAC/resource scope, Argon2id, HttpOnly cookie, CSRF, 관리자 audit
-- 8개 개발·데모 test account와 production seed 차단
-- domain-neutral Object·Link·Action·Evidence·Dashboard·Board contract foundation
-- 제조 fixture·Evidence·activity의 ObjectRecord·LinkRecord projection
-- workspace-scoped object query와 최대 5-hop relation traversal
-- permission-aware, idempotent Ontology Action과 explicit operational audit
-- 기존 decision·note API의 Ontology Action 전환
-- SQLite 역할별 Dashboard template·version·tab·board persistence
-- 상단 workspace·tabs, 좌측 context, 12-column canvas, 우측 inspector 기반 새 shell
-- drag order·resize·hide/show·custom tab·saved view·role default restore
-- 역할별 Board Catalog, plain text board, FDE template 승인 요청과 tenant-admin publish
-- parameter dependency graph, affected board 표시, fullscreen, permission-aware share link
-- 임원 조직 위험·영향 집계, 미조치 중요 사건과 가정 기반 drill-down
-- 품질·감사 사건 재구성, Evidence→Report trace, export checkpoint hash
-- 390px 모바일 현장 task, 안전·측정·사진 metadata와 idempotent 완료·문제·blocked Action
-- FDE customer workspace·ontology·deployment·diagnostic Workbench와 four-eyes template approval
-- 데이터 사이언티스트 model·dataset·threshold·slice·drift·Gold regression Console과 release approval
-- 검증된 자연어 Object query, preference-aware Board 추천, grounded narrative와 FDE Dashboard draft preview
-- Catalog·role·Evidence reference 위반 또는 provider 장애 시 deterministic fail-closed fallback
-- permission-scoped JSON·CSV·PDF export, snapshot·artifact SHA-256와 export checkpoint audit
-- login·Planner·Export rate limit, 60분 idle timeout, session rotation·client binding·다른 세션 revoke
-- security header와 10+ Board mean·p95 성능 budget
-- 프로젝트 3 Maintenance Context HTTP Adapter와 fallback
-- Gold 평가, Vitest, TypeScript, production build, Playwright E2E 릴리스 게이트
-
-Git 초기화와 원격 연결은 사용자 요청에 따라 범위에서 제외했다.
-
-## 핵심 흐름
+핵심 목표는 "모델을 만드는 것"에서 끝나지 않고, 예측 결과가 실제 제품 흐름으로 이어지게 하는 것입니다.
 
 ```text
-AI4I-compatible sensor event
-→ validation and derived features
-→ trained model or deterministic Gold predictor
-→ versioned threshold policy
-→ Evidence Package
-→ deterministic or grounded LLM Report
-→ role and intent aware governed UI Layout
-→ FastAPI
-→ React manager/engineer dashboard
-→ human decision, checklist, notes, audit
+Canonical V3.1 source data
+        ↓
+Feature / Label / Model Training
+        ↓
+Model Artifact
+        ↓
+Backend Runtime Inference
+        ↓
+Product Result Artifact / Evidence
+        ↓
+Decision / Recommended Action / Maintenance Action
+        ↓
+Dashboard / Operations / Executive Brief
 ```
 
-## 빠른 실행
+최종적으로 하나의 설비 위험 Event가 다음 흐름으로 연결되는 것을 목표로 합니다.
 
-필수 환경:
+```text
+위험 탐지
+→ 근거 확인
+→ 대응 판단
+→ 정비 Action
+→ Ontology 상태 반영
+→ 보고서 생성
+```
 
-- Python 3.11 이상
-- Node.js 22.13 이상
-- npm
+## 2. 시스템 책임 흐름
+
+```text
+Biz-CollabCraft/gen_data
+Source Data Producer / Canonical V3.1 source-reference baseline
+        ↓
+systems/generator
+extraction → ontology mapping → topology → feature → training/evaluation
+→ immutable versioned Model Artifact
+        ↓ MODEL_ARTIFACT_URI
+systems/backend/app/diagnosis
+current observation + Model Artifact
+→ runtime inference → Product Result Artifact / Evidence
+        ↓
+Backend Product API
+        ↓
+Ontology Decision / Action / Maintenance State
+        ↓
+systems/frontend / Executive Brief / LLM Report
+```
+
+- `Biz-CollabCraft/gen_data`: raw/simulation/synthetic sensor data, Canonical V3.1 생성 기준, source/reference fixture와 재현성의 Source of Truth
+- `systems/generator`: Extraction, Feature/Label, Model Training/Evaluation, versioned Model Artifact producer
+- `systems/backend/app/diagnosis`: Model Artifact loader, runtime inference, Product Result Artifact/Evidence 최종 producer
+- Backend Product API: Frontend, Report, Closed-loop가 공통으로 소비하는 제품 경계
+- Ontology Closed-loop: Decision, Recommended Action, Maintenance Action과 설비 상태 연결
+- `systems/frontend`: Overview, Objects, Operations, Executive Brief와 최종 사용자 경험
+
+`gen_data`에 보존된 기존 model/prediction/result 파일은 compatibility/regression/migration fixture이며
+제품 runtime의 운영 최신 결과로 직접 사용하지 않습니다.
+
+## 3. 공식 제품 화면
+
+### Overview
+
+전체 설비의 정상·주의·경고·위험 상태와 주요 위험 설비를 빠르게 확인하는 첫 화면입니다.
+
+### Objects
+
+선택한 설비의 센서, 추세, failure probability, top factor, Evidence와 provenance를 확인합니다.
+
+### Operations
+
+Risk Event를 기준으로 Evidence, Decision, Recommended Action, Maintenance Action, Activity를 연결합니다.
+
+### Executive Brief
+
+동일한 Product Result/Evidence와 업무 Action을 관리자·임원 관점의 보고서로 표현합니다.
+먼저 deterministic/static report를 보장하고, 그 위에 LLM을 표현 계층으로 연결합니다.
+
+```text
+Structured Data = Truth
+LLM = Expression Layer
+```
+
+LLM이 실패해도 정적 보고서는 항상 생성될 수 있어야 합니다.
+
+## 4. 팀 최종 역할 분배
+
+각 담당자는 특정 기능 하나만 구현하고 끝나는 것이 아니라, 프로젝트 종료까지 자기 전문 축의 계약·구현·통합·검증을 계속 책임집니다.
+
+| 사람 | 프로젝트 전체 역할 | 최종 책임 | 주요 산출물이 넘어가는 곳 |
+|---|---|---|---|
+| **성민 (`smmini`)** | **ML Lifecycle & Contract Engineering** | Feature/Label, Training, Model Artifact, 모델 버전·평가·재현성·Runtime compatibility | → **호범** Runtime, → **우수** CI/Report provenance |
+| **호범 (`enjoylonelines`)** | **Backend Intelligence & Dynamic Reporting** | Runtime Inference, Product Result/Evidence, Dynamic Report grounding·내용·검증 규칙 | → **광우** Closed-loop, → **우수** Product/LLM runtime |
+| **광우 (`KOR-GANG`)** | **Ontology Operations & Closed-loop** | RiskEvent, Recommendation, Decision, Action, Maintenance, Ontology state와 업무 feedback loop | → **호범** Report context, → **우수** Product surface |
+| **우수 (`oosuhada`)** | **Product AI & Integration** | Product/Report Backend, LLM Runtime Integration, Frontend·Visualization, CI·E2E, Deployment·Release | → **전체 팀** Acceptance/Release, → **최종 사용자** |
+
+동적 보고서는 **호범이 Grounding/Prompt/내용·검증 규칙의 feature owner**, 우수가 **실제 LLM provider runtime과 Report API/UI 통합 owner**로 역할을 분리합니다. Static Executive Brief는 LLM과 독립적으로 우수가 Product/Report 계층에서 보장합니다.
+
+각 Step에서 네 사람이 맡는 세부 책임, 인계 산출물, 완료 조건은
+**[최종 역할 분배 및 Step별 실행 계획](./docs/final_team_role_and_step_plan.md)**을 기준으로 합니다.
+
+## 5. 저장소 구조
+
+```text
+systems/
+├── generator/                 # extraction / feature / label / training / Model Artifact publish
+├── backend/                   # FastAPI application + diagnosis runtime + migrations
+│   ├── ontology_dashboard/    # 제품 API application package
+│   └── app/diagnosis/         # Model Artifact load / inference / Result Artifact / Evidence
+└── frontend/                  # React + Vite 제품 Frontend
+
+contracts/                     # 시스템 간 공유 계약의 목표 위치
+docs/                          # 아키텍처, 요구사항, 팀 실행 계획, 구현 기록
+ml/                            # 이전 ML import/CLI compatibility adapter
+```
+
+시스템 경계는 direct Python import 대신 versioned Artifact 또는 Product API 계약으로 연결합니다.
+Backend는 Generator의 물리 `model_store` 경로나 Python 구현에 직접 의존하지 않습니다.
+
+## 6. 로컬 실행 및 검증
+
+Python 3.11+와 프로젝트 Frontend가 요구하는 Node.js 환경을 사용합니다.
+
+전체 로컬 실행:
 
 ```bash
-cd "/Users/gabrieljang/Documents/Macbook air personal/비스텔리전스 파이널 프로젝트/mvp-프로젝트2"
-cp .env.example .env
 bash scripts/run_local.sh
 ```
 
-기본 주소:
-
-- Web login: `http://127.0.0.1:3100/login`
-- User app: `http://127.0.0.1:3100/app`
-- Admin app: `http://127.0.0.1:3100/admin`
-- API docs: `http://127.0.0.1:8100/docs`
-
-개발 환경에서는 8개 demo account가 idempotent하게 seed된다. `APP_ENV=production`에서는 demo seed가 강제로 차단된다. API 키가 없어도 deterministic fallback으로 전체 Gold 데모가 동작한다.
-
-### 개발·데모 계정
-
-| 역할 | ID | Password |
-|---|---|---|
-| 관리자 | `admin@ontology.local` | `OntologyAdmin!2026` |
-| 임원 Viewer | `executive@ontology.local` | `Executive!2026` |
-| 운영 매니저 | `manager@ontology.local` | `Manager!2026` |
-| 도메인 엔지니어 | `engineer@ontology.local` | `Engineer!2026` |
-| 현장 작업자 | `technician@ontology.local` | `Technician!2026` |
-| 품질·감사 | `quality@ontology.local` | `Quality!2026` |
-| 데이터 사이언티스트 | `datascientist@ontology.local` | `DataScience!2026` |
-| FDE | `fde@ontology.local` | `FDE!2026` |
-
-DB에는 Argon2id hash만 저장한다. 개발 DB에 계정이 없다면 `PYTHONPATH=api:ml/src python scripts/seed_demo_accounts.py`를 실행한다.
-
-## Vertex AI 연결
-
-Vertex AI는 OpenAI 호환 API 키가 아니라 Google Cloud 프로젝트의 인증과 결제로 연결된다.
-`onjung.official@gmail.com`에서 결제/무료 크레딧이 연결된 프로젝트를 선택한 뒤, 로컬 또는 Mac mini에서 다음을 한 번 실행한다.
+PostgreSQL 기반 live runtime과 Closed-loop 작업요청까지 확인:
 
 ```bash
-gcloud auth login onjung.official@gmail.com
-gcloud config set project <ONJUNG_PROJECT_ID>
-gcloud services enable aiplatform.googleapis.com
-gcloud auth application-default login onjung.official@gmail.com
+bash scripts/run_local_live.sh
 ```
 
-그 프로젝트에서 `.env`에 아래만 설정한다. Docker로 실행한다면 서비스 계정 키를
-`secrets/vertex-runtime.json`처럼 Git에 포함되지 않는 경로에 두고
-`GOOGLE_APPLICATION_CREDENTIALS=./secrets/vertex-runtime.json`으로 지정한다. Compose가 이를
-컨테이너 안의 안전한 읽기 전용 경로로 마운트한다. 로컬 `bash scripts/run_local.sh` 실행은
-`gcloud auth application-default login`으로 만든 ADC를 그대로 사용한다.
+gen_data의 모든 설비 Tick부터 Generator Runtime Prediction, Backend
+Product Result/Evidence 승격, Maintenance Replay Overlay, Frontend 자동 갱신까지
+한 번에 실행하려면 다음 명령을 사용합니다. 최초 실행에서는 Canonical V3.1로
+CNC/Compressor Model Artifact를 발행하므로 몇 분이 걸릴 수 있으며, 이후에는
+검증된 로컬 Artifact를 재사용합니다.
 
-```dotenv
-LLM_PROVIDER=vertex-ai
-LLM_MODEL=gemini-2.5-flash
-GOOGLE_CLOUD_PROJECT=<ONJUNG_PROJECT_ID>
-GOOGLE_CLOUD_LOCATION=global
+```powershell
+.\.venv\Scripts\python.exe scripts\run_local_realtime.py
 ```
-
-Google Cloud Console에서 해당 프로젝트에 결제 계정이 연결되어 있고, 실행 주체에
-`Vertex AI User` 권한이 있어야 한다. 결제 계정/프로젝트 변경은 기존 `gabrieldiseoul@gmail.com`
-로그인 여부와 무관하며, 실제 청구는 `GOOGLE_CLOUD_PROJECT`의 연결된 결제 계정으로 간다.
-
-## Docker 선택 실행
 
 ```bash
-cd infra
-docker compose up --build
+.venv/bin/python scripts/run_local_realtime.py
 ```
 
-## 검증
+기본 로컬 데모는 과거 7일(168시간)의 Observation을 같은 Simulation Run에서
+먼저 생성한 뒤 현재 시각까지 fast-forward하고, 전체 Run horizon은 14일
+(336시간)로 잡아 정비 전 이력과 정비 후 재관측 시간을 모두 확보합니다. 72시간은
+데이터 계약의 상한이 아니라 예전 local runner의 demo 기본값이었습니다. 현재
+gen_data `balanced_demo`, seed 42의 첫 failure schedule은 72시간 horizon에서 3건,
+180시간에서 19건, 336시간에서 34건이 포함되므로 72시간은 Closed-loop 데모 후보를
+지나치게 줄입니다. 또한 `continuous=true`도 무한 실행이 아니라 지정한
+`duration_hours` 끝에서 종료하므로 충분한 post-maintenance runtime window를
+명시해야 합니다.
 
-가상환경이 준비된 상태에서:
+```powershell
+.\.venv\Scripts\python.exe scripts\run_local_realtime.py `
+  --history-hours 168 `
+  --simulation-hours 336 `
+  --speed 60
+```
+
+`--history-hours`는 발표 화면에서 볼 수 있는 과거 Observation backfill 기간입니다.
+이전 이름인 `--initial-history-hours`도 호환되지만, 모델 warm-up과 혼동하지 않도록
+새 실행에서는 `--history-hours`를 사용합니다. 모델 자체의 최소 이력은 6시간
+(36개 10분 Tick)이고, 정비 후 Overlay replay도 36 Tick branch-local warm-up만
+사용합니다. 따라서 과거 이력을 7일 또는 1년으로 늘려도 모든 정비 Replay가 그만큼
+다시 생성되지는 않습니다. 로컬 runner에는 별도의 72시간 DB retention 또는 UI
+history query 상한을 두지 않습니다.
+
+1년치 10분 단위 과거 관측과 정비 이력을 준비해야 하는 경우에는 같은 옵션을 더 크게
+잡을 수 있습니다. 이 경우 약 52,560 Tick의 backfill이 발생하므로 Team DB에 바로
+적재하기 전에는 로컬/스테이징에서 소요 시간과 row 수를 먼저 확인합니다.
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_local_realtime.py `
+  --history-hours 8760 `
+  --simulation-hours 9000 `
+  --speed 60
+```
+
+이 실행은 `Backend 직접 추론` 우회 경로를 사용하지 않습니다. Canonical/Live와
+정비 후 Overlay Observation 모두 불변 snapshot으로 Generator에 전달되고,
+Generator의 Prediction Result Batch를 Backend가 최종 판정으로 승격합니다.
+실행 로그와 세션 출력은 Git에서 제외되는
+`data_preprocessed/local-realtime/sessions/` 아래에 저장됩니다.
+반복 실행 시에는 DB에 저장된 마지막 Observation의 정확히 10분 뒤부터
+Simulation Clock을 이어서 시작합니다. 이전 세션의 서로 다른 시작 시각이 최근
+이력에 섞여 Model Artifact의 10분 cadence 계약을 깨뜨리는 것을 방지하면서도
+기존 Closed-loop 이력은 보존합니다.
+로컬 실행기는 가속된 합성 Simulation Clock을 명시적으로 활성화합니다. 일반
+Backend 실행은 계속해서 현재 시각보다 2분 이상 미래인 센서 Observation을
+거부하므로 실제 센서 운영 경계에는 영향을 주지 않습니다.
+또한 MVP 화면이 정적 Canonical V3.1 기본값에 머물지 않도록 로컬 데모 Project
+사용자들의 명시적 Dataset 선택을 Live Dataset Version으로 맞춥니다. 기존 선택을
+유지하려면 `--keep-dataset-selection`을 사용합니다.
+
+V3.1 예지보전 데모 패키지가
+`data/raw/predictive_maintenance_canonical_v3.1`에 있으면 자동으로 감지해
+PostgreSQL에 적재하고 Product Result를 물질화합니다. 이 로컬 데이터 패키지는
+Git에 커밋하지 않습니다. 다른 위치를 쓰려면
+`PM_DEMO_PACKAGE_ROOT=/path/to/predictive_maintenance_canonical_v3.1`를 지정하세요.
+
+Architecture 검증:
 
 ```bash
-export PYTHONPATH="$PWD/api:$PWD/ml/src"
-python scripts/release_gate.py --with-e2e
+python3 systems/verify_architecture.py
 ```
 
-최종 확인 결과:
+Backend:
 
-- Release checks: **10/10 PASS**
-- Python unit/integration/auth/RBAC/Ontology/Dashboard/Planner/Export/Security tests: **53 PASS**
-- Gold scenarios: **8/8 PASS**
-- Vitest: **1 PASS**
-- Playwright E2E: **13 PASS**
-- 금지 운영 단정: **0건**
-- Evidence 추적 불가 Report section: **0건**
+```bash
+cd systems/backend
+pip install -e ../../ml -e '.[dev]'
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
 
-상세 결과: [`docs/release-gate-report.md`](./docs/release-gate-report.md)
+Frontend:
 
-## AI4I 모델 결과
+```bash
+cd systems/frontend
+npm ci
+npm test
+npm run build
+```
 
-검증된 UCI AI4I 2020 CSV:
+운영/통합 runtime에서는 `.env.example`을 참고해 `MODEL_ARTIFACT_URI`와 데이터베이스 등
+필요한 runtime 설정을 주입합니다.
 
-- 10,000행
-- 고장 339행, 고장률 3.39%
-- 결측 0, 중복 0
-- failure-mode leakage column 입력 0
+## 7. CI와 품질 기준
 
-선택 모델: balanced Random Forest
+현재 프로젝트는 다음 계층을 자동 검증 대상으로 확장하고 있습니다.
 
-Held-out test, Recall-constrained threshold 0.20:
+- Architecture boundary
+- Generator import / contract safety
+- Feature / Label
+- Model Artifact publish / schema validation
+- Backend Artifact load / Product Result / Evidence
+- Closed-loop Action API
+- Frontend unit / production build
+- Playwright E2E
+- Docker runtime smoke
 
-| Metric | Result |
-|---|---:|
-| Average Precision | 0.8739 |
-| Precision | 0.6591 |
-| Recall | 0.8529 |
-| F1 | 0.7436 |
-| Confusion matrix | `[[1902, 30], [10, 58]]` |
+CI의 목적은 다른 담당자의 구현을 대신 수정하는 것이 아니라, 잘못된 구현이 `main`에 들어오기 전에
+경계와 계약 위반을 자동으로 발견하는 것입니다.
 
-이는 synthetic benchmark 재현성 결과이며 실제 공장 배포 성능을 뜻하지 않는다.
+## 8. 배포 구조
 
-## 역할과 기본 landing
-
-일반 사용자 역할은 `executive_viewer`, `process_manager`, `process_engineer`, `maintenance_technician`, `quality_auditor`, `ml_validator`, `fde`다. 같은 Ontology와 Evidence를 사용하지만 역할마다 `/app`의 설명, 첫 관점과 허용 Action이 다르다. `tenant_admin`은 별도 `/admin` control plane으로 이동하며, FDE는 사용자 계정·비밀번호·보안 정책을 관리할 수 없다.
-
-기존 Gold 화면의 핵심 차이도 유지한다.
-
-| 구분 | 운영 매니저 | 도메인 엔지니어 |
-|---|---|---|
-| 첫 질문 | 어떤 설비에 어떤 결정을 내려야 하는가? | 어떤 센서가 왜 비정상적인가? |
-| 첫 정보 | 상태, 위험도, 영향, 권장 결정 | 시계열, 이상 구간, 주요 근거 |
-| 주요 행동 | 판단, 점검 요청, 담당자 메모 | 점검, 기록, 매니저 보고 |
-| 모델 상세 | 기본 접힘 | 필요 시 확인 |
-
-## Gold 시나리오
-
-1. 정상 설비
-2. 공구 마모 위험
-3. 열 방출 이상
-4. 동력·토크 과부하
-5. 복합 이상
-6. 저신뢰 결과
-7. 데이터 품질 문제
-8. LLM·Planner 장애
-
-## 폴더 구조
+팀 공유 및 발표 환경은 다음 구조를 사용합니다.
 
 ```text
-api/          FastAPI, identity/RBAC, ontology registry, Planner, export and security services
-web/          Vite React auth, dashboard, role/planner workspaces, admin app and Playwright tests
-ml/           dataset audit, training, thresholding, evidence generation
-schemas/      input, Evidence, Report, Layout, ontology, dashboard, role, planner and export contracts
-prompts/      manager, engineer, UI planner grounding rules
-data/         Gold fixtures and optional local/raw data
-evaluation/   accepted Gold scenarios and evaluation result location
-docs/         scope, personas, data/model/policy/contracts/runbook
-infra/        Docker Compose
-scripts/      fetch, preflight, run, reset, evaluate, release gate
-tests/        backend contract/integration/safety tests
+PR / branch
+  ↓
+GitHub Actions
+  ├─ Frontend unit/build
+  ├─ Playwright E2E
+  └─ Backend / architecture checks
+        ↓ main + architecture green
+Mac mini release watcher
+        ↓ outbound pull
+Mac mini
+  ├─ Frontend :8120
+  ├─ Backend  :8110
+  └─ Cloudflare Tunnel → https://ontology.oosu.dev/
 ```
 
-## 주요 문서
+- GitHub Actions: PR/frontend CI와 main 검증을 담당하며 Preview 배포를 생성하지 않습니다.
+- Mac mini release watcher: `main` SHA의 `architecture` CI 성공을 확인한 뒤 검증된 SHA만 pull합니다.
+- Mac mini: 실제 제품 Frontend/Backend runtime 및 단일 공개 진입점을 담당합니다.
+- Cloudflare Tunnel: `https://ontology.oosu.dev/`을 Mac mini Frontend로 연결합니다.
+- Model Artifact: 사전에 학습·검증한 Artifact를 영속 위치에 발행하고 Mac mini Backend에
+  `MODEL_ARTIFACT_URI`로 주입합니다. Runtime 컨테이너 내부 파일시스템을 Artifact 정본으로 사용하지 않습니다.
 
-- [`docs/stage2-15-implementation-summary.md`](./docs/stage2-15-implementation-summary.md)
-- [`docs/stage16-18-implementation-summary.md`](./docs/stage16-18-implementation-summary.md)
-- [`docs/stage19-implementation-summary.md`](./docs/stage19-implementation-summary.md)
-- [`docs/stage20-24-implementation-summary.md`](./docs/stage20-24-implementation-summary.md)
-- [`docs/stage25-29-implementation-summary.md`](./docs/stage25-29-implementation-summary.md)
-- [`docs/stage30-31-implementation-summary.md`](./docs/stage30-31-implementation-summary.md)
-- [`docs/mvp-scope.md`](./docs/mvp-scope.md)
-- [`docs/personas.md`](./docs/personas.md)
-- [`docs/role-needs-research.md`](./docs/role-needs-research.md)
-- [`docs/ontology-dashboard-additional-implementation-plan.md`](./docs/ontology-dashboard-additional-implementation-plan.md)
-- [`docs/palantir-contour-dashboard-benchmark.md`](./docs/palantir-contour-dashboard-benchmark.md)
-- [`docs/next-session-ontology-dashboard-prompt.md`](./docs/next-session-ontology-dashboard-prompt.md)
-- [`docs/data-dictionary.md`](./docs/data-dictionary.md)
-- [`docs/model-baseline-results.md`](./docs/model-baseline-results.md)
-- [`docs/risk-threshold-policy.md`](./docs/risk-threshold-policy.md)
-- [`docs/service-contract.md`](./docs/service-contract.md)
-- [`docs/project3-adapter-contract.md`](./docs/project3-adapter-contract.md)
-- [`docs/demo-runbook.md`](./docs/demo-runbook.md)
-- [`docs/troubleshooting.md`](./docs/troubleshooting.md)
+자세한 기준은 [Mac mini demo deployment baseline](./docs/deployment/free-demo-stack.md)을 참고합니다.
 
-## 안전 경계
+## 9. 주요 문서
 
-- 실제 설비 제어 API가 없다.
-- 예측 고장 유형은 현장 점검 전까지 가설이다.
-- 데이터 품질 오류에서는 추론과 영향 판단을 보류한다.
-- LLM은 상태·결정·수치를 바꿀 수 없다.
-- LLM은 임의 React/HTML/JavaScript를 생성하지 않는다.
-- 모든 추천 조치는 사람의 검토가 필요하다.
-- 프로젝트 3 장애 시 로컬 context로 fallback한다.
+- [최종 역할 분배 및 Step별 실행 계획](./docs/final_team_role_and_step_plan.md)
+- [프로젝트 문서 인덱스](./docs/README.md)
+- [시스템 아키텍처](./docs/architecture.md)
+- [Architecture Decision Records](./docs/architecture-decisions/README.md)
+- [Shared Contracts](./contracts/README.md)
+- [Operations / Product documentation](./docs/operations/README.md)
+- [Operations 요구사항](./docs/operations/requirements-specification.md)
+- [Generator Feature/Label 계약](./docs/operations/generator-feature-label-contract.md)
+- [Model Artifact Publish 계약](./docs/operations/model-artifact-publish-contract.md)
+- [Runtime Ownership](./docs/operations/runtime-ownership-integration.md)
 
-## 라이선스와 데이터
+현재 제품/Operations 계약은 `docs/operations/` 바로 아래에서 관리하고, 2026년 8월 Week 2의
+역할 분담·이관·provenance 기록은 `docs/operations/history/2026-08-week2/`에 보존합니다.
 
-외부 저장소는 구조와 패턴을 조사하기 위한 레퍼런스다. 라이선스가 없는 저장소의 코드는 복사하지 않았다. AI4I 원본 CSV와 재생성 가능한 모델 binary는 기본 Git 추적 대상이 아니다.
+## 10. 최종 완료 정의
 
-## Architecture & Topics / 아키텍처 및 주제
+프로젝트 완료 기준은 각 팀원의 PR merge가 아니라 다음 전체 흐름이 공개 환경에서 재현되는 것입니다.
 
-**Architecture / 아키텍처**<br>
-[`domain-driven-design`](https://github.com/topics/domain-driven-design) · [`event-driven-architecture`](https://github.com/topics/event-driven-architecture) · [`transactional-outbox`](https://github.com/topics/transactional-outbox) · [`idempotency`](https://github.com/topics/idempotency) · [`repository-pattern`](https://github.com/topics/repository-pattern) · [`adapter-pattern`](https://github.com/topics/adapter-pattern) · [`role-based-ui`](https://github.com/topics/role-based-ui) · [`workspace-isolation`](https://github.com/topics/workspace-isolation) · [`permission-aware-actions`](https://github.com/topics/permission-aware-actions) · [`audit-log`](https://github.com/topics/audit-log) · [`four-eyes-principle`](https://github.com/topics/four-eyes-principle) · [`human-in-the-loop`](https://github.com/topics/human-in-the-loop)
+```text
+Canonical V3.1
+→ Feature / Label
+→ Model Training
+→ Model Artifact
+→ Backend Runtime Inference
+→ Product Result / Evidence
+→ Recommended Action / Manager Decision
+→ Maintenance Action / Event
+→ Ontology State
+→ 새로운 Observation / Prediction
+→ Dashboard
+→ Executive Brief
+→ LLM Dynamic Report
+```
 
-**Project context / 프로젝트 맥락**<br>
-[`agentic-ai`](https://github.com/topics/agentic-ai) · [`dashboard`](https://github.com/topics/dashboard) · [`full-stack`](https://github.com/topics/full-stack) · [`industrial-ai`](https://github.com/topics/industrial-ai) · [`llm`](https://github.com/topics/llm) · [`manufacturing`](https://github.com/topics/manufacturing)
-
-**Implementation stack / 구현 스택**<br>
-[`fastapi`](https://github.com/topics/fastapi) · [`postgresql`](https://github.com/topics/postgresql) · [`react`](https://github.com/topics/react) · [`typescript`](https://github.com/topics/typescript)
+이 흐름이 CI, E2E와 Mac mini 공개 배포 환경에서 일관되게 동작하는 것을 최종 목표로 합니다.

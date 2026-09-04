@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ontology-dashboard.local/schemas/generator-static-mapping-table.schema.json",
+  "mapping_id": "gen-data-sensor-stream-canonical",
+  "mapping_version": "v1",
+  "status": "approved",
+  "source_format": "gen_data_sensor_stream",
+  "source_schema_version": "sensor-record-v2",
+  "source_schema_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+  "fingerprint_algorithm_version": "v1",
+  "field_mappings": [
+    {
+      "source_field": "torque_nm",
+      "target_field": "torque_nm",
+      "source_type": "number",
+      "target_type": "float",
+      "required": true,
+      "transform": "to_float"
+    }
+  ],
+  "mapping_sha256": "7730b4661cd3f7d50f9bf5bb480c655c2fd1214c2b68068796cb733e7fbf326d"
+}

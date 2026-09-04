@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/operation-context.schema.json",
+  "title": "Ontology Dashboard Operation Context Fixture",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "context_id",
+    "source_type",
+    "scope",
+    "temporal_scope",
+    "product_context",
+    "capacity_model",
+    "production_plan",
+    "event_impacts",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": "operation-context-v1.0" },
+    "context_id": { "type": "string", "minLength": 1 },
+    "source_type": { "const": "capacity_model" },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_id", "dataset_version", "fixture_family"],
+      "properties": {
+        "project_id": { "type": "string", "minLength": 1 },
+        "dataset_version": { "type": "string", "minLength": 1 },
+        "fixture_family": { "type": "string", "minLength": 1 }
+      }
+    },
+    "temporal_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["snapshot_id", "timezone", "valid_from", "valid_to", "generated_at"],
+      "properties": {
+        "snapshot_id": { "type": "string", "minLength": 1 },
+        "timezone": { "type": "string", "minLength": 1 },
+        "valid_from": { "type": "string", "format": "date-time" },
+        "valid_to": { "type": "string", "format": "date-time" },
+        "generated_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "product_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_type", "product_family", "variant_basis", "line_display_names"],
+      "properties": {
+        "source_type": { "const": "synthetic_demo_context" },
+        "product_family": { "type": "string", "minLength": 1 },
+        "variant_basis": { "type": "string", "minLength": 1 },
+        "line_display_names": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["line_pattern", "display_product_family"],
+            "properties": {
+              "line_pattern": { "type": "string", "minLength": 1 },
+              "display_product_family": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "capacity_model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_count_basis",
+        "planning_window",
+        "oee_basis",
+        "cycle_time_basis",
+        "asset_units_per_hour",
+        "daily_capacity_units"
+      ],
+      "properties": {
+        "asset_count_basis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source_ref", "active_asset_count"],
+          "properties": {
+            "source_ref": { "type": "string", "minLength": 1 },
+            "active_asset_count": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "planning_window": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["plan_date", "shift_count", "hours_per_shift", "planned_operating_hours"],
+          "properties": {
+            "plan_date": { "type": "string", "format": "date" },
+            "shift_count": { "type": "integer", "minimum": 1 },
+            "hours_per_shift": { "type": "number", "exclusiveMinimum": 0 },
+            "planned_operating_hours": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        "oee_basis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source_ref", "availability", "performance", "quality", "oee"],
+          "properties": {
+            "source_ref": { "type": "string", "minLength": 1 },
+            "availability": { "type": "number", "minimum": 0, "maximum": 1 },
+            "performance": { "type": "number", "minimum": 0, "maximum": 1 },
+            "quality": { "type": "number", "minimum": 0, "maximum": 1 },
+            "oee": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "cycle_time_basis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source_type", "standard_cycle_minutes_per_unit", "note"],
+          "properties": {
+            "source_type": { "const": "explicit_demo_assumption" },
+            "standard_cycle_minutes_per_unit": { "type": "number", "exclusiveMinimum": 0 },
+            "note": { "type": "string", "minLength": 1 }
+          }
+        },
+        "asset_units_per_hour": { "type": "number", "minimum": 0 },
+        "daily_capacity_units": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "production_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plan_id", "plan_date", "planned_units", "product_mix"],
+      "properties": {
+        "plan_id": { "type": "string", "minLength": 1 },
+        "plan_date": { "type": "string", "format": "date" },
+        "planned_units": { "type": "integer", "minimum": 0 },
+        "product_mix": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["variant", "share", "planned_units"],
+            "properties": {
+              "variant": { "enum": ["L", "M", "H"] },
+              "share": { "type": "number", "minimum": 0, "maximum": 1 },
+              "planned_units": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "event_impacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "event_id",
+          "equipment_id",
+          "line",
+          "product_variant",
+          "screen_priority",
+          "impact_status",
+          "estimated_lost_units",
+          "basis"
+        ],
+        "properties": {
+          "event_id": { "type": "string", "minLength": 1 },
+          "equipment_id": { "type": "string", "minLength": 1 },
+          "line": { "type": "string", "minLength": 1 },
+          "product_variant": { "type": "string", "minLength": 1 },
+          "screen_priority": { "enum": ["none", "monitor", "shift_inspection", "plan_at_risk", "data_check_required"] },
+          "impact_status": { "enum": ["not_applicable", "estimated", "withheld_data_quality_hold"] },
+          "estimated_lost_units": { "type": ["integer", "null"], "minimum": 0 },
+          "basis": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["estimated_downtime_minutes", "asset_units_per_hour", "formula"],
+            "properties": {
+              "estimated_downtime_minutes": { "type": "integer", "minimum": 0 },
+              "asset_units_per_hour": { "type": "number", "minimum": 0 },
+              "formula": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

@@ -1,0 +1,45 @@
+name: generator-training-runtime
+
+on:
+  pull_request:
+    paths:
+      - "contracts/examples/generator-training/**"
+      - "contracts/schemas/generator-training-config.schema.json"
+      - "contracts/test-vectors/generator-training-v1/**"
+      - "systems/generator/**"
+      - "tests/test_generator_training_api.py"
+      - ".github/workflows/generator-training-runtime.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: generator-training-runtime-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generator-training-runtime:
+    name: generator-training-runtime / verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout tested revision
+        uses: actions/checkout@v4
+
+      - name: Build Generator runtime image
+        run: docker build --file systems/generator/Dockerfile --tag ontology-generator:training-check .
+
+      - name: Run Training API tests inside image
+        run: >-
+          docker run --rm
+          --user 0:0
+          --entrypoint sh
+          --env DATA_DIR=/data/source
+          --env DATA_PREPROCESSED_DIR=/data/preprocessed
+          --env ONTOLOGY_DIR=/data/ontology
+          --env MODELS_STORE_DIR=/data/models
+          --env MODEL_ARTIFACT_URI=/artifacts
+          --volume "${{ github.workspace }}/tests:/app/tests:ro"
+          --volume "${{ github.workspace }}/contracts/examples/generator-training:/app/contracts/examples/generator-training:ro"
+          --volume "${{ github.workspace }}/contracts/test-vectors/generator-training-v1:/app/contracts/test-vectors/generator-training-v1:ro"
+          ontology-generator:training-check
+          -c "python -m pip install --no-cache-dir pytest && python -m pytest -q tests/test_generator_training_api.py"

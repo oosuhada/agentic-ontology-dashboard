@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/generator-extraction-runtime-handoff.schema.json",
+  "title": "Generator Extraction Runtime Handoff Record",
+  "description": "Immutable and versioned handoff record linking a published Canonical Observation Dataset to the Generator Runtime Prediction Queue.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "handoff_schema_version",
+    "handoff_id",
+    "status",
+    "created_at",
+    "updated_at",
+    "dataset",
+    "runtime_input",
+    "delivery"
+  ],
+  "properties": {
+    "handoff_schema_version": {
+      "type": "string",
+      "const": "generator-extraction-runtime-handoff-v1"
+    },
+    "handoff_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "runtime_disabled",
+        "enqueueing",
+        "enqueued",
+        "retry_wait",
+        "blocked",
+        "retry_exhausted"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset_id",
+        "dataset_version",
+        "manifest_uri",
+        "observations_uri",
+        "observations_sha256",
+        "observations_size_bytes"
+      ],
+      "properties": {
+        "dataset_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dataset_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manifest_uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observations_uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observations_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "observations_size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "runtime_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset_id",
+        "dataset_version",
+        "source"
+      ],
+      "properties": {
+        "dataset_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dataset_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source_uri",
+            "source_checksum",
+            "source_kind",
+            "source_contract_version",
+            "source_schema_version",
+            "pipeline_contract_version",
+            "lineage"
+          ],
+          "properties": {
+            "source_uri": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_checksum": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "source_kind": {
+              "type": "string",
+              "const": "live_sensor"
+            },
+            "source_contract_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_schema_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pipeline_contract_version": {
+              "type": "string",
+              "const": "generator-prediction-result-v1"
+            },
+            "lineage": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "simulation_session_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "overlay_branch_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "history_segment_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "maintenance_event_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "maintenance_action_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "state_version": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attempt_count",
+        "runtime_job_id",
+        "queue_item_id",
+        "last_error_code",
+        "last_error_message",
+        "next_retry_at"
+      ],
+      "properties": {
+        "attempt_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runtime_job_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "queue_item_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "last_error_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "last_error_message": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "next_retry_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

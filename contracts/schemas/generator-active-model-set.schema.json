@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Biz-CollabCraft/ontology_dashboard/main/contracts/schemas/generator-active-model-set.schema.json",
+  "title": "ActiveModelSet",
+  "description": "Schema for specifying the active model set and model versions used during Generator Runtime Prediction.",
+  "type": "object",
+  "required": [
+    "model_set_id",
+    "model_set_version",
+    "updated_at",
+    "models"
+  ],
+  "properties": {
+    "model_set_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifier for the active model set"
+    },
+    "model_set_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Version string of the active model set"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the pointer was updated"
+    },
+    "models": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Map of base model identifiers to their active configuration",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "model_version",
+          "required"
+        ],
+        "properties": {
+          "model_version": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Target model artifact version string"
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Whether failure of this model fails the entire batch"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/generator-protocol-run-manifest.schema.json",
+  "title": "GeneratorProtocolRunManifest",
+  "description": "Schema for upstream gen_data execution run manifest certifying protocol file finalization and integrity.",
+  "type": "object",
+  "required": [
+    "manifest_version",
+    "run_id",
+    "status",
+    "protocol_version",
+    "source_schema_version",
+    "files"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "manifest_version": {
+      "type": "string",
+      "enum": ["generator-protocol-run-v1"]
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["completed", "finalized", "succeeded", "running", "in_progress", "failed", "pending"]
+    },
+    "protocol_version": {
+      "type": "string",
+      "enum": ["v2"]
+    },
+    "source_schema_version": {
+      "type": "string",
+      "enum": ["sensor-record-v2"]
+    },
+    "finalized_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "total_records": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "role",
+          "path",
+          "media_type",
+          "sha256",
+          "size_bytes"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["protocol_log", "provenance_log", "raw_sensor_log"]
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "media_type": {
+            "type": "string",
+            "enum": ["application/x-ndjson", "application/json"]
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "record_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "last_sequence": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,317 @@
+{
+  "schema_version": "agent-review-packet-v1.0",
+  "project_id": "manufacturing-demo-project",
+  "asset_id": "CNC-S04-L02-03",
+  "asset_label": "4구역 · 2셀 · CNC 가공기 3",
+  "generated_at": "2026-08-01T00:00:00+09:00",
+  "snapshot_basis": {
+    "artifact_id": "RESULT#CNC-S04-L02-03#2026-08-01T00:00:00+09:00",
+    "evidence_payload_reference": "RESULT#CNC-S04-L02-03#2026-08-01T00:00:00+09:00",
+    "asset_id": "CNC-S04-L02-03",
+    "event_id": "EVT-GS-004",
+    "observed_at": "2026-08-01T00:00:00+09:00",
+    "model_version": "fixture-heuristic-v1",
+    "dataset_version": "fixture-compatibility",
+    "source_sha256": null
+  },
+  "risk_summary": {
+    "status_grade": "critical",
+    "failure_probability": 0.908411,
+    "prediction_horizon_hours": 24
+  },
+  "review_priority": {
+    "level": "immediate",
+    "reasons": [
+      "risk.status_grade=critical",
+      "asset.criticality=high",
+      "operation_context.production_impact=high"
+    ],
+    "source_fields": [
+      "risk.status_grade",
+      "asset.criticality",
+      "operation_context.production_impact"
+    ]
+  },
+  "review_draft": {
+    "title": "4구역 · 2셀 · CNC 가공기 3 담당자 검토 초안",
+    "summary": "CNC-S04-L02-03는 현재 critical 상태이며 예측 위험도는 90.8%입니다. 동력 전달 계통 중심으로 현장 위치 reference, 관측값, 조회된 이력을 대조해야 합니다.",
+    "priority_label": "immediate",
+    "recommended_next_step": "조회된 이력과 SOP 근거를 대조한 뒤, 필요한 경우 관리자 승인 절차로 이관합니다.",
+    "checklist": [
+      "근거 공백 항목을 먼저 확인하고 확정 판단에서 제외합니다."
+    ],
+    "history_summary": [
+      "최근 정비 이력: 최근 정비 이력 · 2026-06-15T00:00:00+09:00 · 47일 전",
+      "열린 작업요청: WO-INS-GS-004-001 · requested",
+      "최근 30일 유사 이벤트: 2026-07-22T14:10:00+09:00 · 1건"
+    ],
+    "evidence_gap_count": 3,
+    "boundary_note": "이 초안은 담당자 검토를 돕기 위한 read-only 문서이며 작업요청 생성, 정비 승인, 자동 승인을 수행하지 않습니다."
+  },
+  "model_expression_context": {
+    "source_type": "runtime_inference",
+    "model_version": "fixture-heuristic-v1",
+    "dataset_version": "fixture-compatibility",
+    "failure_probability": 0.908411,
+    "threshold": 0.55,
+    "confidence_label": "",
+    "top_factors": [
+      {
+        "feature": "mechanical_power_w",
+        "display_name": "기계 동력",
+        "value": 13351.7688,
+        "unit": "W",
+        "direction": "risk_up",
+        "contribution": 0.961202,
+        "explanation_method": "deterministic_component_score",
+        "source_ref": "RESULT#CNC-S04-L02-03#2026-08-01T00:00:00+09:00#factor.1.mechanical_power_w"
+      },
+      {
+        "feature": "overstrain_index",
+        "display_name": "과부하 지표",
+        "value": 15750.0,
+        "unit": "N·m·min",
+        "direction": "risk_up",
+        "contribution": 0.924142,
+        "explanation_method": "deterministic_component_score",
+        "source_ref": "RESULT#CNC-S04-L02-03#2026-08-01T00:00:00+09:00#factor.2.overstrain_index"
+      },
+      {
+        "feature": "torque_nm",
+        "display_name": "토크",
+        "value": 75.0,
+        "unit": "N·m",
+        "direction": "risk_up",
+        "contribution": 0.835484,
+        "explanation_method": "deterministic_component_score",
+        "source_ref": "RESULT#CNC-S04-L02-03#2026-08-01T00:00:00+09:00#factor.3.torque_nm"
+      }
+    ],
+    "source_refs": [
+      "RESULT#CNC-S04-L02-03#2026-08-01T00:00:00+09:00",
+      "RESULT#CNC-S04-L02-03#2026-08-01T00:00:00+09:00#factor.3.torque_nm",
+      "RESULT#CNC-S04-L02-03#2026-08-01T00:00:00+09:00#factor.1.mechanical_power_w",
+      "RESULT#CNC-S04-L02-03#2026-08-01T00:00:00+09:00#factor.2.overstrain_index"
+    ]
+  },
+  "sop_retrieval": {
+    "provider": "local_sop_metadata_retriever",
+    "query": {
+      "asset_type": "cnc",
+      "failure_mode": "power_or_overstrain_failure",
+      "factor_keys": [
+        "mechanical_power_w",
+        "overstrain_index",
+        "torque_nm"
+      ],
+      "component_ids": [
+        "drive_power"
+      ],
+      "risk_grade": "critical",
+      "criticality": "high",
+      "production_impact": "high"
+    },
+    "top_k": 5,
+    "returned_count": 0,
+    "mutation_allowed": false
+  },
+  "inspection_targets": [
+    {
+      "target_id": "inspection-target:RESULT#CNC-S04-L02-03#2026-08-01T00:00:00+09:00:1",
+      "component_id": "drive_power",
+      "component_label": "동력 전달 계통",
+      "association": "inspection_candidate",
+      "location_label": "주축 모터, 커플링, 동력 전달 하우징",
+      "inspection_method": "토크 상승, 출력 부하, 과부하 누적 이력과 함께 체결, 발열, 진동 상태를 확인합니다.",
+      "location_source_ref": "data/fixtures/inspection_location/demo-cnc-inspection-location-reference-v1.json#drive_power",
+      "basis_refs": [
+        "factor.1.mechanical_power_w",
+        "factor.2.overstrain_index",
+        "factor.3.torque_nm",
+        "sensor_evidence.sensors.torque_nm"
+      ],
+      "source_ref": "RESULT#CNC-S04-L02-03#2026-08-01T00:00:00+09:00#component_hypotheses[0]",
+      "unavailable_reason": null
+    }
+  ],
+  "sop_guidance": [],
+  "operation_context_summary": {
+    "production_impact": "high",
+    "estimated_downtime_minutes": 240,
+    "estimated_lost_units": 51,
+    "product_variant": "L",
+    "basis": "80 assets, 16h/day, OEE 0.846, cycle 4.0min 기준",
+    "limitations": [
+      "This context is not a MES, ERP, APS, or customer-order record.",
+      "The calculated plan must not change failure_probability, status_grade, top_factors, or recommended_action.",
+      "AI4I provides Product Type L/M/H but no real SKU or product name.",
+      "Data-quality-hold events surface production impact as unavailable until the sensor issue is resolved.",
+      "Estimated lost units are planning impact estimates, not confirmed downtime or realized production loss."
+    ],
+    "source_ref": "operation-context://production-planning-context-v1"
+  },
+  "ontology_context": {
+    "provider": "manufacturing_fixture_ontology_context",
+    "mutation_allowed": false,
+    "traversals": [
+      {
+        "component_id": "drive_power",
+        "component_label": "동력 전달 계통",
+        "factor_refs": [
+          "factor.1.mechanical_power_w",
+          "factor.2.overstrain_index",
+          "factor.3.torque_nm"
+        ],
+        "location_label": "주축 모터, 커플링, 동력 전달 하우징",
+        "location_source_ref": "data/fixtures/inspection_location/demo-cnc-inspection-location-reference-v1.json#drive_power",
+        "sop_ids": [],
+        "spare_parts": [
+          {
+            "part_id": "SP-CNC-DRIVE-COUPLING-KIT",
+            "part_label": "주축 구동 커플링 키트",
+            "replacement_scope": "커플링 및 동력 전달부 교체 검토",
+            "availability": "unavailable_from_fixture",
+            "lead_time_days": 2,
+            "replacement_window_minutes": 180,
+            "assumption_level": "demo_planning_assumption",
+            "source_ref": "data/fixtures/spare_part/demo-cnc-spare-part-context-v1.json#SP-CNC-DRIVE-COUPLING-KIT"
+          }
+        ],
+        "similar_events": [
+          {
+            "similar_event_id": "SIM-EVT-CNC-DRIVE-2026-07-22",
+            "asset_label": "4구역 · 2셀 · CNC 가공기 1",
+            "observed_at": "2026-07-22T14:10:00+09:00",
+            "matched_factor_keys": [
+              "mechanical_power_w",
+              "overstrain_index",
+              "torque_nm"
+            ],
+            "action_taken": "동력 전달부 체결 상태 확인 후 커플링 편심 재조정",
+            "outcome": "토크와 과부하 누적 지표가 다음 관측 구간에서 완화됨",
+            "post_action_observation_window_hours": 48,
+            "assumption_level": "demo_history_assumption",
+            "source_ref": "data/fixtures/similar_event/demo-cnc-similar-event-context-v1.json#SIM-EVT-CNC-DRIVE-2026-07-22"
+          }
+        ],
+        "source_refs": [
+          "data/fixtures/inspection_location/demo-cnc-inspection-location-reference-v1.json#drive_power",
+          "data/fixtures/spare_part/demo-cnc-spare-part-context-v1.json#SP-CNC-DRIVE-COUPLING-KIT",
+          "data/fixtures/similar_event/demo-cnc-similar-event-context-v1.json#SIM-EVT-CNC-DRIVE-2026-07-22"
+        ]
+      }
+    ],
+    "source_refs": [
+      "data/fixtures/inspection_location/demo-cnc-inspection-location-reference-v1.json#drive_power",
+      "data/fixtures/spare_part/demo-cnc-spare-part-context-v1.json#SP-CNC-DRIVE-COUPLING-KIT",
+      "data/fixtures/similar_event/demo-cnc-similar-event-context-v1.json#SIM-EVT-CNC-DRIVE-2026-07-22"
+    ]
+  },
+  "maintenance_history_summary": {
+    "provider": "asset_detail_view_model_closed_loop_projection",
+    "mutation_allowed": false,
+    "last_maintenance_days_ago": 47,
+    "similar_events_30d": null,
+    "open_work_order_exists": null,
+    "work_orders": [
+      {
+        "record_id": "WO-INS-GS-004-001",
+        "record_type": "work-order",
+        "status": "requested",
+        "activity_type": "",
+        "recorded_at": "2026-08-01T00:05:00+09:00",
+        "summary": "",
+        "source_ref": "closed-loop://work-order/WO-INS-GS-004-001"
+      }
+    ],
+    "inspection_results": [],
+    "maintenance_actions": [],
+    "maintenance_events": [],
+    "activities": [
+      {
+        "record_id": "WO-INS-GS-004-001",
+        "record_type": "activity",
+        "status": "",
+        "activity_type": "work_order.requested",
+        "recorded_at": "2026-08-01T00:05:00+09:00",
+        "summary": "",
+        "source_ref": "closed-loop://activity/WO-INS-GS-004-001"
+      }
+    ],
+    "similar_events": [
+      {
+        "similar_event_id": "SIM-EVT-CNC-DRIVE-2026-07-22",
+        "asset_label": "4구역 · 2셀 · CNC 가공기 1",
+        "observed_at": "2026-07-22T14:10:00+09:00",
+        "action_taken": "동력 전달부 체결 상태 확인 후 커플링 편심 재조정",
+        "outcome": "토크와 과부하 누적 지표가 다음 관측 구간에서 완화됨",
+        "source_ref": "data/fixtures/similar_event/demo-cnc-similar-event-context-v1.json#SIM-EVT-CNC-DRIVE-2026-07-22"
+      }
+    ],
+    "recent_equipment_history": [
+      {
+        "description": "최근 정비 이력",
+        "occurred_at": "2026-06-15T00:00:00+09:00",
+        "source_ref": "equipment-history://1"
+      }
+    ],
+    "source_refs": [
+      "closed-loop://work-order/WO-INS-GS-004-001",
+      "closed-loop://activity/WO-INS-GS-004-001",
+      "data/fixtures/similar_event/demo-cnc-similar-event-context-v1.json#SIM-EVT-CNC-DRIVE-2026-07-22",
+      "equipment-history://1"
+    ]
+  },
+  "history_review_items": [],
+  "evidence_gaps": [
+    {
+      "field": "risk_series",
+      "reason": "Backend Diagnosis Runtime Prediction History Query is not materialized yet",
+      "owner_domain": "diagnosis"
+    },
+    {
+      "field": "maintenance_context.similar_events_30d",
+      "reason": "maintenance_context_missing_or_unresolved",
+      "owner_domain": "maintenance"
+    },
+    {
+      "field": "maintenance_context.open_work_order_exists",
+      "reason": "maintenance_context_missing_or_unresolved",
+      "owner_domain": "maintenance"
+    }
+  ],
+  "source_refs": [
+    "RESULT#CNC-S04-L02-03#2026-08-01T00:00:00+09:00",
+    "operation-context://production-planning-context-v1",
+    "RESULT#CNC-S04-L02-03#2026-08-01T00:00:00+09:00#component_hypotheses[0]",
+    "data/fixtures/inspection_location/demo-cnc-inspection-location-reference-v1.json#drive_power",
+    "data/fixtures/spare_part/demo-cnc-spare-part-context-v1.json#SP-CNC-DRIVE-COUPLING-KIT",
+    "data/fixtures/similar_event/demo-cnc-similar-event-context-v1.json#SIM-EVT-CNC-DRIVE-2026-07-22",
+    "RESULT#CNC-S04-L02-03#2026-08-01T00:00:00+09:00#factor.3.torque_nm",
+    "RESULT#CNC-S04-L02-03#2026-08-01T00:00:00+09:00#factor.1.mechanical_power_w",
+    "RESULT#CNC-S04-L02-03#2026-08-01T00:00:00+09:00#factor.2.overstrain_index",
+    "closed-loop://work-order/WO-INS-GS-004-001",
+    "closed-loop://activity/WO-INS-GS-004-001",
+    "equipment-history://1"
+  ],
+  "closed_loop_boundary": {
+    "mutation_allowed": false,
+    "available_action_ids": [
+      "approve_inspection_work_order"
+    ],
+    "forbidden_actions": [
+      "create_work_order",
+      "approve_work_order",
+      "start_maintenance_action",
+      "complete_maintenance_action",
+      "create_maintenance_event",
+      "request_replay",
+      "auto_approve"
+    ],
+    "note": "This packet may reference available actions for context, but it cannot execute or approve them."
+  },
+  "limitations": [
+    "Agent Review Packet is read-only and does not mutate Recommendation, WorkOrder, MaintenanceAction, MaintenanceEvent, or Replay state.",
+    "SOP grounding supports inspection and replacement timing review drafts; it is not Product Evidence or a repair instruction."
+  ]
+}

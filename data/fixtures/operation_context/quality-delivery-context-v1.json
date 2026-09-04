@@ -1,0 +1,54 @@
+{
+  "schema_version": "quality-delivery-context-v1.0",
+  "context_id": "quality-delivery-context-demo-v1",
+  "source_classification": "synthetic_demo_context",
+  "scope": {
+    "organization_id": "ORG-001",
+    "project_id": "manufacturing-demo-project",
+    "workspace_id": "manufacturing-demo"
+  },
+  "temporal_scope": {
+    "snapshot_id": "QUALITY-DELIVERY-SNAPSHOT-2026-09-02-01",
+    "valid_from": "2026-09-02T00:00:00+09:00",
+    "valid_to": "2026-09-04T00:00:00+09:00",
+    "generated_at": "2026-09-02T00:00:00+09:00"
+  },
+  "asset_id": "CNC-S04-L02-03",
+  "quality_lots": [
+    {
+      "lot_id": "DEMO-LOT-014",
+      "wip_id": "DEMO-WIP-001",
+      "order_id": "DEMO-PO-001",
+      "quantity": 120,
+      "quality_state": "released",
+      "release_required": false,
+      "relationship_state": "assumed_demo",
+      "source_refs": ["quality-delivery-context-demo-v1#/quality_lots/0"]
+    },
+    {
+      "lot_id": "DEMO-LOT-015",
+      "wip_id": "DEMO-WIP-001",
+      "order_id": "DEMO-PO-001",
+      "quantity": 80,
+      "quality_state": "hold",
+      "release_required": true,
+      "relationship_state": "assumed_demo",
+      "source_refs": ["quality-delivery-context-demo-v1#/quality_lots/1"]
+    }
+  ],
+  "delivery_commitments": [
+    {
+      "delivery_id": "DEMO-DELIVERY-009",
+      "order_id": "DEMO-PO-001",
+      "committed_quantity": 800,
+      "due_at": "2026-09-03T18:00:00+09:00",
+      "priority": 1,
+      "relationship_state": "assumed_demo",
+      "source_refs": ["quality-delivery-context-demo-v1#/delivery_commitments/0"]
+    }
+  ],
+  "limitations": [
+    "This fixture is synthetic quality and delivery context, not an actual QMS, ERP, MES, or customer commitment.",
+    "Quality hold and delivery exposure are demo assumptions and must not be represented as execution facts."
+  ]
+}

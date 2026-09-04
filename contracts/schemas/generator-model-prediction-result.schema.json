@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/generator-model-prediction-result.schema.json",
+  "title": "GeneratorModelPredictionResult",
+  "type": "object",
+  "required": [
+    "model_version",
+    "status",
+    "observed_at",
+    "score_type",
+    "score_source"
+  ],
+  "properties": {
+    "model_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["succeeded", "failed", "unknown"]
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "score_type": {
+      "type": ["string", "null"]
+    },
+    "score_source": {
+      "type": ["string", "null"],
+      "enum": ["predict_proba", "decision_function_compat", "predict_compat", null]
+    },
+    "score": {
+      "type": ["number", "null"],
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "artifact_ref": {
+      "type": ["object", "null"],
+      "properties": {
+        "uri": { "type": "string" },
+        "sha256": { "type": "string" },
+        "role": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "feature_ref": {
+      "type": ["object", "null"],
+      "properties": {
+        "uri": { "type": "string" },
+        "sha256": { "type": "string" },
+        "role": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "manifest_checksum": {
+      "type": ["string", "null"],
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "feature_schema_version": {
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "label_schema_version": {
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "history_requirement_version": {
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "error_code": {
+      "type": ["string", "null"]
+    },
+    "error_message": {
+      "type": ["string", "null"]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": { "const": "succeeded" }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "required": [
+          "score",
+          "artifact_ref",
+          "feature_ref",
+          "manifest_checksum",
+          "feature_schema_version",
+          "label_schema_version",
+          "history_requirement_version"
+        ],
+        "properties": {
+          "score": { "type": "number" },
+          "artifact_ref": { "type": "object" },
+          "feature_ref": { "type": "object" },
+          "manifest_checksum": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "feature_schema_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "label_schema_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "history_requirement_version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

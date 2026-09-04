@@ -1,0 +1,39 @@
+{
+  "$schema": "https://ontology-dashboard.local/schemas/generator-extraction-fragment-manifest.schema.json",
+  "fragment_schema_version": "generator-extraction-fragment-v1",
+  "batch_id": "a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0",
+  "run_id": "run-extract-20260828-001",
+  "source_identity": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+  "source_uri": "sensor/facS01/lineL01/sensor_stream.jsonl",
+  "source_start_offset": 0,
+  "source_end_offset": 12400,
+  "source_start_line": 1,
+  "source_end_line": 100,
+  "mapping_id": "gen-data-sensor-stream-canonical",
+  "mapping_version": "v1",
+  "mapping_sha256": "f1ab2ef5af3a015beba4eb7680254e6740a5e7f3c906a6aa16e45c8dba280df1",
+  "record_count": 100,
+  "observation_count": 98,
+  "rejected_count": 2,
+  "files": [
+    {
+      "role": "observations",
+      "path": "observations.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 10240
+    },
+    {
+      "role": "provenance",
+      "path": "provenance.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 15360
+    },
+    {
+      "role": "rejected",
+      "path": "rejected.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 512
+    }
+  ],
+  "created_at": "2026-08-28T13:05:00Z"
+}

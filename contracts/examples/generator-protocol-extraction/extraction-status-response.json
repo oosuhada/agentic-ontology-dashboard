@@ -1,0 +1,30 @@
+{
+  "enabled": true,
+  "running": true,
+  "poll_interval_seconds": 5.0,
+  "discovered_source_count": 1,
+  "queued_source_count": 0,
+  "processing_source_count": 0,
+  "blocked_source_count": 0,
+  "last_poll_started_at": "2026-08-28T14:00:00Z",
+  "last_poll_completed_at": "2026-08-28T14:00:01Z",
+  "sources": [
+    {
+      "source_identity": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "source_uri": "sensor/facS01/lineL01/sensor_stream.jsonl",
+      "site_id": "S01",
+      "cell_id": "L01",
+      "status": "waiting",
+      "last_started_at": "2026-08-28T14:00:00Z",
+      "last_succeeded_at": "2026-08-28T14:00:01Z",
+      "last_failed_at": null,
+      "last_committed_offset": 15000,
+      "last_observed_at": null,
+      "last_published_window": "window-20260828T130000Z-map-a1b2c3d4",
+      "attempt": 0,
+      "error_code": null,
+      "error_message": null,
+      "retryable": null
+    }
+  ]
+}

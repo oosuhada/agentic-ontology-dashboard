@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/generator-gen-data-extraction-checkpoint.schema.json",
+  "title": "Generator gen_data Extraction Checkpoint v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "checkpoint_schema_version",
+    "source_identity",
+    "source_uri",
+    "source_format",
+    "site_id",
+    "cell_id",
+    "mapping_id",
+    "mapping_version",
+    "mapping_sha256",
+    "last_committed_offset",
+    "last_committed_line",
+    "verified_prefix_length",
+    "verified_prefix_sha256",
+    "committed_batch_ids",
+    "status",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "checkpoint_schema_version": {
+      "type": "string",
+      "enum": [
+        "generator-gen-data-extraction-checkpoint-v1"
+      ]
+    },
+    "source_identity": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source_uri": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_format": {
+      "type": "string",
+      "enum": [
+        "gen_data_sensor_stream"
+      ]
+    },
+    "site_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cell_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mapping_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mapping_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mapping_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "last_committed_offset": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "last_committed_line": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "last_observed_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "verified_prefix_length": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "verified_prefix_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "last_committed_batch_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "committed_batch_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "pending_batch": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "batch_id",
+        "run_id",
+        "source_start_offset",
+        "source_end_offset",
+        "source_start_line",
+        "source_end_line",
+        "record_count",
+        "observation_count",
+        "rejected_count",
+        "mapping_id",
+        "mapping_version",
+        "mapping_sha256",
+        "fragment_manifest_uri",
+        "fragment_manifest_sha256",
+        "staged_at"
+      ],
+      "properties": {
+        "batch_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_start_offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_end_offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_start_line": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_end_line": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "record_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "observation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rejected_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mapping_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mapping_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mapping_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "fragment_manifest_uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fragment_manifest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "staged_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "idle",
+        "processing",
+        "fragment_staged",
+        "failed"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

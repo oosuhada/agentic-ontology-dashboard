@@ -7,7 +7,7 @@ import os
 import sqlite3
 from pathlib import Path
 
-TABLES = ("decisions", "notes", "conversations", "audit_log")
+TABLES = ("decisions", "notes", "conversations", "audit_log", "agent_review_summaries")
 
 
 def project_root() -> Path:

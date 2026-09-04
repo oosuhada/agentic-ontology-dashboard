@@ -1,0 +1,18 @@
+{
+  "artifact_type": "predictive_maintenance_model",
+  "artifact_schema_version": "model-artifact-v1.0",
+  "model_id": "pdm-lightgbm",
+  "model_version": "golden-lightgbm-v1.0",
+  "dataset_version": "v1.0",
+  "feature_schema_version": "ai4i-feature-v1",
+  "label_schema_version": "golden-label-2h-v1",
+  "history_requirement_version": "hist-req-ai4i-feature-v1",
+  "metrics_schema_version": "pdm-metrics-v1",
+  "required_roles": [
+    "model",
+    "feature_schema",
+    "label_schema",
+    "history_requirement",
+    "metrics"
+  ]
+}

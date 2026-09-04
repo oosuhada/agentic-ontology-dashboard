@@ -1,0 +1,28 @@
+{
+  "gate_id": "agent-sop-rag-decision-gate-v1",
+  "current_decision": "defer_runtime_rag",
+  "current_sop_source": {
+    "format": "structured_fixture_metadata",
+    "retriever": "local_sop_metadata_retriever",
+    "paragraph_level_citations_required": false,
+    "multiple_overlapping_versions": false,
+    "unstructured_documents_present": false
+  },
+  "adopt_rag_when_any": [
+    "site_sops_arrive_as_pdf_or_free_form_documents",
+    "multiple_sop_versions_overlap_for_same_component_or_failure_mode",
+    "paragraph_level_citations_are_required_for_user_facing_guidance",
+    "structured_metadata_cannot_answer_agent_context_eval_questions"
+  ],
+  "deferred_runtime_components": [
+    "vector_db",
+    "llamaindex_runtime_retrieval",
+    "graphrag_runtime_store"
+  ],
+  "required_pre_adoption_evidence": [
+    "retrieval_context_precision_recall_eval",
+    "source_ref_paragraph_citation_contract",
+    "adapter_compatibility_with_agent_review_packet",
+    "no_closed_loop_mutation_boundary_regression"
+  ]
+}

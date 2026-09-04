@@ -1,0 +1,65 @@
+{
+  "schema_version": "operational-decision-context-v1.0",
+  "context_id": "operational-decision-context-demo-v1",
+  "source_classification": "synthetic_demo_context",
+  "scope": {
+    "organization_id": "ORG-001",
+    "project_id": "manufacturing-demo-project",
+    "workspace_id": "manufacturing-demo"
+  },
+  "temporal_scope": {
+    "snapshot_id": "OPS-DECISION-SNAPSHOT-2026-09-02-01",
+    "valid_from": "2026-09-02T00:00:00+09:00",
+    "valid_to": "2026-09-04T00:00:00+09:00",
+    "generated_at": "2026-09-02T00:00:00+09:00"
+  },
+  "production_orders": [
+    {
+      "order_id": "DEMO-PO-001",
+      "product_id": "MOTOR-HOUSING",
+      "product_label": "Motor Housing",
+      "required_quantity": 800,
+      "completed_quantity": 600,
+      "due_at": "2026-09-03T18:00:00+09:00",
+      "priority": 1,
+      "operation_id": "OP-MILL-20",
+      "assigned_asset_id": "CNC-S04-L02-03",
+      "relationship_state": "assumed_demo",
+      "source_refs": ["operational-decision-context-demo-v1#/production_orders/0"]
+    }
+  ],
+  "wip": [
+    {
+      "wip_id": "DEMO-WIP-001",
+      "order_id": "DEMO-PO-001",
+      "operation_id": "OP-MILL-20",
+      "asset_id": "CNC-S04-L02-03",
+      "quantity": 200,
+      "lot_ids": ["DEMO-LOT-014", "DEMO-LOT-015"],
+      "status": "in_process",
+      "relationship_state": "assumed_demo",
+      "source_refs": ["operational-decision-context-demo-v1#/wip/0"]
+    }
+  ],
+  "alternative_resources": [
+    {
+      "resource_id": "CNC-03",
+      "operation_ids": ["OP-MILL-20"],
+      "compatible_product_ids": ["MOTOR-HOUSING"],
+      "available_from": "2026-09-02T11:00:00+09:00",
+      "available_to": "2026-09-02T15:00:00+09:00",
+      "gross_capacity_units": 60,
+      "setup_minutes": 30,
+      "net_transferable_units": 50,
+      "relationship_state": "assumed_demo",
+      "source_refs": ["operational-decision-context-demo-v1#/alternative_resources/0"],
+      "limitations": [
+        "Capacity is a deterministic demo assumption, not an MES/APS availability fact."
+      ]
+    }
+  ],
+  "limitations": [
+    "This is synthetic plan/candidate context and not an actual MES, ERP, APS, quality, or delivery record.",
+    "No execution, reservation, assignment, or production completion fact may be inferred from this fixture."
+  ]
+}

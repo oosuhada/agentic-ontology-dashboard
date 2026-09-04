@@ -5,8 +5,42 @@ from pathlib import Path
 import pytest
 from starlette.requests import Request
 
-from ontology_dashboard.dependencies import client_ip
-from ontology_dashboard.settings import allowed_origins, database_location, validate_runtime_environment
+from app.dependencies import client_ip
+from app.common.runtime_settings import (
+    allowed_origin_regex,
+    allowed_origins,
+    project_root,
+)
+from app.infra.db.settings import database_location
+from app.infra.observability.runtime_validation import validate_runtime_environment
+
+
+def test_explicit_allowed_origin_regex_supports_preview_hosts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(
+        "ONTOLOGY_DASHBOARD_ALLOWED_ORIGIN_REGEX",
+        r"^https://.*\.vercel\.app$",
+    )
+    assert allowed_origin_regex() == r"^https://.*\.vercel\.app$"
+
+
+def test_project_root_prefers_explicit_runtime_root(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ONTOLOGY_DASHBOARD_PROJECT_ROOT", str(tmp_path))
+    monkeypatch.setenv("ONTOLOGY_DASHBOARD_ROOT", "/legacy/should-not-win")
+    assert project_root() == tmp_path.resolve()
+
+
+def test_project_root_accepts_legacy_runtime_root(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("ONTOLOGY_DASHBOARD_PROJECT_ROOT", raising=False)
+    monkeypatch.setenv("ONTOLOGY_DASHBOARD_ROOT", str(tmp_path))
+    assert project_root() == tmp_path.resolve()
 
 
 def test_development_defaults_to_canonical_database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

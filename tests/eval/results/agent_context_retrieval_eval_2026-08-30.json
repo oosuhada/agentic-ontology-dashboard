@@ -1,0 +1,99 @@
+{
+  "result_id": "agent-context-retrieval-eval-2026-08-30",
+  "scope": "kg_level0_contract_trace",
+  "executed_at": "2026-08-30",
+  "command": "APP_ENV=test ONTOLOGY_DASHBOARD_ALLOW_HEURISTIC_MODEL_FALLBACK=1 PYTHONPATH=systems/backend:packages/backend:packages/ml_core python3 -m pytest -q tests/eval/test_agent_context_retrieval_eval.py",
+  "status": "passed",
+  "pytest_result": {
+    "passed": 6,
+    "failed": 0
+  },
+  "cases": [
+    {
+      "case_id": "kg-level0-gs004-factor-to-location",
+      "scenario_id": "GS-004",
+      "assertion": "packet answer and ontology_context traversal both map three factor refs to drive_power, the field location, one demo spare-part candidate, and one demo similar event",
+      "status": "passed"
+    },
+    {
+      "case_id": "kg-level0-gs002-factor-to-sop",
+      "scenario_id": "GS-002",
+      "assertion": "packet answer and ontology_context traversal both map tooling risk to location, demo SOP, one demo spare-part candidate, and one demo similar event",
+      "status": "passed"
+    },
+    {
+      "case_id": "kg-level0-gs007-data-quality-boundary",
+      "scenario_id": "GS-007",
+      "assertion": "missing validated factors produce no invented inspection target or SOP guidance",
+      "status": "passed"
+    }
+  ],
+  "comparison_controls": {
+    "same_question_set": true,
+    "same_fixture_scope": true,
+    "same_expected_answer_facets": true,
+    "same_pass_fail_rubric": true,
+    "same_runtime_service": true
+  },
+  "kg_level1_experiment": {
+    "status": "implemented_as_in_memory_graph",
+    "module": "systems/backend/app/operations/agent_context_graph.py",
+    "graph_store": "none",
+    "dependency_added": false,
+    "purpose": "Verify graph-shaped traversal over the existing read-only packet before adopting a production graph database.",
+    "covered_relations": [
+      "PredictionSnapshot -> Factor",
+      "Factor -> Component",
+      "Component -> InspectionLocation",
+      "Component -> SOP",
+      "Component -> SparePart",
+      "Component -> SimilarEvent",
+      "SimilarEvent -> Outcome"
+    ]
+  },
+  "relationship_facets": [
+    "factor_refs",
+    "component_id",
+    "location_label",
+    "sop_ids",
+    "spare_part_ids",
+    "similar_event_ids",
+    "read_only_boundary"
+  ],
+  "external_reference_basis": {
+    "classification": "standard_aligned_demo_adapter_fixture",
+    "references": [
+      {
+        "name": "ISO 14224",
+        "relevance": "Reliability and maintenance data categories include equipment, failure, maintenance action, resources used, and downtime context."
+      },
+      {
+        "name": "MIMOSA OSA-EAI",
+        "relevance": "Asset registry, condition, maintenance, reliability, logistics, and parts-supplier information are exchanged across enterprise systems."
+      },
+      {
+        "name": "ISA-95 / IEC 62264",
+        "relevance": "Enterprise-control integration provides the boundary for combining production impact, maintenance, and logistics context."
+      }
+    ],
+    "wording": {
+      "allowed": [
+        "standard-aligned demo adapter fixture",
+        "demo adapter assumption aligned with maintenance/resource/logistics context",
+        "표준 정비 데이터 범주와 정렬된 데모 어댑터 근거"
+      ],
+      "forbidden": [
+        "industry-standard spare-part master",
+        "standards-compliant asset catalog",
+        "all CNC/compressor parts are covered",
+        "업계 표준 부품 마스터를 구현했다"
+      ]
+    }
+  },
+  "limits": [
+    "This is not a production graph database benchmark.",
+    "This does not compare Cypher/SPARQL query planning against SQL.",
+    "Spare-part and similar-event facts are demo adapter assumptions, not validated Product Evidence facts.",
+    "This only proves that the current packet projection and ontology_context traversal satisfy the same Level 0 answer facets."
+  ]
+}

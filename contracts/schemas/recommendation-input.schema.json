@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/recommendation-input.schema.json",
+  "title": "Recommendation Input",
+  "description": "Closed-loop policy input derived server-side from Product Result/Evidence. UI ViewModels and Agent Review summaries may share this snapshot basis but are not mutation authority.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "snapshot_basis",
+    "equipment",
+    "operational_decision_kind",
+    "source_context"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "recommendation-input-v1"},
+    "event_id": {"type": "string", "minLength": 1},
+    "snapshot_basis": {"$ref": "#/$defs/evidenceSnapshotBasis"},
+    "equipment": {
+      "type": "object",
+      "required": [
+        "organization_id",
+        "project_id",
+        "workspace_id",
+        "asset_id",
+        "equipment_id",
+        "asset_type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "organization_id": {"type": "string", "minLength": 1},
+        "project_id": {"type": "string", "minLength": 1},
+        "workspace_id": {"type": "string", "minLength": 1},
+        "asset_id": {"type": "string", "minLength": 1},
+        "equipment_id": {"type": "string", "minLength": 1},
+        "asset_type": {"type": "string", "minLength": 1}
+      }
+    },
+    "operational_decision_kind": {
+      "enum": ["request_inspection", "review_shutdown"]
+    },
+    "source_context": {
+      "type": "object",
+      "required": [
+        "source_product_result_id",
+        "source_evidence_id",
+        "source_action_id",
+        "source_schema_version",
+        "source_policy_version"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "source_product_result_id": {"type": "string", "minLength": 1},
+        "source_evidence_id": {"type": "string", "minLength": 1},
+        "source_action_id": {"type": "string", "minLength": 1},
+        "source_schema_version": {"type": "string", "minLength": 1},
+        "source_policy_version": {"type": "string", "minLength": 1}
+      }
+    }
+  },
+  "$defs": {
+    "evidenceSnapshotBasis": {
+      "type": "object",
+      "required": [
+        "artifact_id",
+        "evidence_payload_reference",
+        "asset_id",
+        "event_id",
+        "observed_at",
+        "model_version",
+        "dataset_version",
+        "source_sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {"type": "string", "minLength": 1},
+        "evidence_payload_reference": {"type": "string", "minLength": 1},
+        "asset_id": {"type": "string", "minLength": 1},
+        "event_id": {"type": "string", "minLength": 1},
+        "observed_at": {"type": ["string", "null"]},
+        "model_version": {"type": ["string", "null"]},
+        "dataset_version": {"type": ["string", "null"]},
+        "source_sha256": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

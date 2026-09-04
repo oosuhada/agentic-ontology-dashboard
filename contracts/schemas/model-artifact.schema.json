@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/model-artifact.schema.json",
+  "title": "Ontology Dashboard Versioned Model Artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "artifact_schema_version",
+    "model_id",
+    "model_version",
+    "dataset_version",
+    "feature_schema_version",
+    "created_at",
+    "training_config",
+    "metrics",
+    "checksum",
+    "provenance",
+    "compatibility",
+    "artifact_files"
+  ],
+  "properties": {
+    "artifact_type": {"const": "predictive_maintenance_model"},
+    "artifact_schema_version": {"const": "model-artifact-v1.0"},
+    "model_id": {"type": "string", "minLength": 1},
+    "model_version": {"type": "string", "minLength": 1},
+    "dataset_version": {"type": "string", "minLength": 1},
+    "dataset_schema_version": {"type": "string"},
+    "feature_schema_version": {"type": "string", "minLength": 1},
+    "label_schema_version": {"type": "string"},
+    "history_requirement_version": {"type": "string"},
+    "metrics_schema_version": {"type": "string"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "prediction_contract": {
+      "type": "object",
+      "properties": {
+        "prediction_task": {"type": "string"},
+        "prediction_horizon_hours": {"type": "number"},
+        "probability_output": {"type": "string"},
+        "positive_class": {"type": "integer"}
+      }
+    },
+    "model_runtime": {
+      "type": "object",
+      "properties": {
+        "format": {"type": "string"},
+        "framework": {"type": "string"},
+        "framework_api": {"type": "string"},
+        "entry_role": {"type": "string"},
+        "output_type": {"type": "string"}
+      }
+    },
+    "training_config": {"type": "object"},
+    "metrics": {"type": "object"},
+    "checksum": {
+      "type": "object",
+      "required": ["algorithm", "files"],
+      "properties": {
+        "algorithm": {"const": "sha256"},
+        "files": {
+          "type": "object",
+          "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "provenance": {"type": "object"},
+    "compatibility": {"type": "object"},
+    "artifact_files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "path", "sha256"],
+        "properties": {
+          "role": {"type": "string"},
+          "path": {"type": "string"},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    }
+  }
+}

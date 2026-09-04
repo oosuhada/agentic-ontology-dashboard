@@ -37,10 +37,10 @@ git add .
 
 if git rev-parse --verify HEAD >/dev/null 2>&1; then
   if ! git diff --cached --quiet; then
-    git commit -m "docs: bootstrap workspace and define MVP scope"
+    git commit -m "docs: bootstrap workspace and define Operations scope"
   fi
 else
-  git commit -m "docs: bootstrap workspace and define MVP scope"
+  git commit -m "docs: bootstrap workspace and define Operations scope"
 fi
 
 if gh repo view "${REPO_OWNER}/${REPO_NAME}" >/dev/null 2>&1; then

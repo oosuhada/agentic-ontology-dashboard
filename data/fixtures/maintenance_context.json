@@ -1,6 +1,6 @@
 {
   "version": "fixture-context-v1",
-  "source_type": "synthetic",
+  "source_type": "maintenance_context",
   "contexts": {
     "tool_wear_failure": {
       "title": "공구 마모 점검 컨텍스트",

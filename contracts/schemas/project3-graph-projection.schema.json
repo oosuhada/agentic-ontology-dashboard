@@ -1,0 +1,383 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/project3-graph-projection.schema.json",
+  "title": "Ontology Dashboard to Project 3 Graph Projection Contract",
+  "oneOf": [
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/response" }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "organization_id",
+        "project_id",
+        "dataset_id",
+        "dataset_version_id",
+        "object_type",
+        "source_identity"
+      ],
+      "properties": {
+        "organization_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "project_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "dataset_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "dataset_version_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "object_type": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "source_identity": { "type": "string", "minLength": 1, "maxLength": 256 }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "properties", "source_reference", "source_sha256"],
+      "properties": {
+        "identity": { "$ref": "#/$defs/identity" },
+        "properties": { "type": "object" },
+        "source_reference": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "source_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "relationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relationship_type",
+        "from_identity",
+        "to_identity",
+        "properties",
+        "source_reference",
+        "source_sha256"
+      ],
+      "properties": {
+        "relationship_type": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{1,127}$",
+          "not": { "enum": ["CAUSES", "ROOT_CAUSE_OF"] }
+        },
+        "from_identity": { "$ref": "#/$defs/identity" },
+        "to_identity": { "$ref": "#/$defs/identity" },
+        "properties": { "type": "object" },
+        "source_reference": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "source_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "governanceArtifactReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "checksum_sha256", "media_type"],
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": ["package_validation", "agent_example_evaluation"]
+        },
+        "checksum_sha256": { "$ref": "#/$defs/sha256" },
+        "media_type": { "const": "application/json" }
+      }
+    },
+    "resultContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_role",
+        "schema_versions",
+        "model_versions",
+        "prediction_tasks",
+        "predicted_failure_type_semantics",
+        "source_sha256"
+      ],
+      "properties": {
+        "source_role": {
+          "type": "string",
+          "enum": ["result_artifact", "prediction_snapshot_compatibility"]
+        },
+        "schema_versions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "model_versions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "prediction_tasks": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "const": "binary_failure_within_horizon" }
+        },
+        "predicted_failure_type_semantics": {
+          "const": "generic_binary_risk_not_ai4i_failure_mode"
+        },
+        "source_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "topologySemantics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["SUPPLIES_AIR_TO", "causal_claim_allowed"],
+      "properties": {
+        "SUPPLIES_AIR_TO": { "const": "topology_only_not_causal_truth" },
+        "causal_claim_allowed": { "const": false }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "message_type",
+        "projection_id",
+        "idempotency_key",
+        "organization_id",
+        "project_id",
+        "workspace_id",
+        "dataset_id",
+        "dataset_version_id",
+        "source_version",
+        "bundle_checksum_sha256",
+        "materialization_checksum_sha256",
+        "mapping_id",
+        "mapping_version",
+        "role_checksums",
+        "object_counts",
+        "link_counts",
+        "result_contract",
+        "release_gates",
+        "governance_artifacts",
+        "topology_semantics",
+        "excluded_sources",
+        "graph_projection_status",
+        "nodes",
+        "relationships",
+        "requested_at"
+      ],
+      "properties": {
+        "contract_version": { "const": "1.0" },
+        "message_type": { "const": "graph_projection_request" },
+        "projection_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "idempotency_key": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "organization_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "project_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "workspace_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "dataset_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "dataset_version_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "source_version": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "bundle_checksum_sha256": { "$ref": "#/$defs/sha256" },
+        "materialization_checksum_sha256": { "$ref": "#/$defs/sha256" },
+        "mapping_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "mapping_version": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "role_checksums": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/sha256" }
+        },
+        "object_counts": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "link_counts": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "result_contract": { "$ref": "#/$defs/resultContract" },
+        "release_gates": { "type": "object" },
+        "governance_artifacts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/governanceArtifactReference" }
+        },
+        "topology_semantics": { "$ref": "#/$defs/topologySemantics" },
+        "excluded_sources": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "graph_projection_status": { "const": "pending" },
+        "nodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/node" },
+          "default": []
+        },
+        "relationships": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/relationship" },
+          "default": []
+        },
+        "requested_at": { "type": "string", "format": "date-time" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source_version": { "const": "canonical-ai4i-physics-v3.1" }
+            },
+            "required": ["source_version"]
+          },
+          "then": {
+            "properties": {
+              "result_contract": {
+                "allOf": [
+                  { "$ref": "#/$defs/resultContract" },
+                  {
+                    "properties": {
+                      "source_role": { "const": "result_artifact" },
+                      "schema_versions": {
+                        "const": ["result-artifact-v1.0"]
+                      },
+                      "model_versions": {
+                        "const": ["independent-logreg-v3.1"]
+                      }
+                    }
+                  }
+                ]
+              },
+              "release_gates": {
+                "type": "object",
+                "required": [
+                  "tool_wear_continuity",
+                  "agent_example_evaluation"
+                ],
+                "properties": {
+                  "tool_wear_continuity": {
+                    "type": "object",
+                    "required": [
+                      "pass",
+                      "running_reset_count",
+                      "tool_replacement_event_count",
+                      "aligned_reset_transition_count",
+                      "reset_without_matching_maintenance_count",
+                      "replacement_without_reset_count"
+                    ],
+                    "properties": {
+                      "pass": { "const": true },
+                      "running_reset_count": { "const": 0 },
+                      "tool_replacement_event_count": { "const": 731 },
+                      "aligned_reset_transition_count": { "const": 731 },
+                      "reset_without_matching_maintenance_count": { "const": 0 },
+                      "replacement_without_reset_count": { "const": 0 }
+                    }
+                  },
+                  "agent_example_evaluation": {
+                    "type": "object",
+                    "required": [
+                      "maintenance_evidence_accuracy",
+                      "false_upstream_claim_rate"
+                    ],
+                    "properties": {
+                      "maintenance_evidence_accuracy": { "const": 1.0 },
+                      "false_upstream_claim_rate": { "const": 0.0 }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable", "details"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "validation_failed",
+            "project_not_ready",
+            "schema_version_unsupported",
+            "identity_conflict",
+            "graph_unavailable",
+            "timeout",
+            "internal_error"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "retryable": { "type": "boolean" },
+        "retry_after_seconds": { "type": ["integer", "null"], "minimum": 1 },
+        "details": { "type": "object" }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nodes_received",
+        "relationships_received",
+        "nodes_written",
+        "relationships_written"
+      ],
+      "properties": {
+        "nodes_received": { "type": "integer", "minimum": 0 },
+        "relationships_received": { "type": "integer", "minimum": 0 },
+        "nodes_written": { "type": "integer", "minimum": 0 },
+        "relationships_written": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "message_type",
+        "projection_id",
+        "project_id",
+        "dataset_version_id",
+        "status",
+        "idempotent_replay",
+        "counts",
+        "error",
+        "updated_at"
+      ],
+      "properties": {
+        "contract_version": { "const": "1.0" },
+        "message_type": { "const": "graph_projection_response" },
+        "projection_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "project_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "dataset_version_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "status": {
+          "type": "string",
+          "enum": ["accepted", "processing", "completed", "failed", "blocked"]
+        },
+        "project3_run_id": { "type": ["string", "null"], "maxLength": 160 },
+        "projection_checksum_sha256": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "idempotent_replay": { "type": "boolean" },
+        "counts": { "$ref": "#/$defs/counts" },
+        "error": {
+          "oneOf": [
+            { "$ref": "#/$defs/error" },
+            { "type": "null" }
+          ]
+        },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": { "enum": ["failed", "blocked"] }
+            },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "error": { "$ref": "#/$defs/error" }
+            }
+          },
+          "else": {
+            "properties": {
+              "error": { "type": "null" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

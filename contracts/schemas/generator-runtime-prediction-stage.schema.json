@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/generator-runtime-prediction-stage.schema.json",
+  "title": "InternalGeneratorRuntimePredictionStage",
+  "description": "Generator 내부 staging 및 checkpoint 전용 스키마. Backend Inbox 외부 전달 계약(prediction-result-batch.schema.json)으로 사용하지 않는다.",
+  "type": "object",
+  "required": [
+    "event_id",
+    "run_id",
+    "job_id",
+    "asset_id",
+    "observed_at",
+    "generated_at",
+    "dataset_id",
+    "dataset_version",
+    "model_set_id",
+    "model_set_version",
+    "model_results",
+    "source_lineage"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "job_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "asset_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "dataset_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dataset_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model_set_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model_set_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model_results": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9._-]+$"
+      },
+      "additionalProperties": {
+        "$ref": "generator-model-prediction-result.schema.json"
+      }
+    },
+    "source_lineage": {
+      "type": "object",
+      "required": ["source_uri", "source_checksum"],
+      "properties": {
+        "source_uri": { "type": "string" },
+        "source_checksum": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "pipeline_contract_version": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "sensor_data_ref": {
+      "type": ["object", "null"],
+      "properties": {
+        "uri": { "type": "string" },
+        "sha256": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

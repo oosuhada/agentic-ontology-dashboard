@@ -1,0 +1,49 @@
+{
+  "feature_schema_version": "pdm-feature-v1",
+  "description": "Composite rolling and lag features for predictive maintenance",
+  "features": [
+    {
+      "feature_name": "voltage_rolling_mean_5",
+      "source_field": "voltage",
+      "dtype": "float64",
+      "operation": "rolling_mean",
+      "parameters": {
+        "window": 5,
+        "min_periods": 1
+      },
+      "missing_value_policy": "drop"
+    },
+    {
+      "feature_name": "voltage_rolling_std_5",
+      "source_field": "voltage",
+      "dtype": "float64",
+      "operation": "rolling_std",
+      "parameters": {
+        "window": 5,
+        "min_periods": 1
+      },
+      "missing_value_policy": "fill_zero"
+    },
+    {
+      "feature_name": "rotation_rolling_mean_5",
+      "source_field": "rotation",
+      "dtype": "float64",
+      "operation": "rolling_mean",
+      "parameters": {
+        "window": 5,
+        "min_periods": 1
+      },
+      "missing_value_policy": "drop"
+    },
+    {
+      "feature_name": "pressure_lag_1",
+      "source_field": "pressure",
+      "dtype": "float64",
+      "operation": "lag",
+      "parameters": {
+        "periods": 1
+      },
+      "missing_value_policy": "ffill"
+    }
+  ]
+}

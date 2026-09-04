@@ -26,13 +26,13 @@ if [[ ! -x "${VENV_DIR}/bin/python" ]]; then
 fi
 
 "${VENV_DIR}/bin/python" -m pip install --upgrade pip
-"${VENV_DIR}/bin/pip" install -e ml -e api
+"${VENV_DIR}/bin/pip" install -e ml -e systems/backend
 
-if [[ ! -d web/node_modules ]]; then
-  npm --prefix web install --no-audit --no-fund
+if [[ ! -d systems/frontend/node_modules ]]; then
+  npm --prefix systems/frontend install --no-audit --no-fund
 fi
 
-export PYTHONPATH="${ROOT_DIR}/api:${ROOT_DIR}/ml/src"
+export PYTHONPATH="${ROOT_DIR}:${ROOT_DIR}/systems/backend:${ROOT_DIR}/ml/src"
 export ONTOLOGY_DASHBOARD_DB="${ONTOLOGY_DASHBOARD_DB:-${FACTORY_SIGNAL_DB:-${ROOT_DIR}/data/local/ontology_dashboard.db}}"
 export VITE_API_BASE_URL="${VITE_API_BASE_URL:-http://${API_HOST}:${API_PORT}}"
 
@@ -44,11 +44,11 @@ if [[ "${ONTOLOGY_DASHBOARD_SEED_DEMO_DATASETS:-1}" == "1" \
     --database "${ONTOLOGY_DASHBOARD_DB}" >/tmp/ontology-dashboard-demo-datasets.log
 fi
 
-"${VENV_DIR}/bin/python" -m uvicorn ontology_dashboard.app:app \
+"${VENV_DIR}/bin/python" -m uvicorn app.main:app \
   --host "${API_HOST}" --port "${API_PORT}" > /tmp/ontology-dashboard-api.log 2>&1 &
 API_PID=$!
 
-npm --prefix web run dev -- --host "${API_HOST}" --port "${WEB_PORT}" --strictPort \
+npm --prefix systems/frontend run dev -- --host "${API_HOST}" --port "${WEB_PORT}" --strictPort \
   > /tmp/ontology-dashboard-web.log 2>&1 &
 WEB_PID=$!
 

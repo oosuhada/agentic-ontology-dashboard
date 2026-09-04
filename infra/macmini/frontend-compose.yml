@@ -1,0 +1,20 @@
+name: ontology-dashboard-macmini
+
+services:
+  frontend:
+    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE is required}
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:${FRONTEND_PORT:-8120}:8080
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    networks: [private]
+
+networks:
+  private:
+    external: true
+    name: ontology-dashboard-macmini_private

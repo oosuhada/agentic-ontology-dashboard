@@ -11,7 +11,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MIGRATION_DIR = ROOT / "api" / "migrations" / "postgresql"
+MIGRATION_DIR = ROOT / "systems" / "backend" / "migrations" / "postgresql"
 REQUIRED_BINARIES = ("initdb", "pg_ctl", "createdb", "psql")
 
 
@@ -71,6 +71,27 @@ def main() -> int:
                     "-f",
                     str(migration),
                 ])
+            for predictive_maintenance_migration in (
+                MIGRATION_DIR / "0011_predictive_maintenance_domain_pack.sql",
+                MIGRATION_DIR / "0012_predictive_maintenance_v3_materialization.sql",
+                MIGRATION_DIR / "0013_project3_graph_projection.sql",
+                MIGRATION_DIR / "0014_predictive_maintenance_replay.sql",
+            ):
+                run([
+                    "psql",
+                    "-v",
+                    "ON_ERROR_STOP=1",
+                    "-h",
+                    "127.0.0.1",
+                    "-p",
+                    str(port),
+                    "-U",
+                    "postgres",
+                    "-d",
+                    "ontology_test",
+                    "-f",
+                    str(predictive_maintenance_migration),
+                ])
             tables = run([
                 "psql",
                 "-h",
@@ -112,6 +133,23 @@ def main() -> int:
                 "SELECT tablename FROM pg_tables WHERE schemaname='public' "
                 "AND tablename IN ('projects','workspaces') AND rowsecurity ORDER BY tablename",
             ], capture=True).splitlines()
+            projection_columns = set(
+                run([
+                    "psql",
+                    "-h",
+                    "127.0.0.1",
+                    "-p",
+                    str(port),
+                    "-U",
+                    "postgres",
+                    "-d",
+                    "ontology_test",
+                    "-Atc",
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema='public' AND table_name='store_projections' "
+                    "ORDER BY column_name",
+                ], capture=True).splitlines()
+            )
             required = {
                 "organizations",
                 "projects",
@@ -136,6 +174,20 @@ def main() -> int:
                 "adapter_ingestion_runs",
                 "adapter_quarantine_records",
                 "prediction_results",
+                "pm_assets",
+                "pm_asset_relations",
+                "pm_compressor_observations",
+                "pm_compressor_observations_default",
+                "pm_cnc_observations",
+                "pm_cnc_observations_default",
+                "pm_production_cycles",
+                "pm_maintenance_events",
+                "pm_prediction_snapshots",
+                "pm_prediction_factors",
+                "pm_prediction_timeline",
+                "pm_result_artifacts",
+                "pm_replay_sessions",
+                "ontology_materialization_mappings",
                 "transactional_outbox",
                 "schema_migrations",
             }
@@ -162,6 +214,20 @@ def main() -> int:
                 "adapter_ingestion_runs",
                 "adapter_quarantine_records",
                 "prediction_results",
+                "pm_assets",
+                "pm_asset_relations",
+                "pm_compressor_observations",
+                "pm_compressor_observations_default",
+                "pm_cnc_observations",
+                "pm_cnc_observations_default",
+                "pm_production_cycles",
+                "pm_maintenance_events",
+                "pm_prediction_snapshots",
+                "pm_prediction_factors",
+                "pm_prediction_timeline",
+                "pm_result_artifacts",
+                "pm_replay_sessions",
+                "ontology_materialization_mappings",
                 "transactional_outbox",
             }
             run([
@@ -249,6 +315,10 @@ def main() -> int:
                 and project_rls_rows == ["projects", "workspaces"]
                 and visible_objects == "object-a1"
                 and visible_predictions == "prediction-a1"
+                and {
+                    "provider_run_id",
+                    "provider_metadata_json",
+                }.issubset(projection_columns)
             )
             print(json.dumps({
                 "check": "postgresql-migration",
@@ -261,6 +331,19 @@ def main() -> int:
                 "rls_prediction_query_output": prediction_result,
                 "rls_visible_predictions_for_project_a1": visible_predictions,
                 "required_rls_tables": sorted(required_rls),
+                "predictive_maintenance_migrations_reapplied": [
+                    "0011",
+                    "0012",
+                    "0013",
+                    "0014",
+                ],
+                "graph_projection_provider_columns": sorted(
+                    {
+                        "provider_run_id",
+                        "provider_metadata_json",
+                    }
+                    & projection_columns
+                ),
                 "pass": passed,
             }, ensure_ascii=False, indent=2))
             return 0 if passed else 1

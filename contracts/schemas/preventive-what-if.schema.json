@@ -1,0 +1,493 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/preventive-what-if.schema.json",
+  "$defs": {
+    "EconomicEffect": {
+      "additionalProperties": false,
+      "properties": {
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "intervention_cost": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intervention Cost"
+        },
+        "baseline_expected_loss": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baseline Expected Loss"
+        },
+        "intervention_expected_loss": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intervention Expected Loss"
+        },
+        "estimated_net_benefit": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimated Net Benefit"
+        },
+        "calculation_scope": {
+          "const": "synthetic_scenario_estimate",
+          "title": "Calculation Scope",
+          "type": "string"
+        },
+        "price_version": {
+          "minLength": 1,
+          "title": "Price Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "currency",
+        "calculation_scope",
+        "price_version"
+      ],
+      "title": "EconomicEffect",
+      "type": "object"
+    },
+    "EffectScope": {
+      "enum": [
+        "synthetic_counterfactual_simulation"
+      ],
+      "title": "EffectScope",
+      "type": "string"
+    },
+    "IndicatorDirection": {
+      "enum": [
+        "increase",
+        "decrease",
+        "risk_up",
+        "risk_down"
+      ],
+      "title": "IndicatorDirection",
+      "type": "string"
+    },
+    "LeadingIndicator": {
+      "additionalProperties": false,
+      "properties": {
+        "feature": {
+          "minLength": 1,
+          "title": "Feature",
+          "type": "string"
+        },
+        "direction": {
+          "$ref": "#/$defs/IndicatorDirection"
+        },
+        "baseline_value": {
+          "title": "Baseline Value",
+          "type": "number"
+        },
+        "risk_window_value": {
+          "title": "Risk Window Value",
+          "type": "number"
+        },
+        "change_percent": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Change Percent"
+        },
+        "signed_contribution": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Signed Contribution"
+        },
+        "source_reference": {
+          "$ref": "#/$defs/SourceReference"
+        }
+      },
+      "required": [
+        "feature",
+        "direction",
+        "baseline_value",
+        "risk_window_value",
+        "source_reference"
+      ],
+      "title": "LeadingIndicator",
+      "type": "object"
+    },
+    "Limitation": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/LimitationCode"
+        }
+      },
+      "required": [
+        "code"
+      ],
+      "title": "Limitation",
+      "type": "object"
+    },
+    "LimitationCode": {
+      "enum": [
+        "SYNTHETIC_DATA_ONLY",
+        "NOT_CAUSAL_PROOF",
+        "NOT_REAL_WORLD_EFFECT_GUARANTEE",
+        "CONTRACT_FIXTURE_ONLY"
+      ],
+      "title": "LimitationCode",
+      "type": "string"
+    },
+    "ProbabilityEffect": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline_probability": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Baseline Probability",
+          "type": "number"
+        },
+        "intervention_probability": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Intervention Probability",
+          "type": "number"
+        },
+        "estimated_probability_reduction": {
+          "maximum": 1,
+          "minimum": -1,
+          "title": "Estimated Probability Reduction",
+          "type": "number"
+        }
+      },
+      "required": [
+        "baseline_probability",
+        "intervention_probability",
+        "estimated_probability_reduction"
+      ],
+      "title": "ProbabilityEffect",
+      "type": "object"
+    },
+    "RiseEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "peak_at": {
+          "format": "date-time",
+          "title": "Peak At",
+          "type": "string"
+        },
+        "baseline_probability": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Baseline Probability",
+          "type": "number"
+        },
+        "peak_probability": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Peak Probability",
+          "type": "number"
+        },
+        "probability_delta": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Probability Delta",
+          "type": "number"
+        },
+        "time_to_peak_hours": {
+          "minimum": 0,
+          "title": "Time To Peak Hours",
+          "type": "number"
+        }
+      },
+      "required": [
+        "started_at",
+        "peak_at",
+        "baseline_probability",
+        "peak_probability",
+        "probability_delta",
+        "time_to_peak_hours"
+      ],
+      "title": "RiseEvent",
+      "type": "object"
+    },
+    "SourceReference": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "source_field": {
+          "minLength": 1,
+          "title": "Source Field",
+          "type": "string"
+        },
+        "asset_id": {
+          "minLength": 1,
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "period_from": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Period From"
+        },
+        "period_to": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Period To"
+        }
+      },
+      "required": [
+        "source",
+        "source_field",
+        "asset_id"
+      ],
+      "title": "SourceReference",
+      "type": "object"
+    },
+    "ToolReplacementIntervention": {
+      "additionalProperties": false,
+      "properties": {
+        "action_code": {
+          "const": "TOOL_REPLACEMENT",
+          "title": "Action Code",
+          "type": "string"
+        },
+        "parameters": {
+          "$ref": "#/$defs/ToolReplacementParameters"
+        },
+        "estimated_downtime_minutes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimated Downtime Minutes"
+        },
+        "policy_version": {
+          "minLength": 1,
+          "title": "Policy Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action_code",
+        "parameters",
+        "policy_version"
+      ],
+      "title": "ToolReplacementIntervention",
+      "type": "object"
+    },
+    "ToolReplacementParameters": {
+      "additionalProperties": false,
+      "properties": {
+        "tool_wear_after": {
+          "minimum": 0,
+          "title": "Tool Wear After",
+          "type": "number"
+        }
+      },
+      "required": [
+        "tool_wear_after"
+      ],
+      "title": "ToolReplacementParameters",
+      "type": "object"
+    },
+    "WhatIfProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "dataset_version": {
+          "minLength": 1,
+          "title": "Dataset Version",
+          "type": "string"
+        },
+        "model_version": {
+          "minLength": 1,
+          "title": "Model Version",
+          "type": "string"
+        },
+        "simulation_policy_version": {
+          "minLength": 1,
+          "title": "Simulation Policy Version",
+          "type": "string"
+        },
+        "source_type": {
+          "enum": [
+            "contract_fixture",
+            "simulation_output"
+          ],
+          "title": "Source Type",
+          "type": "string"
+        },
+        "canonical_source_mutated": {
+          "const": false,
+          "default": false,
+          "title": "Canonical Source Mutated",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "dataset_version",
+        "model_version",
+        "simulation_policy_version",
+        "source_type"
+      ],
+      "title": "WhatIfProvenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "what-if-result-v1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "simulation_id": {
+      "minLength": 1,
+      "title": "Simulation Id",
+      "type": "string"
+    },
+    "asset_id": {
+      "minLength": 1,
+      "title": "Asset Id",
+      "type": "string"
+    },
+    "asset_type": {
+      "const": "cnc",
+      "title": "Asset Type",
+      "type": "string"
+    },
+    "decision_at": {
+      "format": "date-time",
+      "title": "Decision At",
+      "type": "string"
+    },
+    "rise_event": {
+      "$ref": "#/$defs/RiseEvent"
+    },
+    "leading_indicators": {
+      "items": {
+        "$ref": "#/$defs/LeadingIndicator"
+      },
+      "minItems": 1,
+      "title": "Leading Indicators",
+      "type": "array"
+    },
+    "intervention": {
+      "$ref": "#/$defs/ToolReplacementIntervention"
+    },
+    "effect": {
+      "$ref": "#/$defs/ProbabilityEffect"
+    },
+    "economic_effect": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EconomicEffect"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "effect_scope": {
+      "$ref": "#/$defs/EffectScope"
+    },
+    "limitations": {
+      "items": {
+        "$ref": "#/$defs/Limitation"
+      },
+      "minItems": 1,
+      "title": "Limitations",
+      "type": "array"
+    },
+    "provenance": {
+      "$ref": "#/$defs/WhatIfProvenance"
+    }
+  },
+  "required": [
+    "schema_version",
+    "simulation_id",
+    "asset_id",
+    "asset_type",
+    "decision_at",
+    "rise_event",
+    "leading_indicators",
+    "intervention",
+    "effect",
+    "effect_scope",
+    "limitations",
+    "provenance"
+  ],
+  "title": "WhatIfResult",
+  "type": "object"
+}

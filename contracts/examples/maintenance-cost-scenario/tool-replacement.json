@@ -1,0 +1,169 @@
+{
+  "schema_version": "maintenance-cost-scenario-v1.0",
+  "analysis_id": "cost-analysis-cnc-001",
+  "organization_id": "org-ontology-demo",
+  "project_id": "manufacturing-demo-project",
+  "workspace_id": "manufacturing-demo",
+  "asset_id": "CNC-S01-L01-04",
+  "equipment_id": "CNC-S01-L01-04",
+  "calculated_at": "2026-08-31T06:00:00Z",
+  "based_on": {
+    "product_result_id": "product-result-cnc-001",
+    "evidence_id": "evidence-cnc-001",
+    "inspection_work_order_id": "inspection-wo-cnc-001",
+    "inspection_result_id": "inspection-result-cnc-001",
+    "sop_id": "sop-cnc-tool-inspection",
+    "sop_version": "1.1"
+  },
+  "currency": "KRW",
+  "currency_minor_unit": 0,
+  "options": [
+    {
+      "option_id": "option-tool-immediate",
+      "action_candidate_id": "candidate-tool-replacement-001",
+      "action_code": "TOOL_REPLACEMENT",
+      "execution_timing": "immediate",
+      "assumed_execution_at": "2026-08-31T06:00:00Z",
+      "labor_rate_type": "normal",
+      "labor_rate_base_minor_per_minute": 292,
+      "calculation_status": "calculated",
+      "parts_cost": {"low_minor": 12251, "base_minor": 12251, "high_minor": 12251},
+      "labor_cost": {"low_minor": 1460, "base_minor": 2920, "high_minor": 4380},
+      "external_service_cost": {"low_minor": 0, "base_minor": 0, "high_minor": 0},
+      "production_loss": {"low_minor": 12690, "base_minor": 31740, "high_minor": 57105},
+      "expected_failure_loss": {"low_minor": 14152, "base_minor": 31074, "high_minor": 70210},
+      "total_expected_cost": {"low_minor": 40553, "base_minor": 77985, "high_minor": 143946},
+      "expected_downtime": {"low_minutes": 15, "base_minutes": 30, "high_minutes": 45},
+      "confidence": "low",
+      "missing_inputs": []
+    },
+    {
+      "option_id": "option-tool-planned",
+      "action_candidate_id": "candidate-tool-replacement-001",
+      "action_code": "TOOL_REPLACEMENT",
+      "execution_timing": "planned_window",
+      "assumed_execution_at": "2026-08-31T18:00:00Z",
+      "labor_rate_type": "night",
+      "labor_rate_base_minor_per_minute": 438,
+      "calculation_status": "insufficient",
+      "parts_cost": {"low_minor": 12251, "base_minor": 12251, "high_minor": 12251},
+      "labor_cost": {"low_minor": 2190, "base_minor": 4380, "high_minor": 6570},
+      "external_service_cost": {"low_minor": 0, "base_minor": 0, "high_minor": 0},
+      "production_loss": {"low_minor": 12690, "base_minor": 31740, "high_minor": 57105},
+      "expected_failure_loss": null,
+      "total_expected_cost": null,
+      "expected_downtime": {"low_minutes": 15, "base_minutes": 30, "high_minutes": 45},
+      "confidence": "insufficient",
+      "missing_inputs": ["expected_failure_loss"]
+    },
+    {
+      "option_id": "option-tool-reinspect",
+      "action_candidate_id": "candidate-tool-replacement-001",
+      "action_code": "TOOL_REPLACEMENT",
+      "execution_timing": "reinspect_after",
+      "assumed_execution_at": null,
+      "labor_rate_type": "not_applicable",
+      "labor_rate_base_minor_per_minute": 0,
+      "calculation_status": "insufficient",
+      "parts_cost": {"low_minor": 0, "base_minor": 0, "high_minor": 0},
+      "labor_cost": null,
+      "external_service_cost": {"low_minor": 0, "base_minor": 0, "high_minor": 0},
+      "production_loss": null,
+      "expected_failure_loss": null,
+      "total_expected_cost": null,
+      "expected_downtime": null,
+      "confidence": "insufficient",
+      "missing_inputs": ["labor_duration", "expected_downtime", "expected_failure_loss"]
+    },
+    {
+      "option_id": "option-tool-no-action",
+      "action_candidate_id": "candidate-tool-replacement-001",
+      "action_code": "TOOL_REPLACEMENT",
+      "execution_timing": "no_action_baseline",
+      "assumed_execution_at": null,
+      "labor_rate_type": "not_applicable",
+      "labor_rate_base_minor_per_minute": 0,
+      "calculation_status": "calculated",
+      "parts_cost": {"low_minor": 0, "base_minor": 0, "high_minor": 0},
+      "labor_cost": {"low_minor": 0, "base_minor": 0, "high_minor": 0},
+      "external_service_cost": {"low_minor": 0, "base_minor": 0, "high_minor": 0},
+      "production_loss": {"low_minor": 0, "base_minor": 0, "high_minor": 0},
+      "expected_failure_loss": {"low_minor": 55261, "base_minor": 121336, "high_minor": 274151},
+      "total_expected_cost": {"low_minor": 55261, "base_minor": 121336, "high_minor": 274151},
+      "expected_downtime": {"low_minutes": 0, "base_minutes": 0, "high_minutes": 0},
+      "confidence": "low",
+      "missing_inputs": []
+    }
+  ],
+  "lowest_calculated_cost_option_id": "option-tool-immediate",
+  "assumptions": [
+    "TOOL_REPLACEMENT means replacing exactly one carbide cutting insert.",
+    "The insert price is a public overseas catalog benchmark converted with a dated FX close, not a site quotation.",
+    "The labor rate is an official survey reference, not the site's payroll or contractor rate.",
+    "Duration, downtime, production loss, and failure consequence use versioned synthetic demo assumptions with sensitivity bands.",
+    "External service cost is zero only for an in-house replacement with a spare insert and no vendor dispatch.",
+    "Immediate and planned cost-calculation assumptions are derived from Backend calculated_at; the planned window assumption is 12 hours later and is not an approved Work Order schedule.",
+    "Asia/Seoul 22:00-06:00 uses a single 50% night-work demo premium (438 KRW/min) without overtime or holiday stacking.",
+    "Planned and reinspect scenarios remain insufficient because no authoritative future probability is available."
+  ],
+  "input_sources": [
+    {
+      "input_name": "one_carbide_insert_public_catalog_reference",
+      "source_kind": "public_reference",
+      "source_reference": "data/fixtures/maintenance_cost/tool-insert-cost-basis-v1.json#parts_cost",
+      "confidence": "low"
+    },
+    {
+      "input_name": "mechanical_maintenance_public_wage_reference",
+      "source_kind": "public_reference",
+      "source_reference": "data/fixtures/maintenance_cost/tool-insert-cost-basis-v1.json#labor_rate_per_minute",
+      "confidence": "medium"
+    },
+    {
+      "input_name": "night_labor_premium_policy",
+      "source_kind": "public_reference",
+      "source_reference": "data/fixtures/maintenance_cost/tool-insert-cost-basis-v1.json#execution_time_policy",
+      "confidence": "medium"
+    },
+    {
+      "input_name": "tool_replacement_duration_demo_policy",
+      "source_kind": "assumption",
+      "source_reference": "data/fixtures/maintenance_cost/tool-insert-cost-basis-v1.json#demo_policy_inputs/labor_duration_minutes",
+      "confidence": "low"
+    },
+    {
+      "input_name": "in_house_service_cost_policy",
+      "source_kind": "policy",
+      "source_reference": "data/fixtures/maintenance_cost/tool-insert-cost-basis-v1.json#demo_policy_inputs/external_service_cost_minor",
+      "confidence": "medium"
+    },
+    {
+      "input_name": "preventive_downtime_demo_policy",
+      "source_kind": "assumption",
+      "source_reference": "data/fixtures/maintenance_cost/tool-insert-cost-basis-v1.json#demo_policy_inputs/expected_downtime_minutes",
+      "confidence": "low"
+    },
+    {
+      "input_name": "synthetic_production_loss_rate",
+      "source_kind": "assumption",
+      "source_reference": "data/fixtures/maintenance_cost/tool-insert-cost-basis-v1.json#demo_policy_inputs/production_loss_rate_minor_per_minute",
+      "confidence": "low"
+    },
+    {
+      "input_name": "synthetic_failure_consequence_and_probability",
+      "source_kind": "assumption",
+      "source_reference": "data/fixtures/maintenance_cost/tool-insert-cost-basis-v1.json#demo_policy_inputs/expected_failure_loss_minor",
+      "confidence": "low"
+    }
+  ],
+  "missing_inputs": ["expected_downtime", "expected_failure_loss", "labor_duration"],
+  "price_version": "tool-insert-demo-economic-basis-2026-09",
+  "calculation_policy_version": "maintenance-cost-policy-v2",
+  "limitations": [
+    "DECISION_SUPPORT_ONLY",
+    "NOT_RECOMMENDATION",
+    "NOT_APPROVAL",
+    "NOT_EXECUTION_COMMAND",
+    "COST_ESTIMATE_NOT_GUARANTEE"
+  ]
+}

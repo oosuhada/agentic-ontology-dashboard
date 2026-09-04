@@ -1,0 +1,33 @@
+{
+  "policy_version": "risk-rise-detection-v1",
+  "policy_scope": "offline_what_if_candidate_detection",
+  "authoritative_for_operational_risk": false,
+  "allowed_uses": [
+    "what_if_candidate_selection",
+    "offline_experiment_ranking",
+    "sensor_evidence_reference"
+  ],
+  "prohibited_uses": [
+    "failure_probability_override",
+    "status_grade_assignment",
+    "top_factors_override",
+    "recommended_action_assignment",
+    "operational_alert_threshold",
+    "failure_cause_confirmation",
+    "intervention_effect_confirmation"
+  ],
+  "eligible_asset_types": ["cnc"],
+  "minimum_step_probability_increase": 0.191046,
+  "minimum_total_probability_increase": 0.191046,
+  "maximum_observation_gap_hours": 1.0,
+  "baseline_window_hours": 6.0,
+  "distribution_basis": {
+    "dataset_version": "canonical-ai4i-physics-v3.1",
+    "model_version": "independent-logreg-v3.1",
+    "total_prediction_timeline_rows": 68208,
+    "cnc_prediction_timeline_rows": 54567,
+    "cnc_asset_count": 80,
+    "statistic": "positive_adjacent_probability_delta_p90",
+    "value": 0.191046
+  }
+}

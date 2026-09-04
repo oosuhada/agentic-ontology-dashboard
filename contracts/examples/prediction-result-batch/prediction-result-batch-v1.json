@@ -1,0 +1,74 @@
+{
+  "contract_version": "prediction-result-batch-v1",
+  "batch_id": "batch-20260827-cnc-001",
+  "producer": {
+    "system": "systems.generator",
+    "runtime_version": "1.0.0",
+    "outbox_id": "outbox-001"
+  },
+  "emitted_at": "2026-08-27T00:00:00Z",
+  "source_context": {
+    "dataset_id": "canonical-ai4i-v1",
+    "dataset_version": "v1.0",
+    "source_uri": "data/incoming/protocol_sample_01.jsonl",
+    "source_checksum": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "source_kind": "live_sensor",
+    "source_contract_version": "observation-source-v1",
+    "source_schema_version": "sensor-record-v2",
+    "pipeline_contract_version": "generator-prediction-result-v1",
+    "lineage": {
+      "simulation_session_id": null,
+      "overlay_branch_id": null,
+      "history_segment_id": null,
+      "maintenance_event_id": null,
+      "maintenance_action_id": null,
+      "state_version": null
+    }
+  },
+  "model_set": {
+    "model_set_id": "model-set-v1",
+    "model_set_version": "1.0.0",
+    "models": [
+      {
+        "model_id": "pdm-lightgbm",
+        "model_version": "1.0.0",
+        "required": true,
+        "model_artifact_manifest_sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+        "selected_threshold": 0.55
+      }
+    ]
+  },
+  "results": [
+    {
+      "event_id": "evt-001",
+      "asset_id": "CNC-001",
+      "observed_at": "2026-08-27T00:00:00Z",
+      "source_kind": "live_sensor",
+      "source_ref": {
+        "uri": "data/incoming/protocol_sample_01.jsonl",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      },
+      "payload_sha256": "5449f23b190e3312c7ea3055d1d31083932040ddea44ec0f444a49454dcd7840",
+      "output_status": "predicted",
+      "score": 0.82,
+      "model_id": "pdm-lightgbm",
+      "model_version": "1.0.0",
+      "model_artifact_manifest_sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+      "feature_schema_version": "v1.0.0",
+      "history_requirement_version": "v1.0.0",
+      "label_schema_version": "v1.0.0",
+      "feature_schema_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "history_requirement_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "label_schema_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "lineage": {
+        "simulation_session_id": null,
+        "overlay_branch_id": null,
+        "history_segment_id": null,
+        "maintenance_event_id": null,
+        "maintenance_action_id": null,
+        "state_version": null
+      },
+      "failure_reason": null
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "contract_id": "SPARE-DEMO-CNC-001",
+  "source_kind": "synthetic_spare_part_planning_context",
+  "source_uri": "data/fixtures/spare_part/demo-cnc-spare-part-context-v1.json",
+  "assumption_level": "demo_planning_assumption",
+  "description": "Demo-only replacement candidate context for showing how inventory or ERP adapters can enrich read-only agent review packets.",
+  "asset_types": ["cnc"],
+  "parts": [
+    {
+      "component_id": "tooling",
+      "part_id": "SP-CNC-CARBIDE-INSERT-ONE",
+      "part_label": "카바이드 절삭 인서트 1개",
+      "replacement_scope": "마모된 카바이드 절삭 인서트 1개 교체 및 체결 상태 확인",
+      "lead_time_days": 1,
+      "replacement_window_minutes": null
+    },
+    {
+      "component_id": "drive_power",
+      "part_id": "SP-CNC-DRIVE-COUPLING-KIT",
+      "part_label": "주축 구동 커플링 키트",
+      "replacement_scope": "커플링 및 동력 전달부 교체 검토",
+      "lead_time_days": 2,
+      "replacement_window_minutes": 180
+    },
+    {
+      "component_id": "thermal_path",
+      "part_id": "SP-CNC-COOLING-FAN-UNIT",
+      "part_label": "냉각 팬 유닛",
+      "replacement_scope": "냉각 팬 및 방열 계통 교체 검토",
+      "lead_time_days": 1,
+      "replacement_window_minutes": 90
+    },
+    {
+      "component_id": "rotating_assembly",
+      "part_id": "SP-CNC-SPINDLE-BEARING-KIT",
+      "part_label": "스핀들 베어링 키트",
+      "replacement_scope": "스핀들 베어링 및 회전부 교체 검토",
+      "lead_time_days": 2,
+      "replacement_window_minutes": 150
+    }
+  ]
+}

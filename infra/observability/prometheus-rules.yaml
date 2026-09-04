@@ -1,0 +1,56 @@
+groups:
+  - name: ontology-dashboard-slo
+    interval: 30s
+    rules:
+      - record: ontology:http_requests:rate5m
+        expr: sum by (status_class) (rate(ontology_http_requests_total[5m]))
+      - record: ontology:http_5xx_ratio:rate5m
+        expr: >-
+          sum(rate(ontology_http_requests_total{status_class="5xx"}[5m]))
+          / clamp_min(sum(rate(ontology_http_requests_total[5m])), 0.001)
+      - alert: OntologyApiFastBurn
+        expr: >-
+          ontology:http_5xx_ratio:rate5m > (14.4 * 0.001)
+          and
+          (
+            sum(rate(ontology_http_requests_total{status_class="5xx"}[1h]))
+            / clamp_min(sum(rate(ontology_http_requests_total[1h])), 0.001)
+          ) > (6 * 0.001)
+        for: 5m
+        labels:
+          severity: critical
+          routing_key: platform-oncall
+        annotations:
+          summary: API availability error budget is burning rapidly
+          runbook: docs/50-operations/observability-slo-alerting-runbook.md#api-fast-burn
+      - alert: OntologyWorkerQueueStalled
+        expr: >-
+          ontology_durable_oldest_queued_seconds > 300
+          or ontology_durable_stale_leases > 0
+        for: 10m
+        labels:
+          severity: critical
+          routing_key: data-platform-oncall
+        annotations:
+          summary: Durable execution queue is stalled
+          runbook: docs/50-operations/distributed-runtime-runbook.md
+      - alert: OntologyArtifactIntegrityFailure
+        expr: >-
+          ontology_artifact_checksum_mismatch > 0
+          or ontology_artifact_missing_regulated > 0
+        for: 0m
+        labels:
+          severity: critical
+          routing_key: security-data-oncall
+        annotations:
+          summary: Governed artifact integrity failure detected
+          runbook: docs/50-operations/object-storage-artifact-governance-runbook.md
+      - alert: OntologyConnectorFreshnessLag
+        expr: ontology_connector_checkpoint_age_seconds > ontology_connector_freshness_policy_seconds
+        for: 15m
+        labels:
+          severity: warning
+          routing_key: data-operations
+        annotations:
+          summary: Connector freshness policy exceeded
+          runbook: docs/50-operations/observability-slo-alerting-runbook.md#connector-freshness

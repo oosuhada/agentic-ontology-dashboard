@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "policy_version": "gold-fixture-policy-v1",
+  "model_version": "fixture-heuristic-v1",
+  "decision_threshold": 0.55,
+  "minimum_recall_target": 0.8,
+  "severity_rules": {
+    "attention": 0.25,
+    "warning": 0.55,
+    "critical": 0.85
+  },
+  "false_negative_cost": 10.0,
+  "false_positive_cost": 1.0,
+  "criticality_adjustments": {
+    "low": 0.03,
+    "medium": 0.0,
+    "high": -0.03
+  },
+  "confidence_rules": {
+    "low_band_width": 0.08,
+    "multi_factor_gap": 0.25
+  },
+  "decision_mapping": {
+    "normal": "continue_monitoring",
+    "attention": "request_inspection",
+    "warning": "request_inspection",
+    "critical": "review_shutdown",
+    "data_quality_hold": "hold_for_data_check"
+  },
+  "notes": [
+    "Compatibility policy for the deterministic Gold fixture predictor only.",
+    "Canonical V3.1 runtime and Product Result materialization use threshold_policy.json.",
+    "Do not use this fixture policy to reinterpret trained-model Product Results."
+  ]
+}

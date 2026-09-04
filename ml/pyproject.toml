@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ontology-dashboard-manufacturing-ml"
 version = "0.1.0"
-description = "Reproducible AI4I validation, training, thresholding, and evidence generation"
+description = "Compatibility CLI delegating model production to systems/generator and runtime inference to systems/backend/app/diagnosis"
 requires-python = ">=3.11"
 dependencies = [
   "joblib>=1.4",

@@ -1,0 +1,229 @@
+{
+  "artifact_type": "recommendation_policy_gold_fixture_store",
+  "suite_id": "ontology-dashboard-manufacturing-gold-v1",
+  "gold_version": "gold-v1",
+  "policy_version": "recommendation-policy-v1",
+  "evaluator": {
+    "name": "seed_gold_recommendations.py",
+    "version": "recommendation-policy-gold-seed-v1"
+  },
+  "schema_versions": {
+    "producer_recommendation": "ProducerRecommendation",
+    "source_schema_version": "result-artifact-v1.0"
+  },
+  "writer_strategy_boundary": {
+    "fixture_store": "evaluation_demo_fixture",
+    "operational_materialization": "runtime_generated_only",
+    "imported_precomputed": "preserve_result_and_recommendation_detail_unavailable"
+  },
+  "fixture_count": 8,
+  "fixture_checksum_sha256": "2febf489eb0dd2c3fefd4d84b79f475119d5e48d4e4e02b17c0e986044c1482c",
+  "inserted": 0,
+  "replayed": 8,
+  "not_recommended": 0,
+  "operational_side_effect_counts": {
+    "recommendations": 0,
+    "decisions": 0,
+    "work_orders": 0,
+    "maintenance_actions": 0,
+    "maintenance_events": 0
+  },
+  "claim_boundary": "Gold 8/8 is engineering acceptance evidence only, not field or business impact validation.",
+  "validation_scope": {
+    "verified": [
+      "Gold v1 8/8 recommendation policy acceptance",
+      "fixture checksum and per-scenario source lineage",
+      "seed replay/no-op",
+      "policy-v2 re-evaluation stored as separate evaluation artifact",
+      "new Product Result revision stored as new source lineage",
+      "operational recommendation/Decision/WorkOrder/Maintenance side effects remain zero"
+    ],
+    "not_verified": [
+      "PostgreSQL production E2E",
+      "human approval UI",
+      "automatic maintenance execution",
+      "field or business impact validation",
+      "cost/RPN optimization",
+      "LLM-based recommendation decisions"
+    ]
+  },
+  "fixture_recommendations": [
+    {
+      "scenario_id": "GS-001",
+      "fixture_path": "data/fixtures/GS-001-normal-stable.json",
+      "fixture_checksum_sha256": "e4a47f04f10cfb961e0ccd5a2d591afa484a1a8173db4cb35ce4f3f98cba12f1",
+      "status": "proposed",
+      "store": "evaluation_demo_fixture",
+      "do_not_operationalize": true,
+      "source_action_id": "recommendation-policy-v1:continue_monitoring",
+      "source_product_result_id": "RESULT#M-001#2026-08-01T00:00:00+09:00#GS-001",
+      "source_evidence_id": "RESULT#M-001#2026-08-01T00:00:00+09:00#GS-001",
+      "source_schema_version": "result-artifact-v1.0",
+      "source_policy_version": "recommendation-policy-v1",
+      "label": "모니터링 지속",
+      "kind": "continue_monitoring",
+      "requires_human_approval": true,
+      "basis": [
+        "factor.1.mechanical_power_w",
+        "factor.2.torque_nm",
+        "sensor_evidence.sensors.torque_nm",
+        "factor.3.temperature_difference_k"
+      ]
+    },
+    {
+      "scenario_id": "GS-002",
+      "fixture_path": "data/fixtures/GS-002-tool-wear-warning.json",
+      "fixture_checksum_sha256": "00e845e34dd81dca8948973974bc4fe501938d093c3d2352ad7abcc1a8e7d91c",
+      "status": "proposed",
+      "store": "evaluation_demo_fixture",
+      "do_not_operationalize": true,
+      "source_action_id": "recommendation-policy-v1:request_inspection",
+      "source_product_result_id": "RESULT#M-014#2026-08-01T00:00:00+09:00#GS-002",
+      "source_evidence_id": "RESULT#M-014#2026-08-01T00:00:00+09:00#GS-002",
+      "source_schema_version": "result-artifact-v1.0",
+      "source_policy_version": "recommendation-policy-v1",
+      "label": "점검 요청",
+      "kind": "request_inspection",
+      "requires_human_approval": true,
+      "basis": [
+        "factor.1.tool_wear_min",
+        "sensor_evidence.sensors.tool_wear_min",
+        "factor.2.overstrain_index",
+        "factor.3.torque_nm",
+        "sensor_evidence.sensors.torque_nm"
+      ]
+    },
+    {
+      "scenario_id": "GS-003",
+      "fixture_path": "data/fixtures/GS-003-heat-dissipation-warning.json",
+      "fixture_checksum_sha256": "3c21053fb42cebddb0d98513556bb90c96a868e6443097da73a4f71cea09cd64",
+      "status": "proposed",
+      "store": "evaluation_demo_fixture",
+      "do_not_operationalize": true,
+      "source_action_id": "recommendation-policy-v1:request_inspection",
+      "source_product_result_id": "RESULT#M-021#2026-08-01T00:00:00+09:00#GS-003",
+      "source_evidence_id": "RESULT#M-021#2026-08-01T00:00:00+09:00#GS-003",
+      "source_schema_version": "result-artifact-v1.0",
+      "source_policy_version": "recommendation-policy-v1",
+      "label": "점검 요청",
+      "kind": "request_inspection",
+      "requires_human_approval": true,
+      "basis": [
+        "factor.1.temperature_difference_k",
+        "factor.2.torque_nm",
+        "sensor_evidence.sensors.torque_nm",
+        "factor.3.mechanical_power_w"
+      ]
+    },
+    {
+      "scenario_id": "GS-004",
+      "fixture_path": "data/fixtures/GS-004-power-overstrain-critical.json",
+      "fixture_checksum_sha256": "d438c168aff9351d4e12ece715d83b1f01f79cfbf696fc1a90a214f250896c1a",
+      "status": "proposed",
+      "store": "evaluation_demo_fixture",
+      "do_not_operationalize": true,
+      "source_action_id": "recommendation-policy-v1:review_shutdown",
+      "source_product_result_id": "RESULT#M-033#2026-08-01T00:00:00+09:00#GS-004",
+      "source_evidence_id": "RESULT#M-033#2026-08-01T00:00:00+09:00#GS-004",
+      "source_schema_version": "result-artifact-v1.0",
+      "source_policy_version": "recommendation-policy-v1",
+      "label": "정지 검토",
+      "kind": "review_shutdown",
+      "requires_human_approval": true,
+      "basis": [
+        "factor.1.mechanical_power_w",
+        "factor.2.overstrain_index",
+        "factor.3.torque_nm",
+        "sensor_evidence.sensors.torque_nm"
+      ]
+    },
+    {
+      "scenario_id": "GS-005",
+      "fixture_path": "data/fixtures/GS-005-multi-factor-warning.json",
+      "fixture_checksum_sha256": "6525ea83635aff63f87d3b70ddec72e64200c47a4446437271a616e8cfa9b354",
+      "status": "proposed",
+      "store": "evaluation_demo_fixture",
+      "do_not_operationalize": true,
+      "source_action_id": "recommendation-policy-v1:request_inspection",
+      "source_product_result_id": "RESULT#M-042#2026-08-01T00:00:00+09:00#GS-005",
+      "source_evidence_id": "RESULT#M-042#2026-08-01T00:00:00+09:00#GS-005",
+      "source_schema_version": "result-artifact-v1.0",
+      "source_policy_version": "recommendation-policy-v1",
+      "label": "점검 요청",
+      "kind": "request_inspection",
+      "requires_human_approval": true,
+      "basis": [
+        "factor.1.tool_wear_min",
+        "sensor_evidence.sensors.tool_wear_min",
+        "factor.2.overstrain_index",
+        "factor.3.mechanical_power_w"
+      ]
+    },
+    {
+      "scenario_id": "GS-006",
+      "fixture_path": "data/fixtures/GS-006-low-confidence.json",
+      "fixture_checksum_sha256": "7b7510640d051d1c30abc11e53b5d9d859a5bbd1bddbf36beeca4711235d0b92",
+      "status": "proposed",
+      "store": "evaluation_demo_fixture",
+      "do_not_operationalize": true,
+      "source_action_id": "recommendation-policy-v1:request_inspection",
+      "source_product_result_id": "RESULT#M-055#2026-08-01T00:00:00+09:00#GS-006",
+      "source_evidence_id": "RESULT#M-055#2026-08-01T00:00:00+09:00#GS-006",
+      "source_schema_version": "result-artifact-v1.0",
+      "source_policy_version": "recommendation-policy-v1",
+      "label": "점검 요청",
+      "kind": "request_inspection",
+      "requires_human_approval": true,
+      "basis": [
+        "factor.1.tool_wear_min",
+        "sensor_evidence.sensors.tool_wear_min",
+        "factor.2.torque_nm",
+        "sensor_evidence.sensors.torque_nm",
+        "factor.3.mechanical_power_w"
+      ]
+    },
+    {
+      "scenario_id": "GS-007",
+      "fixture_path": "data/fixtures/GS-007-invalid-sensor-data.json",
+      "fixture_checksum_sha256": "11e3daea38db27f29938876472b32604d73983051f7a14fd1581486cb94a3265",
+      "status": "proposed",
+      "store": "evaluation_demo_fixture",
+      "do_not_operationalize": true,
+      "source_action_id": "recommendation-policy-v1:hold_for_data_check",
+      "source_product_result_id": "RESULT#M-063#2026-08-01T00:00:00+09:00#GS-007",
+      "source_evidence_id": "RESULT#M-063#2026-08-01T00:00:00+09:00#GS-007",
+      "source_schema_version": "result-artifact-v1.0",
+      "source_policy_version": "recommendation-policy-v1",
+      "label": "데이터 확인 후 판단",
+      "kind": "hold_for_data_check",
+      "requires_human_approval": true,
+      "basis": [
+        "policy.data_quality_hold"
+      ]
+    },
+    {
+      "scenario_id": "GS-008",
+      "fixture_path": "data/fixtures/GS-008-llm-offline.json",
+      "fixture_checksum_sha256": "64f20ea8fe93184a767e3c818493c540d6544c39b929cda75e3ea4a7b211f249",
+      "status": "proposed",
+      "store": "evaluation_demo_fixture",
+      "do_not_operationalize": true,
+      "source_action_id": "recommendation-policy-v1:request_inspection",
+      "source_product_result_id": "RESULT#M-014#2026-08-01T00:00:00+09:00#GS-008",
+      "source_evidence_id": "RESULT#M-014#2026-08-01T00:00:00+09:00#GS-008",
+      "source_schema_version": "result-artifact-v1.0",
+      "source_policy_version": "recommendation-policy-v1",
+      "label": "점검 요청",
+      "kind": "request_inspection",
+      "requires_human_approval": true,
+      "basis": [
+        "factor.1.tool_wear_min",
+        "sensor_evidence.sensors.tool_wear_min",
+        "factor.2.overstrain_index",
+        "factor.3.torque_nm",
+        "sensor_evidence.sensors.torque_nm"
+      ]
+    }
+  ],
+  "fixture_non_recommendations": []
+}

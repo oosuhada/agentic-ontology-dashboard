@@ -7,9 +7,12 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from ontology_dashboard.identity import AdminUserUpdateRequest, CSRF_COOKIE, IdentityService
-from ontology_dashboard.main import app, get_identity_service, get_service
-from ontology_dashboard.service import ManufacturingPredictiveMaintenanceService as FactorySignalService
+from app.identity import AdminUserUpdateRequest, CSRF_COOKIE, IdentityService
+from identity_test_support import build_identity_service
+from app.main import app
+from app.dependencies import get_identity_service, get_service
+from app.operations.service import ManufacturingPredictiveMaintenanceService as FactorySignalService
+from app.dependencies import build_manufacturing_service
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE = "manufacturing-demo"
@@ -22,12 +25,12 @@ def database_path(tmp_path: Path) -> Path:
 
 @pytest.fixture()
 def identity(database_path: Path) -> IdentityService:
-    return IdentityService(database_path, app_env="test", seed_demo=True)
+    return build_identity_service(database_path, app_env="test", seed_demo=True)
 
 
 @pytest.fixture()
 def service(database_path: Path) -> FactorySignalService:
-    return FactorySignalService(ROOT, database_path=database_path)
+    return build_manufacturing_service(database_path, root=ROOT)
 
 
 @pytest.fixture()
@@ -55,11 +58,11 @@ def test_object_query_and_two_hop_relation_traversal(client: TestClient) -> None
 
     equipment = client.get(
         "/api/ontology/objects",
-        params={"workspace_id": WORKSPACE, "object_type": "equipment", "q": "절삭 설비 14"},
+        params={"workspace_id": WORKSPACE, "object_type": "equipment", "q": "CNC-S04-L04-01"},
     )
     assert equipment.status_code == 200, equipment.text
     assert equipment.json()["total"] == 1
-    assert equipment.json()["items"][0]["id"] == "equipment:M-014"
+    assert equipment.json()["items"][0]["id"] == "equipment:CNC-S04-L04-01"
 
     event = client.get(
         "/api/ontology/objects/risk_event:EVT-GS-002",
@@ -69,12 +72,12 @@ def test_object_query_and_two_hop_relation_traversal(client: TestClient) -> None
     assert event.json()["properties"]["recommended_decision"] == "request_inspection"
 
     traversal = client.get(
-        "/api/ontology/objects/equipment:M-014/links",
+        "/api/ontology/objects/equipment:CNC-S04-L04-01/links",
         params={"workspace_id": WORKSPACE, "direction": "outgoing", "depth": 2},
     )
     assert traversal.status_code == 200, traversal.text
     payload = traversal.json()
-    assert payload["root"]["id"] == "equipment:M-014"
+    assert payload["root"]["id"] == "equipment:CNC-S04-L04-01"
     node_ids = {item["id"] for item in payload["nodes"]}
     edge_types = {item["link_type"] for item in payload["edges"]}
     assert "risk_event:EVT-GS-002" in node_ids

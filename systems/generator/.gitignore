@@ -1,0 +1,6 @@
+.env
+model/model_store/*
+!model/model_store/.gitkeep
+__pycache__/
+*.pyc
+.cache/

@@ -1,0 +1,116 @@
+{
+  "result_id": "langgraph-adoption-gate-experiment-2026-09-01",
+  "recorded_at": "2026-09-01",
+  "scope": "Experimental LangGraph adoption gate for Agent Review Summary read-only context tool trajectory",
+  "environment": {
+    "langgraph_available": true,
+    "simple_engine": "simple",
+    "candidate_engine": "langgraph",
+    "production_default": "simple"
+  },
+  "sample_size": {
+    "gold_cases": 3,
+    "engines_compared": 2
+  },
+  "aggregate": {
+    "trajectory_parity_cases": 3,
+    "trajectory_parity_rate": 1.0,
+    "langgraph_completed_cases": 3,
+    "langgraph_validation_error_cases": 0,
+    "closed_loop_mutation_cases": 0,
+    "source_ref_boundary_violation_cases": 0,
+    "retry_trace_supported": true
+  },
+  "rows": [
+    {
+      "case_id": "tool-trajectory-gs004-critical-domain-fanout",
+      "scenario_id": "GS-004",
+      "asset_id": "CNC-S04-L02-03",
+      "simple_engine": "simple",
+      "langgraph_engine": "langgraph",
+      "langgraph_available": true,
+      "same_called_tools": true,
+      "called_tools": [
+        "model_evidence.lookup",
+        "maintenance_history.lookup",
+        "operation_context.lookup",
+        "inspection_location.lookup",
+        "ontology_neighbors.lookup",
+        "spare_part.lookup",
+        "similar_event.lookup"
+      ],
+      "simple_terminal_status": "completed",
+      "langgraph_terminal_status": "completed",
+      "simple_validation_errors": [],
+      "langgraph_validation_errors": [],
+      "mutation_allowed": false,
+      "closed_loop_mutation_attempted": false,
+      "tool_call_count": 7
+    },
+    {
+      "case_id": "tool-trajectory-gs002-warning-sop-grounding",
+      "scenario_id": "GS-002",
+      "asset_id": "CNC-S04-L04-01",
+      "simple_engine": "simple",
+      "langgraph_engine": "langgraph",
+      "langgraph_available": true,
+      "same_called_tools": true,
+      "called_tools": [
+        "model_evidence.lookup",
+        "maintenance_history.lookup",
+        "inspection_location.lookup",
+        "sop_guidance.lookup",
+        "ontology_neighbors.lookup",
+        "spare_part.lookup",
+        "similar_event.lookup"
+      ],
+      "simple_terminal_status": "completed",
+      "langgraph_terminal_status": "completed",
+      "simple_validation_errors": [],
+      "langgraph_validation_errors": [],
+      "mutation_allowed": false,
+      "closed_loop_mutation_attempted": false,
+      "tool_call_count": 7
+    },
+    {
+      "case_id": "tool-trajectory-gs007-data-quality-hold",
+      "scenario_id": "GS-007",
+      "asset_id": "CNC-S04-L05-01",
+      "simple_engine": "simple",
+      "langgraph_engine": "langgraph",
+      "langgraph_available": true,
+      "same_called_tools": true,
+      "called_tools": [
+        "data_quality.lookup"
+      ],
+      "simple_terminal_status": "completed",
+      "langgraph_terminal_status": "completed",
+      "simple_validation_errors": [],
+      "langgraph_validation_errors": [],
+      "mutation_allowed": false,
+      "closed_loop_mutation_attempted": false,
+      "tool_call_count": 1
+    }
+  ],
+  "adoption_decision": {
+    "recommendation": "do_not_switch_production_default_yet",
+    "gate_policy": "open_for_production_adoption_when_release_conditions_are_met",
+    "reason": "LangGraph preserves the current read-only tool trajectory, but the current workflow still fits the simple service boundary and does not yet require durable pause/resume, independently authorized runtime tools, or graph-owned branching state.",
+    "promote_to_production_when_any": [
+      "tool trajectory accuracy becomes a release gate for real independently authorized runtime tools",
+      "human pause/resume must survive process restart",
+      "node-specific retry and resume state cannot stay inside the service method",
+      "three or more runtime domain tools need ordered, observable branching calls"
+    ],
+    "current_limitations": [
+      "the experiment measures trajectory parity, not final Korean summary quality",
+      "the experiment does not measure long-running watcher reliability",
+      "the current workflow does not yet need durable pause_resume or independently authorized runtime tool calls"
+    ]
+  },
+  "limits": [
+    "This experiment compares tool trajectory and boundary behavior, not final Korean summary quality.",
+    "This is not a production watcher/runtime migration.",
+    "The evaluated gold set currently has three trajectory cases; the 8x15 LLM evaluation should add broader packet coverage before claiming stability across the full core set."
+  ]
+}

@@ -1,0 +1,50 @@
+name: backend-prediction-inbox
+
+on:
+  pull_request:
+    paths:
+      - "contracts/schemas/prediction-result-batch.schema.json"
+      - "contracts/examples/prediction-result-batch/**"
+      - "systems/backend/app/diagnosis/**"
+      - "tests/test_prediction_result_inbox.py"
+      - ".github/workflows/backend-prediction-inbox.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "contracts/schemas/prediction-result-batch.schema.json"
+      - "contracts/examples/prediction-result-batch/**"
+      - "systems/backend/app/diagnosis/**"
+      - "tests/test_prediction_result_inbox.py"
+      - ".github/workflows/backend-prediction-inbox.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: backend-prediction-inbox-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-prediction-inbox:
+    name: backend-prediction-inbox
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout tested revision
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Backend dependencies
+        run: |
+          python -m pip install --no-cache-dir --upgrade pip
+          python -m pip install --no-cache-dir -e "./systems/backend[dev]"
+
+      - name: Run Backend Prediction Inbox tests
+        env:
+          APP_ENV: test
+          PYTHONPATH: .
+        run: python -m pytest -v tests/test_prediction_result_inbox.py

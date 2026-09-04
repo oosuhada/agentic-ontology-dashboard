@@ -1,0 +1,597 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/asset-detail-view-model.schema.json",
+  "title": "Asset Detail ViewModel",
+  "description": "Operations consumption contract for GET /objects/{asset_id}/detail-view, as documented in docs/operations/api-specification.md. Does not replace the Event Report API; it composes the Asset Detail and Overview snapshot consumed by UI variants. This object name is deliberately not prefixed with `Operations`.",
+  "type": "object",
+  "required": ["snapshot_basis", "asset", "risk", "risk_series", "features", "equipment_history", "maintenance_context", "operation_context", "review_priority", "evidence", "data_status"],
+  "additionalProperties": false,
+  "properties": {
+    "snapshot_basis": {"$ref": "#/$defs/evidenceSnapshotBasis"},
+    "asset": {
+      "type": "object",
+      "required": ["asset_id", "asset_type", "observed_at", "criticality", "criticality_basis", "criticality_source"],
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {"type": "string"},
+        "asset_type": {"enum": ["compressor", "cnc"]},
+        "display_name": {"type": "string"},
+        "site_id": {"type": "string"},
+        "cell_id": {"type": "string"},
+        "observed_at": {"type": "string"},
+        "criticality": {"type": ["string", "null"], "enum": ["low", "medium", "high", null]},
+        "criticality_basis": {"type": "array", "items": {"type": "string"}},
+        "criticality_source": {
+          "enum": ["manual_initial_assessment", "equipment_master", "project_context", "unknown"]
+        }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "required": ["current", "threshold", "status_grade", "prediction_horizon_hours"],
+      "additionalProperties": false,
+      "properties": {
+        "current": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "threshold": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "status_grade": {
+          "type": ["string", "null"],
+          "enum": ["normal", "attention", "warning", "critical", null],
+          "description": "Exactly 4 grades when available. data_quality_hold is not a status_grade value here; it is represented separately at data_status.is_data_quality_hold. Null means the producer held risk grading for data-quality reasons or no independent risk grade is available."
+        },
+        "prediction_horizon_hours": {"type": ["integer", "null"], "minimum": 1}
+      }
+    },
+    "risk_series": {
+      "type": "array",
+      "description": "Backend Diagnosis Runtime Prediction History Query result. Must not be populated by promoting legacy /timeline, precomputed_prediction_timeline, or gen_data model_outputs fixtures.",
+      "items": {
+        "type": "object",
+        "required": ["observed_at", "failure_probability", "status_grade", "prediction_id", "source_kind"],
+        "additionalProperties": false,
+        "properties": {
+          "observed_at": {"type": "string"},
+          "failure_probability": {"type": "number", "minimum": 0, "maximum": 1},
+          "status_grade": {
+            "type": ["string", "null"],
+            "enum": ["normal", "attention", "warning", "critical", null]
+          },
+          "prediction_id": {"type": "string"},
+          "source_kind": {"enum": ["runtime_inference", "compatibility_fallback"]},
+          "source_ref": {"type": "string"}
+        }
+      }
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "label", "unit", "current", "history"],
+        "additionalProperties": false,
+        "properties": {
+          "key": {"type": "string"},
+          "label": {"type": "string"},
+          "unit": {"type": "string"},
+          "current": {
+            "type": "object",
+            "required": ["observed_at", "value", "quality_status"],
+            "additionalProperties": false,
+            "properties": {
+              "observed_at": {"type": "string", "format": "date-time"},
+              "value": {"type": ["number", "null"]},
+              "quality_status": {"enum": ["good", "bad", "unknown"]}
+            }
+          },
+          "baseline": {
+            "type": ["object", "null"],
+            "required": ["mean", "std", "lower", "upper", "reference"],
+            "additionalProperties": false,
+            "properties": {
+              "mean": {"type": "number"},
+              "std": {"type": "number"},
+              "lower": {"type": "number"},
+              "upper": {"type": "number"},
+              "reference": {"type": "string"}
+            }
+          },
+          "history": {
+            "type": "object",
+            "description": "Canonical Observation history strictly before features[].current. Provenance shared by the series is carried once at the history envelope, while points retain only time, value, and quality.",
+            "required": ["points"],
+            "additionalProperties": false,
+            "properties": {
+              "source_ref": {"type": "string"},
+              "window": {
+                "type": "object",
+                "description": "Backend-owned observation history window for the returned history points. requested_* records the selected query window, while actual_* and point_count expose the data actually available without claiming full coverage.",
+                "required": ["requested", "anchor_observed_at", "requested_start", "requested_end", "actual_start", "actual_end", "point_count", "coverage_status"],
+                "additionalProperties": false,
+                "properties": {
+                  "requested": {"enum": ["24h", "7d", "30d"]},
+                  "anchor_observed_at": {"type": ["string", "null"], "format": "date-time"},
+                  "requested_start": {"type": ["string", "null"], "format": "date-time"},
+                  "requested_end": {"type": ["string", "null"], "format": "date-time"},
+                  "actual_start": {"type": ["string", "null"], "format": "date-time"},
+                  "actual_end": {"type": ["string", "null"], "format": "date-time"},
+                  "point_count": {"type": "integer", "minimum": 0},
+                  "coverage_status": {"enum": ["complete", "partial", "empty", "unknown"]}
+                }
+              },
+              "points": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["observed_at", "value", "quality_status"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "observed_at": {"type": "string", "format": "date-time"},
+                    "value": {"type": ["number", "null"]},
+                    "quality_status": {"enum": ["good", "bad", "unknown"]}
+                  }
+                }
+              }
+            }
+          },
+          "top_factor": {
+            "type": ["object", "null"],
+            "required": ["rank", "contribution", "direction", "explanation_method"],
+            "additionalProperties": false,
+            "properties": {
+              "rank": {"type": "integer", "minimum": 1},
+              "contribution": {"type": "number"},
+              "direction": {"enum": ["risk_up", "risk_down"]},
+              "explanation_method": {"type": "string"},
+              "evidence_field_id": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "equipment_history": {
+      "type": "array",
+      "description": "Sourced from Activity/Decision/Maintenance, not synthesized from Event Evidence alone.",
+      "items": {
+        "type": "object",
+        "required": ["occurred_at", "kind", "tone", "description", "source"],
+        "additionalProperties": false,
+        "properties": {
+          "occurred_at": {"type": "string"},
+          "kind": {"type": "string"},
+          "tone": {"enum": ["critical", "warning", "attention", "normal", "hold"]},
+          "description": {"type": "string"},
+          "source": {"type": "string"},
+          "memo": {"type": "string"}
+        }
+      }
+    },
+    "maintenance_context": {
+      "type": "object",
+      "required": ["last_maintenance_days_ago", "similar_events_30d", "open_work_order_exists"],
+      "additionalProperties": false,
+      "properties": {
+        "last_maintenance_days_ago": {"type": ["integer", "null"], "minimum": 0},
+        "similar_events_30d": {"type": ["integer", "null"], "minimum": 0},
+        "open_work_order_exists": {"type": ["boolean", "null"]}
+      }
+    },
+    "inspection_targets": {
+      "type": "array",
+      "description": "Backend-owned inspection target hints sourced from Product Evidence component hypotheses. Concrete field location and method are read-only Field Inspection Reference metadata when available. Optional inspection_guidance is SOP grounding for UI checklist drafts, not Product Evidence.",
+      "items": {
+        "type": "object",
+        "required": ["target_id", "component_id", "component_label", "association", "location_label", "inspection_method", "location_contract_id", "location_source_ref", "location_maturity", "basis_refs", "source_ref", "unavailable_reason"],
+        "additionalProperties": false,
+        "properties": {
+          "target_id": {"type": "string"},
+          "component_id": {"type": "string"},
+          "component_label": {"type": "string"},
+          "association": {"type": "string"},
+          "location_label": {"type": ["string", "null"]},
+          "inspection_method": {"type": ["string", "null"]},
+          "location_contract_id": {"type": ["string", "null"]},
+          "location_source_ref": {"type": ["string", "null"]},
+          "location_maturity": {"type": ["string", "null"], "enum": ["fixture", "draft", "approved", "retired", null]},
+          "basis_refs": {"type": "array", "items": {"type": "string"}},
+          "source_ref": {"type": "string"},
+          "inspection_guidance": {"$ref": "#/$defs/inspectionGuidance"},
+          "unavailable_reason": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "operation_context": {"$ref": "#/$defs/operationContext"},
+    "closed_loop": {"$ref": "#/$defs/closedLoopSummary"},
+    "review_priority": {
+      "type": ["object", "null"],
+      "required": ["level", "reasons", "source_fields"],
+      "additionalProperties": false,
+      "properties": {
+        "level": {"enum": ["immediate", "high", "medium", "low"]},
+        "reasons": {"type": "array", "items": {"type": "string"}},
+        "source_fields": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["artifact_id", "model_version", "dataset_version", "source_kind", "gaps"],
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {"type": ["string", "null"]},
+        "evidence_payload_reference": {"type": "string"},
+        "model_version": {"type": ["string", "null"]},
+        "dataset_version": {"type": ["string", "null"]},
+        "source_kind": {"enum": ["runtime_inference", "compatibility_fallback"]},
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["field", "reason", "owner_domain"],
+            "additionalProperties": false,
+            "properties": {
+              "field": {"type": "string"},
+              "reason": {"type": "string"},
+              "owner_domain": {"enum": ["diagnosis", "generator", "dataset", "equipment", "project", "operations", "maintenance", "report", "frontend", "unresolved"]}
+            }
+          }
+        }
+      }
+    },
+    "data_status": {
+      "type": "object",
+      "required": ["source", "is_stale", "is_data_quality_hold", "warnings"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {"enum": ["canonical", "fallback"]},
+        "is_stale": {
+          "type": ["boolean", "null"],
+          "description": "Null means no authoritative freshness fact is available. The ViewModel must not synthesize false for an unknown freshness state."
+        },
+        "is_data_quality_hold": {"type": "boolean"},
+        "last_updated_at": {"type": "string"},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  },
+  "$defs": {
+    "evidenceSnapshotBasis": {
+      "type": "object",
+      "description": "Shared evidence basis for sibling read projections. UI, report, and read-only agent packets can compare this object before presenting or acting on derived text.",
+      "required": ["artifact_id", "evidence_payload_reference", "asset_id", "event_id", "observed_at", "model_version", "dataset_version", "source_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {"type": ["string", "null"]},
+        "evidence_payload_reference": {"type": "string"},
+        "asset_id": {"type": ["string", "null"]},
+        "event_id": {"type": ["string", "null"]},
+        "observed_at": {"type": ["string", "null"]},
+        "model_version": {"type": ["string", "null"]},
+        "dataset_version": {"type": ["string", "null"]},
+        "source_sha256": {"type": ["string", "null"]}
+      }
+    },
+    "inspectionGuidance": {
+      "type": "object",
+      "description": "SOP-based reference guidance for UI and agent handoff drafts. This does not fill location_label/inspection_method and must not be treated as Product Evidence or a mutation command.",
+      "required": ["source_type", "sop_id", "title", "version", "reference_location_label", "suggested_check_method", "checklist_draft", "maintenance_review_prerequisites", "safety_level", "requires_human_approval", "source_ref", "disclaimer"],
+      "additionalProperties": false,
+      "properties": {
+        "source_type": {"enum": ["demo_sop_fixture", "site_sop"]},
+        "sop_id": {"type": "string"},
+        "title": {"type": "string"},
+        "version": {"type": "string"},
+        "reference_location_label": {"type": "string"},
+        "suggested_check_method": {"type": "string"},
+        "checklist_draft": {"type": "array", "items": {"type": "string"}},
+        "maintenance_review_prerequisites": {
+          "type": "object",
+          "description": "SOP-based prerequisites for a human maintenance review. This is not timing or cost guidance, a Recommendation, approval, or MaintenanceAction.",
+          "required": ["label", "review_conditions", "required_measurements", "human_review_questions", "decision_boundary"],
+          "additionalProperties": false,
+          "properties": {
+            "label": {"type": "string"},
+            "review_conditions": {"type": "array", "items": {"type": "string"}},
+            "required_measurements": {"type": "array", "items": {"type": "string"}},
+            "human_review_questions": {"type": "array", "items": {"type": "string"}},
+            "decision_boundary": {"type": "string"}
+          }
+        },
+        "safety_level": {"enum": ["none", "caution", "permit_required", "shutdown_controlled"]},
+        "requires_human_approval": {"type": "boolean"},
+        "source_ref": {"type": "string"},
+        "disclaimer": {"type": "string"}
+      }
+    },
+    "operationContext": {
+      "type": "object",
+      "description": "Optional production-planning context composed by Backend. It is not an Evidence/Product Result input and must not change risk, status_grade, top_factors, or recommended_action.",
+      "additionalProperties": false,
+      "properties": {
+        "load_level": {"type": ["string", "null"], "enum": ["low", "normal", "high", null]},
+        "runtime_hours_7d": {"type": ["number", "null"], "minimum": 0},
+        "production_impact": {"type": ["string", "null"], "enum": ["none", "low", "medium", "high", null]},
+        "context_id": {"type": "string"},
+        "source_type": {"const": "capacity_model"},
+        "temporal_scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["snapshot_id", "timezone", "valid_from", "valid_to", "generated_at"],
+          "properties": {
+            "snapshot_id": {"type": "string"},
+            "timezone": {"type": "string"},
+            "valid_from": {"type": "string", "format": "date-time"},
+            "valid_to": {"type": "string", "format": "date-time"},
+            "generated_at": {"type": "string", "format": "date-time"}
+          }
+        },
+        "production_plan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["plan_id", "plan_date", "planned_units", "product_mix"],
+          "properties": {
+            "plan_id": {"type": "string"},
+            "plan_date": {"type": "string", "format": "date"},
+            "planned_units": {"type": "integer", "minimum": 0},
+            "product_mix": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["variant", "share", "planned_units"],
+                "properties": {
+                  "variant": {"type": "string"},
+                  "share": {"type": "number", "minimum": 0, "maximum": 1},
+                  "planned_units": {"type": "integer", "minimum": 0}
+                }
+              }
+            }
+          }
+        },
+        "capacity_model": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["active_asset_count", "planned_operating_hours", "oee", "standard_cycle_minutes_per_unit", "asset_units_per_hour", "daily_capacity_units", "basis"],
+          "properties": {
+            "active_asset_count": {"type": "integer", "minimum": 1},
+            "planned_operating_hours": {"type": "number", "minimum": 0},
+            "oee": {"type": "number", "minimum": 0, "maximum": 1},
+            "standard_cycle_minutes_per_unit": {"type": "number", "exclusiveMinimum": 0},
+            "asset_units_per_hour": {"type": "number", "minimum": 0},
+            "daily_capacity_units": {"type": "integer", "minimum": 0},
+            "basis": {"type": "string"}
+          }
+        },
+        "event_impact": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["event_id", "equipment_id", "line", "product_variant", "screen_priority", "impact_status", "estimated_lost_units", "basis"],
+          "properties": {
+            "event_id": {"type": "string"},
+            "equipment_id": {"type": "string"},
+            "line": {"type": "string"},
+            "product_variant": {"type": "string"},
+            "screen_priority": {"enum": ["none", "monitor", "shift_inspection", "plan_at_risk", "data_check_required"]},
+            "impact_status": {"enum": ["not_applicable", "estimated", "withheld_data_quality_hold"]},
+            "estimated_lost_units": {"type": ["integer", "null"], "minimum": 0},
+            "basis": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["estimated_downtime_minutes", "asset_units_per_hour", "formula"],
+              "properties": {
+                "estimated_downtime_minutes": {"type": "integer", "minimum": 0},
+                "asset_units_per_hour": {"type": "number", "minimum": 0},
+                "formula": {"type": "string"}
+              }
+            }
+          }
+        },
+        "limitations": {"type": "array", "items": {"type": "string"}}
+      },
+      "anyOf": [
+        {"required": ["load_level", "runtime_hours_7d", "production_impact"]},
+        {"required": ["context_id", "source_type", "temporal_scope", "production_plan", "capacity_model", "event_impact", "limitations"]}
+      ],
+      "allOf": [
+        {
+          "if": {"required": ["source_type"]},
+          "then": {"required": ["context_id", "source_type", "temporal_scope", "production_plan", "capacity_model", "event_impact", "limitations"]}
+        }
+      ]
+    },
+    "closedLoopSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "work_orders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["work_order_id", "work_type", "status"],
+            "properties": {
+              "work_order_id": {"type": "string"},
+              "work_type": {"enum": ["inspection", "maintenance"]},
+              "status": {"enum": ["requested", "approved", "in_progress", "completed", "blocked", "failed", "cancelled"]},
+              "assigned_to": {"type": ["string", "null"]},
+              "actor_display_name": {"type": ["string", "null"]},
+              "created_at": {"type": ["string", "null"], "format": "date-time"},
+              "updated_at": {"type": ["string", "null"], "format": "date-time"}
+            }
+          }
+        },
+        "maintenance_actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["maintenance_action_id", "status"],
+            "properties": {
+              "maintenance_action_id": {"type": "string"},
+              "work_order_id": {"type": ["string", "null"]},
+              "status": {"enum": ["planned", "in_progress", "completed", "failed", "cancelled"]},
+              "actor_display_name": {"type": ["string", "null"]},
+              "started_at": {"type": ["string", "null"], "format": "date-time"},
+              "completed_at": {"type": ["string", "null"], "format": "date-time"}
+            }
+          }
+        },
+        "inspection_results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "maintenance_events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["maintenance_event_id"],
+            "properties": {
+              "maintenance_event_id": {"type": "string"},
+              "maintenance_action_id": {"type": ["string", "null"]},
+              "work_order_id": {"type": ["string", "null"]},
+              "completed_at": {"type": ["string", "null"], "format": "date-time"},
+              "actor_display_name": {"type": ["string", "null"]}
+            }
+          }
+        },
+        "activities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["activity_id", "activity_type"],
+            "properties": {
+              "activity_id": {"type": "string"},
+              "activity_type": {"type": "string"},
+              "work_type": {"type": ["string", "null"], "enum": ["inspection", "maintenance", null]},
+              "actor_display_name": {"type": ["string", "null"]},
+              "before_status": {"type": ["string", "null"]},
+              "after_status": {"type": ["string", "null"]},
+              "created_at": {"type": ["string", "null"], "format": "date-time"},
+              "work_order_id": {"type": ["string", "null"]},
+              "maintenance_action_id": {"type": ["string", "null"]},
+              "maintenance_event_id": {"type": ["string", "null"]}
+            }
+          }
+        },
+        "available_actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["action_id", "target_type"],
+            "properties": {
+              "action_id": {"type": "string"},
+              "target_type": {"enum": ["recommendation", "work_order", "maintenance_action", "inspection_result", "event"]},
+              "target_id": {"type": ["string", "null"]},
+              "label": {"type": "string"},
+              "disabled_reason": {"type": ["string", "null"]}
+            }
+          }
+        },
+        "lifecycle_summary": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["current_step", "current_step_label", "completed_steps", "source"],
+          "properties": {
+            "current_step": {
+              "enum": [
+                "prediction",
+                "evidence",
+                "decision",
+                "inspection_requested",
+                "inspection_approved",
+                "inspection_in_progress",
+                "inspection_completed",
+                "recommendation_proposed",
+                "maintenance_requested",
+                "maintenance_approved",
+                "maintenance_in_progress",
+                "maintenance_completed",
+                "post_maintenance_observation_pending",
+                "ready_for_reprediction"
+              ]
+            },
+            "current_step_label": {"type": "string"},
+            "completed_steps": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "prediction",
+                  "evidence",
+                  "decision",
+                  "inspection_requested",
+                  "inspection_approved",
+                  "inspection_in_progress",
+                  "inspection_completed",
+                  "recommendation_proposed",
+                  "maintenance_requested",
+                  "maintenance_approved",
+                  "maintenance_in_progress",
+                  "maintenance_completed",
+                  "post_maintenance_observation_pending",
+                  "ready_for_reprediction"
+                ]
+              }
+            },
+            "next_step": {
+              "type": ["string", "null"],
+              "enum": [
+                "prediction",
+                "evidence",
+                "decision",
+                "inspection_requested",
+                "inspection_approved",
+                "inspection_in_progress",
+                "inspection_completed",
+                "recommendation_proposed",
+                "maintenance_requested",
+                "maintenance_approved",
+                "maintenance_in_progress",
+                "maintenance_completed",
+                "post_maintenance_observation_pending",
+                "ready_for_reprediction",
+                null
+              ]
+            },
+            "source": {"const": "backend_closed_loop_policy"}
+          }
+        },
+        "primary_action": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["action_id", "target_type", "label", "owner_role", "owner_label", "requires_input"],
+          "properties": {
+            "action_id": {"type": "string"},
+            "target_type": {"enum": ["recommendation", "work_order", "maintenance_action", "inspection_result", "event"]},
+            "target_id": {"type": ["string", "null"]},
+            "label": {"type": "string"},
+            "owner_role": {"enum": ["process_manager", "process_engineer", "maintenance_technician", "unassigned"]},
+            "owner_label": {"type": "string"},
+            "disabled_reason": {"type": ["string", "null"]},
+            "requires_input": {"type": "boolean"}
+          }
+        },
+        "timeline": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["timeline_id", "event_type", "label", "status"],
+            "properties": {
+              "timeline_id": {"type": "string"},
+              "event_type": {"type": "string"},
+              "label": {"type": "string"},
+              "status": {"enum": ["completed", "pending", "blocked", "failed"]},
+              "actor_display_name": {"type": ["string", "null"]},
+              "occurred_at": {"type": ["string", "null"], "format": "date-time"},
+              "target_type": {"type": ["string", "null"]},
+              "target_id": {"type": ["string", "null"]}
+            }
+          }
+        },
+        "runtime_status": {"type": ["string", "null"], "enum": ["equipment_under_maintenance", "warming_up", "history_insufficient", "ready", "predicted", null]}
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ontology-dashboard.local/schemas/generator-extraction-publication.schema.json",
+  "publication_schema_version": "generator-extraction-publication-v1",
+  "source_identity": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+  "dataset_id": "gen-data-S01-L01",
+  "dataset_version": "window-20260828T130000Z-map-a1b2c3d4",
+  "window_start": "2026-08-28T13:00:00Z",
+  "window_end": "2026-08-28T14:00:00Z",
+  "manifest_uri": "data/observations/gen-data-S01-L01/window-20260828T130000Z-map-a1b2c3d4/dataset_manifest.json",
+  "manifest_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "source_fragment_refs": [
+    {
+      "batch_id": "a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0",
+      "fragment_manifest_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "published",
+  "published_at": "2026-08-28T14:00:05Z"
+}

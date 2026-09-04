@@ -1,0 +1,186 @@
+{
+  "schema_version": "operation-context-v1.0",
+  "context_id": "production-planning-context-v1",
+  "source_type": "capacity_model",
+  "scope": {
+    "project_id": "manufacturing-demo-project",
+    "dataset_version": "canonical-ai4i-physics-v3.1",
+    "fixture_family": "GS"
+  },
+  "temporal_scope": {
+    "snapshot_id": "OPS-SNAPSHOT-2026-08-01-A-B",
+    "timezone": "Asia/Seoul",
+    "valid_from": "2026-08-01T00:00:00+09:00",
+    "valid_to": "2026-08-02T00:00:00+09:00",
+    "generated_at": "2026-08-01T00:00:00+09:00"
+  },
+  "product_context": {
+    "source_type": "synthetic_demo_context",
+    "product_family": "정밀 가공 부품",
+    "variant_basis": "AI4I Product Type L/M/H only; no real SKU name is provided.",
+    "line_display_names": [
+      {"line_pattern": "가공|절삭|CNC", "display_product_family": "정밀 가공 부품"},
+      {"line_pattern": "프레스", "display_product_family": "금속 성형 부품"},
+      {"line_pattern": "성형", "display_product_family": "성형 부품"},
+      {"line_pattern": "조립", "display_product_family": "조립 부품"},
+      {"line_pattern": "검사", "display_product_family": "검사 대상 부품"}
+    ]
+  },
+  "capacity_model": {
+    "asset_count_basis": {
+      "source_ref": "experiments/preventive_intervention/policies/risk-rise-detection-v1.json#/distribution_basis/cnc_asset_count",
+      "active_asset_count": 80
+    },
+    "planning_window": {
+      "plan_date": "2026-08-01",
+      "shift_count": 2,
+      "hours_per_shift": 8,
+      "planned_operating_hours": 16
+    },
+    "oee_basis": {
+      "source_ref": "https://www.oee.com/world-class-oee/",
+      "availability": 0.9,
+      "performance": 0.95,
+      "quality": 0.99,
+      "oee": 0.846
+    },
+    "cycle_time_basis": {
+      "source_type": "explicit_demo_assumption",
+      "standard_cycle_minutes_per_unit": 4.0,
+      "note": "AI4I has sensor and tool-wear signals, not real production takt time."
+    },
+    "asset_units_per_hour": 12.69,
+    "daily_capacity_units": 16200
+  },
+  "production_plan": {
+    "plan_id": "PLAN-2026-08-01-GS-DEMO",
+    "plan_date": "2026-08-01",
+    "planned_units": 16200,
+    "product_mix": [
+      {"variant": "L", "share": 0.5, "planned_units": 8100},
+      {"variant": "M", "share": 0.3, "planned_units": 4860},
+      {"variant": "H", "share": 0.2, "planned_units": 3240}
+    ]
+  },
+  "event_impacts": [
+    {
+      "event_id": "EVT-GS-001",
+      "equipment_id": "CNC-S01-L01-01",
+      "line": "S01-L01",
+      "product_variant": "M",
+      "screen_priority": "none",
+      "impact_status": "not_applicable",
+      "estimated_lost_units": 0,
+      "basis": {
+        "estimated_downtime_minutes": 45,
+        "asset_units_per_hour": 12.69,
+        "formula": "normal status; no production-loss estimate is surfaced"
+      }
+    },
+    {
+      "event_id": "EVT-GS-002",
+      "equipment_id": "CNC-S04-L04-01",
+      "line": "S04-L04",
+      "product_variant": "M",
+      "screen_priority": "shift_inspection",
+      "impact_status": "estimated",
+      "estimated_lost_units": 25,
+      "basis": {
+        "estimated_downtime_minutes": 120,
+        "asset_units_per_hour": 12.69,
+        "formula": "120 / 60 * 12.69"
+      }
+    },
+    {
+      "event_id": "EVT-GS-003",
+      "equipment_id": "CNC-S01-L04-03",
+      "line": "S01-L04",
+      "product_variant": "H",
+      "screen_priority": "shift_inspection",
+      "impact_status": "estimated",
+      "estimated_lost_units": 32,
+      "basis": {
+        "estimated_downtime_minutes": 150,
+        "asset_units_per_hour": 12.69,
+        "formula": "150 / 60 * 12.69"
+      }
+    },
+    {
+      "event_id": "EVT-GS-004",
+      "equipment_id": "CNC-S04-L02-03",
+      "line": "S04-L02",
+      "product_variant": "L",
+      "screen_priority": "plan_at_risk",
+      "impact_status": "estimated",
+      "estimated_lost_units": 51,
+      "basis": {
+        "estimated_downtime_minutes": 240,
+        "asset_units_per_hour": 12.69,
+        "formula": "240 / 60 * 12.69"
+      }
+    },
+    {
+      "event_id": "EVT-GS-005",
+      "equipment_id": "CNC-S03-L01-03",
+      "line": "S03-L01",
+      "product_variant": "M",
+      "screen_priority": "shift_inspection",
+      "impact_status": "estimated",
+      "estimated_lost_units": 21,
+      "basis": {
+        "estimated_downtime_minutes": 100,
+        "asset_units_per_hour": 12.69,
+        "formula": "100 / 60 * 12.69"
+      }
+    },
+    {
+      "event_id": "EVT-GS-006",
+      "equipment_id": "CNC-S02-L02-02",
+      "line": "S02-L02",
+      "product_variant": "M",
+      "screen_priority": "monitor",
+      "impact_status": "estimated",
+      "estimated_lost_units": 13,
+      "basis": {
+        "estimated_downtime_minutes": 60,
+        "asset_units_per_hour": 12.69,
+        "formula": "60 / 60 * 12.69"
+      }
+    },
+    {
+      "event_id": "EVT-GS-007",
+      "equipment_id": "CNC-S04-L05-01",
+      "line": "S04-L05",
+      "product_variant": "M",
+      "screen_priority": "data_check_required",
+      "impact_status": "withheld_data_quality_hold",
+      "estimated_lost_units": null,
+      "basis": {
+        "estimated_downtime_minutes": 40,
+        "asset_units_per_hour": 12.69,
+        "formula": "withheld until the data-quality hold is resolved"
+      }
+    },
+    {
+      "event_id": "EVT-GS-008",
+      "equipment_id": "CNC-S04-L04-02",
+      "line": "S04-L04",
+      "product_variant": "M",
+      "screen_priority": "shift_inspection",
+      "impact_status": "estimated",
+      "estimated_lost_units": 25,
+      "basis": {
+        "estimated_downtime_minutes": 120,
+        "asset_units_per_hour": 12.69,
+        "formula": "120 / 60 * 12.69"
+      }
+    }
+  ],
+  "limitations": [
+    "This context is not a MES, ERP, APS, or customer-order record.",
+    "The calculated plan must not change failure_probability, status_grade, top_factors, or recommended_action.",
+    "AI4I provides Product Type L/M/H but no real SKU or product name.",
+    "Data-quality-hold events surface production impact as unavailable until the sensor issue is resolved.",
+    "Estimated lost units are planning impact estimates, not confirmed downtime or realized production loss."
+  ]
+}

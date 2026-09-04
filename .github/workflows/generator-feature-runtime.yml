@@ -1,0 +1,58 @@
+name: generator-feature-runtime
+
+on:
+  pull_request:
+    paths:
+      - "contracts/examples/generator-feature-input/**"
+      - "contracts/schemas/generator-dataset-input-manifest.schema.json"
+      - "contracts/test-vectors/generator-feature-input-v1/**"
+      - "systems/generator/**"
+      - "tests/test_generator_feature_api.py"
+      - "tests/test_generator_feature_contract_vectors.py"
+      - ".github/workflows/generator-feature-runtime.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: generator-feature-runtime-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generator-feature-runtime:
+    name: generator-feature-runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout tested revision
+        uses: actions/checkout@v4
+
+      - name: Build Generator runtime image
+        run: docker build --file systems/generator/Dockerfile --tag ontology-generator:feature-check .
+
+      - name: Verify contract schema inside runtime image
+        run: >-
+          docker run --rm
+          --entrypoint python
+          --env DATA_DIR=/data/source
+          --env DATA_PREPROCESSED_DIR=/data/preprocessed
+          --env ONTOLOGY_DIR=/data/ontology
+          --env MODELS_STORE_DIR=/data/models
+          --env MODEL_ARTIFACT_URI=/artifacts
+          ontology-generator:feature-check
+          -c "from pathlib import Path; from systems.generator.app.feature.feature_input_resolver import FeatureInputResolver; path = Path('/app/contracts/schemas/generator-dataset-input-manifest.schema.json'); assert path.is_file(), path; schema = FeatureInputResolver()._get_manifest_schema(); assert schema['title'] == 'Generator Dataset Input Manifest v1'"
+
+      - name: Run Feature API and contract-vector tests inside image
+        run: >-
+          docker run --rm
+          --user 0:0
+          --entrypoint sh
+          --env DATA_DIR=/data/source
+          --env DATA_PREPROCESSED_DIR=/data/preprocessed
+          --env ONTOLOGY_DIR=/data/ontology
+          --env MODELS_STORE_DIR=/data/models
+          --env MODEL_ARTIFACT_URI=/artifacts
+          --volume "${{ github.workspace }}/tests:/app/tests:ro"
+          --volume "${{ github.workspace }}/contracts/examples/generator-feature-input:/app/contracts/examples/generator-feature-input:ro"
+          --volume "${{ github.workspace }}/contracts/test-vectors/generator-feature-input-v1:/app/contracts/test-vectors/generator-feature-input-v1:ro"
+          ontology-generator:feature-check
+          -c "python -m pip install --no-cache-dir pytest && python -m pytest -q tests/test_generator_feature_api.py tests/test_generator_feature_contract_vectors.py"

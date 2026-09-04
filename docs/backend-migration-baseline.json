@@ -1,0 +1,1303 @@
+{
+  "schema_version": "backend-migration-ratchet-v1",
+  "mode": "ratchet",
+  "legacy_root": "systems/backend/ontology_dashboard",
+  "legacy_sources": [
+    "__init__.py",
+    "adapters/__init__.py",
+    "adapters/azure_fleet.py",
+    "adapters/bundle_file_adapter.py",
+    "adapters/bundle_models.py",
+    "adapters/file_adapter.py",
+    "adapters/governed_tabular.py",
+    "adapters/metropt.py",
+    "adapters/models.py",
+    "adapters/postgresql_bundle_ingestion.py",
+    "adapters/predictive_maintenance_v2.py",
+    "adapters/protocol.py",
+    "adapters/registry.py",
+    "adapters/repository.py",
+    "adapters/service.py",
+    "analysis_models.py",
+    "analysis_repository.py",
+    "analysis_service.py",
+    "app.py",
+    "application.py",
+    "application_runtime.py",
+    "artifact_storage.py",
+    "automation_runtime.py",
+    "bootstrap.py",
+    "branching_lineage.py",
+    "connectors.py",
+    "context.py",
+    "contracts.py",
+    "conversation.py",
+    "datasets/__init__.py",
+    "datasets/materialization.py",
+    "datasets/models.py",
+    "datasets/projection.py",
+    "datasets/repository.py",
+    "datasets/service.py",
+    "datasets/source.py",
+    "demo_predictive_maintenance_bootstrap.py",
+    "dependencies.py",
+    "deployment.py",
+    "distributed_handlers.py",
+    "distributed_runtime.py",
+    "domain_packs/__init__.py",
+    "domain_packs/models.py",
+    "domain_packs/predictive_maintenance/__init__.py",
+    "domain_packs/predictive_maintenance/materialization.py",
+    "domain_packs/registry.py",
+    "identity.py",
+    "integrations/__init__.py",
+    "integrations/project3/__init__.py",
+    "integrations/project3/projection.py",
+    "main.py",
+    "migrations.py",
+    "mlops_runtime.py",
+    "modeling/__init__.py",
+    "modeling/artifacts.py",
+    "modeling/experiments.py",
+    "modeling/features.py",
+    "modeling/intake.py",
+    "modeling/mapping.py",
+    "modeling/models.py",
+    "modeling/registry.py",
+    "modeling/repository.py",
+    "modeling/schema.py",
+    "modeling/service.py",
+    "ontology.py",
+    "ontology_adapter.py",
+    "ontology_instance_repository.py",
+    "ontology_planner_models.py",
+    "ontology_planner_service.py",
+    "ontology_primitives.py",
+    "ontology_repository.py",
+    "ontology_service.py",
+    "openapi_contracts.py",
+    "orchestration/__init__.py",
+    "orchestration/models.py",
+    "orchestration/orchestrator.py",
+    "orchestration/ports.py",
+    "orchestration/repository.py",
+    "outbox.py",
+    "persistence_readiness.py",
+    "pipeline_runtime.py",
+    "planner/__init__.py",
+    "planner/layout.py",
+    "planner/models.py",
+    "planner/service.py",
+    "polyglot/__init__.py",
+    "polyglot/health.py",
+    "polyglot/settings.py",
+    "postgresql_compat.py",
+    "postgresql_ontology_repository.py",
+    "postgresql_repositories.py",
+    "predictive_maintenance_runtime/__init__.py",
+    "project_context.py",
+    "projects/__init__.py",
+    "projects/models.py",
+    "projects/repository.py",
+    "projects/service.py",
+    "repository.py",
+    "role_workflow_models.py",
+    "role_workflow_repository.py",
+    "role_workflow_service.py",
+    "routers/__init__.py",
+    "routers/adapters.py",
+    "routers/admin.py",
+    "routers/agent.py",
+    "routers/analyses.py",
+    "routers/datasets.py",
+    "routers/manufacturing.py",
+    "routers/modeling.py",
+    "routers/ontology.py",
+    "routers/planner.py",
+    "routers/platform.py",
+    "routers/predictive_maintenance_runtime.py",
+    "routers/project3.py",
+    "routers/projects.py",
+    "routers/role_workspaces.py",
+    "routers/system.py",
+    "service.py",
+    "worker.py"
+  ],
+  "transitional_references": [
+    {
+      "source": "infra/docker-compose.yml",
+      "kind": "runtime_entrypoint",
+      "target": "ontology_dashboard.bootstrap"
+    },
+    {
+      "source": "infra/production/platform.yaml",
+      "kind": "runtime_entrypoint",
+      "target": "ontology_dashboard.bootstrap"
+    },
+    {
+      "source": "infra/production/platform.yaml",
+      "kind": "runtime_entrypoint",
+      "target": "ontology_dashboard.worker"
+    },
+    {
+      "source": "scripts/check_postgresql_runtime.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.adapters.models"
+    },
+    {
+      "source": "scripts/check_postgresql_runtime.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.outbox"
+    },
+    {
+      "source": "scripts/check_postgresql_runtime.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.postgresql_repositories"
+    },
+    {
+      "source": "scripts/check_postgresql_runtime.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.projects"
+    },
+    {
+      "source": "scripts/evaluate_gold.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.contracts"
+    },
+    {
+      "source": "scripts/evaluate_gold.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "scripts/generate_adaptive_modeling_schema.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.schema"
+    },
+    {
+      "source": "scripts/ingest_dataset.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.adapters.file_adapter"
+    },
+    {
+      "source": "scripts/ingest_dataset.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.adapters.models"
+    },
+    {
+      "source": "scripts/ingest_dataset.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "scripts/ingest_predictive_maintenance_bundle.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.adapters"
+    },
+    {
+      "source": "scripts/ingest_predictive_maintenance_bundle.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "scripts/materialize_predictive_maintenance_ontology.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.domain_packs.predictive_maintenance"
+    },
+    {
+      "source": "scripts/migrate_database.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "scripts/project_predictive_maintenance_graph.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.integrations.project3"
+    },
+    {
+      "source": "scripts/project_predictive_maintenance_graph.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.outbox"
+    },
+    {
+      "source": "scripts/release_gate.py",
+      "kind": "runtime_entrypoint",
+      "target": "ontology_dashboard.app:app"
+    },
+    {
+      "source": "scripts/restart_local_services.sh",
+      "kind": "runtime_entrypoint",
+      "target": "ontology_dashboard.app:app"
+    },
+    {
+      "source": "scripts/run_durable_worker.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.distributed_handlers"
+    },
+    {
+      "source": "scripts/run_durable_worker.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.distributed_runtime"
+    },
+    {
+      "source": "scripts/run_durable_worker.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "scripts/run_local.sh",
+      "kind": "runtime_entrypoint",
+      "target": "ontology_dashboard.app:app"
+    },
+    {
+      "source": "scripts/run_modeling_experiment_worker.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "scripts/run_modeling_experiment_worker.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling"
+    },
+    {
+      "source": "scripts/run_outbox_worker.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "scripts/run_outbox_worker.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.outbox"
+    },
+    {
+      "source": "scripts/run_public_api.sh",
+      "kind": "runtime_entrypoint",
+      "target": "ontology_dashboard.app:app"
+    },
+    {
+      "source": "scripts/seed_demo_dataset_catalog.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.datasets.models"
+    },
+    {
+      "source": "scripts/seed_demo_dataset_catalog.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.datasets.repository"
+    },
+    {
+      "source": "scripts/seed_demo_dataset_catalog.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "scripts/seed_demo_dataset_catalog.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.postgresql_repositories"
+    },
+    {
+      "source": "scripts/seed_demo_dataset_catalog.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "scripts/verify_adaptive_modeling_release.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.schema"
+    },
+    {
+      "source": "scripts/verify_deployment_foundation.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.deployment"
+    },
+    {
+      "source": "scripts/verify_predictive_maintenance_ingestion.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.adapters"
+    },
+    {
+      "source": "scripts/verify_tenant_isolation.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.persistence_readiness"
+    },
+    {
+      "source": "systems/backend/Dockerfile",
+      "kind": "runtime_entrypoint",
+      "target": "ontology_dashboard.app:app"
+    },
+    {
+      "source": "systems/backend/app/main.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.app"
+    },
+    {
+      "source": "systems/backend/render_start.sh",
+      "kind": "runtime_entrypoint",
+      "target": "ontology_dashboard.app:app"
+    },
+    {
+      "source": "systems/backend/render_start.sh",
+      "kind": "runtime_entrypoint",
+      "target": "ontology_dashboard.bootstrap"
+    },
+    {
+      "source": "systems/backend/render_start.sh",
+      "kind": "runtime_entrypoint",
+      "target": "ontology_dashboard.demo_predictive_maintenance_bootstrap"
+    },
+    {
+      "source": "systems/generator/feature/workbench.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.models"
+    },
+    {
+      "source": "systems/generator/model/experiments.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.models"
+    },
+    {
+      "source": "systems/generator/ontology_mapping/workbench.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.models"
+    },
+    {
+      "source": "systems/generator/ontology_mapping/workbench.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.ontology"
+    },
+    {
+      "source": "tests/test_adapter_api.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.adapters.service"
+    },
+    {
+      "source": "tests/test_adapter_api.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.dependencies"
+    },
+    {
+      "source": "tests/test_adapter_api.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_adapter_api.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.projects"
+    },
+    {
+      "source": "tests/test_adapter_api.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_adapter_layer.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.adapters.file_adapter"
+    },
+    {
+      "source": "tests/test_adapter_layer.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.adapters.models"
+    },
+    {
+      "source": "tests/test_adapter_layer.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_adaptive_modeling_contracts.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_adaptive_modeling_contracts.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.artifacts"
+    },
+    {
+      "source": "tests/test_adaptive_modeling_contracts.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.models"
+    },
+    {
+      "source": "tests/test_adaptive_modeling_contracts.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.repository"
+    },
+    {
+      "source": "tests/test_adaptive_modeling_contracts.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.schema"
+    },
+    {
+      "source": "tests/test_adaptive_modeling_contracts.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.service"
+    },
+    {
+      "source": "tests/test_adaptive_modeling_e2e.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.adapters.service"
+    },
+    {
+      "source": "tests/test_adaptive_modeling_e2e.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_adaptive_modeling_e2e.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.models"
+    },
+    {
+      "source": "tests/test_adaptive_modeling_e2e.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.service"
+    },
+    {
+      "source": "tests/test_analysis_path.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.analysis_models"
+    },
+    {
+      "source": "tests/test_analysis_path.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.analysis_service"
+    },
+    {
+      "source": "tests/test_analysis_path.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.distributed_handlers"
+    },
+    {
+      "source": "tests/test_analysis_path.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.distributed_runtime"
+    },
+    {
+      "source": "tests/test_analysis_path.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_analysis_path.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_application_runtime_phase29.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.application_runtime"
+    },
+    {
+      "source": "tests/test_application_runtime_phase29.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_architecture_debt_stage44.py",
+      "kind": "dynamic_import",
+      "target": "ontology_dashboard.*"
+    },
+    {
+      "source": "tests/test_architecture_debt_stage44.py",
+      "kind": "dynamic_import",
+      "target": "ontology_dashboard.analysis_repository"
+    },
+    {
+      "source": "tests/test_architecture_debt_stage44.py",
+      "kind": "dynamic_import",
+      "target": "ontology_dashboard.analysis_service"
+    },
+    {
+      "source": "tests/test_architecture_debt_stage44.py",
+      "kind": "dynamic_import",
+      "target": "ontology_dashboard.ontology"
+    },
+    {
+      "source": "tests/test_architecture_debt_stage44.py",
+      "kind": "dynamic_import",
+      "target": "ontology_dashboard.ontology_adapter"
+    },
+    {
+      "source": "tests/test_architecture_debt_stage44.py",
+      "kind": "dynamic_import",
+      "target": "ontology_dashboard.ontology_repository"
+    },
+    {
+      "source": "tests/test_architecture_debt_stage44.py",
+      "kind": "dynamic_import",
+      "target": "ontology_dashboard.ontology_service"
+    },
+    {
+      "source": "tests/test_architecture_debt_stage44.py",
+      "kind": "dynamic_import",
+      "target": "ontology_dashboard.postgresql_repositories"
+    },
+    {
+      "source": "tests/test_architecture_debt_stage44.py",
+      "kind": "dynamic_import",
+      "target": "ontology_dashboard.role_workflow_repository"
+    },
+    {
+      "source": "tests/test_architecture_debt_stage44.py",
+      "kind": "dynamic_import",
+      "target": "ontology_dashboard.role_workflow_service"
+    },
+    {
+      "source": "tests/test_architecture_debt_stage44.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard"
+    },
+    {
+      "source": "tests/test_artifact_storage_phase24.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.artifact_storage"
+    },
+    {
+      "source": "tests/test_artifact_storage_phase24.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_artifact_storage_phase24.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.projects"
+    },
+    {
+      "source": "tests/test_auth_rbac.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_auth_rbac.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_automation_runtime_phase32.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.automation_runtime"
+    },
+    {
+      "source": "tests/test_branching_lineage_phase28.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.branching_lineage"
+    },
+    {
+      "source": "tests/test_branching_lineage_phase28.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_closed_loop_domain_contract.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.contracts"
+    },
+    {
+      "source": "tests/test_closed_loop_persistence.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.project_context"
+    },
+    {
+      "source": "tests/test_connectors_phase26.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.connectors"
+    },
+    {
+      "source": "tests/test_connectors_phase26.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.distributed_runtime"
+    },
+    {
+      "source": "tests/test_connectors_phase26.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_connectors_phase26.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.projects"
+    },
+    {
+      "source": "tests/test_dashboard_stages20_24.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_dashboard_stages20_24.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_dataset_catalog_contract_models.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.datasets.models"
+    },
+    {
+      "source": "tests/test_dataset_intake.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_dataset_intake.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.intake"
+    },
+    {
+      "source": "tests/test_dataset_intake.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.models"
+    },
+    {
+      "source": "tests/test_dataset_intake.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.repository"
+    },
+    {
+      "source": "tests/test_dataset_intake.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.service"
+    },
+    {
+      "source": "tests/test_dataset_projection_stage47.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.datasets"
+    },
+    {
+      "source": "tests/test_dataset_projection_stage47.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.datasets.projection"
+    },
+    {
+      "source": "tests/test_dataset_projection_stage47.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.dependencies"
+    },
+    {
+      "source": "tests/test_dataset_projection_stage47.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_dataset_projection_stage47.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_dataset_projection_stage47.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_demo_dataset_bootstrap.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.datasets.repository"
+    },
+    {
+      "source": "tests/test_demo_predictive_maintenance_bootstrap.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.adapters"
+    },
+    {
+      "source": "tests/test_demo_predictive_maintenance_bootstrap.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.demo_predictive_maintenance_bootstrap"
+    },
+    {
+      "source": "tests/test_deployment_foundation_phase22.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.application"
+    },
+    {
+      "source": "tests/test_deployment_foundation_phase22.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.deployment"
+    },
+    {
+      "source": "tests/test_deployment_foundation_phase22.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.routers.platform"
+    },
+    {
+      "source": "tests/test_deployment_foundation_phase22.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.routers.system"
+    },
+    {
+      "source": "tests/test_distributed_runtime_phase23.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.distributed_runtime"
+    },
+    {
+      "source": "tests/test_distributed_runtime_phase23.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_distributed_runtime_phase23.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.projects"
+    },
+    {
+      "source": "tests/test_domain_pack_platform_phase19.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.dependencies"
+    },
+    {
+      "source": "tests/test_domain_pack_platform_phase19.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.domain_packs"
+    },
+    {
+      "source": "tests/test_domain_pack_platform_phase19.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_domain_pack_platform_phase19.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.projects"
+    },
+    {
+      "source": "tests/test_domain_pack_platform_phase19.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_export_security_stage31.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_export_security_stage31.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_feature_recipe_registry.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_feature_recipe_registry.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.artifacts"
+    },
+    {
+      "source": "tests/test_feature_recipe_registry.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.features"
+    },
+    {
+      "source": "tests/test_feature_recipe_registry.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.intake"
+    },
+    {
+      "source": "tests/test_feature_recipe_registry.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.models"
+    },
+    {
+      "source": "tests/test_feature_recipe_registry.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.repository"
+    },
+    {
+      "source": "tests/test_feature_recipe_registry.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.service"
+    },
+    {
+      "source": "tests/test_governance_workbench_stage51.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.datasets"
+    },
+    {
+      "source": "tests/test_governance_workbench_stage51.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.dependencies"
+    },
+    {
+      "source": "tests/test_governance_workbench_stage51.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_governance_workbench_stage51.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_governance_workbench_stage51.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.role_workflow_service"
+    },
+    {
+      "source": "tests/test_governance_workbench_stage51.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_mlops_runtime_phase31.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.mlops_runtime"
+    },
+    {
+      "source": "tests/test_model_registry_and_explanations.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_model_registry_and_explanations.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.artifacts"
+    },
+    {
+      "source": "tests/test_model_registry_and_explanations.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.experiments"
+    },
+    {
+      "source": "tests/test_model_registry_and_explanations.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.models"
+    },
+    {
+      "source": "tests/test_model_registry_and_explanations.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.repository"
+    },
+    {
+      "source": "tests/test_model_registry_and_explanations.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.service"
+    },
+    {
+      "source": "tests/test_modeling_experiment_runner.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_modeling_experiment_runner.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.artifacts"
+    },
+    {
+      "source": "tests/test_modeling_experiment_runner.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.experiments"
+    },
+    {
+      "source": "tests/test_modeling_experiment_runner.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.models"
+    },
+    {
+      "source": "tests/test_modeling_experiment_runner.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.repository"
+    },
+    {
+      "source": "tests/test_modeling_experiment_runner.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.service"
+    },
+    {
+      "source": "tests/test_multistore_orchestrator_stage49.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.dependencies"
+    },
+    {
+      "source": "tests/test_multistore_orchestrator_stage49.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_multistore_orchestrator_stage49.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_multistore_orchestrator_stage49.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.orchestration"
+    },
+    {
+      "source": "tests/test_multistore_orchestrator_stage49.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_operations.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.context"
+    },
+    {
+      "source": "tests/test_operations.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.contracts"
+    },
+    {
+      "source": "tests/test_operations.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_operations.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.planner"
+    },
+    {
+      "source": "tests/test_operations.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_observability_phase25.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.routers.system"
+    },
+    {
+      "source": "tests/test_ontology_mapping_workflow.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_ontology_mapping_workflow.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.intake"
+    },
+    {
+      "source": "tests/test_ontology_mapping_workflow.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.mapping"
+    },
+    {
+      "source": "tests/test_ontology_mapping_workflow.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.models"
+    },
+    {
+      "source": "tests/test_ontology_mapping_workflow.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.repository"
+    },
+    {
+      "source": "tests/test_ontology_mapping_workflow.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.service"
+    },
+    {
+      "source": "tests/test_ontology_planner_stage30.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_ontology_planner_stage30.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.planner"
+    },
+    {
+      "source": "tests/test_ontology_planner_stage30.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_ontology_primitives_phase27.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_ontology_primitives_phase27.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.ontology_primitives"
+    },
+    {
+      "source": "tests/test_ontology_stage19.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_ontology_stage19.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_openapi_response_contracts.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_outbox_worker.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_outbox_worker.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.outbox"
+    },
+    {
+      "source": "tests/test_outbox_worker.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.role_workflow_repository"
+    },
+    {
+      "source": "tests/test_persistence_foundation.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_persistence_foundation.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.ontology_instance_repository"
+    },
+    {
+      "source": "tests/test_persistence_foundation.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.ontology_service"
+    },
+    {
+      "source": "tests/test_persistence_foundation.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.role_workflow_repository"
+    },
+    {
+      "source": "tests/test_persistence_foundation.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_pipeline_runtime_phase30.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.pipeline_runtime"
+    },
+    {
+      "source": "tests/test_polyglot_infra_stage46.py",
+      "kind": "runtime_entrypoint",
+      "target": "ontology_dashboard.bootstrap"
+    },
+    {
+      "source": "tests/test_polyglot_infra_stage46.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.polyglot"
+    },
+    {
+      "source": "tests/test_polyglot_infra_stage46.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.polyglot.settings"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_bundle_adapter.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.adapters"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_bundle_contract.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.adapters.bundle_models"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_graph_projection.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.adapters"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_graph_projection.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.domain_packs.predictive_maintenance"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_graph_projection.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.integrations.project3"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_graph_projection.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.outbox"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_postgresql.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.adapters"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_postgresql.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_postgresql.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.models"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_postgresql.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.modeling.repository"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_projection.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.adapters"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_projection.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.domain_packs.predictive_maintenance"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_projection.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.postgresql_ontology_repository"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_result_replay.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.adapters"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_result_replay.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.dependencies"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_result_replay.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_result_replay.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.predictive_maintenance_runtime"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_result_replay.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.routers.predictive_maintenance_runtime"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_runtime_capability.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_v3_compatibility.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.adapters"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_visualization_planner.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.dependencies"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_visualization_planner.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_visualization_planner.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.planner"
+    },
+    {
+      "source": "tests/test_predictive_maintenance_visualization_planner.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_project3_routes_stage45.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.dependencies"
+    },
+    {
+      "source": "tests/test_project3_routes_stage45.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_project3_routes_stage45.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_project_layer.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.dependencies"
+    },
+    {
+      "source": "tests/test_project_layer.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_project_layer.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.projects"
+    },
+    {
+      "source": "tests/test_project_layer.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_project_repository_isolation_matrix.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.migrations"
+    },
+    {
+      "source": "tests/test_project_repository_isolation_matrix.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.ontology_repository"
+    },
+    {
+      "source": "tests/test_project_repository_isolation_matrix.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.role_workflow_repository"
+    },
+    {
+      "source": "tests/test_role_workspaces_stages25_29.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_role_workspaces_stages25_29.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_runtime_settings.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.dependencies"
+    },
+    {
+      "source": "tests/test_tenant_isolation.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.main"
+    },
+    {
+      "source": "tests/test_tenant_isolation.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.service"
+    },
+    {
+      "source": "tests/test_tenant_persistence_phase20.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.ontology_repository"
+    },
+    {
+      "source": "tests/test_tenant_persistence_phase20.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.persistence_readiness"
+    },
+    {
+      "source": "tests/test_tenant_persistence_phase20.py",
+      "kind": "static_import",
+      "target": "ontology_dashboard.projects"
+    }
+  ]
+}

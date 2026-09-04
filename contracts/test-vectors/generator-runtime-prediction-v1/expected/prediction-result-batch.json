@@ -1,0 +1,110 @@
+{
+  "contract_version": "prediction-result-batch-v1",
+  "batch_id": "batch-run-test-01-m14860",
+  "producer": {
+    "system": "systems.generator",
+    "runtime_version": "1.0.0",
+    "outbox_id": null
+  },
+  "emitted_at": "2026-08-25T11:55:05Z",
+  "source_context": {
+    "dataset_id": "canonical-ai4i-v1",
+    "dataset_version": "v1.0",
+    "source_uri": "contracts/test-vectors/generator-runtime-prediction-v1/input/protocol-sample-01.jsonl",
+    "source_checksum": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+    "source_kind": "live_sensor",
+    "source_contract_version": "observation-source-v1",
+    "source_schema_version": "sensor-record-v2",
+    "pipeline_contract_version": "generator-prediction-result-v1",
+    "lineage": {
+      "simulation_session_id": null,
+      "overlay_branch_id": null,
+      "history_segment_id": null,
+      "maintenance_event_id": null,
+      "maintenance_action_id": null,
+      "state_version": null
+    }
+  },
+  "model_set": {
+    "model_set_id": "model-set-v1",
+    "model_set_version": "1.0.0",
+    "models": [
+      {
+        "model_id": "pdm-lightgbm",
+        "model_version": "pdm-lightgbm-v1.0",
+        "required": true,
+        "model_artifact_manifest_sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+      },
+      {
+        "model_id": "pdm-xgboost",
+        "model_version": "pdm-xgboost-v1.0",
+        "required": true,
+        "model_artifact_manifest_sha256": "bcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789a"
+      }
+    ]
+  },
+  "results": [
+    {
+      "event_id": "evt-0102030405060708",
+      "asset_id": "M14860",
+      "observed_at": "2026-08-25T11:55:00Z",
+      "source_kind": "live_sensor",
+      "source_ref": {
+        "uri": "contracts/test-vectors/generator-runtime-prediction-v1/input/protocol-sample-01.jsonl",
+        "sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+      },
+      "payload_sha256": "6d1beb9ed4f2fef2629b8a9b1f9f517fcb71235da98f60c502f48d81baf63c8d",
+      "output_status": "predicted",
+      "score": 0.08,
+      "model_id": "pdm-lightgbm",
+      "model_version": "pdm-lightgbm-v1.0",
+      "model_artifact_manifest_sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+      "feature_schema_version": "v1.0",
+      "history_requirement_version": "v1.0",
+      "label_schema_version": "v1.0",
+      "feature_schema_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "history_requirement_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "label_schema_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "lineage": {
+        "simulation_session_id": null,
+        "overlay_branch_id": null,
+        "history_segment_id": null,
+        "maintenance_event_id": null,
+        "maintenance_action_id": null,
+        "state_version": null
+      },
+      "failure_reason": null
+    },
+    {
+      "event_id": "evt-0102030405060709",
+      "asset_id": "M14860",
+      "observed_at": "2026-08-25T11:55:00Z",
+      "source_kind": "live_sensor",
+      "source_ref": {
+        "uri": "contracts/test-vectors/generator-runtime-prediction-v1/input/protocol-sample-01.jsonl",
+        "sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+      },
+      "payload_sha256": "e7c8d9730b153acfffbd7527725c2e3b610277bd9530c2edc1a32b7a64558e0a",
+      "output_status": "predicted",
+      "score": 0.85,
+      "model_id": "pdm-xgboost",
+      "model_version": "pdm-xgboost-v1.0",
+      "model_artifact_manifest_sha256": "bcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789a",
+      "feature_schema_version": "v1.0",
+      "history_requirement_version": "v1.0",
+      "label_schema_version": "v1.0",
+      "feature_schema_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "history_requirement_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "label_schema_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+      "lineage": {
+        "simulation_session_id": null,
+        "overlay_branch_id": null,
+        "history_segment_id": null,
+        "maintenance_event_id": null,
+        "maintenance_action_id": null,
+        "state_version": null
+      },
+      "failure_reason": null
+    }
+  ]
+}

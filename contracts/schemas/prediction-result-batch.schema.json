@@ -1,0 +1,795 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Biz-CollabCraft/ontology_dashboard/main/contracts/schemas/prediction-result-batch.schema.json",
+  "title": "PredictionResultBatch",
+  "description": "Official contract schema for Prediction Result Batch emitted by Generator Runtime Prediction and consumed by Backend Inbox.",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "batch_id",
+    "producer",
+    "emitted_at",
+    "source_context",
+    "model_set",
+    "results"
+  ],
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "const": "prediction-result-batch-v1"
+    },
+    "batch_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "producer": {
+      "type": "object",
+      "required": [
+        "system",
+        "runtime_version"
+      ],
+      "properties": {
+        "system": {
+          "type": "string",
+          "const": "systems.generator"
+        },
+        "runtime_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outbox_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "emitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_context": {
+      "type": "object",
+      "required": [
+        "dataset_id",
+        "dataset_version",
+        "source_uri",
+        "source_checksum",
+        "source_kind",
+        "source_contract_version",
+        "source_schema_version",
+        "pipeline_contract_version",
+        "lineage"
+      ],
+      "properties": {
+        "dataset_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dataset_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_checksum": {
+          "type": "string",
+          "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+        },
+        "source_kind": {
+          "type": "string",
+          "enum": [
+            "live_sensor",
+            "simulation_overlay",
+            "maintenance_replay_overlay"
+          ]
+        },
+        "source_contract_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_schema_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pipeline_contract_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lineage": {
+          "type": "object",
+          "required": [
+            "simulation_session_id",
+            "overlay_branch_id",
+            "history_segment_id",
+            "maintenance_event_id",
+            "maintenance_action_id",
+            "state_version"
+          ],
+          "properties": {
+            "simulation_session_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "overlay_branch_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "history_segment_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "maintenance_event_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "maintenance_action_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "state_version": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source_kind": {
+                "const": "maintenance_replay_overlay"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "lineage": {
+                "type": "object",
+                "required": [
+                  "simulation_session_id",
+                  "overlay_branch_id",
+                  "history_segment_id",
+                  "maintenance_event_id",
+                  "maintenance_action_id",
+                  "state_version"
+                ],
+                "properties": {
+                  "simulation_session_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "overlay_branch_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "history_segment_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "maintenance_event_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "maintenance_action_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "state_version": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "model_set": {
+      "type": "object",
+      "required": [
+        "model_set_id",
+        "model_set_version",
+        "models"
+      ],
+      "properties": {
+        "model_set_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model_set_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "models": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "model_id",
+              "model_version",
+              "required",
+              "model_artifact_manifest_sha256"
+            ],
+            "properties": {
+              "model_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "model_version": {
+                "type": "string",
+                "minLength": 1
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "model_artifact_manifest_sha256": {
+                "type": "string",
+                "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+              },
+              "selected_threshold": {
+                "type": ["number", "null"],
+                "minimum": 0.0,
+                "maximum": 1.0,
+                "description": "Model Artifact training_config.selected_threshold captured at batch execution time. Null is allowed only when the source artifact omitted the threshold; Backend must preserve the missing-value evidence gap and apply its policy fallback threshold during Product Result promotion."
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "event_id",
+          "asset_id",
+          "observed_at",
+          "source_kind",
+          "source_ref",
+          "payload_sha256",
+          "output_status",
+          "score",
+          "model_id",
+          "model_version",
+          "model_artifact_manifest_sha256",
+          "feature_schema_version",
+          "history_requirement_version",
+          "label_schema_version",
+          "feature_schema_sha256",
+          "history_requirement_sha256",
+          "label_schema_sha256",
+          "lineage",
+          "failure_reason"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "asset_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "source_kind": {
+            "type": "string",
+            "enum": [
+              "live_sensor",
+              "simulation_overlay",
+              "maintenance_replay_overlay"
+            ]
+          },
+          "source_ref": {
+            "type": "object",
+            "required": [
+              "uri",
+              "sha256"
+            ],
+            "properties": {
+              "uri": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+              }
+            },
+            "additionalProperties": false
+          },
+          "payload_sha256": {
+            "type": "string",
+            "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+          },
+          "output_status": {
+            "type": "string",
+            "enum": [
+              "predicted",
+              "warming_up",
+              "history_insufficient",
+              "failed_source_unavailable",
+              "failed_model_artifact",
+              "failed_feature_execution",
+              "failed_model_inference"
+            ]
+          },
+          "score": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "model_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model_artifact_manifest_sha256": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "feature_schema_version": {
+            "type": ["string", "null"],
+            "minLength": 1
+          },
+          "history_requirement_version": {
+            "type": ["string", "null"],
+            "minLength": 1
+          },
+          "label_schema_version": {
+            "type": ["string", "null"],
+            "minLength": 1
+          },
+          "feature_schema_sha256": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "history_requirement_sha256": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label_schema_sha256": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lineage": {
+            "type": "object",
+            "required": [
+              "simulation_session_id",
+              "overlay_branch_id",
+              "history_segment_id",
+              "maintenance_event_id",
+              "maintenance_action_id",
+              "state_version"
+            ],
+            "properties": {
+              "simulation_session_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "overlay_branch_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "history_segment_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "maintenance_event_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "maintenance_action_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "state_version": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "explanation": {
+            "type": ["object", "null"],
+            "description": "Optional displayable model expression emitted by Generator. Backend may absorb it only after checksum/source validation; Backend still owns Product Result status and action policy.",
+            "required": [
+              "top_factors",
+              "display_labels"
+            ],
+            "properties": {
+              "top_factors": {
+                "type": "array",
+                "maxItems": 5,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "feature",
+                    "signed_contribution",
+                    "direction",
+                    "explanation_method"
+                  ],
+                  "properties": {
+                    "feature": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "display_name": {
+                      "type": ["string", "null"]
+                    },
+                    "feature_value": {
+                      "type": ["number", "string", "boolean", "null"]
+                    },
+                    "signed_contribution": {
+                      "type": "number"
+                    },
+                    "direction": {
+                      "type": "string",
+                      "enum": ["risk_up", "risk_down"]
+                    },
+                    "explanation_method": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "evidence_field_id": {
+                      "type": ["string", "null"]
+                    },
+                    "source_ref": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "required": ["uri", "sha256"],
+                          "properties": {
+                            "uri": {"type": "string", "minLength": 1},
+                            "sha256": {
+                              "type": "string",
+                              "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        {"type": "null"}
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "confidence_label": {
+                "type": ["string", "null"]
+              },
+              "explanation_method": {
+                "type": ["string", "null"]
+              },
+              "feature_snapshot_ref": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": ["uri", "sha256"],
+                    "properties": {
+                      "uri": {"type": "string", "minLength": 1},
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {"type": "null"}
+                ]
+              },
+              "sensor_window_ref": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": ["uri", "sha256"],
+                    "properties": {
+                      "uri": {"type": "string", "minLength": 1},
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {"type": "null"}
+                ]
+              },
+              "display_labels": {
+                "type": "object",
+                "additionalProperties": {"type": "string"}
+              }
+            },
+            "additionalProperties": false
+          },
+          "failure_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "output_status": {
+                  "const": "predicted"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "score": {
+                  "type": "number",
+                  "minimum": 0.0,
+                  "maximum": 1.0
+                },
+                "failure_reason": {
+                  "type": "null"
+                },
+                "model_artifact_manifest_sha256": {
+                  "type": "string",
+                  "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+                },
+                "feature_schema_sha256": {
+                  "type": "string",
+                  "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+                },
+                "history_requirement_sha256": {
+                  "type": "string",
+                  "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+                },
+                "label_schema_sha256": {
+                  "type": "string",
+                  "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+                },
+                "feature_schema_version": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "history_requirement_version": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "label_schema_version": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "output_status": {
+                  "enum": [
+                    "warming_up",
+                    "history_insufficient",
+                    "failed_feature_execution",
+                    "failed_model_inference"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "score": {
+                  "type": "null"
+                },
+                "failure_reason": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "explanation": {
+                  "type": "null"
+                },
+                "model_artifact_manifest_sha256": {
+                  "type": "string",
+                  "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+                },
+                "feature_schema_sha256": {
+                  "type": "string",
+                  "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+                },
+                "history_requirement_sha256": {
+                  "type": "string",
+                  "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+                },
+                "label_schema_sha256": {
+                  "type": "string",
+                  "pattern": "^(?!0000000000000000000000000000000000000000000000000000000000000000$)[a-f0-9]{64}$"
+                },
+                "feature_schema_version": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "history_requirement_version": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "label_schema_version": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "output_status": {
+                  "enum": [
+                    "failed_model_artifact",
+                    "failed_source_unavailable"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "score": {
+                  "type": "null"
+                },
+                "failure_reason": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "explanation": {
+                  "type": "null"
+                },
+                "model_artifact_manifest_sha256": {
+                  "type": "null"
+                },
+                "feature_schema_version": {
+                  "type": "null"
+                },
+                "history_requirement_version": {
+                  "type": "null"
+                },
+                "label_schema_version": {
+                  "type": "null"
+                },
+                "feature_schema_sha256": {
+                  "type": "null"
+                },
+                "history_requirement_sha256": {
+                  "type": "null"
+                },
+                "label_schema_sha256": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "source_kind": {
+                  "const": "maintenance_replay_overlay"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "lineage": {
+                  "type": "object",
+                  "required": [
+                    "simulation_session_id",
+                    "overlay_branch_id",
+                    "history_segment_id",
+                    "maintenance_event_id",
+                    "maintenance_action_id",
+                    "state_version"
+                  ],
+                  "properties": {
+                    "simulation_session_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "overlay_branch_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "history_segment_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "maintenance_event_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "maintenance_action_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "state_version": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

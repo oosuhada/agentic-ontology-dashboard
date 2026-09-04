@@ -1,0 +1,233 @@
+{
+  "schema_version": "maintenance-cost-input-basis-v1.0",
+  "basis_id": "tool-insert-demo-economic-basis-2026-09",
+  "action_code": "TOOL_REPLACEMENT",
+  "applicability": {
+    "execution_mode": "in_house",
+    "spare_part_available": true,
+    "vendor_dispatch_required": false
+  },
+  "description": "Demo economic inputs for replacing exactly one carbide cutting insert. Public references, internal contract fixtures, and explicit synthetic policy assumptions are recorded separately; none of the values are an actual site quotation, payroll record, MES result, or guaranteed maintenance cost.",
+  "replacement_scope": {
+    "component_id": "tooling",
+    "part_id": "SP-CNC-CARBIDE-INSERT-ONE",
+    "part_label": "카바이드 절삭 인서트 1개",
+    "quantity": 1,
+    "unit": "piece"
+  },
+  "currency": "KRW",
+  "currency_minor_unit": 0,
+  "parts_cost": {
+    "reference_minor": 12251,
+    "confidence": "low",
+    "source_kind": "public_catalog_benchmark",
+    "derivation": {
+      "reference_sku": "APKT160408 HMP20",
+      "catalog_pack_price_usd": 88.95,
+      "pack_quantity": 10,
+      "unit_price_usd": 8.895,
+      "usd_krw_close": 1377.32,
+      "fx_date": "2026-08-28",
+      "formula": "round((88.95 / 10) * 1377.32) = 12251 KRW"
+    },
+    "exclusions": ["VAT", "shipping", "import duty", "site discount", "machine and holder compatibility verification"]
+  },
+  "labor_rate_per_minute": {
+    "normal_minor": 292,
+    "night_minor": 438,
+    "confidence": "medium",
+    "source_kind": "official_wage_survey_reference",
+    "derivation": {
+      "occupation_code": 88,
+      "occupation_name": "기계장치정비원",
+      "survey_daily_wage_krw": 139942,
+      "survey_day_minutes": 480,
+      "formula": "round(139942 / (8 * 60)) = 292 KRW/min; round(292 * 1.5) = 438 KRW/min for the single night-work premium demo rate"
+    },
+    "limitations": [
+      "The survey wage is a manufacturing cost reference, not this site's ordinary wage or payroll rate.",
+      "The 438 KRW/min value applies one 50% night-work premium only. Overtime/holiday overlap, benefits, and contractor overhead are not calculated."
+    ]
+  },
+  "execution_time_policy": {
+    "timezone": "Asia/Seoul",
+    "planned_window_delay_hours": 12,
+    "night_window": {
+      "start_hour": 22,
+      "end_hour": 6
+    },
+    "normal_rate_minor_per_minute": 292,
+    "night_rate_minor_per_minute": 438,
+    "reasoning": "The Backend owns calculated_at. Immediate maintenance uses that instant and the demo planned window uses calculated_at + 12 hours as cost-calculation assumptions, not approved Work Order schedules. Both are converted to Asia/Seoul before the 22:00-06:00 night-work band is selected.",
+    "source_ids": ["korean-labor-standards-act-article-56"],
+    "limitations": "This is a deterministic demo policy, not a payroll engine. It does not infer overtime from a shift calendar or stack overtime, holiday, and night premiums."
+  },
+  "demo_policy_inputs": {
+    "labor_duration_minutes": {
+      "sensitivity": {"low": 5, "base": 10, "high": 15},
+      "source_kind": "explicit_demo_assumption",
+      "confidence": "low",
+      "reasoning": "Sandvik training examples use one to two minutes for direct insert indexing, while a published human-centric SMED equipment-replacement example reports 9:10 after improvement and 13:04 before improvement when preparation, disassembly, assembly, adjustment, and control are included. Ten minutes is therefore used only as a demo end-to-end hands-on duration, with 5-15 minutes retained as sensitivity rather than claimed as a manufacturer standard.",
+      "source_ids": ["sandvik-productivity-analyzer-insert-indexing-example", "human-centric-smed-equipment-replacement"]
+    },
+    "external_service_cost_minor": {
+      "sensitivity": {"low": 0, "base": 0, "high": 0},
+      "source_kind": "policy",
+      "confidence": "medium",
+      "applicable_when": {"execution_mode": "in_house", "spare_part_available": true, "vendor_dispatch_required": false},
+      "reasoning": "The representative GS-002 fixture records spare_part_available=true. This demo policy assumes an in-house insert replacement with no vendor dispatch; zero means the cost is structurally not incurred, not that an unknown vendor quote was replaced with zero.",
+      "source_ids": ["gs-002-tool-wear-warning"]
+    },
+    "expected_downtime_minutes": {
+      "sensitivity": {"low": 15, "base": 30, "high": 45},
+      "source_kind": "synthetic_policy",
+      "confidence": "low",
+      "reasoning": "The existing TOOL_REPLACEMENT What-if contract fixes preventive downtime at 30 minutes. The 15-45 minute band preserves that canonical demo midpoint and exposes uncertainty for safe stop, access, replacement, verification, test run, and restart. The 120-minute GS-002 event impact is not reused because it represents unplanned production exposure rather than planned insert-replacement downtime.",
+      "source_ids": ["tool-replacement-what-if-contract-fixture", "human-centric-smed-equipment-replacement"]
+    },
+    "production_loss_rate_minor_per_minute": {
+      "sensitivity": {"low": 846, "base": 1058, "high": 1269},
+      "source_kind": "synthetic_scenario_estimate",
+      "confidence": "low",
+      "derivation": {
+        "oee": 0.846,
+        "standard_cycle_minutes_per_unit": 4.0,
+        "effective_units_per_minute": 0.2115,
+        "unit_contribution_margin_minor": {"low": 4000, "base": 5000, "high": 6000},
+        "formula": "round((0.846 / 4.0) * contribution_margin) = 846 / 1058 / 1269 KRW/min"
+      },
+      "reasoning": "The repository's synthetic capacity model uses OEE 0.846 and a four-minute demo cycle, producing 0.2115 effective units per minute. AI4I contains no selling price, manufacturing cost, contribution margin, MES takt, or ERP economics, so the 4,000/5,000/6,000 KRW per-unit contribution-margin band is an explicit demo assumption and must be replaced by site ERP data before real use.",
+      "source_ids": ["production-planning-context-v1", "oee-world-class-reference", "uci-ai4i-dataset", "nist-design-for-cost"]
+    },
+    "failure_consequence_cost_minor": {
+      "sensitivity": {"low": 67391, "base": 147971, "high": 334331},
+      "source_kind": "synthetic_scenario_estimate",
+      "confidence": "low",
+      "derivation": {
+        "emergency_labor_duration_minutes": {"low": 15, "base": 30, "high": 60},
+        "unplanned_downtime_minutes": {"low": 60, "base": 120, "high": 240},
+        "formula": "parts_cost + emergency_labor_duration * labor_rate + unplanned_downtime * production_loss_rate = 67391 / 147971 / 334331 KRW"
+      },
+      "reasoning": "The consequence band combines one replacement insert, reference maintenance labor, and unplanned production interruption. The 60/120/240-minute band is anchored to the repository's synthetic event-impact range, with GS-002 providing the 120-minute midpoint. Scrap, rework, restart consumables, secondary damage, and contractual penalties are excluded because no governed values exist.",
+      "source_ids": ["gs-002-tool-wear-warning", "production-planning-context-v1", "nist-design-for-cost"],
+      "exclusions": ["scrap and rework", "restart consumables", "secondary equipment damage", "delivery or contractual penalties"]
+    },
+    "expected_failure_loss_minor": {
+      "source_kind": "runtime_derived_synthetic_scenario",
+      "confidence": "low",
+      "formula": "round(failure_probability * failure_consequence_cost_minor)",
+      "reasoning": "Expected failure loss is a calculated output, not a site master value. Only probabilities already present in the governed demo What-if contract are used. Cost What-if does not interpolate or create future Prediction values.",
+      "scenario_probabilities": {
+        "immediate": {"failure_probability": 0.21, "source_reference": "data/fixtures/what_if/tool-replacement-contract-fixture.json#/effect/intervention_probability"},
+        "planned_window": null,
+        "reinspect_after": null,
+        "no_action_baseline": {"failure_probability": 0.82, "source_reference": "data/fixtures/what_if/tool-replacement-contract-fixture.json#/effect/baseline_probability"}
+      },
+      "missing_probability_behavior": "Return insufficient for that timing; do not estimate, interpolate, or substitute a probability."
+    }
+  },
+  "sources": [
+    {
+      "source_id": "haas-us-tooling-price-list-2025-10-13",
+      "source_kind": "public_reference",
+      "title": "Haas Tooling Price List",
+      "url": "https://sales.haascnc.com/sites/default/files/autofs/SapDownloads/MonthlyPriceList/US/EndUser/Haas%20Tooling%20Price%20Sheet.pdf",
+      "evidence": "APKT160408 HMP20 carbide insert, pack of 10, USD 88.95",
+      "accessed_at": "2026-08-31"
+    },
+    {
+      "source_id": "usd-krw-2026-08-28-close",
+      "source_kind": "public_reference",
+      "title": "USD/KRW Historical Data",
+      "url": "https://kr.investing.com/currencies/usd-krw-historical-data",
+      "evidence": "2026-08-28 close: 1377.32 KRW per USD",
+      "accessed_at": "2026-08-31"
+    },
+    {
+      "source_id": "kbiz-2026-first-half-manufacturing-wage-survey",
+      "source_kind": "official_reference",
+      "title": "2026년 상반기 중소제조업 직종별 임금조사 보고서 (2026년 하반기 적용)",
+      "url": "https://www.kbiz.or.kr/download.do?fleDwnDs=bbsAttachFile&orgalFle=32303236eb858420ec8381ebb098eab8b020eca491ec868ceca09ceca1b0ec978520eca781eca285ebb384ec9e84eab888eca1b0ec82ac20ebb3b4eab3a0ec849c2e706466&saveFle=178332478517291889.pdf&seq=92024",
+      "evidence": "기계장치정비원(직종코드 88) 조사노임 139,942원/일, 1일 8시간 기준",
+      "accessed_at": "2026-08-31"
+    },
+    {
+      "source_id": "korean-labor-standards-act-article-56",
+      "source_kind": "official_legal_reference",
+      "title": "근로기준법 제56조 연장·야간 및 휴일 근로",
+      "url": "https://law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1012828203",
+      "evidence": "Night work between 22:00 and 06:00 requires an additional payment of at least 50 percent of ordinary wages.",
+      "accessed_at": "2026-09-01"
+    },
+    {
+      "source_id": "sandvik-productivity-analyzer-insert-indexing-example",
+      "source_kind": "manufacturer_training_reference",
+      "title": "Sandvik Coromant Productivity Analyzer turning-test training",
+      "url": "https://videos.sandvik.coromant.com/creating-a-testturningmp4",
+      "evidence": "The training example enters insert indexing times of two minutes for the reference tool and one minute for the alternative tool.",
+      "accessed_at": "2026-08-31"
+    },
+    {
+      "source_id": "human-centric-smed-equipment-replacement",
+      "source_kind": "peer_reviewed_case_study",
+      "title": "The Human-Centric SMED",
+      "url": "https://doi.org/10.3390/su14010514",
+      "evidence": "Table 2 reports equipment-replacement task totals of 13:04 as-is and 9:10 after improvement, including preparation, disassembly, assembly, adjustment, control, movement, and order.",
+      "accessed_at": "2026-08-31"
+    },
+    {
+      "source_id": "nist-design-for-cost",
+      "source_kind": "official_method_reference",
+      "title": "Design-for-Cost - An Approach for Distributed Manufacturing Cost Estimation",
+      "url": "https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=928028",
+      "evidence": "NIST describes cost breakdown and the formulas machining cost = machine rate * time and labor cost = labor rate * labor operation time; it also notes that assumptions are required when source data are unavailable.",
+      "accessed_at": "2026-08-31"
+    },
+    {
+      "source_id": "oee-world-class-reference",
+      "source_kind": "public_method_reference",
+      "title": "World-Class OEE: Set Targets To Drive Improvement",
+      "url": "https://www.oee.com/world-class-oee/",
+      "evidence": "The common benchmark components 90% availability, 95% performance, and 99% quality multiply to approximately 85% OEE; the source also warns that there is no universal ideal target.",
+      "accessed_at": "2026-08-31"
+    },
+    {
+      "source_id": "uci-ai4i-dataset",
+      "source_kind": "dataset_documentation",
+      "title": "AI4I 2020 Predictive Maintenance Dataset",
+      "url": "https://archive.ics.uci.edu/dataset/601/ai4i",
+      "evidence": "AI4I is a synthetic predictive-maintenance dataset with sensor, tool-wear, and failure variables; its documented variables do not include price, margin, takt, MES, or ERP economics.",
+      "accessed_at": "2026-08-31"
+    },
+    {
+      "source_id": "production-planning-context-v1",
+      "source_kind": "internal_synthetic_fixture",
+      "title": "Production planning context v1",
+      "url": "data/fixtures/operation_context/production-planning-context-v1.json",
+      "evidence": "The synthetic capacity model records OEE 0.846, a four-minute demo cycle, and 12.69 units/hour per asset.",
+      "accessed_at": "2026-08-31"
+    },
+    {
+      "source_id": "gs-002-tool-wear-warning",
+      "source_kind": "internal_synthetic_fixture",
+      "title": "GS-002 tool-wear warning",
+      "url": "data/fixtures/GS-002-tool-wear-warning.json",
+      "evidence": "The representative event records spare_part_available=true and estimated unplanned downtime of 120 minutes.",
+      "accessed_at": "2026-08-31"
+    },
+    {
+      "source_id": "tool-replacement-what-if-contract-fixture",
+      "source_kind": "internal_contract_fixture",
+      "title": "TOOL_REPLACEMENT What-if contract fixture",
+      "url": "data/fixtures/what_if/tool-replacement-contract-fixture.json",
+      "evidence": "The contract fixture records 30 minutes of preventive downtime, baseline probability 0.82, intervention probability 0.21, and synthetic counterfactual limitations.",
+      "accessed_at": "2026-08-31"
+    }
+  ],
+  "usage_policy": {
+    "allowed": "Demo decision-support calculation and sensitivity analysis with exact source and assumption provenance.",
+    "forbidden": "Representing synthetic policy values as an actual site quote, payroll, MES/ERP result, guaranteed saving, recommendation, approval, or execution command.",
+    "missing_future_probability_behavior": "Return insufficient for planned_window and reinspect_after until an authoritative probability or an explicitly governed sensitivity input is provided.",
+    "replacement_policy": "Replace public and synthetic references with versioned site quote, payroll, MES, ERP, and observed maintenance-history inputs before operational use."
+  }
+}

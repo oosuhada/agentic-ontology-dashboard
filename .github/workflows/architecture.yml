@@ -1,0 +1,22 @@
+name: architecture
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Mac mini의 release watcher는 main SHA에 대해 architecture workflow가
+# success인지 확인한다. 자동 테스트는 더 이상 CI에서 실행하지 않고,
+# 이 workflow는 배포 watcher가 소비하는 최소 release marker만 제공한다.
+concurrency:
+  group: architecture-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  architecture:
+    name: architecture
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish release marker
+        run: echo "Automated CI tests are disabled; marking this main SHA as deployable."

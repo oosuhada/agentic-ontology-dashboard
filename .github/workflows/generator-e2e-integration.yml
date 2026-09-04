@@ -1,0 +1,53 @@
+name: generator-e2e-integration
+
+on:
+  pull_request:
+    paths:
+      - "contracts/schemas/**"
+      - "contracts/test-vectors/generator-pipeline-e2e-v1/**"
+      - "systems/generator/**"
+      - "systems/backend/app/diagnosis/**"
+      - "tests/test_generator_extraction_e2e.py"
+      - ".github/workflows/generator-e2e-integration.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "contracts/schemas/**"
+      - "contracts/test-vectors/generator-pipeline-e2e-v1/**"
+      - "systems/generator/**"
+      - "systems/backend/app/diagnosis/**"
+      - "tests/test_generator_extraction_e2e.py"
+      - ".github/workflows/generator-e2e-integration.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: generator-e2e-integration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generator-e2e-integration:
+    name: generator-e2e-integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout tested revision
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Generator and Backend dependencies
+        run: |
+          python -m pip install --no-cache-dir --upgrade pip
+          python -m pip install --no-cache-dir -r systems/generator/requirements.txt
+          python -m pip install --no-cache-dir -e "./systems/backend[dev]"
+
+      - name: Run Generator to Backend Inbox in-process integration tests
+        env:
+          APP_ENV: test
+          PYTHONPATH: .
+        run: python -m pytest -v tests/test_generator_extraction_e2e.py

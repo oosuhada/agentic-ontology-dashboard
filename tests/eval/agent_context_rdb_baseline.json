@@ -1,0 +1,71 @@
+{
+  "baseline_id": "agent-context-rdb-baseline-v1",
+  "status": "documented_baseline",
+  "purpose": "Define the current relational/ViewModel-style baseline before adding a graph store.",
+  "controlled_variables": {
+    "same_user_questions": "tests/eval/agent_context_question_backlog.jsonl",
+    "same_answer_shape": [
+      "component",
+      "field_location",
+      "sop",
+      "spare_part",
+      "similar_event",
+      "source_refs",
+      "read_only_boundary"
+    ],
+    "same_fixture_scope": [
+      "GS-002",
+      "GS-004",
+      "GS-007",
+      "direct compressor adapter fixture"
+    ],
+    "same_acceptance_rubric": "answer facets must be grounded by packet source_refs or explicitly classified as missing/deferred"
+  },
+  "baseline_sources": [
+    "ProductResultArtifact",
+    "AssetDetailViewModel",
+    "AgentReviewPacket",
+    "ontology_context fixture adapter"
+  ],
+  "current_strengths": [
+    {
+      "question_class": "single_asset_component_explanation",
+      "assessment": "RDB/ViewModel projection is sufficient and simpler than a graph store."
+    },
+    {
+      "question_class": "factor_bundle_to_single_component",
+      "assessment": "Precomposed component_hypotheses and inspection_targets answer the question directly."
+    },
+    {
+      "question_class": "read_only_ai_boundary",
+      "assessment": "Packet schema and summary validators already enforce mutation_allowed=false boundaries."
+    }
+  ],
+  "pressure_points": [
+    {
+      "question_class": "inventory_lot_supplier_lead_time",
+      "why_rdb_gets_heavier": "Requires joining component, spare part, inventory lot, supplier, lead time, and shift window sources that are not owned by the current packet."
+    },
+    {
+      "question_class": "work_order_dedup_history",
+      "why_rdb_gets_heavier": "Requires temporal joins against Closed-loop-owned WorkOrder and MaintenanceAction history while preserving mutation ownership."
+    },
+    {
+      "question_class": "sop_step_tool_safety",
+      "why_rdb_gets_heavier": "Requires procedure-step, required-tool, and safety-constraint relationships instead of document-level SOP metadata."
+    },
+    {
+      "question_class": "cross_asset_common_cause",
+      "why_rdb_gets_heavier": "Requires topology and multi-asset traversal beyond one asset detail packet."
+    }
+  ],
+  "decision": {
+    "current_default": "keep_rdb_packet_projection",
+    "kg_next_step": "run_in_memory_level1_traversal_experiment",
+    "do_not_claim": [
+      "KG is faster",
+      "KG is required for current production path",
+      "RDB is insufficient for current Operations"
+    ]
+  }
+}

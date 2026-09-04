@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "contract_id": "SIMILAR-EVENT-DEMO-CNC-001",
+  "source_kind": "synthetic_similar_event_context",
+  "source_uri": "data/fixtures/similar_event/demo-cnc-similar-event-context-v1.json",
+  "assumption_level": "demo_history_assumption",
+  "description": "Demo-only similar event context for showing how CMMS or event-history adapters can enrich read-only agent review packets.",
+  "asset_types": ["cnc"],
+  "events": [
+    {
+      "similar_event_id": "SIM-EVT-CNC-TOOLING-2026-07-18",
+      "component_id": "tooling",
+      "factor_keys": ["tool_wear_min"],
+      "asset_label": "4구역 · 4셀 · CNC 가공기 2",
+      "observed_at": "2026-07-18T09:20:00+09:00",
+      "action_taken": "공구 체결 상태 점검 후 마모된 카바이드 절삭 인서트 1개 교체",
+      "outcome": "교체 후 공구 사용 시간 상승 추세가 안정화됨",
+      "post_action_observation_window_hours": 24
+    },
+    {
+      "similar_event_id": "SIM-EVT-CNC-DRIVE-2026-07-22",
+      "component_id": "drive_power",
+      "factor_keys": ["mechanical_power_w", "overstrain_index", "torque_nm"],
+      "asset_label": "4구역 · 2셀 · CNC 가공기 1",
+      "observed_at": "2026-07-22T14:10:00+09:00",
+      "action_taken": "동력 전달부 체결 상태 확인 후 커플링 편심 재조정",
+      "outcome": "토크와 과부하 누적 지표가 다음 관측 구간에서 완화됨",
+      "post_action_observation_window_hours": 48
+    },
+    {
+      "similar_event_id": "SIM-EVT-CNC-THERMAL-2026-07-24",
+      "component_id": "thermal_path",
+      "factor_keys": ["temperature_difference_k", "process_temperature_k", "air_temperature_k"],
+      "asset_label": "1구역 · 4셀 · CNC 가공기 1",
+      "observed_at": "2026-07-24T10:35:00+09:00",
+      "action_taken": "냉각 라인 막힘과 방열 팬 동작 상태를 점검",
+      "outcome": "공정·공기 온도 차이가 다음 관측 구간에서 정상 범위로 완화됨",
+      "post_action_observation_window_hours": 24
+    },
+    {
+      "similar_event_id": "SIM-EVT-CNC-ROTATION-2026-07-26",
+      "component_id": "rotating_assembly",
+      "factor_keys": ["rotational_speed_rpm"],
+      "asset_label": "2구역 · 2셀 · CNC 가공기 1",
+      "observed_at": "2026-07-26T16:05:00+09:00",
+      "action_taken": "스핀들 베어링 소음과 회전부 체결 상태를 확인",
+      "outcome": "회전 속도 변동 폭이 완화되어 모니터링 지속으로 전환됨",
+      "post_action_observation_window_hours": 24
+    }
+  ]
+}

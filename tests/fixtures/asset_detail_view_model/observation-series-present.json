@@ -1,0 +1,145 @@
+{
+  "snapshot_basis": {
+    "artifact_id": "RESULT#CMP-S03-L03-01#2026-08-01T00:00:00+09:00",
+    "evidence_payload_reference": "producer-enriched-critical",
+    "asset_id": "CMP-S03-L03-01",
+    "event_id": null,
+    "observed_at": "2026-08-01T00:00:00+09:00",
+    "model_version": "canonical-ai4i-physics-v3.1",
+    "dataset_version": "canonical-ai4i-physics-v3.1",
+    "source_sha256": null
+  },
+  "asset": {
+    "asset_id": "CMP-S03-L03-01",
+    "asset_type": "compressor",
+    "display_name": "압축기 S03-L03-01",
+    "site_id": "S03",
+    "cell_id": "L03",
+    "observed_at": "2026-08-01T00:00:00+09:00",
+    "criticality": "high",
+    "criticality_basis": ["fixture equipment.criticality"],
+    "criticality_source": "equipment_master"
+  },
+  "risk": {
+    "current": 0.92,
+    "threshold": 0.65,
+    "status_grade": "critical",
+    "prediction_horizon_hours": 24
+  },
+  "risk_series": [],
+  "features": [
+    {
+      "key": "rotation_raw",
+      "label": "회전 상태",
+      "unit": "rpm",
+      "current": {
+        "observed_at": "2026-08-01T00:00:00+09:00",
+        "value": 1820.0,
+        "quality_status": "good"
+      },
+      "baseline": {
+        "mean": 1600.0,
+        "std": 67.327,
+        "lower": 1465.346,
+        "upper": 1734.654,
+        "reference": "all_valid_rows canonical-ai4i-physics-v3.1 compressor_sensor_observation.csv"
+      },
+      "history": {
+        "source_ref": "observation://CMP-S03-L03-01.rotation_raw",
+        "points": [
+          {
+            "observed_at": "2026-07-31T18:00:00+09:00",
+            "value": 1602.1,
+            "quality_status": "good"
+          },
+          {
+            "observed_at": "2026-07-31T21:00:00+09:00",
+            "value": 1688.4,
+            "quality_status": "good"
+          }
+        ]
+      },
+      "top_factor": {
+        "rank": 1,
+        "contribution": 0.42,
+        "direction": "risk_up",
+        "explanation_method": "deterministic_component_score",
+        "evidence_field_id": "factor.1.rotation_raw"
+      }
+    },
+    {
+      "key": "vibration_raw",
+      "label": "진동 신호",
+      "unit": "raw",
+      "current": {
+        "observed_at": "2026-08-01T00:00:00+09:00",
+        "value": null,
+        "quality_status": "unknown"
+      },
+      "baseline": null,
+      "history": {
+        "source_ref": "observation://CMP-S03-L03-01.vibration_raw",
+        "points": [
+          {
+            "observed_at": "2026-07-31T18:00:00+09:00",
+            "value": null,
+            "quality_status": "bad"
+          }
+        ]
+      },
+      "top_factor": null
+    }
+  ],
+  "equipment_history": [],
+  "maintenance_context": {
+    "last_maintenance_days_ago": 20,
+    "similar_events_30d": null,
+    "open_work_order_exists": null
+  },
+  "operation_context": {
+    "load_level": null,
+    "runtime_hours_7d": null,
+    "production_impact": "high"
+  },
+  "review_priority": {
+    "level": "immediate",
+    "reasons": [
+      "risk.status_grade=critical",
+      "asset.criticality=high",
+      "operation_context.production_impact=high"
+    ],
+    "source_fields": [
+      "risk.status_grade",
+      "asset.criticality",
+      "operation_context.production_impact"
+    ]
+  },
+  "evidence": {
+    "artifact_id": "RESULT#CMP-S03-L03-01#2026-08-01T00:00:00+09:00",
+    "evidence_payload_reference": "producer-enriched-critical",
+    "model_version": "canonical-ai4i-physics-v3.1",
+    "dataset_version": "canonical-ai4i-physics-v3.1",
+    "source_kind": "runtime_inference",
+    "gaps": [
+      {
+        "field": "risk_series",
+        "reason": "Backend Diagnosis prediction_results runtime history is not materialized yet",
+        "owner_domain": "diagnosis"
+      },
+      {
+        "field": "equipment_history",
+        "reason": "Activity/Decision/Maintenance source is not connected to this composition endpoint yet",
+        "owner_domain": "maintenance"
+      }
+    ]
+  },
+  "data_status": {
+    "source": "canonical",
+    "is_stale": false,
+    "is_data_quality_hold": false,
+    "last_updated_at": "2026-08-01T00:00:00+09:00",
+    "warnings": [
+      "features[1].history.points has a bad-quality reading at 2026-07-31T18:00:00+09:00; value withheld as null instead of estimated"
+    ]
+  }
+}

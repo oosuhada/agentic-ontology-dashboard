@@ -1,0 +1,87 @@
+.admin-shell {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: 210px minmax(0,1fr);
+  align-items: stretch;
+  color: var(--fd-text);
+  background: var(--fd-canvas);
+}
+.admin-sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  height: 100vh;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+  overflow: hidden auto;
+  padding: 6px;
+  color: #d7dee8;
+  background: #18212d;
+}
+.admin-brand { min-height: 42px; border-bottom: 1px solid #344150; padding: 5px; }
+.admin-brand .brand-mark { border-radius: 2px; }
+.admin-brand .brand-mark.hanbit-brand-mark { overflow: hidden; border-color: transparent; background: transparent; box-shadow: none; }
+.admin-nav-section { padding: 8px 7px 3px; color: #7f8c9d; font-size: 7px; font-weight: 900; letter-spacing: .08em; }
+.admin-nav { display: flex; min-height: 0; flex-direction: column; gap: 2px; }
+.admin-nav button { display: flex; min-height: 30px; align-items: center; gap: 7px; border-radius: 2px; padding: 0 7px; color: #b8c4d2; }
+.admin-nav button b { margin-left: auto; border-radius: 999px; padding: 1px 5px; color: #fff; background: #c23030; font-size: 7px; }
+.admin-nav button.active { color: #fff; background: #2c3948; box-shadow: inset 2px 0 #5b9dff; }
+.admin-boundary-note { margin-top: 8px; border: 1px solid #344150; border-radius: 2px; padding: 9px; background: rgba(255,255,255,.035); }
+.admin-boundary-note strong { display: block; color: #f4f7fb; font-size: 10px; }
+.admin-boundary-note p { margin: 5px 0 0; color: #aeb9c8; font-size: 8px; line-height: 1.55; }
+.admin-sidebar .sidebar-user {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  border-top: 1px solid #344150;
+  padding-top: 8px;
+}
+.admin-sidebar .sidebar-user > div { min-width: 0; }
+.admin-sidebar .sidebar-user button { display: inline-flex; min-height: 28px; align-items: center; justify-content: center; gap: 5px; border-radius: 2px; }
+.admin-sidebar .sidebar-user button:last-of-type { grid-column: 1 / -1; width: 100%; }
+.admin-main { min-width: 0; padding: 0 8px 20px; }
+.admin-platform-bar { display: flex; height: 34px; align-items: center; justify-content: space-between; margin: 0 -8px 6px; border-bottom: 1px solid var(--fd-border); padding: 0 8px; color: var(--fd-text-muted); background: var(--fd-surface); font-size: 8px; }
+.admin-platform-bar > span, .admin-platform-bar > div { display: flex; align-items: center; gap: 8px; }
+.admin-platform-bar strong { color: var(--fd-text); }
+.admin-topbar { display: flex; min-height: 62px; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 6px; border: 1px solid var(--fd-border); border-radius: 2px; padding: 8px 10px; background: var(--fd-surface); }
+.admin-topbar > div { min-width: 0; }
+.admin-topbar h1 { margin: 2px 0 1px; font-size: 16px; }
+.admin-topbar p { margin: 0; color: var(--fd-text-muted); font-size: 8px; }
+.admin-topbar button { display: flex; align-items: center; gap: 5px; }
+.admin-metrics { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 0; border-radius: 2px; }
+.admin-metrics article { min-height: 64px; border-radius: 0; }
+.admin-card { border-radius: 2px; }
+.admin-card-header { display: flex; min-height: 36px; align-items: center; justify-content: space-between; gap: 12px; margin: -10px -10px 8px; border-bottom: 1px solid var(--fd-border); padding: 6px 8px; background: var(--fd-surface-muted); }
+.admin-table-card .table-scroll { border: 1px solid var(--fd-border); }
+.admin-table-card table { border-collapse: collapse; }
+.admin-table-card th { position: sticky; top: 0; height: 28px; color: var(--fd-text-muted); background: var(--fd-surface-muted); font-size: 8px; text-transform: uppercase; }
+.admin-table-card td { height: 34px; border-top: 1px solid var(--fd-border); font-size: 8px; }
+.permission-override-editor { width: 100%; margin-top: 5px; border-top: 1px solid var(--fd-border); padding-top: 5px; }
+.permission-override-editor summary { cursor: pointer; color: var(--fd-accent); font-size: 8px; font-weight: 800; }
+.permission-override-editor > div { display: grid; max-height: 260px; gap: 3px; margin-top: 5px; overflow: auto; }
+.permission-override-editor label { display: grid; grid-template-columns: minmax(0,1fr) 110px; align-items: center; gap: 5px; border: 1px solid var(--fd-border); border-radius: 2px; padding: 4px; background: var(--fd-surface-subtle); }
+.permission-override-editor label span { display: flex; min-width: 0; flex-direction: column; }
+.permission-override-editor label strong { overflow: hidden; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.permission-override-editor label small { color: var(--fd-text-muted); font-size: 7px; }
+.permission-override-editor select { min-width: 0; width: 100%; }
+.admin-notification-list { display: grid; gap: 5px; }
+.admin-notification-list > button { display: grid; grid-template-columns: 26px minmax(0,1fr); align-items: start; gap: 8px; width: 100%; border: 1px solid var(--fd-border); border-radius: 2px; padding: 8px; color: var(--fd-text); background: var(--fd-surface); text-align: left; }
+.admin-notification-list > button.is-unread { border-left: 3px solid var(--fd-accent); background: var(--fd-surface-selected); }
+.admin-notification-list > button.is-read { opacity: .72; }
+.admin-notification-list > button > span { display: flex; flex-direction: column; gap: 2px; }
+.admin-notification-list small,.admin-notification-list time { color: var(--fd-text-muted); font-size: 8px; }
+.role-registry-grid { gap: 6px; }
+.role-registry-card { border-top-width: 2px; }
+@media (max-width: 760px) {
+  .admin-shell { display: block; }
+  .admin-sidebar { position: static; height: auto; overflow: visible; }
+  .admin-nav { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .admin-sidebar .sidebar-user { grid-template-columns: minmax(0,1fr) auto auto; }
+  .admin-sidebar .sidebar-user button:last-of-type { grid-column: auto; width: auto; }
+  .admin-platform-bar > div span:not(:last-child) { display: none; }
+  .admin-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .admin-topbar { align-items: flex-start; flex-direction: column; }
+}

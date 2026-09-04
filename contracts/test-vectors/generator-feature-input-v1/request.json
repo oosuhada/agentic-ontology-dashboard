@@ -1,0 +1,12 @@
+{
+  "dataset_id": "golden-observation-v1",
+  "dataset_version": "v1.0",
+  "failure_source_mode": "external_dataset",
+  "failure_dataset_id": "golden-failure-v1",
+  "failure_dataset_version": "v1.0",
+  "preprocessing_plan_id": "pp-golden-v1",
+  "preprocessing_plan_version": "preprocessing-plan-golden-v1",
+  "feature_schema_version": "ai4i-feature-v1",
+  "label_schema_version": "golden-label-2h-v1",
+  "prediction_horizon_hours": 2
+}

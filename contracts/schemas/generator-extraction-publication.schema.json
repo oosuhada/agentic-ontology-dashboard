@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/generator-extraction-publication.schema.json",
+  "title": "Generator Extraction Publication Receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "publication_schema_version",
+    "source_identity",
+    "dataset_id",
+    "dataset_version",
+    "window_start",
+    "window_end",
+    "manifest_uri",
+    "manifest_sha256",
+    "source_fragment_refs",
+    "status",
+    "published_at"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "publication_schema_version": {
+      "type": "string",
+      "enum": [
+        "generator-extraction-publication-v1"
+      ]
+    },
+    "source_identity": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "dataset_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$"
+    },
+    "dataset_version": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$"
+    },
+    "window_start": {
+      "type": "string"
+    },
+    "window_end": {
+      "type": "string"
+    },
+    "manifest_uri": {
+      "type": "string",
+      "minLength": 1
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source_fragment_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "batch_id",
+          "fragment_manifest_sha256"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "fragment_manifest_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "published"
+      ]
+    },
+    "published_at": {
+      "type": "string"
+    }
+  }
+}

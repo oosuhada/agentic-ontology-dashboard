@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "contract_id": "SIMILAR-EVENT-DEMO-COMPRESSOR-001",
+  "source_kind": "synthetic_similar_event_context",
+  "source_uri": "data/fixtures/similar_event/demo-compressor-similar-event-context-v1.json",
+  "assumption_level": "demo_history_assumption",
+  "description": "Demo-only similar event context for showing how compressor CMMS or event-history adapters can enrich read-only agent review packets.",
+  "asset_types": ["compressor"],
+  "events": [
+    {
+      "similar_event_id": "SIM-EVT-CMP-VIBRATION-2026-07-19",
+      "component_id": "vibration_path",
+      "factor_keys": ["vibration_raw", "relative_vibration_z"],
+      "asset_label": "MetroPT Air Production Unit 2",
+      "observed_at": "2026-07-19T11:40:00+00:00",
+      "action_taken": "베어링 체결 상태와 방진 마운트 유격을 점검하고 축정렬을 재확인",
+      "outcome": "진동 원시값과 상대 진동 지표가 다음 24시간 관측에서 안정화됨",
+      "post_action_observation_window_hours": 24
+    },
+    {
+      "similar_event_id": "SIM-EVT-CMP-AIR-SUPPLY-2026-07-25",
+      "component_id": "air_supply",
+      "factor_keys": ["pressure_raw"],
+      "asset_label": "MetroPT Air Production Unit 1",
+      "observed_at": "2026-07-25T08:15:00+00:00",
+      "action_taken": "압력 레귤레이터와 흡입 필터 막힘 상태를 점검",
+      "outcome": "압력 신호 변동 폭이 완화되어 운전 조건을 유지함",
+      "post_action_observation_window_hours": 12
+    },
+    {
+      "similar_event_id": "SIM-EVT-CMP-ELECTRICAL-2026-07-27",
+      "component_id": "electrical_supply",
+      "factor_keys": ["voltage_raw"],
+      "asset_label": "MetroPT Air Production Unit 3",
+      "observed_at": "2026-07-27T13:30:00+00:00",
+      "action_taken": "전원 패널 컨택터와 전압 센서 결선 상태를 점검",
+      "outcome": "전압 신호 흔들림이 완화되어 추가 정지는 발생하지 않음",
+      "post_action_observation_window_hours": 24
+    },
+    {
+      "similar_event_id": "SIM-EVT-CMP-ROTATION-2026-07-28",
+      "component_id": "rotating_assembly",
+      "factor_keys": ["rotation_raw"],
+      "asset_label": "MetroPT Air Production Unit 2",
+      "observed_at": "2026-07-28T06:50:00+00:00",
+      "action_taken": "로터 커플링 체결 상태와 축정렬을 재확인",
+      "outcome": "회전 신호 변동 폭이 다음 관측 구간에서 안정화됨",
+      "post_action_observation_window_hours": 24
+    }
+  ]
+}

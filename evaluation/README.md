@@ -4,7 +4,7 @@ Gold 시나리오와 모델·임계값·Evidence·리포트·UI 평가를 관리
 
 ## 현재 산출물
 
-- [`gold_scenarios.yml`](./gold_scenarios.yml): MVP가 반드시 통과해야 하는 8개 사용자·안전 시나리오
+- [`gold_scenarios.yml`](./gold_scenarios.yml): Operations가 반드시 통과해야 하는 8개 사용자·안전 시나리오
 - `results/`: 단계별 평가 결과 저장 위치
 
 ## Gold 평가 범위

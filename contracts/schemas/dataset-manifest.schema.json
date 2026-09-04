@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/dataset-manifest.schema.json",
+  "title": "Ontology Dashboard Dataset Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "manifest_id",
+    "organization_id",
+    "project_id",
+    "workspace_id",
+    "adapter_code",
+    "dataset_name",
+    "dataset_version",
+    "source",
+    "schema",
+    "created_at"
+  ],
+  "properties": {
+    "manifest_version": { "const": "1.0" },
+    "manifest_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "organization_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "project_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "workspace_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "adapter_code": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "dataset_name": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "dataset_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "license": { "type": ["string", "null"], "maxLength": 256 },
+    "provenance_url": { "type": ["string", "null"], "format": "uri" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "media_type", "checksum_sha256"],
+      "properties": {
+        "uri": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "media_type": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "checksum_sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
+        "size_bytes": { "type": ["integer", "null"], "minimum": 0 },
+        "encoding": { "type": ["string", "null"], "maxLength": 64 }
+      }
+    },
+    "schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "required_fields"],
+      "properties": {
+        "format": { "type": "string", "enum": ["csv", "xlsx", "json", "jsonl", "parquet"] },
+        "delimiter": { "type": ["string", "null"], "maxLength": 8 },
+        "sheet": { "type": ["string", "null"], "maxLength": 256 },
+        "required_fields": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "uniqueItems": true
+        },
+        "field_aliases": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+          }
+        },
+        "primary_key": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "uniqueItems": true
+        },
+        "timestamp_field": { "type": ["string", "null"], "maxLength": 256 },
+        "timezone": { "type": ["string", "null"], "maxLength": 128 }
+      }
+    },
+    "quality_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "field", "rule"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "field": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "rule": { "type": "string", "enum": ["required", "number", "integer", "datetime", "enum", "min", "max"] },
+          "value": {}
+        }
+      },
+      "default": []
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}

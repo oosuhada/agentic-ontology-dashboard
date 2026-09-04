@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/inspection-location-reference.schema.json",
+  "title": "Inspection Location Reference",
+  "description": "Read-only component-to-field-location reference metadata. This contract does not create WorkOrders, MaintenanceActions, MaintenanceEvents, approvals, or Product Evidence.",
+  "type": "object",
+  "required": ["schema_version", "contract_id", "title", "version", "owner_domain", "maturity", "asset_types", "source_uri", "locations", "claim_boundaries"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "inspection-location-reference-v1.0"},
+    "contract_id": {"type": "string"},
+    "title": {"type": "string"},
+    "version": {"type": "string"},
+    "owner_domain": {"const": "field_inspection_reference"},
+    "maturity": {"enum": ["fixture", "draft", "approved", "retired"]},
+    "asset_types": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "source_uri": {"type": "string"},
+    "locations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["component_id", "component_label", "location_label", "inspection_method", "access_note", "safety_note"],
+        "additionalProperties": false,
+        "properties": {
+          "component_id": {"type": "string"},
+          "component_label": {"type": "string"},
+          "location_label": {"type": "string"},
+          "inspection_method": {"type": "string"},
+          "access_note": {"type": "string"},
+          "safety_note": {"type": "string"}
+        }
+      }
+    },
+    "claim_boundaries": {
+      "type": "object",
+      "required": ["allowed_claims", "forbidden_claims"],
+      "additionalProperties": false,
+      "properties": {
+        "allowed_claims": {"type": "array", "items": {"type": "string"}},
+        "forbidden_claims": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

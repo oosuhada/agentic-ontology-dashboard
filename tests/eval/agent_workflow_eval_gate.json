@@ -1,0 +1,129 @@
+{
+  "gate_id": "agent-workflow-eval-gate-v1",
+  "current_decision": "keep_simple_workflow_with_materialized_summary_contract",
+  "current_engine": "simple",
+  "candidate_engine": "langgraph",
+  "evaluation_scope": [
+    "output_contract",
+    "groundedness",
+    "workflow_stages",
+    "summary_reuse",
+    "fallback_retry",
+    "domain_context_grounding",
+    "closed_loop_boundary"
+  ],
+  "minimum_release_gates": {
+    "output_contract": [
+      "agent_review_packet_schema_valid",
+      "agent_review_summary_schema_valid",
+      "exact_role_summaries_for_operations"
+    ],
+    "groundedness": [
+      "summary_source_refs_exist_in_packet",
+      "no_unsupported_production_or_repair_claims",
+      "missing_context_is_reported_as_data_footnote_or_evidence_gap"
+    ],
+    "workflow_stages": [
+      "workflow_engine_reported",
+      "attempt_count_reported",
+      "terminal_status_reported",
+      "retry_policy_reported"
+    ],
+    "summary_reuse": [
+      "same_snapshot_reuses_stored_summary",
+      "changed_snapshot_hash_can_trigger_refresh",
+      "side_view_open_does_not_require_new_llm_call"
+    ],
+    "fallback_retry": [
+      "transient_provider_failure_retries_with_bounded_attempts",
+      "invalid_llm_output_falls_back_to_deterministic_summary",
+      "fallback_reason_is_observable"
+    ],
+    "domain_context_grounding": [
+      "db_backed_maintenance_history_reaches_role_summary",
+      "future_inventory_mes_schedule_claims_are_blocked_until_source_contract",
+      "adapter_source_refs_remain_inside_packet_scope"
+    ],
+    "closed_loop_boundary": [
+      "ai_summary_is_read_only",
+      "closed_loop_recommendation_input_is_derived_from_same_packet_snapshot",
+      "no_approval_or_work_order_mutation_tool"
+    ]
+  },
+  "adopt_langgraph_when_any": [
+    "three_or_more_independent_runtime_domain_tools_require_ordered_calls",
+    "tool_trajectory_accuracy_becomes_release_gate",
+    "human_pause_resume_must_survive_process_restart",
+    "node_specific_retry_and_resume_state_cannot_stay_in_service_method",
+    "branching_context_paths_need_explicit_graph_state"
+  ],
+  "defer_langgraph_when_all": [
+    "packet_build_context_enrichment_and_summary_validation_fit_one_service_boundary",
+    "context_facets_are_multiple_but_resolved_by_one_single_process_adapter",
+    "workflow_eval_gate_passes_without_tool_trajectory_checks"
+  ],
+  "current_context_facets": [
+    "operation_context",
+    "maintenance_history_context",
+    "inspection_location",
+    "sop_retrieval",
+    "spare_part_context",
+    "similar_event_context"
+  ],
+  "adoption_gate_policy": {
+    "meaning": "LangGraph, GraphRAG, Vector DB, and LlamaIndex remain eligible for production adoption when their release gates pass; they are deferred by current evidence, not rejected.",
+    "current_production_default": {
+      "workflow_engine": "simple",
+      "retrieval_source": "structured_adapter_context_inside_agent_review_packet",
+      "authority_model": "ai_read_only_closed_loop_mutation_forbidden"
+    },
+    "current_limitations": [
+      "langgraph_gate_measures_tool_trajectory_not_final_summary_quality",
+      "rag_gate_does_not_yet_measure_context_precision_recall_or_source_freshness",
+      "runtime_rag_not_bound_to_packet_snapshot_yet",
+      "pr_154_cost_basis_main_recheck_pending"
+    ]
+  },
+  "independent_runtime_tool_definition": {
+    "meaning": "a domain source called as a separately authorized and observable runtime tool or service, not a method on the same fixture adapter",
+    "requires_separate_failure_boundary": true,
+    "requires_separate_retry_policy": true,
+    "requires_tool_trajectory_eval": true
+  },
+  "retrieval_runtime_decision_gate": {
+    "current_decision": "defer_production_graphrag_vector_db_llamaindex",
+    "current_runtime_source": "structured_adapter_context_inside_agent_review_packet",
+    "defer_when_all": [
+      "sop_context_is_structured_fixture_metadata",
+      "ontology_context_is_projected_as_packet_source_refs",
+      "context_precision_recall_not_yet_measured",
+      "retrieval_freshness_contract_not_yet_release_gated",
+      "packet_snapshot_alignment_is_the_primary_current_gate"
+    ],
+    "adopt_when_all": [
+      "unstructured_or_multi_version_sop_documents_enter_runtime",
+      "retrieval_context_precision_recall_becomes_release_gate",
+      "retrieved_chunks_have_source_sha256_and_freshness_metadata",
+      "retrieval_results_are_bound_to_agent_review_packet_snapshot",
+      "llm_summary_validation_rejects_uncited_retrieval_claims"
+    ],
+    "candidate_stack": [
+      "GraphRAG",
+      "Vector DB",
+      "LlamaIndex"
+    ]
+  },
+  "forbidden_runtime_shortcuts": [
+    "direct_llm_domain_database_reads",
+    "raw_sql_or_cypher_generated_by_llm",
+    "closed_loop_mutation_from_ai_summary",
+    "approval_action_tool_in_ai_workflow",
+    "uncited_summary_fact"
+  ],
+  "reference_alignment": {
+    "openai_evals": "use contextual evals to define what good means for this workflow before changing the model or orchestration engine",
+    "langsmith_agent_evals": "separate final response, single-step, and trajectory evaluation; trajectory waits until tool calls are real",
+    "azure_agent_and_rag_evals": "track tool-call correctness, task completion, groundedness, retrieval relevance, and response completeness",
+    "ragas_rag_metrics": "defer context precision and recall until SOP documents become runtime retrieval context"
+  }
+}

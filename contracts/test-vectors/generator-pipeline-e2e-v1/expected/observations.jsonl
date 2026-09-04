@@ -1,0 +1,2 @@
+{"schema_version": "canonical-observation-v1", "asset_id": "CNC-01", "site_id": "S01", "cell_id": "L01", "observed_at": "2026-08-28T13:10:00Z", "torque_nm": 42.5}
+{"schema_version": "canonical-observation-v1", "asset_id": "CNC-01", "site_id": "S01", "cell_id": "L01", "observed_at": "2026-08-28T13:40:00Z", "torque_nm": 45.0}

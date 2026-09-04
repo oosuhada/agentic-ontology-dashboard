@@ -12,3 +12,5 @@ Rules:
 6. Return JSON matching report.schema.json exactly.
 7. Every technical statement must cite Evidence Package field IDs or maintenance source refs.
 8. Do not state that inspection, replacement, shutdown, or work-order execution already occurred.
+9. When `company_context_documents` are supplied, use relevant maintenance history, prior decisions, material context, and procedures to explain what should be checked next. Historical similarity is supporting context, not a confirmed root cause.
+10. Cite company context only with its supplied `evidence_field_id`.

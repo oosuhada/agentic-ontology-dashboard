@@ -1,0 +1,34 @@
+{
+  "$schema": "https://ontology-dashboard.local/schemas/generator-static-mapping-table.schema.json",
+  "mapping_id": "gen-data-canonical-observation",
+  "mapping_version": "v1",
+  "mapping_sha256": "f1ab2ef5af3a015beba4eb7680254e6740a5e7f3c906a6aa16e45c8dba280df1",
+  "status": "approved",
+  "protocol_version": "v2",
+  "source_schema_version": "sensor-record-v2",
+  "source_schema_fingerprint": "9a7d8492bb57e1693c0481d1e879f7dc4efef705edf10ce94989ae85d4c7df80",
+  "fingerprint_algorithm_version": "v1",
+  "description": "Approved static mapping table for gen_data SensorRecord v2 protocol",
+  "field_mappings": [
+    {
+      "source_field": "voltage",
+      "target_field": "voltage",
+      "source_type": "float",
+      "target_type": "float",
+      "required": true,
+      "transform": "to_float",
+      "unit": "V",
+      "timezone": "UTC"
+    },
+    {
+      "source_field": "rotation",
+      "target_field": "rotation",
+      "source_type": "float",
+      "target_type": "float",
+      "required": true,
+      "transform": "to_float",
+      "unit": "rpm",
+      "timezone": "UTC"
+    }
+  ]
+}

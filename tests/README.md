@@ -2,7 +2,7 @@
 
 현재 backend test suite는 53개 계약·통합·인증·RBAC·Ontology·Dashboard·Planner·Export·Session·성능·안전 검사를 포함한다.
 
-## `test_mvp.py`
+## `test_operations.py`
 
 기존 Gold 제조 기능과 회귀 안전성:
 

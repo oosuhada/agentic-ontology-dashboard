@@ -1,0 +1,46 @@
+{
+  "feature_schema_version": "ai4i-feature-v1",
+  "description": "Standard 5 continuous numerical sensor features for AI4I predictive maintenance dataset",
+  "features": [
+    {
+      "feature_name": "Air temperature [K]",
+      "source_field": "Air temperature [K]",
+      "dtype": "float64",
+      "operation": "raw",
+      "parameters": {},
+      "missing_value_policy": "drop"
+    },
+    {
+      "feature_name": "Process temperature [K]",
+      "source_field": "Process temperature [K]",
+      "dtype": "float64",
+      "operation": "raw",
+      "parameters": {},
+      "missing_value_policy": "drop"
+    },
+    {
+      "feature_name": "Rotational speed [rpm]",
+      "source_field": "Rotational speed [rpm]",
+      "dtype": "float64",
+      "operation": "raw",
+      "parameters": {},
+      "missing_value_policy": "drop"
+    },
+    {
+      "feature_name": "Torque [Nm]",
+      "source_field": "Torque [Nm]",
+      "dtype": "float64",
+      "operation": "raw",
+      "parameters": {},
+      "missing_value_policy": "drop"
+    },
+    {
+      "feature_name": "Tool wear [min]",
+      "source_field": "Tool wear [min]",
+      "dtype": "float64",
+      "operation": "raw",
+      "parameters": {},
+      "missing_value_policy": "drop"
+    }
+  ]
+}

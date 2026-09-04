@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 from .contracts import audit_fixture, fixture_paths, load_fixture
 from .dataset import audit_ai4i
 from .evidence import build_evidence_package
-from .training import train_and_evaluate
+from systems.generator.model import train_and_publish_model
 
 
 def _print(payload: object) -> None:
@@ -42,14 +43,19 @@ def command_validate_fixtures(args: argparse.Namespace) -> int:
 
 
 def command_train(args: argparse.Namespace) -> int:
-    metadata = train_and_evaluate(
-        args.csv,
-        args.output,
+    artifact_uri = args.artifact_uri or os.getenv("MODEL_ARTIFACT_URI", "").strip()
+    if not artifact_uri:
+        raise SystemExit("train requires --artifact-uri or MODEL_ARTIFACT_URI; loose ml/artifacts output is no longer operational SoT")
+    artifact_path = train_and_publish_model(
+        csv_path=args.csv,
+        artifact_uri=artifact_uri,
+        model_id=args.model_id,
+        dataset_version=args.dataset_version,
         minimum_recall=args.minimum_recall,
         false_negative_cost=args.false_negative_cost,
         false_positive_cost=args.false_positive_cost,
     )
-    _print(metadata)
+    _print({"artifact_path": str(artifact_path), "producer": "systems/generator"})
     return 0
 
 
@@ -73,7 +79,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     train = sub.add_parser("train")
     train.add_argument("csv")
-    train.add_argument("--output", default="ml/artifacts")
+    train.add_argument("--artifact-uri")
+    train.add_argument("--model-id", default="ai4i-failure-risk")
+    train.add_argument("--dataset-version")
     train.add_argument("--minimum-recall", type=float, default=0.80)
     train.add_argument("--false-negative-cost", type=float, default=10.0)
     train.add_argument("--false-positive-cost", type=float, default=1.0)

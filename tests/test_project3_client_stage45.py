@@ -5,7 +5,7 @@ import json
 import httpx
 import pytest
 
-from ontology_dashboard.integrations.project3 import (
+from app.infra.external.project3 import (
     Project3Client,
     Project3ContractError,
     Project3Unavailable,

@@ -1,0 +1,85 @@
+{
+  "schema_version": "maintenance-readiness-context-v1.0",
+  "context_id": "maintenance-readiness-context-demo-v1",
+  "source_classification": "synthetic_demo_context",
+  "scope": {
+    "organization_id": "ORG-001",
+    "project_id": "manufacturing-demo-project",
+    "workspace_id": "manufacturing-demo"
+  },
+  "temporal_scope": {
+    "snapshot_id": "MAINT-READINESS-SNAPSHOT-2026-09-02-01",
+    "valid_from": "2026-09-02T00:00:00+09:00",
+    "valid_to": "2026-09-04T00:00:00+09:00",
+    "generated_at": "2026-09-02T00:00:00+09:00"
+  },
+  "asset_id": "CNC-S04-L02-03",
+  "action_code": "TOOL_REPLACEMENT",
+  "required_skill_codes": ["CNC-TOOLING-L2"],
+  "maintenance_windows": [
+    {
+      "window_id": "MWIN-001",
+      "asset_id": "CNC-S04-L02-03",
+      "available_from": "2026-09-02T14:00:00+09:00",
+      "available_to": "2026-09-02T16:00:00+09:00",
+      "expected_duration_minutes": 90,
+      "approval_required": true,
+      "active_work_order_conflict": false,
+      "relationship_state": "assumed_demo",
+      "source_refs": ["maintenance-readiness-context-demo-v1#/maintenance_windows/0"]
+    }
+  ],
+  "part_requirements": [
+    {
+      "part_requirement_id": "PREQ-001",
+      "action_candidate_id": "ACTION-CANDIDATE-GS-004-TOOL",
+      "maintenance_action_id": null,
+      "action_code": "TOOL_REPLACEMENT",
+      "target_component_id": "tooling",
+      "required_part_spec": "TOOL-INSERT-TYPE-A",
+      "required_quantity": 1,
+      "acceptable_part_ids": ["PART-001", "PART-002"],
+      "requirement_version": "part-requirement-v1",
+      "status": "candidate",
+      "relationship_state": "assumed_demo",
+      "source_refs": ["maintenance-readiness-context-demo-v1#/part_requirements/0"]
+    }
+  ],
+  "inventory_snapshots": [
+    {
+      "part_id": "PART-001",
+      "on_hand_quantity": 2,
+      "reserved_quantity": 2,
+      "available_quantity": 0,
+      "expected_replenishment_at": "2026-09-03T09:00:00+09:00",
+      "inventory_location_ref": "STORE-A/RACK-02",
+      "relationship_state": "assumed_demo",
+      "source_refs": ["maintenance-readiness-context-demo-v1#/inventory_snapshots/0"]
+    },
+    {
+      "part_id": "PART-002",
+      "on_hand_quantity": 0,
+      "reserved_quantity": 0,
+      "available_quantity": 0,
+      "expected_replenishment_at": null,
+      "inventory_location_ref": null,
+      "relationship_state": "not_connected",
+      "source_refs": ["maintenance-readiness-context-demo-v1#/inventory_snapshots/1"]
+    }
+  ],
+  "technician_candidates": [
+    {
+      "technician_id": "DEMO-TECH-001",
+      "skill_codes": ["CNC-TOOLING-L2"],
+      "available_from": "2026-09-02T13:30:00+09:00",
+      "available_to": "2026-09-02T17:00:00+09:00",
+      "assignment_state": "candidate_only",
+      "relationship_state": "assumed_demo",
+      "source_refs": ["maintenance-readiness-context-demo-v1#/technician_candidates/0"]
+    }
+  ],
+  "limitations": [
+    "This fixture is synthetic readiness context and is not a CMMS, WMS, HR, scheduling, reservation, issue, assignment, or execution record.",
+    "Candidate part and technician records must not be represented as confirmed inventory reservation or assignment."
+  ]
+}

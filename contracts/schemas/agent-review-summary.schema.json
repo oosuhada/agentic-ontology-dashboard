@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/agent-review-summary.schema.json",
+  "title": "Agent Review Summary",
+  "description": "LLM or deterministic fallback summary derived only from an Agent Review Packet. This output is read-only and must not create or approve Closed-loop domain state.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "packet_schema_version",
+    "asset_id",
+    "generated_at",
+    "mode",
+    "title",
+    "summary",
+    "role_summaries",
+    "history_summary",
+    "inspection_focus",
+    "evidence_gaps",
+    "data_footnotes",
+    "source_refs",
+    "boundary_note",
+    "confidence_label",
+    "limitations"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "agent-review-summary-v1.0"},
+    "packet_schema_version": {"const": "agent-review-packet-v1.0"},
+    "asset_id": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "mode": {"enum": ["llm", "deterministic_fallback"]},
+    "title": {"type": "string", "minLength": 1},
+    "summary": {"type": "string", "minLength": 1},
+    "role_summaries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["role", "label", "quote", "source_refs"],
+        "additionalProperties": false,
+        "properties": {
+          "role": {"enum": ["field_operator", "process_manager"]},
+          "label": {"type": "string", "minLength": 1},
+          "quote": {"type": "string", "minLength": 1},
+          "source_refs": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "history_summary": {"type": "array", "items": {"type": "string"}},
+    "inspection_focus": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["component_id", "component_label", "location_label", "basis_refs", "source_refs"],
+        "additionalProperties": false,
+        "properties": {
+          "component_id": {"type": "string"},
+          "component_label": {"type": "string"},
+          "location_label": {"type": ["string", "null"]},
+          "basis_refs": {"type": "array", "items": {"type": "string"}},
+          "source_refs": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "evidence_gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["field", "reason", "owner_domain"],
+        "additionalProperties": false,
+        "properties": {
+          "field": {"type": "string"},
+          "reason": {"type": "string"},
+          "owner_domain": {"type": "string"}
+        }
+      }
+    },
+    "data_footnotes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "note", "owner_domain", "source_refs"],
+        "additionalProperties": false,
+        "properties": {
+          "code": {"type": "string"},
+          "note": {"type": "string", "minLength": 1},
+          "owner_domain": {"type": "string"},
+          "source_refs": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "source_refs": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "boundary_note": {"type": "string", "minLength": 1},
+    "confidence_label": {"enum": ["grounded", "partial", "data_quality_hold", "fallback"]},
+    "limitations": {"type": "array", "items": {"type": "string"}}
+  }
+}

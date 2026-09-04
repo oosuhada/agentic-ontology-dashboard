@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/generator-runtime-feature.schema.json",
+  "title": "GeneratorRuntimeFeature",
+  "type": "object",
+  "required": [
+    "runtime_feature_version",
+    "feature_schema_version",
+    "dataset_id",
+    "dataset_version",
+    "feature_columns",
+    "row_count",
+    "feature_count",
+    "created_at",
+    "payload_files"
+  ],
+  "properties": {
+    "runtime_feature_version": {
+      "type": "string",
+      "pattern": "^runtime-feat-[a-zA-Z0-9_-]+$"
+    },
+    "feature_schema_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dataset_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dataset_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "feature_columns": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "row_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "feature_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "provenance": {
+      "type": "object"
+    },
+    "payload_files": {
+      "type": "object",
+      "required": ["features", "row_metadata"],
+      "properties": {
+        "features": {
+          "type": "object",
+          "required": ["path", "sha256"],
+          "properties": {
+            "path": { "type": "string" },
+            "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          }
+        },
+        "row_metadata": {
+          "type": "object",
+          "required": ["path", "sha256"],
+          "properties": {
+            "path": { "type": "string" },
+            "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

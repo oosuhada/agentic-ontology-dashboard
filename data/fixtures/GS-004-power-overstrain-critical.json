@@ -1,13 +1,59 @@
 {
   "schema_version": "1.0", "scenario_id": "GS-004", "event_id": "EVT-GS-004",
-  "equipment": {"equipment_id": "M-033", "display_name": "프레스 설비 33", "line": "프레스 1라인", "criticality": "high", "assigned_engineer": "최민호", "last_maintenance_date": "2026-06-15", "estimated_downtime_minutes": 240, "spare_part_available": false},
+  "equipment": {"equipment_id": "CNC-S04-L02-03", "display_name": "4구역 · 2셀 · CNC 가공기 3", "asset_type": "cnc", "site_id": "S04", "cell_id": "S04-L02", "line": "S04-L02", "criticality": "high", "assigned_engineer": "최민호", "last_maintenance_date": "2026-06-15", "estimated_downtime_minutes": 240, "spare_part_available": false},
   "observation": {"timestamp": "2026-08-01T00:00:00+09:00", "product_type": "L", "air_temperature_k": 300.0, "process_temperature_k": 310.0, "rotational_speed_rpm": 1700, "torque_nm": 75.0, "tool_wear_min": 210},
   "history": [
-    {"timestamp": "2026-07-31T23:45:00+09:00", "product_type": "L", "air_temperature_k": 299.8, "process_temperature_k": 309.8, "rotational_speed_rpm": 1550, "torque_nm": 58.0, "tool_wear_min": 198},
-    {"timestamp": "2026-07-31T23:50:00+09:00", "product_type": "L", "air_temperature_k": 299.9, "process_temperature_k": 309.9, "rotational_speed_rpm": 1600, "torque_nm": 63.0, "tool_wear_min": 202},
-    {"timestamp": "2026-07-31T23:55:00+09:00", "product_type": "L", "air_temperature_k": 300.0, "process_temperature_k": 310.0, "rotational_speed_rpm": 1660, "torque_nm": 69.0, "tool_wear_min": 206},
-    {"timestamp": "2026-08-01T00:00:00+09:00", "product_type": "L", "air_temperature_k": 300.0, "process_temperature_k": 310.0, "rotational_speed_rpm": 1700, "torque_nm": 75.0, "tool_wear_min": 210}
+    {"timestamp": "2026-07-31T00:00:00+09:00", "product_type": "L", "air_temperature_k": 298.7, "process_temperature_k": 303.8, "rotational_speed_rpm": 1512, "torque_nm": 43.0, "tool_wear_min": 186},
+    {"timestamp": "2026-07-31T01:00:00+09:00", "product_type": "L", "air_temperature_k": 298.6, "process_temperature_k": 303.6, "rotational_speed_rpm": 1508, "torque_nm": 42.6, "tool_wear_min": 187},
+    {"timestamp": "2026-07-31T02:00:00+09:00", "product_type": "L", "air_temperature_k": 298.5, "process_temperature_k": 303.5, "rotational_speed_rpm": 1505, "torque_nm": 42.8, "tool_wear_min": 187},
+    {"timestamp": "2026-07-31T03:00:00+09:00", "product_type": "L", "air_temperature_k": 298.5, "process_temperature_k": 303.7, "rotational_speed_rpm": 1510, "torque_nm": 43.4, "tool_wear_min": 188},
+    {"timestamp": "2026-07-31T04:00:00+09:00", "product_type": "L", "air_temperature_k": 298.8, "process_temperature_k": 304.1, "rotational_speed_rpm": 1518, "torque_nm": 44.1, "tool_wear_min": 188},
+    {"timestamp": "2026-07-31T05:00:00+09:00", "product_type": "L", "air_temperature_k": 299.0, "process_temperature_k": 304.6, "rotational_speed_rpm": 1524, "torque_nm": 44.6, "tool_wear_min": 189},
+    {"timestamp": "2026-07-31T06:00:00+09:00", "product_type": "L", "air_temperature_k": 299.2, "process_temperature_k": 305.0, "rotational_speed_rpm": 1531, "torque_nm": 45.2, "tool_wear_min": 189},
+    {"timestamp": "2026-07-31T07:00:00+09:00", "product_type": "L", "air_temperature_k": 299.4, "process_temperature_k": 305.6, "rotational_speed_rpm": 1538, "torque_nm": 46.1, "tool_wear_min": 190},
+    {"timestamp": "2026-07-31T08:00:00+09:00", "product_type": "L", "air_temperature_k": 299.6, "process_temperature_k": 306.2, "rotational_speed_rpm": 1546, "torque_nm": 47.3, "tool_wear_min": 190},
+    {"timestamp": "2026-07-31T09:00:00+09:00", "product_type": "L", "air_temperature_k": 299.7, "process_temperature_k": 306.8, "rotational_speed_rpm": 1554, "torque_nm": 48.1, "tool_wear_min": 191},
+    {"timestamp": "2026-07-31T10:00:00+09:00", "product_type": "L", "air_temperature_k": 299.8, "process_temperature_k": 307.2, "rotational_speed_rpm": 1561, "torque_nm": 49.0, "tool_wear_min": 191},
+    {"timestamp": "2026-07-31T11:00:00+09:00", "product_type": "L", "air_temperature_k": 299.8, "process_temperature_k": 307.6, "rotational_speed_rpm": 1566, "torque_nm": 50.2, "tool_wear_min": 192},
+    {"timestamp": "2026-07-31T12:00:00+09:00", "product_type": "L", "air_temperature_k": 299.9, "process_temperature_k": 308.0, "rotational_speed_rpm": 1572, "torque_nm": 51.1, "tool_wear_min": 193},
+    {"timestamp": "2026-07-31T13:00:00+09:00", "product_type": "L", "air_temperature_k": 300.0, "process_temperature_k": 308.4, "rotational_speed_rpm": 1578, "torque_nm": 52.6, "tool_wear_min": 194},
+    {"timestamp": "2026-07-31T14:00:00+09:00", "product_type": "L", "air_temperature_k": 300.0, "process_temperature_k": 308.7, "rotational_speed_rpm": 1585, "torque_nm": 54.0, "tool_wear_min": 195},
+    {"timestamp": "2026-07-31T15:00:00+09:00", "product_type": "L", "air_temperature_k": 300.1, "process_temperature_k": 309.0, "rotational_speed_rpm": 1592, "torque_nm": 55.4, "tool_wear_min": 196},
+    {"timestamp": "2026-07-31T16:00:00+09:00", "product_type": "L", "air_temperature_k": 300.1, "process_temperature_k": 309.2, "rotational_speed_rpm": 1600, "torque_nm": 56.8, "tool_wear_min": 197},
+    {"timestamp": "2026-07-31T17:00:00+09:00", "product_type": "L", "air_temperature_k": 300.2, "process_temperature_k": 309.4, "rotational_speed_rpm": 1608, "torque_nm": 58.4, "tool_wear_min": 198},
+    {"timestamp": "2026-07-31T18:00:00+09:00", "product_type": "L", "air_temperature_k": 300.2, "process_temperature_k": 309.5, "rotational_speed_rpm": 1618, "torque_nm": 60.2, "tool_wear_min": 199},
+    {"timestamp": "2026-07-31T19:00:00+09:00", "product_type": "L", "air_temperature_k": 300.1, "process_temperature_k": 309.6, "rotational_speed_rpm": 1630, "torque_nm": 62.1, "tool_wear_min": 201},
+    {"timestamp": "2026-07-31T20:00:00+09:00", "product_type": "L", "air_temperature_k": 300.1, "process_temperature_k": 309.7, "rotational_speed_rpm": 1642, "torque_nm": 64.2, "tool_wear_min": 203},
+    {"timestamp": "2026-07-31T21:00:00+09:00", "product_type": "L", "air_temperature_k": 300.0, "process_temperature_k": 309.8, "rotational_speed_rpm": 1655, "torque_nm": 67.0, "tool_wear_min": 205},
+    {"timestamp": "2026-07-31T22:00:00+09:00", "product_type": "L", "air_temperature_k": 300.0, "process_temperature_k": 309.9, "rotational_speed_rpm": 1670, "torque_nm": 70.4, "tool_wear_min": 207},
+    {"timestamp": "2026-07-31T23:00:00+09:00", "product_type": "L", "air_temperature_k": 300.0, "process_temperature_k": 310.0, "rotational_speed_rpm": 1684, "torque_nm": 73.0, "tool_wear_min": 209}
   ],
   "runtime": {"llm_available": true, "planner_available": true, "context_provider": "fixture"},
+  "operation_context": {
+    "load_level": "high",
+    "runtime_hours_7d": 124.0,
+    "production_impact": "high",
+    "context_id": "OPCTX-GS-004-2026-08-01",
+    "source_type": "capacity_model",
+    "temporal_scope": {"snapshot_id": "production-plan-2026-08-01", "timezone": "Asia/Seoul", "valid_from": "2026-08-01T00:00:00+09:00", "valid_to": "2026-08-02T00:00:00+09:00", "generated_at": "2026-08-01T00:00:00+09:00"},
+    "production_plan": {"plan_id": "PLAN-2026-08-01-CNC", "plan_date": "2026-08-01", "planned_units": 16200, "product_mix": [{"variant": "M", "share": 0.45, "planned_units": 7290}, {"variant": "L", "share": 0.35, "planned_units": 5670}, {"variant": "H", "share": 0.2, "planned_units": 3240}]},
+    "capacity_model": {"active_asset_count": 80, "planned_operating_hours": 16, "oee": 0.846, "standard_cycle_minutes_per_unit": 4.0, "asset_units_per_hour": 12.69, "daily_capacity_units": 16200, "basis": "80대 계획 설비, 16시간 계획, 표준 사이클 4.0분 기준의 계획 영향 추정"},
+    "event_impact": {"event_id": "EVT-GS-004", "equipment_id": "CNC-S04-L02-03", "line": "S04-L02", "product_variant": "L", "screen_priority": "plan_at_risk", "impact_status": "estimated", "estimated_lost_units": 51, "basis": {"estimated_downtime_minutes": 240, "asset_units_per_hour": 12.69, "formula": "estimated_downtime_minutes / 60 * asset_units_per_hour"}},
+    "limitations": ["실제 MES 실적은 포함하지 않습니다.", "납기 영향은 확정하지 않습니다.", "정비 효과는 이 데이터에서 판단하지 않습니다."]
+  },
+  "closed_loop": {
+    "work_orders": [
+      {"work_order_id": "WO-INS-GS-004-001", "work_type": "inspection", "status": "requested", "assigned_to": null, "actor_display_name": "윤하린", "created_at": "2026-08-01T00:05:00+09:00", "updated_at": "2026-08-01T00:05:00+09:00"}
+    ],
+    "maintenance_actions": [],
+    "maintenance_events": [],
+    "activities": [
+      {"activity_id": "ACT-GS-004-001", "activity_type": "work_order.requested", "work_type": "inspection", "actor_display_name": "윤하린", "before_status": null, "after_status": "requested", "created_at": "2026-08-01T00:05:00+09:00", "work_order_id": "WO-INS-GS-004-001", "maintenance_action_id": null, "maintenance_event_id": null}
+    ],
+    "available_actions": [
+      {"action_id": "approve_inspection_work_order", "target_type": "work_order", "target_id": "WO-INS-GS-004-001", "label": "점검 승인", "disabled_reason": "데모 ViewModel은 읽기 전용입니다. 실제 승인은 Closed-loop mutation API 연결 후 처리합니다."}
+    ],
+    "runtime_status": null
+  },
   "expected": {"risk_band": "critical", "recommended_decision": "review_shutdown", "confidence": "high", "predicted_failure_type": "power_or_overstrain_failure"}
 }

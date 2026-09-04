@@ -6,10 +6,10 @@ venv
 **/__pycache__
 **/*.pyc
 **/.pytest_cache
-web/node_modules
-web/dist
-web/test-results
-web/playwright-report
+systems/frontend/node_modules
+systems/frontend/dist
+systems/frontend/test-results
+systems/frontend/playwright-report
 ml/artifacts/*
 !ml/artifacts/.gitkeep
 data/raw/*

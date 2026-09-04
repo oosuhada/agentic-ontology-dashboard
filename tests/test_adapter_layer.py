@@ -5,13 +5,18 @@ import json
 from pathlib import Path
 
 import pytest
+from openpyxl import Workbook
 from pydantic import ValidationError
+from jsonschema import Draft202012Validator
 
-from ontology_dashboard.adapters.file_adapter import FileAdapter
-from ontology_dashboard.adapters.models import DatasetManifest, PredictionResult
-from ontology_dashboard.adapters.prediction_repository import PredictionResultRepository
-from ontology_dashboard.identity import IdentityService
-from ontology_dashboard.migrations import migrate
+from app.dataset.ingestion.file_adapter import FileAdapter
+from app.dataset.ingestion.ingestion_schema import DatasetManifest
+from app.diagnosis.diagnosis_schema import PredictionResult
+from app.infra.db.dataset_ingestion_repository import DatasetIngestionRepository
+from app.infra.db.prediction_result_repository import PredictionResultRepository
+from app.infra.db.project_repository import SQLiteProjectContextResolver
+from app.infra.db.migrations import migrate
+from identity_test_support import build_identity_service
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -62,8 +67,14 @@ def manifest_for(
 def adapter_database(tmp_path: Path) -> Path:
     database = tmp_path / "adapter.db"
     migrate(str(database))
-    IdentityService(database, app_env="test", seed_demo=True)
+    build_identity_service(database, app_env="test", seed_demo=True)
     return database
+
+
+def file_adapter(database: Path, *, allowed_roots: list[Path]) -> FileAdapter:
+    repository = DatasetIngestionRepository(database)
+    repository.project_context = SQLiteProjectContextResolver(database)
+    return FileAdapter(allowed_roots=allowed_roots, repository=repository)
 
 
 def test_azure_file_adapter_quarantines_invalid_rows_and_recalculates_metrics(
@@ -85,7 +96,7 @@ def test_azure_file_adapter_quarantines_invalid_rows_and_recalculates_metrics(
         workspace_id="azure-fleet-maintenance",
         required_fields=["datetime", "machineID"],
     )
-    result = FileAdapter(adapter_database, allowed_roots=[tmp_path]).ingest(manifest)
+    result = file_adapter(adapter_database, allowed_roots=[tmp_path]).ingest(manifest)
 
     assert result.status == "completed_with_quarantine"
     assert result.source_record_count == 3
@@ -118,7 +129,7 @@ def test_metropt_adapter_validates_second_project_abstraction(
         workspace_id="metropt-compressor-monitoring",
         required_fields=["timestamp", "TP2"],
     )
-    result = FileAdapter(adapter_database, allowed_roots=[tmp_path]).ingest(manifest)
+    result = file_adapter(adapter_database, allowed_roots=[tmp_path]).ingest(manifest)
 
     assert result.status == "completed"
     assert result.accepted_record_count == 2
@@ -185,7 +196,8 @@ def test_prediction_contract_requires_evidence_and_project_scope(adapter_databas
         workspace_id="azure-fleet-maintenance",
     )
     result = PredictionResult.model_validate(payload)
-    repository = PredictionResultRepository(adapter_database)
+    context = SQLiteProjectContextResolver(adapter_database)
+    repository = PredictionResultRepository(adapter_database, project_context=context)
     saved = repository.save(result)
     assert saved["project_id"] == "azure-fleet-maintenance-project"
     assert repository.list(
@@ -198,6 +210,17 @@ def test_prediction_contract_requires_evidence_and_project_scope(adapter_databas
             project_id="azure-fleet-maintenance-project",
         )
     ) == 1
+
+    out_of_scope = result.model_copy(
+        update={
+            "prediction_id": "prediction-out-of-scope",
+            "organization_id": "attacker-org",
+            "project_id": "attacker-project",
+            "workspace_id": "totally-unknown-workspace",
+        }
+    )
+    with pytest.raises(ValueError, match="workspace"):
+        repository.save(out_of_scope)
 
     invalid = dict(payload)
     invalid["prediction_id"] = "prediction-without-evidence"
@@ -223,7 +246,7 @@ def test_checked_in_adapter_manifests_are_checksum_reproducible(
     manifest = DatasetManifest.model_validate(
         json.loads(manifest_path.read_text(encoding="utf-8"))
     )
-    result = FileAdapter(
+    result = file_adapter(
         adapter_database,
         allowed_roots=[ROOT / "data" / "fixtures"],
     ).ingest(manifest)
@@ -249,4 +272,125 @@ def test_file_adapter_rejects_sources_outside_allowlisted_roots(
         required_fields=["datetime", "machineID"],
     )
     with pytest.raises(ValueError, match="outside the configured ingestion roots"):
-        FileAdapter(adapter_database, allowed_roots=[allowed]).ingest(manifest)
+        file_adapter(adapter_database, allowed_roots=[allowed]).ingest(manifest)
+
+
+def test_governed_tabular_adapter_honors_approved_csv_delimiter(
+    adapter_database: Path,
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "governed-semicolon.csv"
+    source.write_text(
+        "machine_id;timestamp;voltage\n"
+        "M-1;2026-01-01T00:00:00Z;220.5\n"
+        "M-2;2026-01-01T00:01:00Z;221.0\n",
+        encoding="utf-8",
+    )
+    manifest = DatasetManifest.model_validate(
+        {
+            "manifest_id": "manifest-governed-semicolon",
+            "organization_id": "org-ontology-demo",
+            "project_id": "manufacturing-demo-project",
+            "workspace_id": "manufacturing-demo",
+            "adapter_code": "governed-tabular",
+            "dataset_name": "Governed semicolon CSV",
+            "dataset_version": "v1",
+            "source": {
+                "uri": str(source),
+                "media_type": "text/csv",
+                "checksum_sha256": sha256(source),
+                "size_bytes": source.stat().st_size,
+                "encoding": "utf-8",
+            },
+            "schema": {
+                "format": "csv",
+                "delimiter": ";",
+                "required_fields": ["equipment_id", "observed_at"],
+                "field_aliases": {
+                    "equipment_id": ["machine_id"],
+                    "observed_at": ["timestamp"],
+                    "voltage_v": ["voltage"],
+                },
+                "primary_key": ["equipment_id", "observed_at"],
+                "timestamp_field": "observed_at",
+                "timezone": "UTC",
+            },
+            "quality_rules": [
+                {"code": "required-equipment", "field": "equipment_id", "rule": "required"},
+                {"code": "timestamp", "field": "observed_at", "rule": "datetime"},
+                {"code": "voltage", "field": "voltage_v", "rule": "number"},
+            ],
+        }
+    )
+    result = file_adapter(adapter_database, allowed_roots=[tmp_path]).ingest(manifest)
+    assert result.status == "completed"
+    assert result.accepted_record_count == 2
+    assert result.accepted_records[0]["equipment_id"] == "M-1"
+    assert result.accepted_records[0]["voltage_v"] == "220.5"
+    assert result.metrics["semantic_inference_performed"] is False
+
+
+def test_governed_tabular_adapter_ingests_selected_xlsx_sheet(
+    adapter_database: Path,
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "governed.xlsx"
+    workbook = Workbook()
+    ignored = workbook.active
+    ignored.title = "README"
+    ignored.append(["note"])
+    ignored.append(["not data"])
+    data = workbook.create_sheet("Telemetry")
+    data.append(["machine_id", "timestamp", "voltage"])
+    data.append(["M-1", "2026-01-01T00:00:00Z", 220.5])
+    data.append(["M-2", "2026-01-01T00:01:00Z", 221.0])
+    workbook.save(source)
+    manifest = DatasetManifest.model_validate(
+        {
+            "manifest_id": "manifest-governed-xlsx",
+            "organization_id": "org-ontology-demo",
+            "project_id": "manufacturing-demo-project",
+            "workspace_id": "manufacturing-demo",
+            "adapter_code": "governed-tabular",
+            "dataset_name": "Governed XLSX",
+            "dataset_version": "v1",
+            "source": {
+                "uri": str(source),
+                "media_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "checksum_sha256": sha256(source),
+                "size_bytes": source.stat().st_size,
+                "encoding": "utf-8",
+            },
+            "schema": {
+                "format": "xlsx",
+                "sheet": "Telemetry",
+                "required_fields": ["equipment_id", "observed_at"],
+                "field_aliases": {
+                    "equipment_id": ["machine_id"],
+                    "observed_at": ["timestamp"],
+                    "voltage_v": ["voltage"],
+                },
+                "primary_key": ["equipment_id", "observed_at"],
+                "timestamp_field": "observed_at",
+                "timezone": "UTC",
+            },
+            "quality_rules": [
+                {"code": "required-equipment", "field": "equipment_id", "rule": "required"},
+                {"code": "timestamp", "field": "observed_at", "rule": "datetime"},
+                {"code": "voltage", "field": "voltage_v", "rule": "number"},
+            ],
+        }
+    )
+    result = file_adapter(adapter_database, allowed_roots=[tmp_path]).ingest(manifest)
+    assert result.status == "completed"
+    assert result.accepted_record_count == 2
+    assert result.accepted_records[1]["equipment_id"] == "M-2"
+    assert result.accepted_records[1]["voltage_v"] == "221"
+    schema = json.loads(
+        (ROOT / "contracts" / "schemas" / "dataset-manifest.schema.json").read_text(encoding="utf-8")
+    )
+    validator = Draft202012Validator(
+        schema,
+        format_checker=Draft202012Validator.FORMAT_CHECKER,
+    )
+    assert list(validator.iter_errors(manifest.model_dump(mode="json", by_alias=True))) == []

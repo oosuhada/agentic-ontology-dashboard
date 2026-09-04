@@ -1,0 +1,303 @@
+{
+  "schema_version": "company-context-v1",
+  "context_kind": "company_operational_context",
+  "company": {
+    "id": "company:hanbit-tech",
+    "name": "한빛테크",
+    "english_name": "Hanbit Tech",
+    "industry": "정밀 가공 및 산업용 구동부품 제조",
+    "headquarters": "대한민국 경기도",
+    "fiscal_year": 2026,
+    "currency": "KRW",
+    "operating_principle": "설비 이상 신호를 현장 근거, 생산 영향, 운영 판단, 경영 보고로 같은 Decision Case 안에서 연결한다."
+  },
+  "organization_units": [
+    {
+      "id": "org:executive-operations-council",
+      "name": "경영 운영위원회",
+      "parent_id": null,
+      "leader": "김도윤",
+      "responsibilities": ["운영 리스크", "주간 KPI", "CAPEX/OPEX 우선순위", "중대 생산 차질 승인"],
+      "persona_roles": ["executive_viewer"]
+    },
+    {
+      "id": "org:production-operations",
+      "name": "생산운영실",
+      "parent_id": "org:executive-operations-council",
+      "leader": "정민서",
+      "responsibilities": ["일일 생산계획", "Decision Case 우선순위", "정비 승인", "SLA 및 backlog 관리"],
+      "persona_roles": ["process_manager"]
+    },
+    {
+      "id": "org:reliability-engineering",
+      "name": "설비신뢰성팀",
+      "parent_id": "org:production-operations",
+      "leader": "박지민",
+      "responsibilities": ["센서 근거 분석", "원인 후보 검토", "점검 계획", "정비 효과 확인"],
+      "persona_roles": ["process_engineer"]
+    },
+    {
+      "id": "org:maintenance-execution",
+      "name": "정비실행팀",
+      "parent_id": "org:production-operations",
+      "leader": "이서준",
+      "responsibilities": ["승인 작업 실행", "현장 측정", "체크리스트", "완료 및 handoff 기록"],
+      "persona_roles": ["maintenance_technician"]
+    },
+    {
+      "id": "org:finance-scm",
+      "name": "재무·SCM팀",
+      "parent_id": "org:executive-operations-council",
+      "leader": "한유진",
+      "responsibilities": ["매출 계획", "재료비", "부품 재고", "조달 리드타임", "정비비 검토"],
+      "persona_roles": []
+    }
+  ],
+  "plants": [
+    {
+      "id": "plant:smart-factory-a",
+      "name": "스마트팩토리 A",
+      "site_ids": ["S01", "S02", "S03", "S04"],
+      "planned_operating_hours_per_day": 20,
+      "target_oee": 0.82,
+      "timezone": "Asia/Seoul"
+    }
+  ],
+  "products": [
+    {
+      "id": "product:HX-M",
+      "variant": "M",
+      "name": "HX-M 정밀 구동 모듈",
+      "unit_sales_price_krw": 420000,
+      "unit_material_cost_krw": 184000,
+      "unit_contribution_margin_krw": 132000,
+      "daily_plan_units": 980
+    },
+    {
+      "id": "product:HX-H",
+      "variant": "H",
+      "name": "HX-H 고하중 구동 모듈",
+      "unit_sales_price_krw": 610000,
+      "unit_material_cost_krw": 279000,
+      "unit_contribution_margin_krw": 191000,
+      "daily_plan_units": 410
+    },
+    {
+      "id": "product:HX-L",
+      "variant": "L",
+      "name": "HX-L 경량 구동 모듈",
+      "unit_sales_price_krw": 335000,
+      "unit_material_cost_krw": 141000,
+      "unit_contribution_margin_krw": 104000,
+      "daily_plan_units": 720
+    }
+  ],
+  "materials": [
+    {
+      "id": "material:carbide-insert-TNMG1604",
+      "name": "초경 인서트 TNMG1604",
+      "category": "절삭 공구",
+      "unit_cost_krw": 28700,
+      "on_hand_quantity": 164,
+      "reorder_point": 80,
+      "lead_time_days": 12,
+      "related_asset_ids": ["CNC-S04-L04-01", "CNC-S04-L04-02"]
+    },
+    {
+      "id": "material:spindle-bearing-7012",
+      "name": "스핀들 베어링 7012 세트",
+      "category": "정비 부품",
+      "unit_cost_krw": 1180000,
+      "on_hand_quantity": 3,
+      "reorder_point": 2,
+      "lead_time_days": 28,
+      "related_asset_ids": ["CNC-S04-L02-03", "CNC-S01-L04-03"]
+    },
+    {
+      "id": "material:coolant-premix-20l",
+      "name": "가공 냉각수 Premix 20L",
+      "category": "소모품",
+      "unit_cost_krw": 94000,
+      "on_hand_quantity": 24,
+      "reorder_point": 10,
+      "lead_time_days": 5,
+      "related_asset_ids": ["CNC-S01-L04-03", "CNC-S03-L01-03"]
+    },
+    {
+      "id": "material:servo-drive-module-SD7",
+      "name": "서보 드라이브 모듈 SD7",
+      "category": "전장 예비품",
+      "unit_cost_krw": 4860000,
+      "on_hand_quantity": 0,
+      "reorder_point": 1,
+      "lead_time_days": 35,
+      "related_asset_ids": ["CNC-S04-L02-03"]
+    }
+  ],
+  "business_metrics": [
+    {
+      "id": "metric:fy2026-revenue-plan",
+      "name": "FY2026 매출 계획",
+      "period": "2026",
+      "value": 128000000000,
+      "unit": "KRW",
+      "source_label": "finance plan"
+    },
+    {
+      "id": "metric:sep2026-revenue-plan",
+      "name": "2026년 9월 매출 계획",
+      "period": "2026-09",
+      "value": 10900000000,
+      "unit": "KRW",
+      "source_label": "finance plan"
+    },
+    {
+      "id": "metric:decision-lead-time-target",
+      "name": "Decision Lead Time 목표",
+      "period": "2026-H2",
+      "value": 90,
+      "unit": "minute",
+      "source_label": "operations KPI target"
+    },
+    {
+      "id": "metric:report-lead-time-target",
+      "name": "Report Lead Time 목표",
+      "period": "2026-H2",
+      "value": 30,
+      "unit": "minute",
+      "source_label": "operations KPI target"
+    }
+  ],
+  "maintenance_records": [
+    {
+      "id": "history:MAINT-2026-0412-01",
+      "asset_id": "CNC-S04-L04-01",
+      "occurred_at": "2026-04-12T02:10:00+09:00",
+      "work_type": "preventive_maintenance",
+      "component": "tool holder / insert interface",
+      "symptom": "공구 교환 후 마모 편차 증가",
+      "action": "툴 홀더 체결 토크 확인, 인서트 교환 주기 8% 단축, 기준 진동 재측정",
+      "result": "다음 21일 동안 동일 경보 미발생",
+      "downtime_minutes": 55,
+      "material_ids": ["material:carbide-insert-TNMG1604"],
+      "source_ref": "maintenance:MAINT-2026-0412-01"
+    },
+    {
+      "id": "history:MAINT-2026-0528-03",
+      "asset_id": "CNC-S04-L02-03",
+      "occurred_at": "2026-05-28T01:20:00+09:00",
+      "work_type": "corrective_maintenance",
+      "component": "spindle drive / bearing",
+      "symptom": "부하 상승 구간 전력 피크 및 미세 진동 동시 증가",
+      "action": "스핀들 정렬 확인, 베어링 윤활 상태 점검, 드라이브 로그 백업",
+      "result": "정렬 보정 후 진동은 감소했으나 부하 피크 추적 필요",
+      "downtime_minutes": 135,
+      "material_ids": ["material:spindle-bearing-7012"],
+      "source_ref": "maintenance:MAINT-2026-0528-03"
+    },
+    {
+      "id": "history:MAINT-2026-0618-02",
+      "asset_id": "CNC-S01-L04-03",
+      "occurred_at": "2026-06-18T03:40:00+09:00",
+      "work_type": "preventive_maintenance",
+      "component": "cooling circuit",
+      "symptom": "공정 온도 상승 회복 지연",
+      "action": "필터 세척, 냉각수 보충, 유량 센서 기준값 확인",
+      "result": "열 안정화 시간 14% 개선",
+      "downtime_minutes": 70,
+      "material_ids": ["material:coolant-premix-20l"],
+      "source_ref": "maintenance:MAINT-2026-0618-02"
+    },
+    {
+      "id": "history:MAINT-2026-0715-04",
+      "asset_id": "CNC-S02-L02-02",
+      "occurred_at": "2026-07-15T00:35:00+09:00",
+      "work_type": "inspection",
+      "component": "sensor harness",
+      "symptom": "간헐적 신호 품질 저하",
+      "action": "커넥터 재체결, 접지 확인, 24시간 데이터 품질 모니터링",
+      "result": "점검 후 결측률 정상 범위 복귀",
+      "downtime_minutes": 25,
+      "material_ids": [],
+      "source_ref": "maintenance:MAINT-2026-0715-04"
+    }
+  ],
+  "meeting_minutes": [
+    {
+      "id": "meeting:OPS-2026-08-17",
+      "title": "주간 Reliability 운영회의",
+      "occurred_at": "2026-08-17T09:00:00+09:00",
+      "attendees": ["생산운영실", "설비신뢰성팀", "정비실행팀", "재무·SCM팀"],
+      "summary": "고위험 설비는 원시 센서값보다 생산계획 영향과 미결 Decision Case를 같이 보고하며, 부품 미확보 항목은 승인 전에 조달 리드타임을 명시한다.",
+      "decision_ids": ["decision:DEC-2026-0817-01", "decision:DEC-2026-0817-02"],
+      "source_ref": "meeting:OPS-2026-08-17"
+    },
+    {
+      "id": "meeting:EXEC-2026-08-31",
+      "title": "월말 운영 리스크 리뷰",
+      "occurred_at": "2026-08-31T16:00:00+09:00",
+      "attendees": ["경영 운영위원회", "생산운영실", "재무·SCM팀"],
+      "summary": "경영진 보고에서는 고장 확정 표현을 금지하고, 예상 생산 영향·판단 지연·가용 조치·근거의 신뢰 수준을 분리해 보고한다.",
+      "decision_ids": ["decision:DEC-2026-0831-03"],
+      "source_ref": "meeting:EXEC-2026-08-31"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "decision:DEC-2026-0817-01",
+      "title": "부품 미확보 고위험 설비의 조기 에스컬레이션",
+      "decided_at": "2026-08-17T09:42:00+09:00",
+      "owner_org_unit_id": "org:production-operations",
+      "decision": "critical 설비에서 핵심 예비품이 0개이면 정비 승인 여부와 별개로 SCM 검토를 동시에 개시한다.",
+      "related_asset_ids": ["CNC-S04-L02-03"],
+      "source_ref": "decision:DEC-2026-0817-01"
+    },
+    {
+      "id": "decision:DEC-2026-0817-02",
+      "title": "공구 마모 경보의 shift inspection 우선",
+      "decided_at": "2026-08-17T09:47:00+09:00",
+      "owner_org_unit_id": "org:reliability-engineering",
+      "decision": "공구 마모 단독 경보는 생산 손실 추정과 최근 공구 교환 이력을 함께 확인한 뒤 교대 내 점검을 우선한다.",
+      "related_asset_ids": ["CNC-S04-L04-01", "CNC-S04-L04-02"],
+      "source_ref": "decision:DEC-2026-0817-02"
+    },
+    {
+      "id": "decision:DEC-2026-0831-03",
+      "title": "Executive Brief 보고 언어 원칙",
+      "decided_at": "2026-08-31T16:36:00+09:00",
+      "owner_org_unit_id": "org:executive-operations-council",
+      "decision": "보고 문장은 사실, 추정, 권고를 구분하고 원본 Evidence와 Decision Case source reference를 유지한다.",
+      "related_asset_ids": [],
+      "source_ref": "decision:DEC-2026-0831-03"
+    }
+  ],
+  "documents": [
+    {
+      "id": "doc:company-operating-model",
+      "title": "한빛테크 운영 모델",
+      "document_type": "company_policy",
+      "content": "한빛테크의 운영 모델은 엔지니어가 센서와 점검 근거를 확인하고, 생산운영실이 생산 영향과 정비 승인 여부를 판단하며, 경영 운영위원회가 리스크·KPI·보고 요약을 확인하는 구조다. 모든 단계는 같은 Risk Event와 Evidence를 기준으로 연결한다.",
+      "tags": ["조직", "persona", "decision case", "handoff"],
+      "related_asset_ids": [],
+      "source_ref": "knowledge:company-operating-model"
+    },
+    {
+      "id": "doc:financial-impact-guide",
+      "title": "생산 차질의 재무 영향 환산 가이드",
+      "document_type": "finance_policy",
+      "content": "데모 재무 환산에서는 제품별 단위 공헌이익과 예상 손실 수량을 곱해 의사결정 비교용 노출액을 계산한다. 이 값은 회계 손실 확정액이 아니라 운영 의사결정용 추정치이며 실제 ERP 원가와 구분해 표시해야 한다.",
+      "tags": ["매출", "공헌이익", "생산 영향", "ERP", "추정"],
+      "related_asset_ids": [],
+      "source_ref": "knowledge:financial-impact-guide"
+    },
+    {
+      "id": "doc:maintenance-governance",
+      "title": "정비 의사결정 Governance",
+      "document_type": "maintenance_policy",
+      "content": "AI와 LLM은 점검 후보와 보고 문구를 제안할 수 있지만 Work Order 승인, 정비 실행, 완료 기록은 사람의 권한과 closed-loop 상태 전이를 통해서만 수행한다. 과거 정비 기록은 분석 context로 사용하고 현재 작업 상태를 직접 변경하지 않는다.",
+      "tags": ["정비", "approval", "closed loop", "human review"],
+      "related_asset_ids": [],
+      "source_ref": "knowledge:maintenance-governance"
+    }
+  ]
+}

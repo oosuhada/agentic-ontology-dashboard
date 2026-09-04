@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/generator-extraction-fragment-consumption.schema.json",
+  "title": "Generator Extraction Fragment Consumption v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "consumption_schema_version",
+    "batch_id",
+    "fragment_manifest_sha256",
+    "referenced_windows",
+    "published_windows",
+    "pending_windows",
+    "status",
+    "updated_at"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "consumption_schema_version": {
+      "type": "string",
+      "enum": [
+        "generator-extraction-fragment-consumption-v1"
+      ]
+    },
+    "batch_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fragment_manifest_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "referenced_windows": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "published_windows": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "pending_windows": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "partially_consumed",
+        "fully_consumed"
+      ]
+    },
+    "updated_at": {
+      "type": "string"
+    }
+  }
+}

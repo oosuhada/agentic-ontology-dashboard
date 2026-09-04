@@ -1,0 +1,137 @@
+{
+  "schema_version": "procedure-grounding-v1.1",
+  "sop_id": "SOP-DEMO-CNC-ROTATING-ASSEMBLY-001",
+  "title": "CNC 회전/구동 계통 점검 참고 절차",
+  "version": "demo-2026-08-28",
+  "source_kind": "demo_sop_fixture",
+  "maturity": "fixture",
+  "owner_domain": "maintenance",
+  "asset_types": ["cnc"],
+  "component_ids": ["rotating_assembly", "drive_train", "drive_power", "tooling", "thermal_path"],
+  "failure_modes": ["tool_wear_failure", "heat_dissipation_failure", "power_or_overstrain_failure", "multi_factor_risk", "failure_risk"],
+  "factor_keys": ["rotation_raw", "vibration_raw", "rotational_speed_rpm", "torque_nm", "mechanical_power_w", "overstrain_index", "tool_wear_min", "process_temperature_k", "temperature_difference_k"],
+  "applicability": {
+    "risk_grades": ["attention", "warning", "critical"],
+    "criticality": ["low", "medium", "high"],
+    "production_impact": ["none", "low", "medium", "high"]
+  },
+  "safety_level": "caution",
+  "requires_human_approval": true,
+  "effective_from": "2026-08-28",
+  "source_uri": "data/fixtures/inspection_sop/demo-cnc-inspection-guidance-v1-1.json",
+  "document_hash": "demo-fixture-editable",
+  "standard_alignment": [
+    {
+      "standard": "ISO_17359",
+      "alignment_scope": ["condition_monitoring_review", "inspection_question"]
+    },
+    {
+      "standard": "ISO_14224",
+      "alignment_scope": ["equipment_failure_maintenance_metadata"]
+    }
+  ],
+  "sensor_judgment": {
+    "judgment_scope": "inspection_result",
+    "allowed_outcomes": ["maintenance_recommended", "monitor_only", "data_quality_hold"],
+    "criteria": [
+      {
+        "criterion_id": "SOP-DEMO-CNC-ROTATING-ASSEMBLY-001:C1",
+        "factor_key": "tool_wear_min",
+        "operator": ">=",
+        "threshold": {
+          "kind": "absolute",
+          "value": 220,
+          "values": null,
+          "unit": "min"
+        },
+        "outcome_if_met": "maintenance_recommended",
+        "evidence_role": "primary_sensor",
+        "human_check_required": true,
+        "notes": "공구 교체 필요성 판단을 위한 데모 SOP 기준이며 실제 제조사 한계값이 아닙니다."
+      },
+      {
+        "criterion_id": "SOP-DEMO-CNC-ROTATING-ASSEMBLY-001:C2",
+        "factor_key": "overstrain_index",
+        "operator": ">=",
+        "threshold": {
+          "kind": "product_type_map",
+          "value": null,
+          "values": {
+            "L": 11000,
+            "M": 12000,
+            "H": 13000
+          },
+          "unit": "min*N*m"
+        },
+        "outcome_if_met": "maintenance_recommended",
+        "evidence_role": "corroborating_sensor",
+        "human_check_required": true,
+        "notes": "공구 마모와 토크가 함께 높은 경우 현장 확인을 강화합니다."
+      },
+      {
+        "criterion_id": "SOP-DEMO-CNC-ROTATING-ASSEMBLY-001:C3",
+        "factor_key": "temperature_difference_k",
+        "operator": ">=",
+        "threshold": {
+          "kind": "absolute",
+          "value": 8,
+          "values": null,
+          "unit": "K"
+        },
+        "outcome_if_met": "monitor_only",
+        "evidence_role": "supporting_sensor",
+        "human_check_required": true,
+        "notes": "열 경로 점검 체크리스트를 만들기 위한 보조 기준입니다."
+      }
+    ],
+    "inspection_result_mapping": {
+      "records_operational_fact": true,
+      "does_not_create_maintenance_event": true,
+      "manual_recommendation_requires_manager_acceptance": true
+    },
+    "claim_boundaries": {
+      "allowed_claims": [
+        "SOP 기준상 정비 필요 점검 결과",
+        "센서 기준이 점검 결과를 지지",
+        "정비 전 위험 판단과 정비 후 재관측을 연결"
+      ],
+      "forbidden_claims": [
+        "실제 고장 예방 입증",
+        "정비로 downtime 절감",
+        "정비 완료 후 정상화",
+        "SOP가 자동 정비 승인"
+      ]
+    }
+  },
+  "guidance": {
+    "reference_location_label": "SOP 기준 참고 위치",
+    "suggested_check_method": "센서 이상 기여 요인을 기준으로 회전/구동 계통의 체결, 마모, 이상 소음 여부를 확인합니다.",
+    "checklist_draft": [
+      "점검 전 설비 상태와 작업 가능 여부를 확인합니다.",
+      "상위 위험 요인과 연결된 부품 후보를 현장 담당자가 확인합니다.",
+      "이상 소음, 진동, 마모, 체결 상태를 관찰하고 결과를 기록합니다."
+    ],
+    "maintenance_review_prerequisites": {
+      "label": "정비 판단 전 확인사항",
+      "review_conditions": [
+        "동일 부품 후보가 warning 또는 critical 이벤트에서 반복적으로 상위 위험 요인과 연결됩니다.",
+        "마모, 진동, 토크, 온도 관련 관측값이 최근 이력 대비 악화 추세를 보입니다.",
+        "현장 점검에서 이상 소음, 유격, 과열, 마모 흔적 중 하나 이상이 확인됩니다."
+      ],
+      "required_measurements": [
+        "현재 센서 관측값과 최근 이력 비교",
+        "부품 외관, 체결, 이상 소음, 발열 확인 결과",
+        "열린 WorkOrder와 최근 정비 이력"
+      ],
+      "human_review_questions": [
+        "최근 동일 부품 또는 동일 계통에 대한 점검/교체 이력이 있습니까?",
+        "추가 점검 또는 정비 판단에 필요한 설비 정지 가능 시간과 부품 가용성이 확인됐습니까?",
+        "점검 결과가 추가 조치 판단이 필요할 만큼 반복적이거나 악화 중입니까?"
+      ],
+      "decision_boundary": "이 정보는 정비 판단 전 확인사항이며 정비 방법·시점 결정, 비용상 선호 대안, WorkOrder 생성 또는 정비 승인을 수행하지 않습니다."
+    },
+    "disclaimer": "데모 SOP fixture 기반 참고 안내이며 Product Evidence가 확정한 점검 위치 또는 수리 지시가 아닙니다.",
+    "allowed_ui_claims": ["SOP 기준 참고 위치", "점검 질문 초안", "점검 체크리스트 초안", "정비 판단 전 확인사항", "교체 시기 검토 초안", "절차 문서 연결됨"],
+    "forbidden_ui_claims": ["확정 점검 위치", "교체 필요 확정", "권장 교체 시점", "비용상 최적 대안", "예상 절감액 확정", "즉시 교체 권장", "계획 정비 권장", "작업요청 생성", "수리 지시", "자동 승인 완료"]
+  }
+}

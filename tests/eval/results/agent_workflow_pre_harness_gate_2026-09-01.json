@@ -1,0 +1,67 @@
+{
+  "result_id": "agent-workflow-pre-harness-gate-2026-09-01",
+  "recorded_at": "2026-09-01",
+  "scope": "AI workflow pre-harness gate before 8x15 Agent Review Summary LLM evaluation",
+  "base_pr": {
+    "number": 156,
+    "head_branch": "codex/pr140-agent-review-packet",
+    "worktree_branch": "codex/pr156-ai-workflow-preharness"
+  },
+  "ready_for_120_run": false,
+  "pre_harness_gate": {
+    "generator_batch_expression_contract": {
+      "status": "completed",
+      "decision": "absorbed_into_backend_product_result_and_agent_review_packet_context",
+      "evidence": [
+        "prediction-result-batch.schema.json accepts results[].explanation with top_factors, confidence_label, explanation_method, feature_snapshot_ref, sensor_window_ref, display_labels, and checksum-backed source_ref values",
+        "ProductResultMaterializationService promotes generator explanation top_factors into Product Result top_factors, ranked_factor_evidence, and evidence_payload.source_fields",
+        "Agent Review Packet exposes trusted model expressions through model_expression_context and keeps raw Generator payloads out of the LLM prompt",
+        "tests/test_prediction_result_inbox.py covers optional Generator explanation absorption"
+      ],
+      "remaining_before_120_run": [
+        "Include at least one Generator explanation case in the 8-case Agent Review Packet gold set"
+      ]
+    },
+    "graphrag_vector_db_llamaindex_runtime": {
+      "status": "deferred_with_reason",
+      "decision": "defer_production_runtime_until_retrieval_metrics_are_release_gated",
+      "current_runtime_source": "structured_adapter_context_inside_agent_review_packet",
+      "adopt_when": [
+        "unstructured or multi-version SOP documents enter runtime",
+        "retrieval context precision and recall become release gates",
+        "retrieved chunks carry source_sha256 and freshness metadata",
+        "retrieval results are bound to the Agent Review Packet snapshot",
+        "LLM summary validation rejects uncited retrieval claims"
+      ]
+    },
+    "langgraph_watcher_runtime": {
+      "status": "gate_open_experiment_only",
+      "decision": "keep_simple_workflow_as_production_default",
+      "candidate_engine": "langgraph",
+      "evidence": [
+        "tests/eval/langgraph_decision_gate.json keeps production_default=simple",
+        "run_langgraph_tool_pipeline executes the same read-only trajectory when LangGraph is installed or records fallback_to_simple when unavailable",
+        "tool trajectory validation forbids closed_loop mutation tools and source refs outside packet scope"
+      ],
+      "production_switch_allowed": false
+    },
+    "pr_154_cost_basis_main_recheck": {
+      "status": "blocked_by_pr_154",
+      "pr_number": 154,
+      "pr_state": "OPEN",
+      "head_branch": "feat/tool-insert-cost-basis",
+      "head_sha": "a63569393a1ced539ab794832b5fb879878feb2b",
+      "merged_at": null,
+      "required_after_merge": [
+        "merge or rebase main into codex/pr156-ai-workflow-preharness",
+        "verify cost-basis and RecommendationInput snapshot guard use the same trusted Product Result/Evidence basis",
+        "rerun maintenance loop, Agent Review Packet, and Agent Review Summary regression tests"
+      ]
+    }
+  },
+  "limits": [
+    "This artifact opens LangGraph and RAG-family decision gates; it does not claim production GraphRAG, Vector DB, LlamaIndex, or LangGraph watcher adoption.",
+    "The 120-run LLM evaluation should remain blocked until PR #154 is merged into main and rechecked, or the report explicitly marks the dependency as blocked_by_pr_154.",
+    "Generator expression coverage is implementation-supported but still needs explicit inclusion in the 8-case gold set before live 120-run claims."
+  ]
+}

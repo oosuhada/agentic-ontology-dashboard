@@ -1,0 +1,48 @@
+{
+  "schema_version": "inspection-location-reference-v1.0",
+  "contract_id": "ILR-DEMO-CNC-001",
+  "title": "CNC 현장 점검 위치 참고 계약",
+  "version": "demo-2026-08-27",
+  "owner_domain": "field_inspection_reference",
+  "maturity": "fixture",
+  "asset_types": ["cnc"],
+  "source_uri": "data/fixtures/inspection_location/demo-cnc-inspection-location-reference-v1.json",
+  "locations": [
+    {
+      "component_id": "tooling",
+      "component_label": "공구/마모 계통",
+      "location_label": "공구 매거진 및 스핀들 공구 체결부",
+      "inspection_method": "공구 사용 시간, 마모 흔적, 체결 상태, 이상 소음을 현장 점검표에 따라 확인합니다.",
+      "access_note": "정지 가능 시간과 안전 절차 확인 후 공구 매거진 커버 접근",
+      "safety_note": "회전체 접근 전 설비 정지와 에너지 차단 상태를 확인합니다."
+    },
+    {
+      "component_id": "drive_power",
+      "component_label": "동력 전달 계통",
+      "location_label": "주축 모터, 커플링, 동력 전달 하우징",
+      "inspection_method": "토크 상승, 출력 부하, 과부하 누적 이력과 함께 체결, 발열, 진동 상태를 확인합니다.",
+      "access_note": "구동부 보호 커버 접근 전 작업 허가와 설비 정지 가능 시간을 확인",
+      "safety_note": "고온부와 회전체 접근 전 보호구와 에너지 차단 상태를 확인합니다."
+    },
+    {
+      "component_id": "thermal_path",
+      "component_label": "냉각/열 해소 계통",
+      "location_label": "스핀들 냉각 라인 및 가공부 열 배출 경로",
+      "inspection_method": "공정 온도, 온도차, 냉각 라인 막힘, 열 배출 상태를 함께 확인합니다.",
+      "access_note": "냉각 라인 점검 전 누설과 고온 접촉 위험을 확인",
+      "safety_note": "고온 표면 접촉 방지와 냉각수 취급 절차를 따릅니다."
+    },
+    {
+      "component_id": "rotating_assembly",
+      "component_label": "회전/진동 계통",
+      "location_label": "스핀들 회전부 및 베어링 하우징",
+      "inspection_method": "회전 속도, 진동, 이상 소음, 베어링 유격을 현장 점검표에 따라 확인합니다.",
+      "access_note": "회전부 접근 전 설비 정지와 접근 허가 확인",
+      "safety_note": "회전체 접근 전 에너지 차단 상태를 확인합니다."
+    }
+  ],
+  "claim_boundaries": {
+    "allowed_claims": ["현장 확인 위치 참고", "점검 방법 참고", "SOP와 함께 검토할 위치 메타데이터"],
+    "forbidden_claims": ["정비 작업요청 생성", "정비 승인", "정비 완료", "고장 원인 확정", "자동 승인"]
+  }
+}

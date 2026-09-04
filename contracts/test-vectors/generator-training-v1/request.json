@@ -1,0 +1,8 @@
+{
+  "dataset_id": "golden_dataset",
+  "dataset_version": "v1.0",
+  "feature_dataset_version": "feature-dataset-golden1234",
+  "training_config_version": "golden-training-config-v1",
+  "model_version": "golden-lightgbm-v1.0",
+  "activation_policy": "activate_on_success"
+}

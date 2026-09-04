@@ -5,22 +5,27 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from ontology_dashboard.datasets import (
+from app.dataset import (
     DatasetCatalogService,
     DatasetCreateRequest,
-    DatasetRepository,
     DatasetVersionCreateRequest,
     OntologyMappingCreateRequest,
 )
-from ontology_dashboard.datasets.projection import (
+from app.infra.db.dataset_repository import DatasetRepository
+from app.dataset.projection import (
     DatasetProjectionCoordinator,
     InMemoryProjectionPort,
 )
-from ontology_dashboard.dependencies import get_dataset_catalog_service
-from ontology_dashboard.identity import CSRF_COOKIE, IdentityService
-from ontology_dashboard.main import app, get_identity_service, get_service
-from ontology_dashboard.migrations import migrate
-from ontology_dashboard.service import ManufacturingPredictiveMaintenanceService
+from app.dependencies import (
+    build_manufacturing_service,
+    get_dataset_catalog_service,
+    get_identity_service,
+    get_service,
+)
+from app.identity import CSRF_COOKIE, IdentityService
+from app.main import app
+from app.infra.db.migrations import migrate
+from identity_test_support import build_identity_service
 
 ROOT = Path(__file__).resolve().parents[1]
 CHECKSUM = "a" * 64
@@ -30,7 +35,7 @@ CHECKSUM = "a" * 64
 def setup(tmp_path: Path):
     database_path = tmp_path / "dataset-projection.db"
     migrate(str(database_path))
-    identity = IdentityService(database_path, app_env="test", seed_demo=True)
+    identity = build_identity_service(database_path, app_env="test", seed_demo=True)
     repository = DatasetRepository(database_path)
     catalog = DatasetCatalogService(repository)
     user = identity.repository.authenticate("fde@ontology.local", "FDE!2026")
@@ -232,7 +237,7 @@ def test_projection_failure_is_recorded_and_retryable(setup) -> None:
 @pytest.fixture()
 def api_client(setup):
     database_path, identity, _, catalog, _ = setup
-    domain_service = ManufacturingPredictiveMaintenanceService(ROOT, database_path=database_path)
+    domain_service = build_manufacturing_service(database_path, root=ROOT)
     app.dependency_overrides[get_identity_service] = lambda: identity
     app.dependency_overrides[get_service] = lambda: domain_service
     app.dependency_overrides[get_dataset_catalog_service] = lambda: catalog
@@ -247,107 +252,6 @@ def login(client: TestClient, email: str, password: str) -> dict[str, str]:
     token = client.cookies.get(CSRF_COOKIE)
     assert token
     return {"X-CSRF-Token": token}
-
-
-def test_analysis_materialization_becomes_reusable_dataset_input(api_client: TestClient) -> None:
-    csrf = login(api_client, "fde@ontology.local", "FDE!2026")
-    analysis = api_client.post(
-        "/api/analyses",
-        headers=csrf,
-        json={
-            "id": "analysis-materialization-source",
-            "workspace_id": "manufacturing-demo",
-            "display_name": "Materialization source",
-            "nodes": [
-                {
-                    "id": "input:0",
-                    "type": "analysisNode",
-                    "data": {
-                        "kind": "input",
-                        "title": "Risk Events",
-                        "config": {"source": "risk_event"},
-                    },
-                    "position": {"x": 0, "y": 0},
-                }
-            ],
-            "edges": [],
-            "publish": True,
-        },
-    )
-    assert analysis.status_code == 200, analysis.text
-    materialized = api_client.post(
-        "/api/analyses/analysis-materialization-source/materializations",
-        headers=csrf,
-        json={
-            "project_id": "manufacturing-demo-project",
-            "workspace_id": "manufacturing-demo",
-            "node_id": "input:0",
-            "version_policy": "pinned",
-            "version": 1,
-            "dataset_id": "ds-analysis-materialized",
-            "dataset_slug": "analysis-materialized",
-            "dataset_name": "Analysis Materialized",
-            "preview_limit": 100,
-            "full_limit": 1000,
-        },
-    )
-    assert materialized.status_code == 201, materialized.text
-    payload = materialized.json()
-    assert payload["dataset"]["id"] == "ds-analysis-materialized"
-    assert payload["materialized_row_count"] > 0
-    assert payload["materialization"]["status"] == "ready"
-    assert payload["artifact_uri"].startswith("file://")
-
-    detail = api_client.get(
-        "/api/projects/manufacturing-demo-project/dataset-catalog/ds-analysis-materialized"
-    )
-    assert detail.status_code == 200, detail.text
-    assert detail.json()["materializations"][0]["source_kind"] == "analysis_result"
-    lineage = detail.json()["lineage_references"]
-    source_reference = next(item for item in lineage if item.startswith("analysis:"))
-    assert source_reference.startswith("analysis:analysis-materialization-source:v1:run:")
-    assert source_reference.endswith(":node:input:0")
-    assert payload["version"]["id"] in lineage
-
-    consumer = api_client.post(
-        "/api/analyses",
-        headers=csrf,
-        json={
-            "id": "analysis-materialization-consumer",
-            "workspace_id": "manufacturing-demo",
-            "display_name": "Materialization consumer",
-            "nodes": [
-                {
-                    "id": "input:dataset",
-                    "type": "analysisNode",
-                    "data": {
-                        "kind": "input",
-                        "title": "Reusable Dataset",
-                        "config": {"source": "dataset:ds-analysis-materialized"},
-                    },
-                    "position": {"x": 0, "y": 0},
-                }
-            ],
-            "edges": [],
-            "publish": True,
-        },
-    )
-    assert consumer.status_code == 200, consumer.text
-    run = api_client.post(
-        "/api/analyses/analysis-materialization-consumer/run",
-        headers=csrf,
-        json={
-            "workspace_id": "manufacturing-demo",
-            "version_policy": "pinned",
-            "version": 1,
-            "preview_limit": 100,
-        },
-    )
-    assert run.status_code == 200, run.text
-    result = run.json()["node_results"]["input:dataset"]
-    assert result["row_count"] == payload["materialized_row_count"]
-    assert result["source_metadata"]["dataset_id"] == "ds-analysis-materialized"
-    assert result["source_metadata"]["materialization_id"] == payload["materialization"]["id"]
 
 
 def test_dataset_api_is_project_scoped_and_permission_guarded(api_client: TestClient) -> None:

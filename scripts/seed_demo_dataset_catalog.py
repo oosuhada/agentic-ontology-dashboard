@@ -16,19 +16,24 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
-from ontology_dashboard.datasets.models import (
+from argon2 import PasswordHasher
+
+from app.dependencies import build_manufacturing_service
+from app.dataset.dataset_schema import (
     DatasetCreateRequest,
     DatasetFileCreate,
     DatasetVersionCreateRequest,
     MaterializationCreateRequest,
     OntologyMappingCreateRequest,
 )
-from ontology_dashboard.datasets.repository import DatasetRepository
-from ontology_dashboard.identity import IdentityService
-from ontology_dashboard.migrations import migrate
-from ontology_dashboard.service import ManufacturingPredictiveMaintenanceService
-from ontology_dashboard.settings import database_location
+from app.infra.db.dataset_repository import DatasetRepository
+from app.infra.db.identity_repository import IdentityRepository as SQLiteIdentityRepository
+from app.identity import IdentityService
+from app.infra.db.migrations import migrate
+from app.infra.db.postgresql_repositories import PostgreSQLIdentityRepository
+from app.infra.db.settings import database_location
 
 ROOT = Path(__file__).resolve().parents[1]
 ORGANIZATION_ID = "org-ontology-demo"
@@ -250,17 +255,55 @@ def _ensure_relational_projection(
     )
 
 
-def seed(database: str, artifact_root: Path) -> list[dict[str, Any]]:
+def seed(
+    database: str,
+    artifact_root: Path,
+    *,
+    allow_local_postgresql: bool = False,
+) -> list[dict[str, Any]]:
     migrate(database)
     if database.startswith(("postgresql://", "postgresql+psycopg://")):
-        raise RuntimeError(
-            "demo Dataset bootstrap is intentionally SQLite-only; do not inject fixture data into managed PostgreSQL"
-        )
+        endpoint = urlparse(database.replace("postgresql+psycopg://", "postgresql://", 1))
+        if not allow_local_postgresql or endpoint.hostname not in {"127.0.0.1", "localhost", "::1"}:
+            raise RuntimeError(
+                "fixture Dataset registration in PostgreSQL requires "
+                "--allow-local-postgresql and a loopback database endpoint"
+            )
     # Fresh Playwright/release databases need the canonical Organization,
     # Project and Workspace rows before Dataset foreign keys can be inserted.
-    IdentityService(database, app_env="demo", seed_demo=True)
+    if database.startswith(("postgresql://", "postgresql+psycopg://")):
+        password_hasher = PasswordHasher(
+            time_cost=2,
+            memory_cost=19456,
+            parallelism=1,
+            hash_len=32,
+            salt_len=16,
+        )
+        IdentityService(
+            PostgreSQLIdentityRepository(
+                database,
+                password_hasher=password_hasher,
+                seed_reference_data=True,
+            ),
+            app_env="demo",
+            seed_demo=True,
+        )
+    else:
+        password_hasher = PasswordHasher(
+            time_cost=2,
+            memory_cost=19456,
+            parallelism=1,
+            hash_len=32,
+            salt_len=16,
+        )
+        IdentityService(
+            SQLiteIdentityRepository(database, password_hasher=password_hasher),
+            app_env="demo",
+            seed_demo=True,
+            rate_limit_namespace=f"identity:{database}",
+        )
     repository = DatasetRepository(database)
-    service = ManufacturingPredictiveMaintenanceService(ROOT, database_path=database)
+    service = build_manufacturing_service(database, root=ROOT)
     existing = {
         item["id"]: item
         for item in repository.list_datasets(
@@ -312,6 +355,13 @@ def seed(database: str, artifact_root: Path) -> list[dict[str, Any]]:
                         "row_count": len(dataset.rows),
                         "column_count": len(dataset.rows[0]) if dataset.rows else 0,
                         "source_mode": "local_fixture",
+                        "usage": [
+                            "legacy_comparison",
+                            "offline_fallback",
+                            "fixture_regression_test",
+                            "team_share_history",
+                        ],
+                        "default_dashboard_source": False,
                     },
                     record_count=len(dataset.rows),
                     files=[
@@ -401,9 +451,18 @@ def main() -> int:
         default=str(ROOT / "data" / "local" / "demo-datasets"),
         help="Directory for deterministic JSONL materialization artifacts",
     )
+    parser.add_argument(
+        "--allow-local-postgresql",
+        action="store_true",
+        help="Explicitly register legacy fixture Datasets in loopback PostgreSQL only",
+    )
     args = parser.parse_args()
     database = args.database or database_location(ROOT)
-    result = seed(database, Path(args.artifact_root).expanduser().resolve())
+    result = seed(
+        database,
+        Path(args.artifact_root).expanduser().resolve(),
+        allow_local_postgresql=args.allow_local_postgresql,
+    )
     print(
         json.dumps(
             {

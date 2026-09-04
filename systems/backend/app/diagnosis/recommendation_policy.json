@@ -1,0 +1,65 @@
+{
+  "version": "recommendation-policy-v1",
+  "schema_version": "producer-recommendation-policy.schema.v1",
+  "ordered_gates": [
+    "data_quality_hold",
+    "identity_present",
+    "basis_resolves",
+    "criticality_present",
+    "status_priority"
+  ],
+  "required_inputs": [
+    "source_product_result_id",
+    "source_evidence_id",
+    "source_schema_version",
+    "status",
+    "equipment.criticality",
+    "basis",
+    "source_fields"
+  ],
+  "allowed_criticality": ["low", "medium", "high"],
+  "actions": {
+    "continue_monitoring": {
+      "label": "모니터링 지속",
+      "kind": "continue_monitoring",
+      "requires_human_approval": true
+    },
+    "request_inspection": {
+      "label": "점검 요청",
+      "kind": "request_inspection",
+      "requires_human_approval": true
+    },
+    "review_shutdown": {
+      "label": "정지 검토",
+      "kind": "review_shutdown",
+      "requires_human_approval": true
+    },
+    "hold_for_data_check": {
+      "label": "데이터 확인 후 판단",
+      "kind": "hold_for_data_check",
+      "requires_human_approval": true
+    }
+  },
+  "rules": [
+    {"status": "data_quality_hold", "action": "hold_for_data_check"},
+    {"status": "critical", "criticality": "high", "action": "review_shutdown"},
+    {"status": "critical", "criticality": "medium", "action": "request_inspection"},
+    {"status": "critical", "criticality": "low", "action": "request_inspection"},
+    {"status": "warning", "criticality": "high", "action": "request_inspection"},
+    {"status": "warning", "criticality": "medium", "action": "request_inspection"},
+    {"status": "warning", "criticality": "low", "action": "request_inspection"},
+    {"status": "attention", "criticality": "high", "action": "request_inspection"},
+    {"status": "attention", "criticality": "medium", "action": "request_inspection"},
+    {"status": "attention", "criticality": "low", "action": "continue_monitoring"},
+    {"status": "normal", "criticality": "high", "action": "continue_monitoring"},
+    {"status": "normal", "criticality": "medium", "action": "continue_monitoring"},
+    {"status": "normal", "criticality": "low", "action": "continue_monitoring"}
+  ],
+  "non_goals": [
+    "probability_generation",
+    "rpn_generation",
+    "detection_score_generation",
+    "llm_decision",
+    "work_order_creation"
+  ]
+}

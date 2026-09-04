@@ -8,10 +8,10 @@ import json
 import os
 from pathlib import Path
 
-from ontology_dashboard.adapters.file_adapter import FileAdapter
-from ontology_dashboard.adapters.models import DatasetManifest
-from ontology_dashboard.migrations import migrate
-from ontology_dashboard.settings import database_location
+from app.dataset.ingestion import DatasetManifest, FileAdapter
+from app.infra.db.dataset_ingestion_repository import DatasetIngestionRepository
+from app.infra.db.migrations import migrate
+from app.infra.db.settings import database_location
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -46,7 +46,10 @@ def main() -> int:
     if not allowed_roots:
         allowed_roots = configured_roots or [manifest_path.parent, ROOT / "data" / "raw"]
 
-    result = FileAdapter(database, allowed_roots=allowed_roots).ingest(manifest)
+    result = FileAdapter(
+        allowed_roots=allowed_roots,
+        repository=DatasetIngestionRepository(database),
+    ).ingest(manifest)
     rendered = json.dumps(result.model_dump(mode="json"), ensure_ascii=False, indent=2)
     if args.output:
         output = Path(args.output)

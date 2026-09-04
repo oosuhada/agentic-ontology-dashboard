@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology-dashboard.local/schemas/generator-gen-data-sensor-stream-record.schema.json",
+  "title": "Generator gen_data Sensor Stream Record",
+  "type": "object",
+  "required": [
+    "asset_id",
+    "site_id",
+    "cell_id",
+    "observed_at"
+  ],
+  "properties": {
+    "asset_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier of the physical asset (e.g. CNC-S01-L01-01)"
+    },
+    "site_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Facility / Site identifier (e.g. S01)"
+    },
+    "cell_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Manufacturing line / cell identifier (e.g. L01)"
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp with timezone offset"
+    }
+  },
+  "additionalProperties": true
+}

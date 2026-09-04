@@ -1,0 +1,2 @@
+{"record_id": "rec-0000000000000001", "source_stream": "data/gen_data/sensor/facS01/lineL01/sensor_stream.jsonl", "source_offset": 0, "observed_at": "2026-08-28T13:10:00Z", "mapping_sha256": "7730b4661cd3f7d50f9bf5bb480c655c2fd1214c2b68068796cb733e7fbf326d"}
+{"record_id": "rec-0000000000000002", "source_stream": "data/gen_data/sensor/facS01/lineL01/sensor_stream.jsonl", "source_offset": 639, "observed_at": "2026-08-28T13:40:00Z", "mapping_sha256": "7730b4661cd3f7d50f9bf5bb480c655c2fd1214c2b68068796cb733e7fbf326d"}

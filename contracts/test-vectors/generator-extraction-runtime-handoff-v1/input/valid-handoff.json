@@ -1,0 +1,36 @@
+{
+  "handoff_schema_version": "generator-extraction-runtime-handoff-v1",
+  "handoff_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "status": "pending",
+  "created_at": "2026-08-28T14:00:00Z",
+  "updated_at": "2026-08-28T14:00:00Z",
+  "dataset": {
+    "dataset_id": "gen-data-S01-L01",
+    "dataset_version": "window-20260828T130000Z-map-d545f01d",
+    "manifest_uri": "data/observations/gen-data-S01-L01/window-20260828T130000Z-map-d545f01d/dataset_manifest.json",
+    "observations_uri": "data/observations/gen-data-S01-L01/window-20260828T130000Z-map-d545f01d/observations.jsonl",
+    "observations_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "observations_size_bytes": 1024
+  },
+  "runtime_input": {
+    "dataset_id": "gen-data-S01-L01",
+    "dataset_version": "window-20260828T130000Z-map-d545f01d",
+    "source": {
+      "source_uri": "data/observations/gen-data-S01-L01/window-20260828T130000Z-map-d545f01d/observations.jsonl",
+      "source_checksum": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "source_kind": "live_sensor",
+      "source_contract_version": "generator-dataset-input-v1",
+      "source_schema_version": "canonical-observation-v1",
+      "pipeline_contract_version": "generator-prediction-result-v1",
+      "lineage": {}
+    }
+  },
+  "delivery": {
+    "attempt_count": 0,
+    "runtime_job_id": null,
+    "queue_item_id": null,
+    "last_error_code": null,
+    "last_error_message": null,
+    "next_retry_at": null
+  }
+}

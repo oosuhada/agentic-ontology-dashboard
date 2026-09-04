@@ -1,0 +1,35 @@
+{
+  "training_config_version": "golden-training-config-v1",
+  "description": "Deterministic Golden Test Training Configuration with 70/15/15 asset-time split",
+  "split_strategy": "asset_time_split",
+  "split_ratio": {
+    "train": 0.70,
+    "validation": 0.15,
+    "test": 0.15
+  },
+  "random_seed": 42,
+  "hyperparameters": {
+    "lightgbm": {
+      "n_estimators": 50,
+      "learning_rate": 0.1,
+      "random_state": 42
+    },
+    "xgboost": {
+      "n_estimators": 50,
+      "learning_rate": 0.1,
+      "random_state": 42
+    },
+    "random_forest": {
+      "n_estimators": 50,
+      "random_state": 42
+    }
+  },
+  "metrics": [
+    "f1",
+    "accuracy",
+    "precision",
+    "recall",
+    "roc_auc"
+  ],
+  "primary_metric": "f1"
+}
