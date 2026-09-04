@@ -40,7 +40,7 @@
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  padding: 32px clamp(42px, 5vw, 80px) 32px;
+  padding: 48px clamp(42px, 5vw, 80px) 14px;
   color: var(--fd-text);
   background: transparent;
 }
@@ -79,7 +79,7 @@
 .auth-resource-context > footer strong { color: #2a3a4f; font-size: 12px; }
 .auth-resource-context > footer small { color: #75879c; font-size: 10px; }
 
-.auth-panel { display: grid; min-height: 0; place-items: center; overflow: auto; padding: 44px clamp(30px, 4vw, 68px); background: transparent; }
+.auth-panel { display: grid; min-height: 0; place-items: center; overflow: auto; padding: 28px clamp(30px, 4vw, 68px) 72px; background: transparent; }
 .auth-card { width: min(100%, 650px); overflow: visible; isolation: isolate; border: 1px solid var(--fd-border); border-radius: 18px; padding: 0; background: var(--fd-surface-raised); box-shadow: var(--fd-shadow-popover); }
 .auth-card-heading { display: grid; grid-template-columns: 48px minmax(0,1fr); align-items: center; gap: 14px; border-bottom: 1px solid var(--fd-border); padding: 24px 26px 20px; }
 .auth-card-heading > span { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 12px; color: var(--fd-accent); background: var(--fd-accent-soft); }
@@ -96,7 +96,8 @@
 .auth-error { grid-column: 1 / -1; border-left: 3px solid var(--fd-danger); padding: 9px 10px; color: var(--fd-danger); background: var(--fd-danger-soft); font-size: 10px; }
 .auth-footer-copy { margin: 8px 26px 18px; color: var(--fd-text-muted); font-size: 10px; text-align: center; }
 
-.auth-product-story { display: grid; min-height: 410px; grid-template-rows: auto minmax(150px,1fr) auto auto; gap: 18px; }
+.auth-product-story { display: grid; min-height: 410px; grid-template-rows: auto minmax(150px,1fr) auto; gap: 18px; }
+.auth-product-story.has-value-strip { grid-template-rows: auto minmax(150px,1fr) auto auto; }
 .auth-story-copy { animation: auth-story-enter .34s ease both; }
 .auth-story-copy h1 { max-width: 680px; margin: 10px 0 0; color: var(--fd-text); font-size: clamp(34px, 3.1vw, 54px); line-height: 1.08; letter-spacing: -.045em; }
 .auth-story-copy p { max-width: 650px; margin: 18px 0 0; color: var(--fd-text-secondary); font-size: 14px; line-height: 1.75; }
@@ -132,7 +133,7 @@
 @media (max-width: 1120px) {
   .auth-control-plane { display: block; }
   .auth-resource-context { display: none; }
-  .auth-panel { min-height: calc(100vh - 54px); align-items: safe center; justify-items: center; padding: 28px 20px; }
+  .auth-panel { min-height: calc(100vh - 54px); align-items: safe center; justify-items: center; padding: 20px 20px 58px; }
 }
 @media (max-width: 720px) {
   .auth-page { grid-template-rows: auto minmax(0,1fr); }
@@ -141,7 +142,7 @@
   .auth-platform-bar > div span:not(:first-child) { display: none; }
   .auth-control-plane { display: block; }
   .auth-resource-context { display: none; }
-  .auth-panel { min-height: calc(100vh - 50px); align-items: safe center; justify-items: center; padding: 24px 12px; }
+  .auth-panel { min-height: calc(100vh - 50px); align-items: safe center; justify-items: center; padding: 18px 12px 42px; }
   .auth-card { border-radius: 12px; }
   .auth-card .auth-form { grid-template-columns: 1fr; }
   .auth-card .auth-submit, .auth-error { grid-column: 1; }
@@ -242,5 +243,6 @@
 :root[data-density="comfortable"] .auth-page .demo-account-info-trigger { min-height: 44px; height: 44px; }
 .auth-page .demo-account-picker > .demo-account-heading { font-size: var(--auth-body-size)!important; letter-spacing: 0; text-transform: none; outline: none; }
 .auth-page .demo-account-picker > .demo-account-heading:focus-visible { outline: 2px solid #75a9ec; outline-offset: 3px; border-radius: 3px; }
+.auth-control-plane .demo-account-card strong { overflow: visible; font-size: clamp(13px, calc(13px * var(--od-font-scale)), 16px)!important; text-overflow: clip; white-space: nowrap; }
 .auth-control-plane .auth-resource-context > header strong { font-size: clamp(20px, calc(22px * var(--od-font-scale)), 30px)!important; line-height: 1.2; }
 .auth-control-plane .auth-resource-context > header > div small { font-size: var(--auth-small-size)!important; letter-spacing: .035em; }
