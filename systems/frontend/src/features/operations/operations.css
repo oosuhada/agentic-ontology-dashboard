@@ -219,6 +219,7 @@
 .operations-action-row { display: flex; flex-wrap: wrap; gap: 7px; }
 .operations-button:focus-visible,
 .operations-icon-button:focus-visible,
+.operations-delayed-help:focus-visible,
 .operations-navigation button:focus-visible,
 .operations-app input:focus-visible,
 .operations-app select:focus-visible,
@@ -229,6 +230,20 @@
 .operations-panel-header > div:first-child { min-width: 0; }
 .operations-panel-header span { display: block; color: var(--operations-dim); font-size: 9px; font-weight: 700; letter-spacing: .12em; }
 .operations-panel-header h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 2px 0 0; font-size: 14px; }
+.operations-delayed-help {
+  position: relative;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--operations-border);
+  border-radius: 999px;
+  color: var(--operations-muted);
+  background: rgba(255,255,255,.025);
+  cursor: help;
+}
 .operations-panel-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .operations-panel-body { min-width: 0; padding: 14px; }
 
@@ -546,6 +561,7 @@
 }
 .operations-factory-asset-node span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 44px; color: currentColor; font-size: 10px; font-weight: 900; }
 .operations-live-node-risk { position: absolute; left: 3px; right: 3px; bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: currentColor; font-size: 8px; font-weight: 950; letter-spacing: -.02em; opacity: .92; }
+.operations-factory-asset-node.is-live-result-focus span { padding-right: 14px; transform: translateY(-6px); }
 .operations-asset-alert-badge { position: absolute; top: 2px; right: 2px; min-width: 14px; height: 14px; padding: 0 3px; font-size: 8px; box-shadow: 0 0 0 1px rgba(255,255,255,.9); }
 .operations-live-notification-badge.is-zone-summary { min-width: auto; padding-inline: 7px; white-space: nowrap; }
 .operations-slot-status { display: inline-flex; align-items: center; justify-content: center; min-height: 22px; padding: 0 8px; border: 1px solid rgba(181,196,214,.18); border-radius: 999px; color: var(--operations-muted); background: rgba(255,255,255,.025); font-size: 10px; font-weight: 900; }
@@ -2807,6 +2823,7 @@
 .rw-preview-shell[data-active-surface="factory-status"] .operations-factory-cell-card header small { display: none; }
 .rw-preview-shell[data-active-surface="factory-status"] .operations-factory-cell-slots { gap: 3px; }
 .rw-preview-shell[data-active-surface="factory-status"] .operations-factory-cell-slots .operations-factory-asset-node { min-height: 25px; aspect-ratio: auto; }
+.rw-preview-shell[data-active-surface="factory-status"] .operations-factory-cell-slots .operations-factory-asset-node.is-live-result-focus { min-height: 34px; }
 .rw-preview-shell[data-active-surface="factory-status"] .operations-factory-cell-slots .compressor { min-height: 22px; aspect-ratio: auto; }
 .rw-preview-shell[data-active-surface="factory-status"] .operations-factory-asset-node span { max-width: 100%; font-size: 10px; }
 .rw-preview-shell[data-active-surface="factory-status"] .operations-asset-alert-badge { top: 2px; right: 2px; }

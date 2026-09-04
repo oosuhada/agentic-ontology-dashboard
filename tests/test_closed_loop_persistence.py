@@ -36,6 +36,22 @@ from app.infra.db.project_repository import (
 )
 
 
+def test_retired_presentation_work_order_is_not_a_live_queue_item() -> None:
+    retired_row = {
+        "authorization_json": json.dumps(
+            {"actor": "legacy-demo-user", "scope": "presentation-demo"}
+        )
+    }
+    canonical_row = {
+        "authorization_json": json.dumps(
+            {"work_type": "inspection", "operational_decision": "request_inspection"}
+        )
+    }
+
+    assert MaintenanceRepository._is_retired_presentation_work_order_row(retired_row)
+    assert not MaintenanceRepository._is_retired_presentation_work_order_row(canonical_row)
+
+
 def _recommendation_setup(repository: MaintenanceRepository):
     identity = EquipmentIdentity(
         organization_id=DEFAULT_ORGANIZATION_ID,

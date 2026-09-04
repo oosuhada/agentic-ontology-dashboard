@@ -7,6 +7,7 @@ import {
   ClipboardList,
   DatabaseZap,
   Gauge,
+  Info,
   LineChart,
   Printer,
   RefreshCw,
@@ -190,6 +191,20 @@ const MISSING_PLANNING_BASIS = "생산 영향 계산 정보 없음";
 const FACTORY_SITE_IDS = ["S01", "S02", "S03", "S04"];
 const FACTORY_CELL_IDS = ["L01", "L02", "L03", "L04", "L05"];
 const FACTORY_LAYOUT_NOTICE = "공장 배치 기준 · 연결된 설비의 실시간 상태와 위험도를 표시합니다";
+const LIVE_FEATURE_NOTICE = "센서명은 현장 용어로 표시하며, 관측 이력과 최신값 및 단기 추세 범위를 한 그래프에서 확인할 수 있습니다.";
+
+function DelayedHelp({ label, detail }: { label: string; detail: string }) {
+  return (
+    <button
+      type="button"
+      className="operations-delayed-help"
+      aria-label={label}
+      title={detail}
+    >
+      <Info size={14} aria-hidden="true" />
+    </button>
+  );
+}
 const FACTORY_SITE_LABELS: Record<string, string> = {
   S01: "1구역",
   S02: "2구역",
@@ -1586,10 +1601,17 @@ function FactoryMonitoringMapPanel({
   onPreviewAssetSlot: (asset: OperationsAsset, slot: FactoryCellSlot, cell: FactoryCellLayout) => void;
 }) {
   return (
-    <OperationsPanel title="공장 설비 상태맵" eyebrow="실시간 라인/셀 현황" className="operations-process-panel operations-factory-map-panel">
-      <div className="operations-plan-impact-note">
-        {FACTORY_LAYOUT_NOTICE} · {planningBasis.fallback ? "생산 영향 데이터 미연결" : "생산계획 연계"} · {planningBasis.value}
-      </div>
+    <OperationsPanel
+      title="공장 설비 상태맵"
+      eyebrow="실시간 라인/셀 현황"
+      className="operations-process-panel operations-factory-map-panel"
+      actions={(
+        <DelayedHelp
+          label="공장 설비 상태맵 안내"
+          detail={`${FACTORY_LAYOUT_NOTICE} · ${planningBasis.fallback ? "생산 영향 데이터 미연결" : "생산계획 연계"} · ${planningBasis.value}`}
+        />
+      )}
+    >
       {factoryCells.length ? (
         <div className={`operations-factory-map focus-${focusMode}`}>
           <div className="operations-factory-map-toolbar">
@@ -2544,6 +2566,7 @@ function FeatureSeriesCollection({
       <header>
         <LineChart size={14} />
         <strong>{title}</strong>
+        <DelayedHelp label={`${title} 안내`} detail={LIVE_FEATURE_NOTICE} />
         <div className="asset-window-control" role="group" aria-label="관측 기간 선택">
           {SENSOR_WINDOW_OPTIONS.map((option) => (
             <button
