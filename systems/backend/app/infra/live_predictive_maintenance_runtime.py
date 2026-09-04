@@ -731,6 +731,7 @@ def read_complete_ticks(
     *,
     after: datetime | None = None,
     not_after: datetime | None = None,
+    simulation_session_id: str | None = None,
     expected_asset_count: int = EXPECTED_ASSET_COUNT,
     expected_asset_ids: set[str] | None = None,
     excluded_asset_ids: set[str] | None = None,
@@ -753,12 +754,18 @@ def read_complete_ticks(
         return []
 
     root = Path(stream_root).expanduser()
-    files = sorted(
-        {
-            *root.glob("sensor/**/sensor_stream.jsonl"),
-            *root.glob("runs/*/source/sensor_records.jsonl"),
-        }
-    )
+    if simulation_session_id:
+        session_stream = (
+            root / "runs" / simulation_session_id / "source" / "sensor_records.jsonl"
+        )
+        files = [session_stream] if session_stream.is_file() else []
+    else:
+        files = sorted(
+            {
+                *root.glob("sensor/**/sensor_stream.jsonl"),
+                *root.glob("runs/*/source/sensor_records.jsonl"),
+            }
+        )
     if not files:
         return []
     grouped: dict[datetime, dict[str, dict[str, Any]]] = defaultdict(dict)
@@ -2682,6 +2689,7 @@ class LiveDatasetIngestionAdapter:
         ticks = read_complete_ticks(
             stream_root,
             after=latest,
+            simulation_session_id=self.simulation_session_id,
             not_after=(
                 None
                 if self.allow_accelerated_simulation

@@ -239,6 +239,29 @@ def test_read_complete_ticks_supports_current_gen_data_run_output(tmp_path):
     assert "measurements" not in ticks[0][1][0]
 
 
+def test_read_complete_ticks_isolates_requested_simulation_session(tmp_path):
+    for session_id, value in (("session-old", 10.0), ("session-current", 42.0)):
+        _write(
+            tmp_path / f"runs/{session_id}/source/sensor_records.jsonl",
+            [
+                {
+                    "asset_id": "CNC-1",
+                    "observed_at": "2026-09-04T02:40:00+00:00",
+                    "measurements": {"tool_wear_min": value},
+                }
+            ],
+        )
+
+    ticks = read_complete_ticks(
+        tmp_path,
+        simulation_session_id="session-current",
+        expected_asset_ids={"CNC-1"},
+    )
+
+    assert len(ticks) == 1
+    assert ticks[0][1][0]["tool_wear_min"] == 42.0
+
+
 def test_read_complete_ticks_respects_ingestion_checkpoint(tmp_path):
     first = "2026-08-18T05:30:00+00:00"
     second = "2026-08-18T05:40:00+00:00"

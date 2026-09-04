@@ -295,6 +295,7 @@ def build_live_predictive_maintenance_service(
     database_url: str | None = None,
     *,
     runtime_pipeline_input_root: str | Path,
+    simulation_session_id: str | None = None,
 ) -> LivePredictiveMaintenanceService:
     """Compose the live worker application service with its infrastructure adapter."""
 
@@ -312,7 +313,7 @@ def build_live_predictive_maintenance_service(
         "predictor_factory": configured_predictor,
         "artifact_builder": build_product_result_artifact,
     }
-    simulation_session_id = (
+    simulation_session_id = simulation_session_id or (
         os.getenv("ONTOLOGY_DASHBOARD_SIMULATION_SESSION_ID", "").strip() or None
     )
     return LivePredictiveMaintenanceService(
