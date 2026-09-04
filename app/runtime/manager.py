@@ -41,6 +41,7 @@ class _RunContext:
         product_cycle_minutes: int,
         seed: int,
         rate_profile: str,
+        scenario_profile: str,
         speed: float,
         continuous: bool,
         publish_opcua: bool,
@@ -56,6 +57,7 @@ class _RunContext:
         self.interval_minutes = interval_minutes
         self.seed = seed
         self.rate_profile = rate_profile
+        self.scenario_profile = scenario_profile
         self.speed = speed
         self.continuous = continuous
         self.stop_event = threading.Event()
@@ -309,6 +311,7 @@ class _RunContext:
                 "source_kind": "simulation",
                 "seed": self.seed,
                 "scenario": self.rate_profile,
+                "scenario_profile": self.scenario_profile,
                 "runtime_overlay_fast_forward_rows": (
                     self.runtime_overlay_fast_forward_rows
                 ),
@@ -565,6 +568,7 @@ class RuntimeManager:
         interval_minutes: int = 10,
         product_cycle_minutes: int = 20,
         rate_profile: str = "balanced_demo",
+        scenario_profile: str = "continuous_reliability",
         speed: float = 60.0,
         continuous: bool = True,
         publish_opcua: bool = True,
@@ -576,6 +580,8 @@ class RuntimeManager:
     ) -> dict[str, Any]:
         if source_kind not in {"simulation", "opcua"}:
             raise ValueError(f"unsupported source_kind: {source_kind}")
+        if scenario_profile != "continuous_reliability":
+            raise ValueError(f"unsupported scenario_profile: {scenario_profile}")
         if speed <= 0:
             raise ValueError("speed must be positive")
         if duration_hours <= 0:
@@ -640,6 +646,7 @@ class RuntimeManager:
                     product_cycle_minutes=product_cycle_minutes,
                     seed=seed,
                     rate_profile=rate_profile,
+                    scenario_profile=scenario_profile,
                     speed=speed,
                     continuous=continuous,
                     publish_opcua=publish_opcua,

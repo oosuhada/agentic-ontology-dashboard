@@ -15,6 +15,7 @@ class StartRunRequest(BaseModel):
     interval_minutes: int = Field(default=10, ge=1)
     product_cycle_minutes: int = Field(default=20, ge=1)
     rate_profile: str = "balanced_demo"
+    scenario_profile: Literal["continuous_reliability"] = "continuous_reliability"
     speed: float = Field(default=60.0, gt=0)
     continuous: bool = True
     publish_opcua: bool = True
