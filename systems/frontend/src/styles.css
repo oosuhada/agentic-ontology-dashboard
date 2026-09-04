@@ -269,12 +269,14 @@ th { color: #667085; background: #f9fafb; }
 .demo-account-option { position: static; display: block; min-width: 0; border: 1px solid var(--fd-border); border-radius: 9px; background: var(--fd-surface-raised); transition: border-color .14s ease, box-shadow .14s ease, background .14s ease; }
 .demo-account-option:hover { border-color: color-mix(in srgb, var(--fd-accent), var(--fd-border) 45%); }
 .demo-account-option.is-selected { border-color: var(--fd-accent); box-shadow: 0 0 0 2px var(--fd-accent-soft); background: var(--fd-accent-soft); }
-.demo-account-card { display: grid; width: 100%; min-width: 0; min-height: 46px; grid-template-columns: 18px minmax(0,1fr) 18px; align-items: center; border: 0; border-radius: 8px; padding: 0 10px; color: var(--fd-text); background: transparent; text-align: center; cursor: pointer; }
-.demo-account-card::before { grid-column: 1; content: ""; }
-.demo-account-card strong { grid-column: 2; width: 100%; overflow: hidden; font-size: 12px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
-.demo-account-help-icon { grid-column: 3; justify-self: end; color: var(--fd-text-muted); }
+.demo-account-card { display: flex; width: 100%; min-width: 0; min-height: 46px; align-items: center; justify-content: center; gap: 5px; border: 0; border-radius: 8px; padding: 0 10px; color: var(--fd-text); background: transparent; text-align: center; cursor: pointer; }
+.demo-account-card strong { min-width: 0; overflow: hidden; font-size: 12px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.demo-account-help-icon { flex: 0 0 auto; color: var(--fd-text-muted); }
 .demo-account-card:hover .demo-account-help-icon, .demo-account-card:focus-visible .demo-account-help-icon { color: var(--fd-accent); }
 .demo-account-popover { position: absolute; right: auto; bottom: calc(100% + 8px); left: 50%; z-index: 30; display: block; width: min(310px, calc(100vw - 36px)); padding: 12px 13px; border: 1px solid var(--fd-border-strong); border-radius: 10px; color: var(--fd-text); background: var(--fd-surface-raised); box-shadow: var(--fd-shadow-popover); opacity: 0; visibility: hidden; pointer-events: none; transform: translate(-50%,3px); transition: opacity 120ms ease, transform 120ms ease, visibility 0s linear 120ms; }
+.demo-account-option:nth-child(1) .demo-account-popover { left: 32%; }
+.demo-account-option:nth-child(2) .demo-account-popover { left: 50%; }
+.demo-account-option:nth-child(3) .demo-account-popover { left: 68%; }
 .demo-account-option:hover .demo-account-popover { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(-50%,0); transition-delay: 1s, 1s, 1s; }
 .demo-account-card:focus-visible + .demo-account-popover { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(-50%,0); transition-delay: 0s; }
 .demo-account-popover strong { display: block; font-size: 11px; }
@@ -283,6 +285,9 @@ th { color: #667085; background: #f9fafb; }
 @media (max-width: 560px) {
   .demo-account-grid { grid-template-columns: 1fr; }
   .demo-account-popover { right: auto; bottom: calc(100% + 6px); left: 50%; }
+  .demo-account-option:nth-child(1) .demo-account-popover,
+  .demo-account-option:nth-child(2) .demo-account-popover,
+  .demo-account-option:nth-child(3) .demo-account-popover { left: 50%; }
   .demo-account-picker { margin-inline: 38px; }
   .demo-account-grid { width: calc(100% - 32px); margin-inline: auto; }
 }
