@@ -283,8 +283,12 @@ th { color: #667085; background: #f9fafb; }
 @media (max-width: 560px) {
   .demo-account-grid { grid-template-columns: 1fr; }
   .demo-account-popover { right: 0; bottom: calc(100% + 6px); }
-  .demo-account-picker { margin-inline: 20px; }
+  .demo-account-picker { margin-inline: 38px; }
+  .demo-account-grid { width: calc(100% - 32px); margin-inline: auto; }
   .demo-account-option:first-child .demo-account-popover { right: 0; left: auto; }
+}
+@media (max-width: 430px) {
+  .demo-account-picker { margin-inline: 20px; }
 }
 .terms-row { flex-direction: row !important; align-items: flex-start; font-weight: 500 !important; line-height: 1.45; }
 .terms-row input { width: auto; min-height: auto; margin-top: 3px; }
