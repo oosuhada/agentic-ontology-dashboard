@@ -4,14 +4,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-ARG GEN_DATA_SOURCE_REVISION=c3755260ea3b0b023a519f934d259ad9c0e211d8
+ARG GEN_DATA_SOURCE_REVISION=ec62592ccaa13990ddb1d3465f108ae6d9f0e566
 
 WORKDIR /build
 
 COPY ml /build/ml
 COPY systems/backend /build/backend
 
-# Pin the hosted demo to one reviewed gen_data source revision. Only canonical
+# Pin production to one reviewed gen_data source revision. Only canonical
 # source files and safe release evidence are extracted; model/prediction
 # fixtures from gen_data are deliberately excluded from the runtime image.
 RUN GEN_DATA_SOURCE_REVISION="${GEN_DATA_SOURCE_REVISION}" python - <<'PY'
@@ -38,7 +38,7 @@ required = {
 }
 destination = Path("/build/gen_data_source")
 destination.mkdir(parents=True, exist_ok=True)
-url = f"https://codeload.github.com/Biz-CollabCraft/gen_data/tar.gz/{revision}"
+url = f"https://codeload.github.com/oosuhada/agentic-ontology-dashboard/tar.gz/{revision}"
 with tempfile.NamedTemporaryFile(suffix=".tar.gz") as archive:
     with urllib.request.urlopen(url, timeout=120) as response:
         shutil.copyfileobj(response, archive)
