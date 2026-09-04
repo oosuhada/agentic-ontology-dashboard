@@ -32,7 +32,7 @@ import type {
   OperationsEventDetailModel,
   OperationsView,
 } from "../operations/api/operationsContracts";
-import { displayAssetName, displayExplanationMethod, displayLineLabel, displaySensorFactorLabel, displaySensorLabel } from "../operations/displayLabels";
+import { displayAssetName, displayExplanationMethod, displayLineLabel, displaySensorFactorLabel, fieldFactorItem } from "../operations/displayLabels";
 import "./reliability-workspace-preview.css";
 import { ContextAssistantDrawer } from "./workspace/ContextAssistantDrawer";
 import { ReliabilityCommandPalette, type ReliabilitySearchEntity } from "./workspace/ReliabilityCommandPalette";
@@ -509,7 +509,7 @@ export function ReliabilityWorkspacePreview({
   })) ?? [];
   const evidence = detail?.topFactors.slice(0, 4).map((factor) => ({
     id: factor.id,
-    label: displaySensorLabel(factor.feature, factor.label),
+    label: english ? (factor.label || displaySensorFactorLabel(factor.feature)) : fieldFactorItem(factor),
     value: factorValue(factor.value, factor.unit),
     detail: displayExplanationMethod(factor.explanationMethod),
   })) ?? [];

@@ -473,7 +473,10 @@ function useRealtimeRoleDemo(
 
   return {
     sequence,
-    nowAt: new Date().toISOString(),
+    // Keep the displayed current point anchored to the latest received
+    // observation. The UI may animate transitions, but it must never invent a
+    // newer observation timestamp than the canonical Product Result.
+    nowAt: generatedAt,
     assetId,
     assetName,
     eventId: event?.eventId ?? asset?.eventId ?? null,
@@ -1739,6 +1742,10 @@ export function OperationsWorkflowOverviewPage({
   const runningEquipmentCount = Math.max(0, metrics.totalAssets - workInProgressCount);
   const lastReceived = latestReceivedLabel(model);
   const liveDemo = useRealtimeRoleDemo(model);
+  const liveObservedAt = timestampMillis(liveDemo.generatedAt);
+  const isRecentlyReceived = liveObservedAt !== null
+    && liveObservedAt <= Date.now() + 60_000
+    && Date.now() - liveObservedAt <= 15 * 60_000;
   const selectedCandidate = selectedEvent
     ? workOrderCandidates.find((candidate) => candidate.event.eventId === selectedEvent.eventId) ?? null
     : null;
@@ -1949,7 +1956,7 @@ export function OperationsWorkflowOverviewPage({
         <article className="operations-plan-impact-card is-hold">
           <Clock3 className="operations-plan-impact-icon" size={15} aria-hidden="true" />
           <span>마지막 수신 시각</span>
-          <strong>{liveDemo.isGeneratedResult ? "방금 전" : lastReceived}</strong>
+          <strong>{isRecentlyReceived ? "방금 전" : lastReceived}</strong>
           <small>{liveDemo.sourceLabel} · {formatTimestamp(liveDemo.generatedAt)}</small>
         </article>
         <article className="operations-plan-impact-card is-live-risk-card is-live-pulse">
@@ -2355,7 +2362,7 @@ function MapReportFeatureSeries({
     <section className={[primary ? "asset-series-block is-primary" : "asset-series-block", liveDemo ? "is-live-chart" : ""].filter(Boolean).join(" ")}>
       <header className="asset-series-heading">
         <div><RotateCcw size={17} /><strong>{title}</strong></div>
-        <span className="asset-baseline-key"><i style={{ background: color }} />{liveDemo ? "10분 요약 라인 · 터치/호버 정확값 · NOW 실시간" : seriesRangeLabel(visiblePoints, windowId, window)}</span>
+        <span className="asset-baseline-key"><i style={{ background: color }} />{liveDemo ? "10분 요약 라인 · 터치/호버 정확값 · 최신 관측" : seriesRangeLabel(visiblePoints, windowId, window)}</span>
       </header>
       <svg className="asset-series-chart" viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label={`${title} 관측 흐름`}>
         <rect className="asset-chart-frame" x={frame.left} y={frame.top} width={width} height={height} />
@@ -2926,7 +2933,7 @@ function AssetPreviewPanel({
                   <LineChart size={14} />
                   <strong>실시간 피쳐 변화</strong>
                   <span className={`operations-live-feed-status ${selectedLiveSnapshot ? "is-hot" : ""}`}>
-                    {selectedLiveSnapshot ? "LIVE now" : "최신 관측 기준"} · {formatTimestamp(selectedLiveSnapshot?.nowAt ?? asset.observedAt)}
+                    {selectedLiveSnapshot ? "LIVE · 최신 관측" : "최신 관측 기준"} · {formatTimestamp(selectedLiveSnapshot?.nowAt ?? asset.observedAt)}
                   </span>
                 </header>
                 {selectedLiveSnapshot ? (
@@ -2973,7 +2980,7 @@ function AssetPreviewPanel({
               <dl className="operations-monitoring-detail-grid" aria-label="선택 설비 현재 상태">
                 <div><dt>설비명</dt><dd>{assetDisplayName}</dd></div>
                 <div><dt>현재 상태</dt><dd>{operationsMonitorStatusLabel(asset.status, effectiveWorkStatus)}</dd></div>
-                <div><dt>이상 센서</dt><dd>{factors.length ? factors.slice(0, 4).map((factor) => displaySensorLabel(factor.feature, factor.label)).join(", ") : "이상 센서 근거 없음"}</dd></div>
+                <div><dt>이상 센서</dt><dd>{factors.filter((factor) => !isModelMetadataFeatureKey(factor.feature)).length ? factors.filter((factor) => !isModelMetadataFeatureKey(factor.feature)).slice(0, 4).map((factor) => displaySensorLabel(factor.feature, factor.label)).join(", ") : "직접 센서 근거 미제공"}</dd></div>
                 <div><dt>생산 영향</dt><dd>{planningImpact ? productionLossLabel(planningImpact.estimatedLossUnits) : displayProductionImpact(detail?.operationContext?.productionImpact)}</dd></div>
                 <div><dt>최근 정비일</dt><dd>{detail?.equipmentHistory[0]?.occurredAt ? formatTimestamp(detail.equipmentHistory[0].occurredAt) : "기록 없음"}</dd></div>
                 <div><dt>현재 조치 상태</dt><dd>{WORK_STATUS_LABEL[effectiveWorkStatus]}</dd></div>

@@ -29,6 +29,11 @@ export const SENSOR_FIELD_LABELS: Record<string, string> = {
   overstrain_index: "과부하 누적 지표",
   overstrain_load: "과부하 누적 지표",
   temperature_difference_k: "공정-공기 온도차",
+  temperature_gap_k: "공정-공기 온도차",
+  generator_failure_score: "모델 산출 위험 점수",
+  model_selected_threshold: "위험 판정 기준값",
+  asset_criticality_adjustment: "설비 중요도 보정",
+  generator_model_artifact_manifest: "적용 모델 릴리스",
 };
 
 const FEATURE_WINDOW_SUFFIX = /(?:(?:_(?:1h|6h|12h|24h|7d|30d)_(?:max_abs|abs_max|abs_mean|change|max|min|mean|std|last))|(?:_(?:current|abs_current)))$/;
@@ -79,6 +84,11 @@ export const FIELD_FACTOR_LABELS: Record<string, { item: string; symptom: string
   overstrain_index: { item: "프레스 과부하 확인", symptom: "과부하 누적" },
   overstrain_load: { item: "프레스 과부하 확인", symptom: "과부하 누적" },
   temperature_difference_k: { item: "공정-공기 온도차 확인", symptom: "열 해소 불균형" },
+  temperature_gap_k: { item: "공정-공기 온도차 확인", symptom: "열 해소 불균형" },
+  generator_failure_score: { item: "모델 산출 위험 점수", symptom: "예측 위험도 상승" },
+  model_selected_threshold: { item: "위험 판정 기준값", symptom: "현재 위험 점수와 비교하는 기준" },
+  asset_criticality_adjustment: { item: "설비 중요도 보정", symptom: "설비 중요도 반영" },
+  generator_model_artifact_manifest: { item: "적용 모델 릴리스", symptom: "승인된 모델 근거 연결" },
 };
 
 export const FAILURE_TYPE_LABELS: Record<string, string> = {
