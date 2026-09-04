@@ -33,7 +33,7 @@ def create_app(manager: RuntimeManager | None = None) -> FastAPI:
             now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
             interval_minutes = 10
             aligned_now = now - timedelta(minutes=now.minute % interval_minutes)
-            session_id = f"continuous-reliability-{aligned_now.strftime('%Y%m%dT%H%MZ')}"
+            session_id = f"continuous-reliability-{now.strftime('%Y%m%dT%H%M%SZ')}"
             runtime_manager.start_run(
                 run_id=session_id,
                 simulation_session_id=session_id,

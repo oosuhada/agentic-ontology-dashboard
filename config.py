@@ -78,7 +78,7 @@ if not 0 <= GEN_DATA_RUNTIME_OVERLAY_FAST_FORWARD_ROWS <= 10_000:
 GEN_DATA_AUTOSTART_CONTINUOUS = os.environ.get(
     "GEN_DATA_AUTOSTART_CONTINUOUS", "0"
 ).strip().lower() in {"1", "true", "yes", "on"}
-GEN_DATA_AUTOSTART_SPEED = float(os.environ.get("GEN_DATA_AUTOSTART_SPEED", "60"))
+GEN_DATA_AUTOSTART_SPEED = float(os.environ.get("GEN_DATA_AUTOSTART_SPEED", "1"))
 GEN_DATA_AUTOSTART_BACKFILL_HOURS = int(
     os.environ.get("GEN_DATA_AUTOSTART_BACKFILL_HOURS", "168")
 )
