@@ -1515,6 +1515,44 @@ class MaintenanceLoopService:
             ),
         )
 
+    def _post_maintenance_runtime_state(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        lineage: Mapping[str, Any],
+    ) -> dict[str, Any] | None:
+        maintenance_events = list(lineage.get("maintenance_events") or [])
+        if not maintenance_events or self.replay_session_query is None:
+            return None
+        resolver = getattr(
+            self.replay_session_query,
+            "post_maintenance_runtime_status",
+            None,
+        )
+        if not callable(resolver):
+            return None
+        maintenance_event_id = maintenance_events[-1].get("maintenance_event_id")
+        work_orders = list(lineage.get("work_orders") or [])
+        asset_id = next(
+            (
+                item.get("asset_id") or item.get("equipment_id")
+                for item in reversed(work_orders)
+                if item.get("asset_id") or item.get("equipment_id")
+            ),
+            None,
+        )
+        if not maintenance_event_id or not asset_id:
+            return None
+        return resolver(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            asset_id=str(asset_id),
+            maintenance_event_id=str(maintenance_event_id),
+        )
+
     def event_lineage(
         self,
         *,
@@ -1545,6 +1583,16 @@ class MaintenanceLoopService:
                 ):
                     if record.get(field) != expected:
                         raise ValueError(f"{field} scope mismatch")
+        runtime_state = self._post_maintenance_runtime_state(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            lineage=lineage,
+        )
+        lineage["runtime_state"] = runtime_state
+        lineage["runtime_status"] = (
+            runtime_state.get("status") if runtime_state else None
+        )
         return lineage
 
 

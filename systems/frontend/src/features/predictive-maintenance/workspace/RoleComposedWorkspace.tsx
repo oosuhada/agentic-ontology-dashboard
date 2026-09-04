@@ -560,7 +560,7 @@ function CompactRiskTrend({
         <div><RotateCcw size={17} /><strong>고장 위험 추세</strong></div>
         <span className="asset-baseline-key">
           <i style={{ background: color }} />
-          10분 요약 라인 · 터치/호버 정확값 · NOW 실시간
+          관측 이력 · 최신 관측
           {" · "}
           {probability(detail.event.failureProbability)}
         </span>
@@ -829,7 +829,7 @@ function SensorTrendChart({
         <div><RotateCcw size={17} /><strong>{sensor.label}</strong></div>
         <span className="asset-baseline-key">
           <i style={{ background: color }} />
-          10분 요약 라인 · 터치/호버 정확값 · NOW 실시간
+          관측 이력 · 최신 관측
           {" · "}
           {String(sensor.value ?? "—")}
           {sensor.unit ? ` ${sensor.unit}` : ""}

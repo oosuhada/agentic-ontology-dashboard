@@ -1655,7 +1655,7 @@ function FactoryMonitoringMapPanel({
                               >
                                 <span>{displayAssetShortName(asset)}</span>
                                 {isLiveDemoFocus ? <small className="operations-live-node-risk">{formatProbability(liveRisk)}</small> : null}
-                                {tone !== "normal" ? <b className="operations-asset-alert-badge" aria-label={`${operationsMonitorStatusLabel(liveStatus ?? asset.status)} 알림`}>{isLiveDemoFocus ? "LIVE" : tone === "critical" ? "!" : "1"}</b> : null}
+                                {tone !== "normal" ? <b className="operations-asset-alert-badge" aria-label={`${operationsMonitorStatusLabel(liveStatus ?? asset.status)} 알림`}>{tone === "critical" ? "!" : "1"}</b> : null}
                               </button>
                             ) : (
                               <div key={slot.id} className={`operations-factory-asset-node ${tone} ${slot.kind}`} title={title} aria-label={title}>
@@ -2362,7 +2362,7 @@ function MapReportFeatureSeries({
     <section className={[primary ? "asset-series-block is-primary" : "asset-series-block", liveDemo ? "is-live-chart" : ""].filter(Boolean).join(" ")}>
       <header className="asset-series-heading">
         <div><RotateCcw size={17} /><strong>{title}</strong></div>
-        <span className="asset-baseline-key"><i style={{ background: color }} />{liveDemo ? "10분 요약 라인 · 터치/호버 정확값 · 최신 관측" : seriesRangeLabel(visiblePoints, windowId, window)}</span>
+        <span className="asset-baseline-key"><i style={{ background: color }} />{liveDemo ? "관측 이력 · 최신 관측" : seriesRangeLabel(visiblePoints, windowId, window)}</span>
       </header>
       <svg className="asset-series-chart" viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label={`${title} 관측 흐름`}>
         <rect className="asset-chart-frame" x={frame.left} y={frame.top} width={width} height={height} />
@@ -2973,9 +2973,6 @@ function AssetPreviewPanel({
                   emptyTitle="관측 이력 없음"
                   emptyDetail={detailError || "현재 선택 설비에 연결된 주요 피쳐 이력이 없습니다."}
                 />
-                <p className="operations-live-feature-note">
-                  원본 필드명 대신 한국어 현장 용어로 표시합니다. LIVE 그래프는 과거 관측 이력 위에 지금 값과 단기 추세 범위를 함께 표시합니다.
-                </p>
               </section>
               <dl className="operations-monitoring-detail-grid" aria-label="선택 설비 현재 상태">
                 <div><dt>설비명</dt><dd>{assetDisplayName}</dd></div>

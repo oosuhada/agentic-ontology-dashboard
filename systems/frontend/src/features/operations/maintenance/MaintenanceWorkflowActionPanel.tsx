@@ -287,6 +287,17 @@ export function MaintenanceWorkflowActionPanel({
           setMessage({ tone: "success", text: "정비 후 관측과 예측 처리가 완료됐습니다." });
           return;
         }
+        const runtimeLineage = await getMaintenanceEventLineage(
+          projectId,
+          workspaceId,
+          eventId,
+          controller.signal,
+        );
+        setLineage(runtimeLineage);
+        if (runtimeLineage.runtime_status?.startsWith("failed_")) {
+          setPollingError(runtimeLineage.runtime_state?.failure_reason || "정비 후 재예측 처리에 실패했습니다.");
+          return;
+        }
       } catch (reason) {
         if (controller.signal.aborted) return;
         consecutiveFailures += 1;
@@ -311,6 +322,7 @@ export function MaintenanceWorkflowActionPanel({
     };
   }, [
     assetId,
+    eventId,
     onPostMaintenancePrediction,
     onStatusChanged,
     postMaintenancePrediction,
@@ -535,8 +547,13 @@ export function MaintenanceWorkflowActionPanel({
     enabled = false;
     command = null;
   } else if (state.action?.restart_at) {
-    label = "정비 후 관측 수집 중";
-    helper = "대상 설비 Overlay Observation을 생성하고 예측 결과를 기다리고 있습니다.";
+    const runtimeStatus = lineage?.runtime_status;
+    label = runtimeStatus?.startsWith("failed_") ? "정비 후 재예측 확인 필요" : "정비 후 관측 수집 중";
+    helper = runtimeStatus?.startsWith("failed_")
+      ? (lineage?.runtime_state?.failure_reason || "Generator 처리 상태를 확인한 뒤 재시도해 주세요.")
+      : runtimeStatus === "history_insufficient" || runtimeStatus === "warming_up"
+        ? "재예측에 필요한 연속 관측 이력을 수집하고 있습니다."
+        : "정비 결과가 반영된 관측과 예측 결과를 기다리고 있습니다.";
     enabled = false;
     command = null;
   }

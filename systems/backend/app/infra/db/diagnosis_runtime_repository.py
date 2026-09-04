@@ -485,6 +485,46 @@ class PredictiveMaintenanceRuntimeRepository:
             ).fetchone()
         return None if row is None else dict(row)
 
+    def post_maintenance_runtime_status_row(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        asset_id: str,
+        maintenance_event_id: str,
+    ) -> dict[str, Any] | None:
+        """Return the newest Generator outcome for a maintenance replay branch."""
+
+        with self._connection(organization_id, project_id) as connection:
+            row = connection.execute(
+                """
+                SELECT raw_item->>'output_status' AS status,
+                       raw_item->>'failure_reason' AS failure_reason,
+                       raw_item->>'observed_at' AS observed_at,
+                       raw_item->>'model_id' AS model_id,
+                       raw_item->>'model_version' AS model_version,
+                       raw_item->'lineage' AS lineage,
+                       received_at,updated_at
+                FROM pm_prediction_result_inbox_items
+                WHERE organization_id=%s AND project_id=%s AND workspace_id=%s
+                  AND validation_status IN ('accepted','duplicate')
+                  AND raw_item->>'asset_id'=%s
+                  AND raw_item->>'source_kind'='maintenance_replay_overlay'
+                  AND raw_item#>>'{lineage,maintenance_event_id}'=%s
+                ORDER BY received_at DESC,receive_item_id DESC
+                LIMIT 1
+                """,
+                (
+                    organization_id,
+                    project_id,
+                    workspace_id,
+                    asset_id,
+                    maintenance_event_id,
+                ),
+            ).fetchone()
+        return None if row is None else dict(row)
+
     def result_artifact_row(
         self,
         *,

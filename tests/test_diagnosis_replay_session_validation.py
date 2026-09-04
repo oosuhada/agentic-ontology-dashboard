@@ -224,3 +224,31 @@ def test_resolve_maintenance_source_session_reports_missing_lineage(
         )
         is None
     )
+
+
+def test_post_maintenance_runtime_status_returns_receive_only_generator_state() -> None:
+    repository = ReplayValidationRepository()
+    repository.post_maintenance_runtime_status_row = lambda **_values: {
+        "status": "history_insufficient",
+        "failure_reason": None,
+        "observed_at": "2026-09-04T03:40:00+00:00",
+        "model_id": "cnc-random-forest",
+        "model_version": "cnc-random-forest-v3",
+        "lineage": {"maintenance_event_id": "MAINTENANCE-EVENT-1"},
+        "received_at": datetime(2026, 9, 4, 3, 40, tzinfo=timezone.utc),
+        "updated_at": datetime(2026, 9, 4, 3, 40, tzinfo=timezone.utc),
+    }
+
+    status = PredictiveMaintenanceRuntimeService(
+        repository
+    ).post_maintenance_runtime_status(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        asset_id="CNC-001",
+        maintenance_event_id="MAINTENANCE-EVENT-1",
+    )
+
+    assert status is not None
+    assert status["status"] == "history_insufficient"
+    assert status["lineage"]["maintenance_event_id"] == "MAINTENANCE-EVENT-1"
