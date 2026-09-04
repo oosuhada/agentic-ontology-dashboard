@@ -7,7 +7,7 @@ import { HanbitLogo } from "../../ui/foundry/HanbitLogo";
 
 const PRODUCT_STORIES = [
   {
-    eyebrow: "LIVE FACTORY STATUS",
+    eyebrow: { ko: "실시간 공장 상태", en: "LIVE FACTORY STATUS" },
     title: { ko: "이상 설비를 위치와 알림으로 먼저 찾습니다.", en: "Find abnormal equipment by location and alert first." },
     detail: {
       ko: "구역·셀 단위 설비 상태와 새 알림 수를 한 화면에서 보고, 클릭 한 번으로 해당 Event와 센서 근거까지 내려갑니다.",
@@ -16,7 +16,7 @@ const PRODUCT_STORIES = [
     visual: "factory" as const,
   },
   {
-    eyebrow: "ONE CASE · ROLE COMPOSED",
+    eyebrow: { ko: "하나의 CASE · 역할별 구성", en: "ONE CASE · ROLE COMPOSED" },
     title: { ko: "같은 사건을 역할마다 필요한 깊이로 봅니다.", en: "See the same case at the depth each role needs." },
     detail: {
       ko: "엔지니어는 센서와 점검 근거, 운영 관리자는 생산 영향과 승인, 경영진은 KPI와 의사결정 병목을 같은 Case에서 확인합니다.",
@@ -25,16 +25,16 @@ const PRODUCT_STORIES = [
     visual: "roles" as const,
   },
   {
-    eyebrow: "TRACEABLE DECISION",
+    eyebrow: { ko: "추적 가능한 판단", en: "TRACEABLE DECISION" },
     title: { ko: "Event에서 Outcome까지 판단 근거가 끊기지 않습니다.", en: "Decision evidence stays connected from Event to Outcome." },
     detail: {
       ko: "Evidence → Decision → Action → Maintenance → Outcome을 하나의 lineage로 연결해 누가 왜 무엇을 판단했는지 추적할 수 있습니다.",
-      en: "Evidence → Decision → Action → Maintenance → Outcome stays in one lineage so teams can trace who decided what and why.",
+      en: "Evidence → Decision → Action → Maintenance → Outcome stays in one lineage so users can trace who decided what and why.",
     },
     visual: "lineage" as const,
   },
   {
-    eyebrow: "GROUNDED REPORTING",
+    eyebrow: { ko: "근거 기반 보고", en: "GROUNDED REPORTING" },
     title: { ko: "보고서는 별도 문서가 아니라 업무 흐름의 산출물입니다.", en: "Reports are workflow artifacts, not detached documents." },
     detail: {
       ko: "현재 Case의 검증된 근거와 조치 결과를 바탕으로 역할별 보고 언어를 만들고, snapshot 기준을 유지한 채 경영 보고로 전환합니다.",
@@ -46,17 +46,48 @@ const PRODUCT_STORIES = [
 
 function ProductStoryVisual({ kind, english }: { kind: (typeof PRODUCT_STORIES)[number]["visual"]; english: boolean }) {
   if (kind === "factory") return <div className="auth-story-factory" aria-hidden="true">
-    {[0, 1, 2, 3].map((zone) => <section key={zone}><header><strong>{english ? `Zone ${zone + 1}` : `${zone + 1}구역`}</strong><b>{zone === 1 ? "3" : zone === 3 ? "1" : ""}</b></header><div>{[0, 1, 2, 3, 4].map((cell) => <span key={cell} className={zone === 1 && cell === 2 ? "critical" : zone === 3 && cell === 1 ? "warning" : "normal"}>{cell === 2 && zone === 1 ? "!" : ""}</span>)}</div></section>)}
+    {[0, 1, 2, 3].map((zone) => {
+      const alertCount = zone === 1 ? 3 : zone === 3 ? 1 : 0;
+      return <section key={zone}>
+        <header>
+          <strong>{english ? `Zone ${zone + 1}` : `${zone + 1}구역`}</strong>
+          <span>{alertCount > 0 ? (english ? `${alertCount} alerts` : `알림 ${alertCount}`) : (english ? "Normal" : "정상")}</span>
+        </header>
+        <div>{[0, 1, 2, 3, 4].map((cell) => {
+          const critical = zone === 1 && cell === 2;
+          const warning = zone === 3 && cell === 1;
+          return <span key={cell} className={critical ? "critical" : warning ? "warning" : "normal"}>
+            <small>{english ? `Cell ${cell + 1}` : `${cell + 1}셀`}</small>
+            <em>{critical ? (english ? "Critical" : "긴급") : warning ? (english ? "Attention" : "주의") : (english ? "Normal" : "정상")}</em>
+          </span>;
+        })}</div>
+      </section>;
+    })}
   </div>;
   if (kind === "roles") return <div className="auth-story-roles" aria-hidden="true">
-    <article><MapPinned size={17} /><strong>Engineer</strong><span>Sensor · Evidence</span></article>
-    <article><ClipboardCheck size={17} /><strong>Operations</strong><span>Impact · Decision</span></article>
-    <article><BarChart3 size={17} /><strong>Executive</strong><span>KPI · Bottleneck</span></article>
+    <article><MapPinned size={17} /><strong>{english ? "Engineer" : "엔지니어"}</strong><span>{english ? "Sensors · Inspection evidence" : "센서 · 점검 근거"}</span></article>
+    <article><ClipboardCheck size={17} /><strong>{english ? "Operations" : "운영 관리"}</strong><span>{english ? "Production impact · Approval" : "생산 영향 · 승인"}</span></article>
+    <article><BarChart3 size={17} /><strong>{english ? "Executive" : "경영진"}</strong><span>{english ? "KPI · Decision bottleneck" : "KPI · 의사결정 병목"}</span></article>
   </div>;
-  if (kind === "lineage") return <div className="auth-story-lineage" aria-hidden="true">
-    {["Event", "Evidence", "Decision", "Action", "Outcome"].map((item, index) => <span key={item}><i>{index + 1}</i><strong>{item}</strong></span>)}
-  </div>;
-  return <div className="auth-story-report" aria-hidden="true"><FileText size={30} /><div><strong>Executive Brief</strong><span>Risk 72% · 4 Decision Cases</span><span>Production exposure · Maintenance outcome</span></div><em>AS-OF</em></div>;
+  if (kind === "lineage") {
+    const steps = english ? [
+      ["Event", "Tool-wear risk detected"],
+      ["Evidence", "Sensor and model basis"],
+      ["Decision", "Inspection approved"],
+      ["Action", "Inspect and maintain"],
+      ["Outcome", "Re-predict and verify"],
+    ] : [
+      ["사건", "공구 마모 위험 감지"],
+      ["근거", "센서·모델 근거"],
+      ["판단", "점검·정비 승인"],
+      ["실행", "현장 점검·정비"],
+      ["결과", "재예측·효과 확인"],
+    ];
+    return <div className="auth-story-lineage" aria-hidden="true">
+      {steps.map(([label, example], index) => <span key={label}><i>{index + 1}</i><strong>{label}</strong><small>{example}</small></span>)}
+    </div>;
+  }
+  return <div className="auth-story-report" aria-hidden="true"><FileText size={30} /><div><strong>{english ? "Executive Brief" : "경영 보고"}</strong><span>{english ? "Risk 72% · 4 Decision Cases" : "위험도 72% · 판단 Case 4건"}</span><span>{english ? "Production exposure · Maintenance outcome" : "생산 영향 · 정비 효과"}</span></div><em>{english ? "AS-OF" : "기준 시점"}</em></div>;
 }
 
 export function AuthShell({
@@ -97,8 +128,8 @@ export function AuthShell({
         <aside className="auth-resource-context">
           <header><span><Activity size={20} /></span><div><strong>{english ? "Connect equipment risk to operational decisions" : "설비 리스크를 운영 의사결정으로 연결"}</strong><small>Live status → Decision Case → Outcome</small></div></header>
           <section className={`auth-product-story${story.visual === "report" ? " has-value-strip" : ""}`} aria-roledescription="carousel" aria-label={english ? "Product capabilities" : "제품 주요 기능"}>
-            <div className="auth-story-copy" key={story.eyebrow}>
-              <span className="section-label">{story.eyebrow}</span>
+            <div className="auth-story-copy" key={story.eyebrow.en}>
+              <span className="section-label">{english ? story.eyebrow.en : story.eyebrow.ko}</span>
               <h1>{english ? story.title.en : story.title.ko}</h1>
               <p>{english ? story.detail.en : story.detail.ko}</p>
             </div>
@@ -109,7 +140,7 @@ export function AuthShell({
               <span><Wrench size={15} /><strong>Closed loop</strong><small>{english ? "Maintenance outcomes" : "정비 결과 확인"}</small></span>
             </section> : null}
             <footer className="auth-story-controls">
-              <div>{PRODUCT_STORIES.map((item, index) => <button type="button" key={item.eyebrow} className={index === storyIndex ? "is-active" : ""} onClick={() => setStoryIndex(index)} aria-label={english ? `Product story ${index + 1}` : `${index + 1}번째 제품 소개`} aria-current={index === storyIndex ? "true" : undefined} />)}</div>
+              <div>{PRODUCT_STORIES.map((item, index) => <button type="button" key={item.eyebrow.en} className={index === storyIndex ? "is-active" : ""} onClick={() => setStoryIndex(index)} aria-label={english ? `Product story ${index + 1}` : `${index + 1}번째 제품 소개`} aria-current={index === storyIndex ? "true" : undefined} />)}</div>
               <span><button type="button" onClick={() => moveStory(-1)} aria-label={english ? "Previous" : "이전"}><ArrowLeft size={14} /></button><button type="button" onClick={() => moveStory(1)} aria-label={english ? "Next" : "다음"}><ArrowRight size={14} /></button></span>
             </footer>
           </section>
