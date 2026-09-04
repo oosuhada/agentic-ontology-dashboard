@@ -2259,8 +2259,8 @@ def _ensure_live_version(
                 WHERE organization_id=%s AND project_id=%s AND workspace_id=%s
                   AND source_version=%s
                   AND (
-                    (%s IS NULL AND COALESCE(profile_json->>'simulation_session_id','')='')
-                    OR profile_json->>'simulation_session_id'=%s
+                    (%s::text IS NULL AND COALESCE(profile_json->>'simulation_session_id','')='')
+                    OR profile_json->>'simulation_session_id'=%s::text
                   )
                 ORDER BY version_number DESC LIMIT 1
                 """,
