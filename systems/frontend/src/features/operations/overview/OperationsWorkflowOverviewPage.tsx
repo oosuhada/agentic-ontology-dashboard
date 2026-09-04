@@ -3023,16 +3023,22 @@ function AssetPreviewPanel({
               </dl>
 
               <section className="operations-production-impact-block" aria-label="생산 영향">
-                <header><Activity size={14} /><strong>생산 영향</strong><span>계획 기준 추정</span></header>
+                <header>
+                  <Activity size={14} />
+                  <strong>생산 영향</strong>
+                  <span>계획 기준 추정</span>
+                  <DelayedHelp
+                    label="생산 영향 산정 안내"
+                    detail={`${planningBasisFromDetail(detail).value} · 합성 용량 모델 기반 계획 영향 추정이며 고장확률, 위험도, 점검 근거와 권고 판단에는 영향을 주지 않습니다.`}
+                  />
+                </header>
                 <dl>
                   <div><dt>계획 영향</dt><dd>{productionLossLabel(planningImpact?.estimatedLossUnits ?? null)}</dd></div>
                   <div><dt>상태</dt><dd>{planningImpact ? PLANNING_STATUS_LABEL[planningImpact.status] : "생산 영향 미산정"}</dd></div>
                   <div><dt>생산 영향 수준</dt><dd>{lineSummary ? productionImpactLevelLabel(lineSummary, detail) : "생산 영향 수준 미연결"}</dd></div>
                   <div><dt>검토 우선순위</dt><dd>{lineSummary ? reviewPriorityLabel(lineSummary, detail) : "검토 우선순위 미제공"}</dd></div>
-                  <div className="is-wide"><dt>근거</dt><dd>{planningBasisFromDetail(detail).value}</dd></div>
                   <div className="is-wide"><dt>다음 검토</dt><dd>{planningImpact ? `${planningImpact.nextAction} · 현장 점검 요청 필요` : "데이터 품질 확인 필요"}</dd></div>
                 </dl>
-                <p>합성 용량 모델 기반 계획 영향 추정 · 고장확률, 위험도, 점검 근거, 권고 판단을 변경하지 않습니다.</p>
               </section>
               {lineSummary ? (
                 <section className="operations-line-asset-list" aria-label="라인 위험 설비 목록">
