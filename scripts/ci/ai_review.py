@@ -588,7 +588,7 @@ def _bool(value: str | bool | None) -> bool:
 def review_profile(changed_paths: Sequence[str]) -> dict[str, Any]:
     docs_only = bool(changed_paths) and all(
         path.startswith("docs/")
-        or path in {"README.md", "THIRD_PARTY_NOTICES.md"}
+        or path == "README.md"
         for path in changed_paths
     )
     large_or_high_risk = len(changed_paths) > 20 or any(
@@ -776,7 +776,7 @@ def should_run_full_review(
         return False, "no changed files"
     docs_only = all(
         path.startswith("docs/")
-        or path in {"README.md", "THIRD_PARTY_NOTICES.md"}
+        or path == "README.md"
         for path in changed_paths
     )
     if docs_only:
