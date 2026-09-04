@@ -53,7 +53,28 @@ def test_company_context_has_operational_business_and_history_records():
     assert context["maintenance_records"]
     assert context["meeting_minutes"]
     assert context["decisions"]
+    assert len(context["assets"]) >= 88
+    assert len(context["maintenance_records"]) >= 700
+    assert len(context["materials"]) >= 70
+    assert len(context["kpi_snapshots"]) >= 160
+    assert len(context["financial_periods"]) == 18
+    assert len(context["meeting_minutes"]) >= 80
+    assert len(context["decisions"]) >= 170
+    assert len(context["documents"]) >= 90
+    assert context["corpus_summary"]["generated_history_months"] == 18
     assert "disclaimer" not in public_company_context()
+
+
+def test_public_company_context_keeps_large_history_bounded():
+    full = load_company_context()
+    public = public_company_context(full)
+
+    assert len(full["maintenance_records"]) > len(public["maintenance_records"])
+    assert len(public["maintenance_records"]) <= 24
+    assert len(public["meeting_minutes"]) <= 12
+    assert len(public["decisions"]) <= 24
+    assert len(public["kpi_snapshots"]) <= 54
+    assert public["corpus_summary"]["maintenance_records"] == len(full["maintenance_records"])
 
 
 def test_company_context_can_be_promoted_to_project_scoped_db_records(tmp_path):
@@ -74,11 +95,16 @@ def test_company_context_can_be_promoted_to_project_scoped_db_records(tmp_path):
     assert inserted > 0
     assert records
     assert {record["record_type"] for record in records} >= {
+        "assets",
+        "vendors",
         "materials",
         "maintenance_records",
         "business_metrics",
+        "kpi_snapshots",
+        "financial_periods",
         "meeting_minutes",
         "decisions",
+        "documents",
     }
     assert any(record["payload"].get("name") == "한빛테크" for record in records) is False
 
@@ -91,11 +117,31 @@ def test_company_rag_prefers_asset_history_and_material_context():
     )
 
     assert results
-    source_refs = {item["source_ref"] for item in results}
-    assert "maintenance:MAINT-2026-0528-03" in source_refs
+    assert any(
+        item["document_type"] == "maintenance_history"
+        and "CNC-S04-L02-03" in item.get("related_asset_ids", [])
+        for item in results
+    )
     assert any(item["document_type"] == "material_master" for item in results)
     assert any(item["document_type"] == "decision_record" for item in results)
     assert all(item["context_kind"] == "company_operational_context" for item in results)
+    assert all(len(str(item.get("source_sha256") or "")) == 64 for item in results)
+
+
+def test_company_rag_can_answer_asset_economics_finance_kpi_and_sop_questions():
+    asset_results = retrieve_company_documents(
+        "CNC-S04-L02-03 장비 가격과 교체비 장부가를 알려줘",
+        asset_id="CNC-S04-L02-03",
+        top_k=8,
+    )
+    finance_results = retrieve_company_documents("2026년 재무 손익 매출 OPEX CAPEX", top_k=8)
+    kpi_results = retrieve_company_documents("최근 OEE MTBF MTTR KPI 추세", top_k=8)
+    sop_results = retrieve_company_documents("스핀들 베어링 SOP 점검 절차", top_k=8)
+
+    assert any(item["document_type"] == "asset_master" for item in asset_results)
+    assert any(item["document_type"] in {"financial_actual", "financial_statement"} for item in finance_results)
+    assert any(item["document_type"] == "kpi_actual" for item in kpi_results)
+    assert any(item["document_type"] == "site_sop" for item in sop_results)
 
 
 def test_company_context_is_projected_as_ontology_objects_and_links():

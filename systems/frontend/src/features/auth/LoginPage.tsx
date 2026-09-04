@@ -9,6 +9,7 @@ import type { AuthUser } from "../../types";
 import { useAuth } from "./AuthContext";
 import { AuthShell } from "./AuthShell";
 import { useI18n } from "../../ui/i18n/I18nProvider";
+import { useDisplayPreferences } from "../../ui/foundry/displayPreferences";
 import { Info } from "lucide-react";
 
 const DEMO_ACCOUNTS = [
@@ -85,12 +86,15 @@ function roleAwareLandingPath(user: AuthUser): string {
 export function LoginPage() {
   const { login } = useAuth();
   const { locale } = useI18n();
+  const { preferences } = useDisplayPreferences();
   const english = locale === "en-US";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [openInfo, setOpenInfo] = useState<string | null>(null);
+  const roleContextDescription = english
+    ? "Connect the same equipment event and evidence across engineering investigation, operational decisions, and executive reporting."
+    : "같은 설비 이상 사건과 근거를 엔지니어의 조사, 운영 관리자의 판단, 경영진의 보고 언어로 연결합니다.";
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -124,7 +128,6 @@ export function LoginPage() {
     if (!account) return;
     setEmail(account.email);
     setPassword(account.password);
-    setOpenInfo(null);
   }
 
   return (
@@ -136,10 +139,10 @@ export function LoginPage() {
           : "실시간 설비 현황에서 운영 판단과 경영 보고까지"
       }
       description={
-        english
-          ? "Connect the same equipment event and evidence across engineering investigation, operational decisions, and executive reporting."
-          : "같은 설비 이상 사건과 근거를 엔지니어의 조사, 운영 관리자의 판단, 경영진의 보고 언어로 연결합니다."
+        roleContextDescription
       }
+      showDescription={false}
+      showTraceabilityNote={false}
     >
       <form className="auth-form" onSubmit={submit}>
         <label>
@@ -193,7 +196,12 @@ export function LoginPage() {
               : "역할별 Reliability Operations 계정"
           }
         >
-          <header>{english ? "Choose a role" : "역할 선택"}</header>
+          <header
+            className="demo-account-heading"
+            tabIndex={0}
+            title={preferences.showGuidance ? roleContextDescription : undefined}
+            aria-label={`${english ? "Choose a role" : "역할 선택"}. ${roleContextDescription}`}
+          >{english ? "Choose a role" : "역할 선택"}</header>
           <div
             className="demo-account-grid"
             role="group"
@@ -208,33 +216,18 @@ export function LoginPage() {
                   className="demo-account-card"
                   type="button"
                   onClick={() => selectDemo(account.email)}
+                  aria-describedby={preferences.showGuidance ? `role-help-${account.email.split("@")[0]}` : undefined}
                 >
                   <strong>
                     {english ? account.label.en : account.label.ko}
                   </strong>
+                  {preferences.showGuidance ? <Info className="demo-account-help-icon" size={13} aria-hidden="true" /> : null}
                 </button>
-                <div
-                  className={`demo-account-info ${openInfo === account.email ? "is-open" : ""}`}
+                {preferences.showGuidance ? <div
+                  id={`role-help-${account.email.split("@")[0]}`}
+                  className="demo-account-popover"
+                  role="tooltip"
                 >
-                  <button
-                    type="button"
-                    className="demo-account-info-trigger"
-                    aria-label={
-                      english
-                        ? `${account.label.en} details`
-                        : `${account.label.ko} 상세 정보`
-                    }
-                    aria-expanded={openInfo === account.email}
-                    title={english ? "Role details" : "역할 상세"}
-                    onClick={() =>
-                      setOpenInfo((current) =>
-                        current === account.email ? null : account.email,
-                      )
-                    }
-                  >
-                    <Info size={13} />
-                  </button>
-                  <div className="demo-account-popover">
                     <strong>
                       {english ? account.label.en : account.label.ko}
                     </strong>
@@ -244,8 +237,7 @@ export function LoginPage() {
                         : account.description.ko}
                     </p>
                     <small>{account.email}</small>
-                  </div>
-                </div>
+                </div> : null}
               </div>
             ))}
           </div>

@@ -1,149 +1,137 @@
-# Operations Runtime Ownership 통합 기준
+# Operations Runtime Ownership
 
-- 대상: PR #9 `feat/week2-operations-implementation-import`
-- 상위 계약: PR #8 저장소 책임, PR #10 시스템 아키텍처, `gen_data` PR #2 source/reference fixture 분류
-- 목적: 개인 프로토타입에서 이관한 실행 코드를 팀의 장기 책임 경계에 맞추되 현재 Operations 화면과 API 호환성을 유지한다.
+## 목적
 
-## 적용한 책임 경계
+이 문서는 실시간 관측이 Product Result, Closed-loop 업무와 역할별 화면으로 이어지는 현재
+시스템 경계를 정의한다. 구현 책임은 실행 컴포넌트와 versioned contract를 기준으로 한다.
+상위 결정은
+[ADR-003](../architecture-decisions/ADR-003-generator-runtime-prediction-result-and-backend-decision-ownership.md)을
+따른다.
+
+## 운영 데이터 경로
 
 ```text
-Biz-CollabCraft/gen_data
-Source Data Producer / Canonical V3.1 source-reference baseline
-        ↓
-systems/generator
-Extraction (protocol parsing + approved Mapping application)
-→ Versioned Observation/Failure Dataset
-→ Preprocessing Plan
-→ Feature Schema/Label Schema execution
-→ Feature Dataset Bundle
-→ Training/Evaluation
-→ versioned Model Artifact publish
-        ↓ MODEL_ARTIFACT_URI
-systems/backend/app/diagnosis
-current observation + Model Artifact
-→ runtime inference
+gen_data live source
+→ live-ingestor
+→ Backend observation tables
+→ Generator Runtime Queue
+→ Preprocessing / Runtime Feature / Prediction
+→ Prediction Result Batch
+→ Backend validation / Threshold Policy / promotion
 → Product Result Artifact / Evidence
-        ↓
-기존 FastAPI API → React/Report consumer
+→ Decision Case / Workflow / Report
+→ Role-aware Frontend
 ```
 
-정비 후 Closed-loop Target은 위 흐름에 다음 feedback 경로를 추가한다.
+이 경로가 운영 결과의 단일 진실 경로다. Frontend는 화면을 열어 둔 것만으로 Observation이나
+Product Result를 생성하지 않는다. presentation 전용 결과를 Backend에 직접 주입하는 경로는
+기본 제품 모드에서 사용하지 않는다.
 
-```text
-Closed-loop Maintenance Integration event
-        ↓
-gen_data 대상 설비 Runtime Overlay
-Snapshot effect + branch-local Simulation Clock Fast-forward
-        ↓ continuous maintenance_replay_overlay Observation availability
-systems/backend/app/diagnosis
-history_requirement/readiness validation
-        ├─ insufficient: wait for subsequent Observation
-        └─ ready: runtime inference
-        ↓
-새 Product Result Artifact / Evidence
-```
+## 컴포넌트 책임
 
 ### `gen_data`
 
-raw/simulation/synthetic sensor data, Canonical V3.1 물리·생성 기준, source/reference/test fixture와 seed 재현성의 Source of Truth다. `model_contract`, `model_metrics`, `prediction_snapshot`, `prediction_factor`, `prediction_timeline`, `result_artifact`는 삭제하지 않지만 compatibility/regression/migration fixture로만 취급한다.
+- raw, simulation, synthetic sensor data를 재현 가능한 seed와 scenario로 생성한다.
+- SensorRecord protocol과 source lineage를 보존한다.
+- Closed-loop에서 정비 대상 설비의 post-maintenance Runtime Overlay Observation을 생성한다.
+- 모델을 로드하거나 inference readiness, 위험도, Product Result를 결정하지 않는다.
+- 과거 prediction fixture가 있더라도 제품의 최신 Result로 사용하지 않는다.
 
-Closed-loop Target에서 `gen_data`는 Canonical을 변경하지 않고 정비 대상 설비에만
-Runtime Overlay Snapshot과 branch-local clock을 적용해 source Observation을 생성한다.
-이 경로는 opt-in이며 Model Artifact와 `history_requirement`을 읽거나 inference readiness,
-Product Result/Evidence를 생성하지 않는다. `maintenance.replay_requested` 이후 해당
-branch의 Simulation Clock 정책에 따라 Observation을 지속 append한다.
+### `live-ingestor`
 
-Overlay Observation은 Canonical Observation 저장소와 분리한 append-only runtime
-저장소로 전달한다. Backend의 Product/Feature read model은 대상 설비·branch를 기준으로
-Canonical 이전 구간과 Overlay 이후 구간을 선택하며 둘의 미래 행을 단순 합산하지 않는다.
+- source record를 검증해 선택된 live dataset과 simulation session scope로 적재한다.
+- 재시도와 cursor 처리에서 중복을 만들지 않는다.
+- 서로 다른 simulation session의 Observation을 하나의 연속 history로 섞지 않는다.
+- 모델 feature, prediction 또는 업무 상태를 만들지 않는다.
 
 ### `systems/generator`
 
-- protocol parsing 및 지정 Mapping 적용 기반 Observation Dataset 발행
-- Authorized Truth Source 기반 Failure Dataset 발행
-- Observation Dataset 구조 분석 및 불변 Preprocessing Plan 발행 (Ontology Mapping 미생성/미소비)
-- Feature Schema allowlist/recipe 및 Label Schema 실행 기반 Feature Dataset Bundle 발행
-- model training/evaluation 및 immutable versioned Model Artifact publish (latest.json pointer 관리)
-- **책임 경계**:
-  - protocol Mapping은 Extraction이 Canonical Observation을 생성할 때 적용한다.
-  - Preprocessing은 Mapping을 생성하거나 소비하지 않는다.
-  - Feature는 Mapping을 조회하지 않고 Feature Schema/Recipe를 실행한다.
-  - Backend Diagnosis는 Feature 생성이나 모델 학습을 수행하지 않는다.
-  - Generator는 runtime inference, Product Result Artifact 및 Evidence를 생성하지 않는다.
+- 학습용 Feature/Label Dataset과 versioned Model Artifact를 생성한다.
+- 런타임 관측 이력을 읽어 학습과 동일한 전처리·feature 규칙을 실행한다.
+- 활성 Model Artifact별 score를 계산하고 설비별 Prediction Result Batch를 만든다.
+- Outbox를 통해 Backend에 멱등 전달한다.
+- threshold, 이상 판정, Product Result, Evidence, Report와 사용자 알림은 만들지 않는다.
 
-기존 확장 ML Validator/workbench가 `systems/backend/ontology_dashboard/modeling` 아래에서 직접 수행하던 semantic mapping, feature materialization, sklearn experiment/training 구현도 각각 `systems/generator/ontology_mapping`, `systems/generator/feature`, `systems/generator/model`로 이동했다. API에는 기존 화면·계약을 깨지 않기 위한 lazy compatibility port만 남겼다.
+### `systems/backend`
 
-Model Artifact는 `model-artifact-v1.0` manifest로 publish하며 artifact type/schema, model/dataset/feature version, created time, training config, metrics, checksum, provenance, compatibility, artifact file 목록을 포함한다.
+- Observation을 저장하고 Generator가 보낸 Prediction Result Batch를 검증·멱등 수신한다.
+- scope, schema, model/dataset/session lineage를 확인한다.
+- Threshold Policy와 업무 정책을 적용해 Product Result Artifact와 Evidence로 승격한다.
+- Recommendation, Decision, Inspection, Maintenance, Outcome 상태 머신을 소유한다.
+- 열린 WorkOrder의 `current_step`과 현재 가능한 `available_actions`를 계산한다.
+- 역할별 presentation facts와 report snapshot을 제공한다.
+- Generator 내부 코드를 직접 import하거나 score를 임의 생성하지 않는다.
 
-### `systems/backend/app/diagnosis`
+### `systems/frontend`
 
-- `MODEL_ARTIFACT_URI`로 주입된 Model Artifact의 manifest/checksum/compatibility 검증
-- current observation runtime inference
-- `result-artifact-v1.0` 의미와 호환되는 Product Result Artifact 생성
-- 제품 Evidence 생성
-- 정비 후 Overlay Observation의 새 history segment 로드
-- Model Artifact의 `history_requirement`을 읽는 유일한 readiness owner
-- 이력 부족 시 다음 Observation을 기다리며 `warming_up`/`history_insufficient` 처리
-- 첫 inference-ready Observation의 신규 Product Result/Evidence 생성
+- Backend API가 제공한 live Result, Evidence, workflow와 report snapshot을 표현한다.
+- 실시간 그래프는 실제 최신 Observation을 이어 그리고, 데이터 로딩·비어 있음·오류를 구분한다.
+- 선택한 Decision Case의 immutable snapshot을 새 Event로 자동 교체하지 않는다.
+- WorkOrder ID, Result ID와 업무 상태를 합성하거나 상태 머신을 재구현하지 않는다.
+- 역할에 따라 다음 행동, 판단 근거와 보고 깊이를 다르게 구성한다.
 
-기존 `systems/backend/ontology_dashboard/modeling/registry.py`가 수행하던 active model load/scoring/explanation 구현도 `systems/backend/app/diagnosis/model_registry.py`로 이동했고 API 경로에는 compatibility adapter만 남겼다.
-
-Backend는 generator Python 구현이나 sibling `model_store` 경로를 import/탐색하지 않는다. Operations 로컬 데모에서 Artifact가 주입되지 않은 경우에만 기존 deterministic heuristic을 명시적 compatibility fallback으로 유지한다.
-
-ML authoring compatibility port는 generator-capable 개발/통합 배포에서만 실제 generator 구현을 지연 로드한다. 일반 Backend startup과 diagnosis runtime은 generator package 없이도 import 가능하도록 유지한다.
-
-### API / Frontend / Report
-
-PR #11에서 기존 root `api/`와 `web/` 실행 host를 각각 `systems/backend`와 `systems/frontend`로 수렴시켰다. Backend API의 실제 Operations Evidence 경로는 `systems/backend/app/diagnosis`를 호출하며, Frontend는 backend 도메인 폴더 구조와 1:1 재배치하지 않고 사용자 workflow 중심 구조를 유지한다.
-
-## Generator internal daemon의 허용/금지 범위
-
-`systems/generator`의 책임 끝점은 versioned Model Artifact publish까지다. 이 경계를
-구체적으로 판정하기 위해 Generator internal daemon(학습 daemon)의 허용/금지 범위를
-명문화한다. 상세 아키텍처 결정과 책임 분리 근거는 `docs/architecture-decisions/ADR-002-training-runtime-prediction-ownership.md`를 따른다.
-
-**허용**
-
-- `GET /health`
-- `POST /internal/train`
-- `POST /internal/retrain`
-- 학습 job 상태 또는 Model Artifact publish 상태 조회
-
-**금지**
-
-- 사용자 요청 기반 runtime predict (예: `/internal/predict`, `/internal/predict/file`)
-- `PredictionOutput` 등 runtime 응답 형식의 외부 노출
-- current telemetry를 운영 목적으로 자동 선택하는 기능
-- Product prediction 파일 저장 (예: `data_preprocessed/predictions/*.json`을 제품 저장소로 사용)
-- Product Result Artifact/Evidence 생성
-
-또한 다음 용어를 명확히 분리한다.
+## Closed-loop 경로
 
 ```text
-offline model evaluation           ≠ operational runtime inference
-학습 후 검증/스코어링 목적           사용자 요청에 대한 실시간 응답 목적
-Generator 책임                      Backend diagnosis 책임
+Product Result / Evidence
+→ Inspection request
+→ Field acceptance / inspection result
+→ Cost decision / maintenance recommendation
+→ Human approval
+→ Maintenance action / completion
+→ post-maintenance Runtime Overlay Observation
+→ Generator re-prediction
+→ Backend promotion
+→ Before/After Outcome and role reports
 ```
 
-이 두 개념을 같은 함수/엔드포인트에서 처리하지 않는다. `offline evaluation`의 결과를
-`operational runtime inference`의 응답 형식(`PredictionOutput` 등)으로 감싸는 것도 이 분리를
-어기는 것으로 간주한다.
+정비 완료는 작업 사실일 뿐 정상 판정이 아니다. 정상화는 같은 lineage와 비교 가능한 모델
+기준을 가진 post-maintenance Prediction이 도착한 뒤에만 표시한다.
 
-## 기존 `ml/` 처리
+진행 중 WorkOrder는 새 위험 Result보다 우선 추적한다. 새 Result가 도착해도 사용자가 수행 중인
+Case를 화면에서 밀어내지 않으며, 상태맵·작업 큐·상세 패널·보고서는 동일한 Product Result와
+workflow projection을 사용한다.
 
-기존 `ml/src/factory_signal_ml`에는 training과 runtime prediction/Evidence가 한 패키지에 섞여 있었다. 구현은 각각 `systems/generator`와 `systems/backend/app/diagnosis`로 이동했고, 기존 import와 CLI를 깨지 않기 위한 compatibility adapter만 남겼다.
+## Runtime 불변식
 
-## 이번 PR에서 의도적으로 유지한 것
+1. 모델 추론에 필요한 최소 history와 warm-up은 Model Artifact 계약으로 결정한다.
+2. history backfill과 live session은 구분하며 다른 session의 tick을 섞지 않는다.
+3. Prediction Result Batch는 실제 추론에 사용된 `observed_at`, model, dataset과 session을 보존한다.
+4. 동일 delivery는 같은 idempotency key로 재시도한다.
+5. post-maintenance 첫 prediction은 해당 workflow의 결과 확인에 우선 연결한다.
+6. `presentation-live-v1` 같은 presentation-only source는 canonical live queue와 report의 기준이 아니다.
+7. 운영 DB와 runtime cache는 Git 저장소에 포함하지 않는다.
 
-- 역할별 PdM view
-- Event 기반 Report
-- decision / note / activity 흐름
-- manager / engineer 역할별 workflow
-- 위험 설비와 Evidence 확인 흐름
-- Dataset/Governance/ML Validator/Agent 등 확장 코드 자체
+## 보고와 사용자 언어
 
-확장 화면의 대형 UX 재설계와 모든 기존 대형 service 파일 분해는 이번 책임 재배치의 범위를 넘으므로 후속 작업으로 둔다.
+구조화된 Artifact가 사실의 기준이고 LLM은 표현 계층이다.
 
-## 회귀 기준
+```text
+Canonical Result Artifact
+→ deterministic presentation dictionary
+→ role-specific presentation facts
+→ grounded LLM composition
+→ artifact_id + dictionary_version + prompt_version cache
+```
 
-`gen_data` PR #2의 Canonical V3.1 `model_outputs/*`는 운영 입력이 아니라 비교 기준이다. 새 runtime Result Artifact는 binary `failure_within_horizon` 의미, model/dataset provenance, factor 방향과 같은 의미 계약을 비교할 수 있지만 제품 실행이 해당 fixture JSONL을 최신 결과처럼 직접 읽지는 않는다.
+사용자 화면은 센서·상태·조치의 업무 용어를 우선한다. raw ID, schema, model version과 source
+version은 기술 정보 disclosure에 보존한다. LLM은 lifecycle이나 Action을 결정하지 않으며,
+근거가 없을 때는 내용을 만들지 않고 deterministic fallback을 사용한다.
+
+## 검증 기준
+
+- Generator runtime stage와 Prediction Result Batch schema contract test
+- Backend 수신 멱등성, threshold/promotion과 lineage test
+- session 격리 및 연속 history window test
+- WorkOrder `current_step`, role permission과 `available_actions` test
+- maintenance replay 후 Prediction과 Before/After 연결 E2E test
+- Frontend가 demo Result 생성 API를 자동 호출하지 않는 검증
+- 같은 Case의 상태맵·큐·상세·보고 snapshot 일치 검증
+
+세부 계약은 다음 문서를 따른다.
+
+- [프로젝트 아키텍처](../architecture.md)
+- [Prediction/Decision 소유권 ADR](../architecture-decisions/ADR-003-generator-runtime-prediction-result-and-backend-decision-ownership.md)
+- [Closed-loop Domain](../closed-loop-domain-contract.md)
+- [Product/API/UI 소비 계약](../closed-loop-product-consumption-contract.md)
+- [Runtime Overlay 계약](../closed-loop-runtime-overlay-contract.md)

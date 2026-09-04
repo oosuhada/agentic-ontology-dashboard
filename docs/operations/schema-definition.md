@@ -10,7 +10,7 @@
 |---|---|
 | `확정` | 공식 V3.1 파일 또는 계약에서 검증됨 |
 | `파생` | 확정 필드를 결합하거나 계산함 |
-| `제안` | Operations 구현을 위한 계약안이며 담당자 합의가 필요함 |
+| `제안` | Operations 구현을 위한 계약안이며 제품 결정이 필요함 |
 | `제외` | Operations 계약으로 사용하지 않음 |
 
 기준 버전:
@@ -29,7 +29,10 @@
 - 원천 CSV 필드명과 Result Artifact JSON key는 변경하지 않는다.
 - 한국어 이름과 설명은 별도 표시 계층에서 관리한다.
 - API 결합·계산 필드를 Canonical 또는 Result Artifact 원문으로 표현하지 않는다.
-- Observation 및 Feature Series의 목표 생산자는 `systems/generator`이며, Backend Diagnosis는 이를 소비하여 runtime inference 및 Result Artifact/Evidence를 생성한다. Backend Report와 프론트엔드는 공식 read boundary를 통해서만 ViewModel을 구성하며 `gen_data` 원본 로그를 직접 파싱하지 않는다.
+- Observation은 Backend의 canonical store가 보존하고, Runtime Feature와 score는
+  `systems/generator`가 생성한다. Backend는 Prediction Result Batch를 검증하고 threshold와
+  업무 정책을 적용해 Result Artifact/Evidence로 승격한다. Report와 Frontend는 공식 read
+  boundary를 통해서만 ViewModel을 구성하며 `gen_data` 원본 로그를 직접 파싱하지 않는다.
 - 고장 진실(failure truth)은 Observation 및 일반 Feature 입력에서 엄격히 분리하여 별도 Failure 데이터셋으로 관리한다.
 - null을 정상값, 0 또는 고장 확정으로 변환하지 않는다.
 - evaluation truth는 제품 스키마와 일반 조회 API에서 제외한다.
@@ -295,7 +298,7 @@ TopFactor 결정 변경:
 
 ## 5. API/ViewModel 공통 스키마
 
-이 절의 객체는 제품 계층 계약안이며 상태는 `제안`이다. 팀원1·3 합의 후 API
+이 절의 객체는 제품 계층 계약안이며 상태는 `제안`이다. Frontend·Backend 계약 확정 후 API
 명세와 TypeScript/Pydantic 타입에 동일하게 반영한다.
 
 ### 5.0 역할 매핑
@@ -369,7 +372,7 @@ Overview와 Objects 목록의 공통 행이다.
 | `risk.threshold` | number 또는 null | Y | Artifact root `threshold` 또는 policy | 제안 |
 | `risk.status_grade` | string | Y | Product Result Artifact `status_grade` | 제안 |
 | `risk.prediction_horizon_hours` | integer 또는 null | Y | Product Result Artifact | 제안 |
-| `risk_series` | PredictionSeriesPoint[] | Y | (미구현) Backend Diagnosis Runtime Prediction History Query Contract. canonical source는 `pm_result_artifacts` append-only Product Result history이며, detail payload가 필요할 때만 `prediction_result_id`로 `prediction_results`를 join | 제안 |
+| `risk_series` | PredictionSeriesPoint[] | Y | Backend Product Result History Query Contract. canonical source는 `pm_result_artifacts` append-only history이며, detail payload가 필요할 때만 `prediction_result_id`로 `prediction_results`를 join | 제안 |
 | `features` | AssetDetailFeature[] | Y | Feature catalog + Observation + Evidence | 제안 |
 | `features[].key` | string | Y | Feature catalog | 제안 |
 | `features[].label` | string | Y | Feature catalog 또는 display projection | 제안 |
@@ -379,7 +382,7 @@ Overview와 Objects 목록의 공통 행이다.
 | `features[].current.value` | number 또는 null | Y | Product Result Artifact observation 또는 sensor evidence | 제안 |
 | `features[].current.quality_status` | enum | Y | Observation/Evidence quality | 제안 |
 | `features[].baseline` | Baseline 또는 null | N | `evidence_payload.sensor_evidence.sensors[*].basis` | 제안 |
-| `features[].history` | ObservationHistory | Y | Backend Observation read contract + Backend Feature Executor result | 제안 |
+| `features[].history` | ObservationHistory | Y | Backend Observation read contract + Generator Runtime Feature result | 제안 |
 | `features[].history.source_ref` | string | N | history 전체가 공유하는 Observation/Feature source reference | 제안 |
 | `features[].history.points` | ObservationSeriesPoint[] | Y | actual pre-current observations | 제안 |
 | `features[].top_factor` | Factor summary 또는 null | N | Product Result Artifact `top_factors` | 제안 |
@@ -415,12 +418,11 @@ Recommendation state가 아니다. 필요한 risk, criticality, context 입력�
 provenance는 point마다 반복하지 않고 `features[].history.source_ref` envelope에 한 번만 둔다.
 point에는 `observed_at`, `value`, `quality_status`만 유지한다. 센서 Observation series는 Backend의
 canonical/overlay branch-aware Observation read contract에서 읽고, 파생 Feature series는
-versioned Feature Schema/transform contract를 적용한 Backend Feature Executor 결과로 제공한다.
+Generator Runtime이 versioned Feature Schema/transform contract로 생성한 결과를 사용한다.
 `systems/generator`는 Feature/Label 의미, History Requirement, transform contract, Model Artifact
-publish를 소유하지만 제품 runtime series를 Product API source로 publish하지 않는다. 반면
-`risk_series`는 제품 runtime inference 결과의 누적이어야 하며, Backend Diagnosis Runtime
-Prediction History Query Contract에서 파생하는 후속 target이다. 현재 canonical source는 Backend
-Diagnosis가 생성한 `pm_result_artifacts`의 asset별 append-only Product Result history이며, 상세
+publish와 Runtime Prediction을 소유한다. `risk_series`는 Backend가 Generator의 Prediction Result
+Batch를 검증·승격해 저장한 Product Result history에서 파생한다. 현재 canonical source는
+`pm_result_artifacts`의 asset별 append-only Product Result history이며, 상세
 payload가 실제로 필요한 경우에만 `prediction_result_id`로 `prediction_results`를 조회한다. Product
 API는 내부 테이블 shape를 직접 노출하지 않는다. `pm_prediction_timeline`,
 `gen_data/canonical/model_outputs/prediction_timeline.jsonl`, legacy `precomputed_prediction_timeline`을
@@ -522,11 +524,11 @@ threshold, data quality warning, activity, report, provenance)는 이 계약의 
 
 | ID | 담당 | 결정 사항 | 상태 |
 |---|---|---|---|
-| SCH-DEC-01 | 팀원1 | 내부 enum과 분리한 Operations 한국어 상태 문구 | 2026-08 Week 2 결정 |
-| SCH-DEC-02 | 팀원1·3 | 현행 `offset`/`limit`/`total`과 검색·라인·상태·담당자 필터 | 결정 완료; `page`/`size`는 V2 |
-| SCH-DEC-03 | 팀원3 | 위험등급은 runtime inference의 Result Artifact가 제공 | 결정 완료 |
-| SCH-DEC-04 | 팀원1·3 | 최신 `observed_at` 기준 프론트 24시간 stale Operations 정책 | 결정 완료 |
-| SCH-DEC-05 | 팀원3 | 로컬 compatibility fallback 표시, 비로컬 Model Artifact 누락은 fail-closed | 결정 완료 |
-| SCH-DEC-06 | 팀원3 | 현행 Evidence 호환 provenance 유지; JSON Pointer 전환 | V2 검토 |
-| SCH-DEC-07 | 팀원4 | 현행 Event Report 입력 범위와 기간 집계 Summary/Detail 범위 | 현행 확정·V2 후속 합의 |
-| SCH-DEC-08 | 팀원4 | 현행 grounded report, 근거 참조와 deterministic fallback | 결정 완료; 기간 집계 출력은 V2 |
+| SCH-DEC-01 | Frontend | 내부 enum과 분리한 Operations 한국어 상태 문구 | 2026-08 Week 2 결정 |
+| SCH-DEC-02 | Frontend·Backend | 현행 `offset`/`limit`/`total`과 검색·라인·상태·담당자 필터 | 결정 완료; `page`/`size`는 V2 |
+| SCH-DEC-03 | Generator·Backend | Generator score에 Backend threshold 정책을 적용해 위험등급 생성 | 결정 완료 |
+| SCH-DEC-04 | Frontend·Backend | 최신 `observed_at` 기준 프론트 24시간 stale Operations 정책 | 결정 완료 |
+| SCH-DEC-05 | Generator·Backend | 로컬 compatibility fallback 표시, 비로컬 Model Artifact 누락은 fail-closed | 결정 완료 |
+| SCH-DEC-06 | Backend | 현행 Evidence 호환 provenance 유지; JSON Pointer 전환 | V2 검토 |
+| SCH-DEC-07 | Report API | 현행 Event Report 입력 범위와 기간 집계 Summary/Detail 범위 | 현행 확정·V2 후속 합의 |
+| SCH-DEC-08 | Report API | 현행 grounded report, 근거 참조와 deterministic fallback | 결정 완료; 기간 집계 출력은 V2 |

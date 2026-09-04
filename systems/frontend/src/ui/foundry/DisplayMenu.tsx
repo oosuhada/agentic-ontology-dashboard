@@ -11,7 +11,7 @@ import { useI18n } from "../i18n/I18nProvider";
 
 export function DisplayMenu({ className = "" }: { className?: string }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
-  const { preferences, setDensity, setPreset, setShowTechnicalMetadata, setTextSize, setTheme, reset } = useDisplayPreferences();
+  const { preferences, setDensity, setPreset, setShowGuidance, setTextSize, setTheme, reset } = useDisplayPreferences();
   const { locale, setLocale, t } = useI18n();
   const preset = displayPreset(preferences);
   const presetLabel = (value: (typeof DISPLAY_PRESET_OPTIONS)[number]["value"]) => value === "compact"
@@ -110,14 +110,13 @@ export function DisplayMenu({ className = "" }: { className?: string }) {
         </fieldset>
         <button
           type="button"
-          className="od-display-metadata-toggle"
-          aria-pressed={preferences.showTechnicalMetadata}
-          onClick={() => setShowTechnicalMetadata(!preferences.showTechnicalMetadata)}
+          className="od-display-guidance-toggle"
+          aria-pressed={preferences.showGuidance}
+          onClick={() => setShowGuidance(!preferences.showGuidance)}
         >
-          <span><strong>{t("display.technical")}</strong><small>{t("display.technicalDetail")}</small></span>
-          <b>{preferences.showTechnicalMetadata ? t("display.shown") : t("display.hidden")}</b>
+          <span><strong>{t("display.guidance")}</strong><small>{t("display.guidanceDetail")}</small></span>
+          <b>{preferences.showGuidance ? t("display.shown") : t("display.hidden")}</b>
         </button>
-        <p>{t("display.savedPerUser")}</p>
       </section>
     </details>
   );

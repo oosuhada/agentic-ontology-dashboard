@@ -12,6 +12,7 @@ import {
   Gauge,
   GitBranch,
   History,
+  Info,
   ListChecks,
   PackageSearch,
   RadioTower,
@@ -21,7 +22,7 @@ import {
   TrendingDown,
   Wrench,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import {
   createOperationsAgentReviewSummary,
   getOperationsAgentReviewSummary,
@@ -43,21 +44,37 @@ import type {
 import {
   displayExplanationMethod,
   displayArtifactKind,
+  displayEvidenceReference,
   displayInspectionAssociation,
   displayReportType,
   displaySensorFactorLabel,
-  displaySensorLabel,
   fieldFailureLabel,
 } from "../../operations/displayLabels";
 import { MaintenanceWorkflowActionPanel } from "../../operations/maintenance/MaintenanceWorkflowActionPanel";
 import { MaintenanceCostDecisionPanel } from "../../operations/maintenance/MaintenanceCostDecisionPanel";
 import { OperationalDecisionSupportPanel } from "../../operations/overview/OperationalDecisionSupportPanel";
+import { useI18n } from "../../../ui/i18n/I18nProvider";
+import { useDisplayPreferences } from "../../../ui/foundry/displayPreferences";
 import type { ReliabilityExperienceKind } from "./roleExperience";
 import {
   resolveReliabilityComposition,
   type ReliabilityBlockId,
 } from "./roleComposition";
 import "./role-composed-workspace.css";
+
+const WorkspaceEnglishContext = createContext(false);
+
+function useWorkspaceEnglish() {
+  return useContext(WorkspaceEnglishContext);
+}
+
+function localized(english: boolean, ko: string, en: string) {
+  return english ? en : ko;
+}
+
+function formatNumber(value: number, english: boolean, options?: Intl.NumberFormatOptions) {
+  return value.toLocaleString(english ? "en-US" : "ko-KR", options);
+}
 
 interface RoleComposedWorkspaceProps {
   experienceKind: ReliabilityExperienceKind;
@@ -87,12 +104,14 @@ function Block({
   title,
   eyebrow,
   icon,
+  guidance,
   className = "",
   children,
 }: {
   title: string;
   eyebrow?: string;
   icon?: ReactNode;
+  guidance?: string;
   className?: string;
   children: ReactNode;
 }) {
@@ -104,9 +123,23 @@ function Block({
           {eyebrow ? <span>{eyebrow}</span> : null}
           <strong>{title}</strong>
         </div>
+        {guidance ? <GuidanceHint text={guidance} /> : null}
       </header>
       <div className="rw-composed-block__body">{children}</div>
     </section>
+  );
+}
+
+function GuidanceHint({ text }: { text: string }) {
+  const { preferences } = useDisplayPreferences();
+  if (!preferences.showGuidance) return null;
+  return (
+    <span className="rw-guidance-hint">
+      <button type="button" aria-label={text}>
+        <Info size={13} aria-hidden="true" />
+      </button>
+      <span role="tooltip">{text}</span>
+    </span>
   );
 }
 
@@ -114,14 +147,17 @@ function probability(value: number | null | undefined) {
   return typeof value === "number" ? `${Math.round(value * 100)}%` : "—";
 }
 
-function money(value: number | null | undefined) {
+function money(value: number | null | undefined, english = false) {
   return typeof value === "number"
-    ? `${Math.round(value).toLocaleString("ko-KR")}원`
+    ? english
+      ? `₩${Math.round(value).toLocaleString("en-US")}`
+      : `${Math.round(value).toLocaleString("ko-KR")}원`
     : "—";
 }
 
-function compactMoney(value: number | null | undefined) {
+function compactMoney(value: number | null | undefined, english = false) {
   if (typeof value !== "number") return "—";
+  if (english) return `₩${Math.round(value).toLocaleString("en-US")}`;
   if (Math.abs(value) >= 100_000_000)
     return `${(value / 100_000_000).toFixed(1)}억원`;
   if (Math.abs(value) >= 10_000)
@@ -129,12 +165,12 @@ function compactMoney(value: number | null | undefined) {
   return money(value);
 }
 
-function dateTime(value: string | null | undefined) {
+function dateTime(value: string | null | undefined, english = false) {
   if (!value) return "—";
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime())
     ? value
-    : parsed.toLocaleString("ko-KR", {
+    : parsed.toLocaleString(english ? "en-US" : "ko-KR", {
         dateStyle: "short",
         timeStyle: "short",
       });
@@ -152,47 +188,51 @@ function minutesBetween(
   return Math.round((endMs - startMs) / 60_000);
 }
 
-function duration(value: number | null | undefined) {
+function duration(value: number | null | undefined, english = false) {
   if (typeof value !== "number") return "—";
-  if (value < 60) return `${value}분`;
+  if (value < 60) return english ? `${value} min` : `${value}분`;
   const hours = Math.floor(value / 60);
   const minutes = value % 60;
-  return minutes ? `${hours}시간 ${minutes}분` : `${hours}시간`;
+  return english
+    ? (minutes ? `${hours}h ${minutes}m` : `${hours}h`)
+    : (minutes ? `${hours}시간 ${minutes}분` : `${hours}시간`);
 }
 
 function decisionLabel(
   value: OperationsEvent["recommendedDecision"] | null | undefined,
+  english = false,
 ) {
-  const labels: Record<OperationsEvent["recommendedDecision"], string> = {
-    continue_monitoring: "계속 관찰",
-    request_inspection: "현장 점검 요청",
-    review_shutdown: "정지 검토 요청",
-    hold_for_data_check: "데이터 확인 후 판단",
+  const labels: Record<OperationsEvent["recommendedDecision"], [string, string]> = {
+    continue_monitoring: ["계속 관찰", "Continue monitoring"],
+    request_inspection: ["현장 점검 요청", "Request field inspection"],
+    review_shutdown: ["정지 검토 요청", "Review shutdown"],
+    hold_for_data_check: ["데이터 확인 후 판단", "Review after data check"],
   };
-  return value ? labels[value] : "판단 대기";
+  return value ? labels[value][english ? 1 : 0] : localized(english, "판단 대기", "Decision pending");
 }
 
-function riskLabel(value: OperationsEvent["status"] | null | undefined) {
-  if (value === "critical") return "고위험";
-  if (value === "warning") return "경고";
-  if (value === "attention") return "주의";
-  if (value === "data_quality_hold") return "데이터 확인 필요";
-  if (value === "normal") return "정상";
-  return "상태 확인 중";
+function riskLabel(value: OperationsEvent["status"] | null | undefined, english = false) {
+  if (value === "critical") return localized(english, "고위험", "Critical");
+  if (value === "warning") return localized(english, "경고", "Warning");
+  if (value === "attention") return localized(english, "주의", "Attention");
+  if (value === "data_quality_hold") return localized(english, "데이터 확인 필요", "Data quality hold");
+  if (value === "normal") return localized(english, "정상", "Normal");
+  return localized(english, "상태 확인 중", "Status pending");
 }
 
-function ownerLabel(value: string | null | undefined) {
-  if (!value || /unassigned|pending/i.test(value)) return "담당 미지정";
+function ownerLabel(value: string | null | undefined, english = false) {
+  if (!value || /unassigned|pending/i.test(value)) return localized(english, "담당 미지정", "Unassigned");
   return value;
 }
 
 function criticalityLabel(
   value: OperationsEvent["criticality"] | null | undefined,
+  english = false,
 ) {
-  if (value === "high") return "높음";
-  if (value === "medium") return "중간";
-  if (value === "low") return "낮음";
-  return "확인 필요";
+  if (value === "high") return localized(english, "높음", "High");
+  if (value === "medium") return localized(english, "중간", "Medium");
+  if (value === "low") return localized(english, "낮음", "Low");
+  return localized(english, "확인 필요", "Needs review");
 }
 
 function operationalDecisionBriefRole(
@@ -201,8 +241,123 @@ function operationalDecisionBriefRole(
   return value === "process_manager" ? "process_manager" : "process_engineer";
 }
 
-function factorDirectionLabel(value: "risk_up" | "risk_down") {
-  return value === "risk_up" ? "위험 증가 방향" : "위험 감소 방향";
+function factorDirectionLabel(value: "risk_up" | "risk_down", english = false) {
+  return value === "risk_up"
+    ? localized(english, "위험 증가 방향", "Risk increasing")
+    : localized(english, "위험 감소 방향", "Risk decreasing");
+}
+
+const ENGLISH_SENSOR_LABELS: Record<string, string> = {
+  rotation_raw: "Rotation average",
+  vibration_raw: "Vibration average",
+  pressure_raw: "Pressure average",
+  air_temperature_k: "Intake air temperature",
+  process_temperature_k: "Process temperature",
+  rotational_speed_rpm: "Spindle speed",
+  torque_nm: "Torque",
+  tool_wear_min: "Tool wear",
+  mechanical_power_w: "Motor power",
+  power_w: "Motor power",
+  overstrain_index: "Overstrain index",
+  overstrain_load: "Overstrain index",
+  temperature_difference_k: "Process-air temperature gap",
+  temperature_gap_k: "Process-air temperature gap",
+  generator_failure_score: "Model risk score",
+  model_selected_threshold: "Risk decision threshold",
+  asset_criticality_adjustment: "Asset criticality adjustment",
+  generator_model_artifact_manifest: "Applied model release",
+};
+
+function englishSensorFactorLabel(key: string) {
+  const windowMatch = key.match(/_(1h|6h|12h|24h|7d|30d)_(max_abs|abs_max|abs_mean|change|max|min|mean|std|last)$/);
+  const currentMatch = key.match(/_(abs_current|current)$/);
+  const baseKey = key
+    .replace(/_(1h|6h|12h|24h|7d|30d)_(max_abs|abs_max|abs_mean|change|max|min|mean|std|last)$/, "")
+    .replace(/_(abs_current|current)$/, "");
+  const base = ENGLISH_SENSOR_LABELS[key] ?? ENGLISH_SENSOR_LABELS[baseKey] ?? baseKey.replaceAll("_", " ");
+  if (windowMatch) {
+    const [, window, aggregate] = windowMatch;
+    const aggregateLabel: Record<string, string> = {
+      max_abs: "max absolute",
+      abs_max: "max absolute",
+      abs_mean: "absolute average",
+      change: "change",
+      max: "max",
+      min: "min",
+      mean: "average",
+      std: "variation",
+      last: "latest",
+    };
+    return `${base} · ${window} ${aggregateLabel[aggregate] ?? aggregate}`;
+  }
+  if (currentMatch) return `${base} · ${currentMatch[1] === "abs_current" ? "current absolute" : "current"}`;
+  return base;
+}
+
+function failureTypeLabel(value: string, english = false) {
+  if (!english) return fieldFailureLabel(value);
+  const labels: Record<string, string> = {
+    failure_risk: "General failure risk",
+    none: "No specific failure type",
+    power_or_overstrain_failure: "Suspected drive overload",
+    tool_wear_failure: "Suspected tool/die wear",
+    heat_dissipation_failure: "Suspected cooling/heat dissipation issue",
+    invalid_sensor_data: "Sensor data quality review",
+    multi_factor_risk: "Suspected multi-factor risk",
+    uncertain: "Uncertain failure type",
+    unavailable: "Insufficient failure-type evidence",
+  };
+  return labels[value] ?? value.replaceAll("_", " ");
+}
+
+function explanationMethodLabel(value: string | null | undefined, english = false) {
+  if (!english) return displayExplanationMethod(value);
+  if (!value) return null;
+  if (value.includes("proxy_attribution") || value.includes("attribution")) return "Model contribution analysis";
+  if (value.includes("shap")) return "Model impact analysis";
+  return null;
+}
+
+function inspectionAssociationLabel(value: string | null | undefined, english = false) {
+  if (!english) return displayInspectionAssociation(value);
+  if (!value) return "Inspection method needs review";
+  if (value === "inspection_candidate") return "Model-evidence inspection candidate";
+  if (value === "inspection_required") return "Field inspection required";
+  return value.replaceAll("_", " ");
+}
+
+function reportTypeLabel(value: string | null | undefined, english = false) {
+  if (!english) return displayReportType(value);
+  const labels: Record<string, string> = {
+    "inspection-summary": "Inspection result summary",
+    "operations-decision": "Operations decision report",
+    "executive-brief": "Executive operations brief",
+    "maintenance-effect": "Maintenance effect comparison",
+    "weekly-risk": "Weekly operational risk",
+  };
+  return value ? (labels[value] ?? "Operations report") : "Report type needs review";
+}
+
+function artifactKindLabel(value: string | null | undefined, english = false) {
+  if (!english) return displayArtifactKind(value);
+  if (!value) return "Evidence bundle needs review";
+  if (value.startsWith("pm-report:")) return "Current-case report draft";
+  if (value.startsWith("RESULT#")) return "Selected-case prediction evidence";
+  if (value.startsWith("result-artifact://")) return "Prediction-result evidence";
+  return "Linked technical evidence";
+}
+
+function evidenceReferenceLabel(value: string | null | undefined, english = false) {
+  if (!english) return displayEvidenceReference(value);
+  if (!value) return "Linked operational evidence";
+  const normalized = value.toLowerCase();
+  if (normalized.includes("inspection")) return "Field inspection result";
+  if (normalized.includes("maintenance")) return "Maintenance history and action result";
+  if (normalized.includes("observation") || normalized.includes("sensor")) return "Asset sensor observation";
+  if (normalized.includes("prediction") || normalized.includes("result")) return "Failure-risk prediction result";
+  if (normalized.includes("model")) return "Applied model decision evidence";
+  if (normalized.includes("work-order") || normalized.includes("work_order")) return "Linked work request";
+  return "Linked operational evidence";
 }
 
 function waitingMinutes(value: string | null | undefined) {
@@ -212,28 +367,55 @@ function waitingMinutes(value: string | null | undefined) {
   return Math.max(0, Math.round((Date.now() - start) / 60_000));
 }
 
-function workflowStatusLabel(value: string | null | undefined) {
-  const labels: Record<string, string> = {
-    requested: "승인 대기",
-    approved: "승인됨",
-    in_progress: "진행 중",
-    completed: "완료",
-    planned: "계획됨",
-    prediction: "예측",
-    evidence: "근거 확인",
-    decision: "운영 판단",
-    inspection_requested: "점검 요청",
-    inspection_approved: "점검 승인",
-    inspection_in_progress: "점검 중",
-    inspection_completed: "점검 완료",
-    maintenance_requested: "정비 요청",
-    maintenance_approved: "정비 승인",
-    maintenance_in_progress: "정비 중",
-    maintenance_completed: "정비 완료",
-    post_maintenance_observation_pending: "정비 후 관측 대기",
-    ready_for_reprediction: "재예측 가능",
+function workflowStatusLabel(value: string | null | undefined, english = false) {
+  const labels: Record<string, [string, string]> = {
+    requested: ["승인 대기", "Awaiting approval"],
+    approved: ["승인됨", "Approved"],
+    in_progress: ["진행 중", "In progress"],
+    completed: ["완료", "Completed"],
+    planned: ["계획됨", "Planned"],
+    prediction: ["예측", "Prediction"],
+    evidence: ["근거 확인", "Evidence review"],
+    decision: ["운영 판단", "Decision"],
+    inspection_requested: ["점검 요청", "Inspection requested"],
+    inspection_approved: ["점검 승인", "Inspection approved"],
+    inspection_in_progress: ["점검 중", "Inspection in progress"],
+    inspection_completed: ["점검 완료", "Inspection completed"],
+    recommendation_proposed: ["정비안 검토 대기", "Maintenance recommendation proposed"],
+    maintenance_requested: ["정비 요청", "Maintenance requested"],
+    maintenance_approved: ["정비 승인", "Maintenance approved"],
+    maintenance_in_progress: ["정비 중", "Maintenance in progress"],
+    maintenance_completed: ["정비 완료", "Maintenance completed"],
+    post_maintenance_observation_pending: ["정비 후 관측 대기", "Post-maintenance observation pending"],
+    ready_for_reprediction: ["재예측 가능", "Ready for re-prediction"],
   };
-  return value ? (labels[value] ?? value.replaceAll("_", " ")) : "대기";
+  return value ? (labels[value]?.[english ? 1 : 0] ?? value.replaceAll("_", " ")) : localized(english, "대기", "Pending");
+}
+
+function workflowActionLabel(
+  action: { actionId: string; label?: string | null } | null | undefined,
+  english = false,
+) {
+  if (!action) return null;
+  if (!english) return action.label ?? action.actionId;
+  const labels: Record<string, string> = {
+    create_inspection_work_order: "Create inspection work request",
+    request_inspection_work_order: "Create inspection work request",
+    request_inspection: "Request inspection",
+    approve_inspection_work_order: "Approve inspection work request",
+    start_inspection_work_order: "Start inspection",
+    start_inspection: "Start inspection",
+    complete_inspection_work_order: "Record and complete inspection",
+    complete_inspection: "Record and complete inspection",
+    calculate_maintenance_cost: "Run maintenance cost analysis",
+    create_operations_manual_recommendation: "Create maintenance recommendation",
+    decide_operations_manual_recommendation: "Review maintenance recommendation",
+    approve_maintenance_work_order: "Approve maintenance WorkOrder",
+    start_maintenance_action: "Start maintenance",
+    complete_maintenance_action: "Complete maintenance",
+    request_maintenance_replay: "Resume post-maintenance observation",
+  };
+  return labels[action.actionId] ?? action.actionId.replaceAll("_", " ");
 }
 
 function average(values: Array<number | null | undefined>): number | null {
@@ -312,36 +494,43 @@ function RiskMetricsBlock({
   detail: OperationsEventDetailModel | null;
   compact?: boolean;
 }) {
+  const english = useWorkspaceEnglish();
   const activeWork = detail?.closedLoop?.workOrders.some((item) =>
     ["approved", "in_progress"].includes(item.status),
   )
     ? 1
     : 0;
   const allMetrics = [
-    ["전체 연결 설비", model.metrics.totalAssets.toLocaleString("ko-KR")],
-    ["정상 설비", model.metrics.normal.toLocaleString("ko-KR")],
+    [localized(english, "전체 연결 설비", "Connected assets"), formatNumber(model.metrics.totalAssets, english)],
+    [localized(english, "정상 설비", "Normal assets"), formatNumber(model.metrics.normal, english)],
     [
-      "주의 설비",
-      (model.metrics.attention + model.metrics.warning).toLocaleString("ko-KR"),
+      localized(english, "주의 설비", "Attention assets"),
+      formatNumber(model.metrics.attention + model.metrics.warning, english),
     ],
-    ["긴급 설비", model.metrics.critical.toLocaleString("ko-KR")],
-    ["선택 Case 진행 작업", activeWork.toLocaleString("ko-KR")],
-    ["판단 대기", model.metrics.pendingDecisions.toLocaleString("ko-KR")],
+    [localized(english, "긴급 설비", "Critical assets"), formatNumber(model.metrics.critical, english)],
+    [localized(english, "선택 Case 진행 작업", "Selected case work"), formatNumber(activeWork, english)],
+    [localized(english, "판단 대기", "Decisions pending"), formatNumber(model.metrics.pendingDecisions, english)],
     [
-      "마지막 수신",
-      dateTime(model.context.observedAt ?? model.context.refreshedAt),
+      localized(english, "마지막 수신", "Last received"),
+      dateTime(model.context.observedAt ?? model.context.refreshedAt, english),
     ],
   ];
   const metrics = compact
     ? allMetrics.filter(([label]) =>
-        ["긴급 설비", "주의 설비", "판단 대기", "마지막 수신"].includes(label),
+        [
+          localized(english, "긴급 설비", "Critical assets"),
+          localized(english, "주의 설비", "Attention assets"),
+          localized(english, "판단 대기", "Decisions pending"),
+          localized(english, "마지막 수신", "Last received"),
+        ].includes(label),
       )
     : allMetrics;
   return (
     <Block
-      title={compact ? "전체 운영 리스크" : "현재 운영 신호"}
+      title={compact ? localized(english, "전체 운영 리스크", "Overall operational risk") : localized(english, "현재 운영 신호", "Current operating signals")}
       eyebrow="LIVE STATUS"
       icon={<Gauge size={15} />}
+      guidance={localized(english, "전체 설비 상태와 선택 Case의 작업·판단 대기 규모를 한눈에 확인하는 운영 요약입니다.", "An operational summary of fleet status plus work and decision backlog for the selected case.")}
       className={compact ? "span-6 executive-summary-card" : "span-12"}
     >
       <div className="rw-composed-metrics">
@@ -365,15 +554,17 @@ function FactoryMapBlock({
   selectedEvent: OperationsEvent | null;
   onSelectEvent: (event: OperationsEvent) => void;
 }) {
+  const english = useWorkspaceEnglish();
   const eventByAsset = new Map(
     model.events.map((event) => [event.assetId, event]),
   );
   const lines = [...new Set(model.assets.map((asset) => asset.line))].sort();
   return (
     <Block
-      title="공장 설비 상태맵"
+      title={localized(english, "공장 설비 상태맵", "Factory equipment status map")}
       eyebrow="REAL-TIME FACTORY STATUS"
       icon={<Building2 size={15} />}
+      guidance={localized(english, "라인별 설비의 현재 위험 상태와 고장 확률을 비교하고 클릭해 해당 Case로 전환합니다.", "Compares current risk state and failure probability by line; select an asset to open its case.")}
       className="span-12"
     >
       <div className="rw-factory-map">
@@ -383,7 +574,7 @@ function FactoryMapBlock({
             <section key={line}>
               <header>
                 <strong>{line}</strong>
-                <span>{assets.length} assets</span>
+                <span>{formatNumber(assets.length, english)} {english ? "assets" : "대"}</span>
               </header>
               <div>
                 {assets.map((asset) => {
@@ -394,7 +585,7 @@ function FactoryMapBlock({
                       type="button"
                       className={`status-${asset.status} ${selectedEvent?.assetId === asset.assetId ? "is-selected" : ""}`}
                       onClick={() => event && onSelectEvent(event)}
-                      title={`${asset.displayName} · ${asset.status} · ${probability(asset.failureProbability)}`}
+                      title={`${asset.displayName} · ${riskLabel(asset.status, english)} · ${probability(asset.failureProbability)}`}
                     >
                       <span>{asset.displayName}</span>
                       <i>{probability(asset.failureProbability)}</i>
@@ -411,12 +602,12 @@ function FactoryMapBlock({
   );
 }
 
-function shortTime(value: string | null | undefined) {
+function shortTime(value: string | null | undefined, english = false) {
   if (!value) return "—";
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime())
     ? value
-    : parsed.toLocaleTimeString("ko-KR", {
+    : parsed.toLocaleTimeString(english ? "en-US" : "ko-KR", {
         hour: "2-digit",
         minute: "2-digit",
       });
@@ -461,6 +652,7 @@ function CompactRiskTrend({
 }: {
   detail: OperationsEventDetailModel | null;
 }) {
+  const english = useWorkspaceEnglish();
   const [activeIndex, setActiveIndex] = useState(0);
   if (!detail || detail.riskSeries.length < 2) return null;
   const history = [...detail.riskSeries].sort((left, right) =>
@@ -522,7 +714,7 @@ function CompactRiskTrend({
     setActiveIndex((index) =>
       Math.max(0, Math.min(coords.length - 1, index + delta)),
     );
-  const activeLabel = `${dateTime(activePoint.observedAt)} · 위험도 ${probability(activePoint.failureProbability)} · ${riskLabel(activePoint.status as OperationsEvent["status"] | null)}`;
+  const activeLabel = `${dateTime(activePoint.observedAt, english)} · ${localized(english, "위험도", "Risk")} ${probability(activePoint.failureProbability)} · ${riskLabel(activePoint.status as OperationsEvent["status"] | null, english)}`;
   const livePoint = coords.at(-1) ?? null;
   const liveLabel = livePoint ? probability(livePoint.failureProbability) : "—";
   const livePillWidth = Math.min(78, Math.max(48, liveLabel.length * 8 + 18));
@@ -557,10 +749,10 @@ function CompactRiskTrend({
   return (
     <article className="asset-series-block is-primary is-live-chart rw-feature-risk-chart">
       <header className="asset-series-heading">
-        <div><RotateCcw size={17} /><strong>고장 위험 추세</strong></div>
+        <div><RotateCcw size={17} /><strong>{localized(english, "고장 위험 추세", "Failure-risk trend")}</strong></div>
         <span className="asset-baseline-key">
           <i style={{ background: color }} />
-          10분 요약 라인 · 터치/호버 정확값 · NOW 실시간
+          {localized(english, "관측 이력 · 최신 관측", "Observation history · latest observation")}
           {" · "}
           {probability(detail.event.failureProbability)}
         </span>
@@ -570,7 +762,7 @@ function CompactRiskTrend({
         viewBox={`0 0 ${chartWidth} ${chartHeight}`}
         role="img"
         tabIndex={0}
-        aria-label={`고장 위험 추세와 판단 임계값. 좌우 방향키로 ${coords.length}개 관측을 탐색합니다.`}
+        aria-label={localized(english, `고장 위험 추세와 판단 임계값. 좌우 방향키로 ${formatNumber(coords.length, false)}개 관측을 탐색합니다.`, `Failure-risk trend and decision threshold. Use arrow keys to explore ${formatNumber(coords.length, true)} observations.`)}
         onKeyDown={(event) => {
           if (event.key === "ArrowRight" || event.key === "ArrowUp") {
             event.preventDefault();
@@ -630,7 +822,7 @@ function CompactRiskTrend({
               y={yAt(detail.threshold) - 3}
               textAnchor="end"
             >
-              판단 경계 {Math.round(detail.threshold * 100)}%
+              {localized(english, "판단 경계", "Decision threshold")} {Math.round(detail.threshold * 100)}%
             </text>
           </>
         ) : null}
@@ -644,7 +836,7 @@ function CompactRiskTrend({
             y={frame.bottom - 9}
             textAnchor="end"
           >
-            단기 추세 범위
+            {localized(english, "단기 추세 범위", "Short-term range")}
           </text>
         ) : null}
         {livePoint ? (
@@ -680,7 +872,7 @@ function CompactRiskTrend({
               cy={point.y}
               r="8"
             >
-              <title>{`${dateTime(point.observedAt)} · 위험도 ${probability(point.failureProbability)} · ${riskLabel(point.status as OperationsEvent["status"] | null)}`}</title>
+              <title>{`${dateTime(point.observedAt, english)} · ${localized(english, "위험도", "Risk")} ${probability(point.failureProbability)} · ${riskLabel(point.status as OperationsEvent["status"] | null, english)}`}</title>
             </circle>
           </g>
         ) : null)}
@@ -690,7 +882,7 @@ function CompactRiskTrend({
           y={xAxisY}
           textAnchor="start"
         >
-          {shortTime(plottedSeries[0]?.observedAt)}
+          {shortTime(plottedSeries[0]?.observedAt, english)}
         </text>
         <text
           className="asset-chart-axis"
@@ -698,7 +890,7 @@ function CompactRiskTrend({
           y={xAxisY}
           textAnchor="end"
         >
-          {shortTime(plottedSeries.at(-1)?.observedAt)}
+          {shortTime(plottedSeries.at(-1)?.observedAt, english)}
         </text>
         <text
           className="asset-chart-axis"
@@ -708,17 +900,17 @@ function CompactRiskTrend({
         >
           +30s
         </text>
-        <text className="asset-chart-axis-title" x={chartWidth / 2} y={xAxisTitleY} textAnchor="middle">시간</text>
+        <text className="asset-chart-axis-title" x={chartWidth / 2} y={xAxisTitleY} textAnchor="middle">{localized(english, "시간", "Time")}</text>
       </svg>
       <span className="rw-chart-keyboard-value" aria-live="polite">
-        선택 관측 · {activeLabel}
+        {localized(english, "선택 관측", "Selected observation")} · {activeLabel}
       </span>
       <small>
         {lastHistoryAt &&
         currentAt &&
         Date.parse(currentAt) > Date.parse(lastHistoryAt)
-          ? "현재값은 history plot 이후 새 관측으로 이어 표시합니다."
-          : "현재 Case의 고정 관측 기준입니다."}
+          ? localized(english, "현재값은 history plot 이후 새 관측으로 이어 표시합니다.", "The current value continues after the history plot as a new observation.")
+          : localized(english, "현재 Case의 고정 관측 기준입니다.", "This is the selected case's fixed observation basis.")}
       </small>
     </article>
   );
@@ -729,6 +921,7 @@ function SensorTrendChart({
 }: {
   sensor: OperationsEventDetailModel["sensors"][number];
 }) {
+  const english = useWorkspaceEnglish();
   const [activeIndex, setActiveIndex] = useState(0);
   const points = sensor.historyPoints ?? [];
   const numericHistory = points.filter(
@@ -785,14 +978,19 @@ function SensorTrendChart({
   const safeIndex = Math.min(activeIndex, coords.length - 1);
   const activePoint = coords[safeIndex];
   const markerIndexes = new Set([0, safeIndex, coords.length - 1]);
-  const activeLabel = `${dateTime(activePoint.observedAt)} · ${activePoint.value.toLocaleString("ko-KR", { maximumFractionDigits: 3 })}${sensor.unit ? ` ${sensor.unit}` : ""} · 품질 ${activePoint.qualityStatus === "bad" ? "불량" : activePoint.qualityStatus === "good" ? "정상" : "미확인"}`;
+  const qualityLabel = (quality: string) => quality === "bad"
+    ? localized(english, "불량", "Bad")
+    : quality === "good"
+      ? localized(english, "정상", "Good")
+      : localized(english, "미확인", "Unknown");
+  const activeLabel = `${dateTime(activePoint.observedAt, english)} · ${formatNumber(activePoint.value, english, { maximumFractionDigits: 3 })}${sensor.unit ? ` ${sensor.unit}` : ""} · ${localized(english, "품질", "Quality")} ${qualityLabel(activePoint.qualityStatus)}`;
   const move = (delta: number) =>
     setActiveIndex((index) =>
       Math.max(0, Math.min(coords.length - 1, index + delta)),
     );
   const livePoint = coords.at(-1) ?? null;
   const liveValueLabel = livePoint
-    ? `${livePoint.value.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}${sensor.unit ? ` ${sensor.unit}` : ""}`
+    ? `${formatNumber(livePoint.value, english, { maximumFractionDigits: 2 })}${sensor.unit ? ` ${sensor.unit}` : ""}`
     : "—";
   const livePillWidth = Math.min(116, Math.max(52, liveValueLabel.length * 7.4 + 18));
   const livePillX = livePoint
@@ -829,7 +1027,7 @@ function SensorTrendChart({
         <div><RotateCcw size={17} /><strong>{sensor.label}</strong></div>
         <span className="asset-baseline-key">
           <i style={{ background: color }} />
-          10분 요약 라인 · 터치/호버 정확값 · NOW 실시간
+          {localized(english, "관측 이력 · 최신 관측", "Observation history · latest observation")}
           {" · "}
           {String(sensor.value ?? "—")}
           {sensor.unit ? ` ${sensor.unit}` : ""}
@@ -840,7 +1038,7 @@ function SensorTrendChart({
         viewBox={`0 0 ${chartWidth} ${chartHeight}`}
         role="img"
         tabIndex={0}
-        aria-label={`${sensor.label} 최근 추세. 좌우 방향키로 ${coords.length}개 관측을 탐색합니다.`}
+        aria-label={localized(english, `${sensor.label} 최근 추세. 좌우 방향키로 ${formatNumber(coords.length, false)}개 관측을 탐색합니다.`, `${sensor.label} recent trend. Use arrow keys to explore ${formatNumber(coords.length, true)} observations.`)}
         onKeyDown={(event) => {
           if (event.key === "ArrowRight" || event.key === "ArrowUp") {
             event.preventDefault();
@@ -893,7 +1091,7 @@ function SensorTrendChart({
               y={clampChart(yAt(tick) + 3, frame.top + 8, frame.bottom + 2)}
               textAnchor="end"
             >
-              {tick.toLocaleString("ko-KR", { maximumFractionDigits: 1 })}
+              {formatNumber(tick, english, { maximumFractionDigits: 1 })}
             </text>
           </g>
         ))}
@@ -907,7 +1105,7 @@ function SensorTrendChart({
             y={frame.bottom - 9}
             textAnchor="end"
           >
-            단기 추세 범위
+            {localized(english, "단기 추세 범위", "Short-term range")}
           </text>
         ) : null}
         {livePoint ? (
@@ -951,7 +1149,7 @@ function SensorTrendChart({
               cy={point.y}
               r="8"
             >
-              <title>{`${dateTime(point.observedAt)} · ${point.value.toLocaleString("ko-KR", { maximumFractionDigits: 3 })}${sensor.unit ? ` ${sensor.unit}` : ""} · 품질 ${point.qualityStatus === "bad" ? "불량" : point.qualityStatus === "good" ? "정상" : "미확인"}`}</title>
+              <title>{`${dateTime(point.observedAt, english)} · ${formatNumber(point.value, english, { maximumFractionDigits: 3 })}${sensor.unit ? ` ${sensor.unit}` : ""} · ${localized(english, "품질", "Quality")} ${qualityLabel(point.qualityStatus)}`}</title>
             </circle>
           </g>
         ) : null)}
@@ -962,7 +1160,7 @@ function SensorTrendChart({
             y={xAxisY}
             textAnchor="start"
           >
-            {shortTime(plottedPoints[0].observedAt)}
+            {shortTime(plottedPoints[0].observedAt, english)}
           </text>
         ) : null}
         {plottedPoints.length > 2 ? (
@@ -972,7 +1170,7 @@ function SensorTrendChart({
             y={xAxisY}
             textAnchor="middle"
           >
-            {shortTime(plottedPoints[middleIndex].observedAt)}
+            {shortTime(plottedPoints[middleIndex].observedAt, english)}
           </text>
         ) : null}
         {plottedPoints.at(-1) ? (
@@ -982,7 +1180,7 @@ function SensorTrendChart({
             y={xAxisY}
             textAnchor="end"
           >
-            {shortTime(plottedPoints.at(-1)?.observedAt)}
+            {shortTime(plottedPoints.at(-1)?.observedAt, english)}
           </text>
         ) : null}
         <text
@@ -993,18 +1191,18 @@ function SensorTrendChart({
         >
           +30s
         </text>
-        <text className="asset-chart-axis-title" x={chartWidth / 2} y={xAxisTitleY} textAnchor="middle">시간</text>
+        <text className="asset-chart-axis-title" x={chartWidth / 2} y={xAxisTitleY} textAnchor="middle">{localized(english, "시간", "Time")}</text>
       </svg>
       <span className="rw-chart-keyboard-value" aria-live="polite">
-        선택 관측 · {activeLabel}
+        {localized(english, "선택 관측", "Selected observation")} · {activeLabel}
       </span>
       <small>
-        history {numericHistory.length}개 · plot 마지막{" "}
-        {dateTime(latestHistory?.observedAt)}
+        {english ? `History ${formatNumber(numericHistory.length, true)} · last plot ` : `history ${formatNumber(numericHistory.length, false)}개 · plot 마지막 `}
+        {dateTime(latestHistory?.observedAt, english)}
         {sensor.observedAt &&
         latestHistory &&
         Date.parse(sensor.observedAt) > Date.parse(latestHistory.observedAt)
-          ? ` · 현재값 ${dateTime(sensor.observedAt)}는 plot 이후 관측`
+          ? (english ? ` · current value ${dateTime(sensor.observedAt, true)} is after the plot` : ` · 현재값 ${dateTime(sensor.observedAt, false)}는 plot 이후 관측`)
           : ""}
       </small>
     </article>
@@ -1041,6 +1239,7 @@ function FeatureTrendBlock({
   detail: OperationsEventDetailModel | null;
   loading?: boolean;
 }) {
+  const english = useWorkspaceEnglish();
   const sensors =
     detail?.sensors
       .filter((sensor) => (sensor.historyPoints?.length ?? 0) > 1)
@@ -1048,9 +1247,10 @@ function FeatureTrendBlock({
   const hasChartData = Boolean(detail?.riskSeries.length || sensors.length);
   return (
     <Block
-      title="실시간 피쳐 그래프"
+      title={localized(english, "실시간 피쳐 그래프", "Live feature trends")}
       eyebrow="FEATURE TREND"
       icon={<RadioTower size={15} />}
+      guidance={localized(english, "선택 Case의 고장 위험과 주요 센서 시계열을 같은 관측 기준으로 비교합니다. 예측 구간은 단기 추세 참고값입니다.", "Compares failure risk and key sensor time series on the selected case's observation basis. Forecast ranges are short-term trend references only.")}
       className="span-12"
     >
       {loading && !hasChartData ? (
@@ -1063,7 +1263,7 @@ function FeatureTrendBlock({
           ))}
         </div>
       ) : (
-        <Empty text="선택 설비의 시계열 관측이 준비되면 핵심 피쳐 2~4개를 표시합니다." />
+        <Empty text={localized(english, "선택 설비의 시계열 관측이 준비되면 핵심 피쳐 2~4개를 표시합니다.", "Two to four key features will appear when time-series observations are ready for the selected asset.")} />
       )}
     </Block>
   );
@@ -1074,11 +1274,13 @@ function BusinessKpisBlock({
 }: {
   context: OperationsCompanyContext | null;
 }) {
+  const english = useWorkspaceEnglish();
   return (
     <Block
-      title="경영 KPI 기준"
+      title={localized(english, "경영 KPI 기준", "Business KPI basis")}
       eyebrow="BUSINESS CONTEXT"
       icon={<BriefcaseBusiness size={15} />}
+      guidance={localized(english, "현재 운영 판단을 경영 지표와 연결하기 위한 회사 기준 KPI 문맥입니다.", "Company KPI context used to connect the current operational decision to business impact.")}
       className="span-6"
     >
       {context?.business_metrics.length ? (
@@ -1093,14 +1295,14 @@ function BusinessKpisBlock({
               </div>
               <b>
                 {item.unit === "KRW"
-                  ? compactMoney(item.value)
-                  : `${item.value.toLocaleString("ko-KR")} ${item.unit}`}
+                  ? compactMoney(item.value, english)
+                  : `${formatNumber(item.value, english)} ${item.unit}`}
               </b>
             </article>
           ))}
         </div>
       ) : (
-        <Empty text="경영 KPI 문맥을 불러오는 중입니다." />
+        <Empty text={localized(english, "경영 KPI 문맥을 불러오는 중입니다.", "Loading business KPI context.")} />
       )}
     </Block>
   );
@@ -1115,6 +1317,7 @@ function OperationalKpisBlock({
   detail: OperationsEventDetailModel | null;
   companyContext: OperationsCompanyContext | null;
 }) {
+  const english = useWorkspaceEnglish();
   const firstDecision =
     detail?.activity
       .filter((item) => item.kind === "decision")
@@ -1192,42 +1395,43 @@ function OperationalKpisBlock({
       ).length ?? 0)
     : 0;
   const metrics = [
-    ["Decision Lead Time", duration(decisionLeadTime)],
+    ["Decision Lead Time", duration(decisionLeadTime, english)],
     [
-      "보고 검토 상태",
+      localized(english, "보고 검토 상태", "Report review status"),
       detail?.report.revision && detail.report.revision > 0
         ? `rev ${detail.report.revision}`
-        : "검토 전",
+        : localized(english, "검토 전", "Not reviewed"),
     ],
-    ["점검 처리 시간", duration(inspectionLeadTime)],
-    ["승인→정비 착수", duration(maintenanceLeadTime)],
+    [localized(english, "점검 처리 시간", "Inspection turnaround"), duration(inspectionLeadTime, english)],
+    [localized(english, "승인→정비 착수", "Approval → maintenance start"), duration(maintenanceLeadTime, english)],
     [
-      "판단 Backlog",
-      `${model.metrics.pendingDecisions.toLocaleString("ko-KR")}건`,
+      localized(english, "판단 Backlog", "Decision backlog"),
+      `${formatNumber(model.metrics.pendingDecisions, english)}${english ? " cases" : "건"}`,
     ],
     [
-      "생산 손실 노출",
+      localized(english, "생산 손실 노출", "Production-loss exposure"),
       value.lostUnits !== null
-        ? `${value.lostUnits.toLocaleString("ko-KR")}개`
+        ? `${formatNumber(value.lostUnits, english)}${english ? " units" : "개"}`
         : "—",
     ],
-    ["공헌이익 노출", compactMoney(value.contributionExposure)],
-    ["동일 설비 과거 정비", `${repeatedMaintenance.toLocaleString("ko-KR")}건`],
+    [localized(english, "공헌이익 노출", "Contribution-margin exposure"), compactMoney(value.contributionExposure, english)],
+    [localized(english, "동일 설비 과거 정비", "Prior maintenance on asset"), `${formatNumber(repeatedMaintenance, english)}${english ? " records" : "건"}`],
   ];
   const missingEvidence = [
     decisionLeadTime === null ? "Decision Lead Time" : null,
     inspectionLeadTime === null
-      ? "점검 처리 시간(점검 결과 기록 후 계산)"
+      ? localized(english, "점검 처리 시간(점검 결과 기록 후 계산)", "Inspection turnaround (available after inspection result)")
       : null,
-    maintenanceLeadTime === null ? "승인→정비 착수(정비 승인 후 계산)" : null,
-    value.lostUnits === null ? "생산 손실" : null,
-    value.contributionExposure === null ? "공헌이익 노출" : null,
+    maintenanceLeadTime === null ? localized(english, "승인→정비 착수(정비 승인 후 계산)", "Approval → maintenance start (available after approval)") : null,
+    value.lostUnits === null ? localized(english, "생산 손실", "Production loss") : null,
+    value.contributionExposure === null ? localized(english, "공헌이익 노출", "Contribution-margin exposure") : null,
   ].filter((item): item is string => Boolean(item));
   return (
     <Block
-      title="운영 의사결정 KPI"
+      title={localized(english, "운영 의사결정 KPI", "Operational decision KPIs")}
       eyebrow="CASE OPERATING KPI"
       icon={<TimerReset size={15} />}
+      guidance={localized(english, "선택 Case의 판단·점검·정비 흐름에서 실제로 계산 가능한 리드타임과 손실 노출만 표시합니다.", "Shows only lead times and loss exposure that can be calculated from the selected case's decision, inspection, and maintenance evidence.")}
       className="span-12"
     >
       <div className="rw-operational-kpis">
@@ -1240,7 +1444,7 @@ function OperationalKpisBlock({
       </div>
       {missingEvidence.length ? (
         <p className="rw-kpi-data-notice">
-          현재 Case에서 아직 연결되지 않은 KPI 근거:{" "}
+          {localized(english, "현재 Case에서 아직 연결되지 않은 KPI 근거:", "KPI evidence not yet connected for this case:")}{" "}
           {missingEvidence.join(" · ")}
         </p>
       ) : null}
@@ -1255,14 +1459,16 @@ function RiskPortfolioBlock({
   model: OperationsBootstrapModel;
   onSelectEvent: (event: OperationsEvent) => void;
 }) {
+  const english = useWorkspaceEnglish();
   const ranked = [...model.events]
     .sort((a, b) => (b.failureProbability ?? -1) - (a.failureProbability ?? -1))
     .slice(0, 6);
   return (
     <Block
-      title="운영 리스크 포트폴리오"
+      title={localized(english, "운영 리스크 포트폴리오", "Operational risk portfolio")}
       eyebrow="RISK PORTFOLIO"
       icon={<ChartNoAxesCombined size={15} />}
+      guidance={localized(english, "고장 확률이 높은 이벤트를 우선순위 순으로 비교해 어떤 Case를 먼저 볼지 판단합니다.", "Ranks high-risk events to help decide which case should be reviewed first.")}
       className="span-6"
     >
       <div className="rw-composed-list">
@@ -1275,7 +1481,7 @@ function RiskPortfolioBlock({
             <div>
               <strong>{event.assetName}</strong>
               <small>
-                {event.line} · {event.status}
+                {event.line} · {riskLabel(event.status, english)}
               </small>
             </div>
             <b>{probability(event.failureProbability)}</b>
@@ -1287,11 +1493,13 @@ function RiskPortfolioBlock({
 }
 
 function LineRiskBlock({ model }: { model: OperationsBootstrapModel }) {
+  const english = useWorkspaceEnglish();
   return (
     <Block
-      title="라인별 위험"
+      title={localized(english, "라인별 위험", "Risk by line")}
       eyebrow="LINE RISK"
       icon={<Activity size={15} />}
+      guidance={localized(english, "라인 단위 평균 위험도를 비교해 위험이 특정 설비에 국한됐는지 라인 전체로 확산됐는지 확인합니다.", "Compares average risk by line to show whether risk is isolated to one asset or broader across a line.")}
       className="span-6"
     >
       <div className="rw-composed-bars">
@@ -1320,14 +1528,16 @@ function RiskQueueBlock({
   model: OperationsBootstrapModel;
   onSelectEvent: (event: OperationsEvent) => void;
 }) {
+  const english = useWorkspaceEnglish();
   const ranked = [...model.events]
     .sort((a, b) => (b.failureProbability ?? -1) - (a.failureProbability ?? -1))
     .slice(0, 7);
   return (
     <Block
-      title="우선 확인 큐"
+      title={localized(english, "우선 확인 큐", "Priority review queue")}
       eyebrow="PRIORITY QUEUE"
       icon={<ShieldAlert size={15} />}
+      guidance={localized(english, "위험도와 담당 정보를 함께 보여 현장 엔지니어가 먼저 확인할 설비 순서를 정합니다.", "Combines risk and ownership to prioritize which assets a field engineer should review first.")}
       className="span-6"
     >
       <div className="rw-composed-list">
@@ -1340,8 +1550,8 @@ function RiskQueueBlock({
             <div>
               <strong>{event.assetName}</strong>
               <small>
-                {fieldFailureLabel(event.predictedFailureType)} ·{" "}
-                {ownerLabel(event.assignedEngineer)}
+                {failureTypeLabel(event.predictedFailureType, english)} ·{" "}
+                {ownerLabel(event.assignedEngineer, english)}
               </small>
             </div>
             <b>{probability(event.failureProbability)}</b>
@@ -1361,53 +1571,55 @@ function AssetBriefBlock({
   event: OperationsEvent | null;
   onOpenAsset: (assetId: string, eventId: string | null) => void;
 }) {
+  const english = useWorkspaceEnglish();
   const asset = selectedAsset(model, event);
   return (
     <Block
-      title="선택 설비"
+      title={localized(english, "선택 설비", "Selected asset")}
       eyebrow="ASSET CONTEXT"
       icon={<Boxes size={15} />}
+      guidance={localized(english, "현재 선택한 설비의 위치·중요도·담당·위험·예상 정지를 Case 문맥으로 요약합니다.", "Summarizes the selected asset's location, criticality, owner, risk, and expected downtime as case context.")}
       className="span-6"
     >
       {asset ? (
         <div className="rw-composed-kv">
           <div>
-            <span>설비</span>
+            <span>{localized(english, "설비", "Asset")}</span>
             <strong>{asset.displayName}</strong>
           </div>
           <div>
-            <span>라인</span>
+            <span>{localized(english, "라인", "Line")}</span>
             <strong>{asset.line}</strong>
           </div>
           <div>
-            <span>중요도</span>
-            <strong>{criticalityLabel(asset.criticality)}</strong>
+            <span>{localized(english, "중요도", "Criticality")}</span>
+            <strong>{criticalityLabel(asset.criticality, english)}</strong>
           </div>
           <div>
-            <span>담당</span>
-            <strong>{ownerLabel(asset.assignedEngineer)}</strong>
+            <span>{localized(english, "담당", "Owner")}</span>
+            <strong>{ownerLabel(asset.assignedEngineer, english)}</strong>
           </div>
           <div>
-            <span>위험</span>
+            <span>{localized(english, "위험", "Risk")}</span>
             <strong>{probability(asset.failureProbability)}</strong>
           </div>
           <div>
-            <span>예상 정지</span>
+            <span>{localized(english, "예상 정지", "Expected downtime")}</span>
             <strong>
               {asset.estimatedDowntimeMinutes !== null
-                ? `${asset.estimatedDowntimeMinutes}분`
-                : "근거 미제공"}
+                ? duration(asset.estimatedDowntimeMinutes, english)
+                : localized(english, "근거 미제공", "Evidence unavailable")}
             </strong>
           </div>
           <button
             type="button"
             onClick={() => onOpenAsset(asset.assetId, asset.eventId)}
           >
-            설비 근거 중심으로 보기
+            {localized(english, "설비 근거 중심으로 보기", "Open asset evidence")}
           </button>
         </div>
       ) : (
-        <Empty text="설비를 선택하면 역할에 맞는 상세 근거를 구성합니다." />
+        <Empty text={localized(english, "설비를 선택하면 역할에 맞는 상세 근거를 구성합니다.", "Select an asset to assemble role-specific evidence.")} />
       )}
     </Block>
   );
@@ -1420,41 +1632,43 @@ function ProductionExposureBlock({
   detail: OperationsEventDetailModel | null;
   companyContext: OperationsCompanyContext | null;
 }) {
+  const english = useWorkspaceEnglish();
   const value = exposure({ detail, companyContext });
   return (
     <Block
-      title="생산 · 재무 영향"
+      title={localized(english, "생산 · 재무 영향", "Production & financial impact")}
       eyebrow="PRODUCTION EXPOSURE"
       icon={<CircleDollarSign size={15} />}
+      guidance={localized(english, "현재 Case의 생산 손실 수량과 제품 단가·공헌이익 근거를 연결해 노출 규모를 보여줍니다.", "Connects production-loss units with product price and contribution-margin evidence to show the selected case's exposure.")}
       className="span-6"
     >
       {detail?.operationContext ? (
         <>
           <div className="rw-composed-kv">
             <div>
-              <span>생산 영향</span>
+              <span>{localized(english, "생산 영향", "Production impact")}</span>
               <strong>
                 {detail.operationContext.productionImpact === "high"
-                  ? "높음"
+                  ? localized(english, "높음", "High")
                   : detail.operationContext.productionImpact === "medium"
-                    ? "중간"
+                    ? localized(english, "중간", "Medium")
                     : detail.operationContext.productionImpact === "low"
-                      ? "낮음"
+                      ? localized(english, "낮음", "Low")
                       : detail.operationContext.productionImpact === "none"
-                        ? "현재 영향 없음"
+                        ? localized(english, "현재 영향 없음", "No current impact")
                         : "—"}
               </strong>
             </div>
             <div>
-              <span>예상 손실 수량</span>
+              <span>{localized(english, "예상 손실 수량", "Estimated lost units")}</span>
               <strong>
                 {value.lostUnits !== null
-                  ? `${value.lostUnits.toLocaleString("ko-KR")}개`
+                  ? `${formatNumber(value.lostUnits, english)}${english ? " units" : "개"}`
                   : "—"}
               </strong>
             </div>
             <div>
-              <span>제품</span>
+              <span>{localized(english, "제품", "Product")}</span>
               <strong>
                 {value.product?.name ??
                   detail.operationContext.eventImpact?.productVariant ??
@@ -1462,23 +1676,23 @@ function ProductionExposureBlock({
               </strong>
             </div>
             <div>
-              <span>매출 노출액</span>
-              <strong>{compactMoney(value.revenueExposure)}</strong>
+              <span>{localized(english, "매출 노출액", "Revenue exposure")}</span>
+              <strong>{compactMoney(value.revenueExposure, english)}</strong>
             </div>
             <div>
-              <span>공헌이익 노출액</span>
-              <strong>{compactMoney(value.contributionExposure)}</strong>
+              <span>{localized(english, "공헌이익 노출액", "Contribution-margin exposure")}</span>
+              <strong>{compactMoney(value.contributionExposure, english)}</strong>
             </div>
           </div>
           {detail.operationContext.eventImpact?.basis.formula ? (
             <details className="rw-technical-details">
-              <summary>산정 근거 상세</summary>
+              <summary>{localized(english, "산정 근거 상세", "Calculation basis")}</summary>
               <code>{detail.operationContext.eventImpact.basis.formula}</code>
             </details>
           ) : null}
         </>
       ) : (
-        <Empty text="선택 이벤트의 생산 영향 문맥이 없습니다." />
+        <Empty text={localized(english, "선택 이벤트의 생산 영향 문맥이 없습니다.", "No production-impact context is connected to the selected event.")} />
       )}
     </Block>
   );
@@ -1493,6 +1707,7 @@ function DecisionQueueBlock({
   selectedEvent: OperationsEvent | null;
   onSelectEvent: (event: OperationsEvent) => void;
 }) {
+  const english = useWorkspaceEnglish();
   const queue = model.events
     .filter((event) => event.recommendedDecision !== "continue_monitoring")
     .slice(0, 7);
@@ -1501,6 +1716,7 @@ function DecisionQueueBlock({
       title="Decision Case"
       eyebrow="DECISION QUEUE"
       icon={<ListChecks size={15} />}
+      guidance={localized(english, "계속 관찰을 제외하고 운영 판단이나 현장 조치가 필요한 Case를 우선 보여줍니다.", "Prioritizes cases that need an operational decision or field action, excluding continue-monitoring cases.")}
       className="span-6"
     >
       <div className="rw-composed-list">
@@ -1516,14 +1732,14 @@ function DecisionQueueBlock({
             <div>
               <strong>{event.assetName}</strong>
               <small>
-                {decisionLabel(event.recommendedDecision)} ·{" "}
-                {ownerLabel(event.assignedEngineer)}
+                {decisionLabel(event.recommendedDecision, english)} ·{" "}
+                {ownerLabel(event.assignedEngineer, english)}
                 {waitingMinutes(event.observedAt) !== null
-                  ? ` · 대기 ${duration(waitingMinutes(event.observedAt))}`
+                  ? ` · ${localized(english, "대기", "waiting")} ${duration(waitingMinutes(event.observedAt), english)}`
                   : ""}
               </small>
             </div>
-            <b>{riskLabel(event.status)}</b>
+            <b>{riskLabel(event.status, english)}</b>
           </button>
         ))}
       </div>
@@ -1544,6 +1760,7 @@ function DecisionBottleneckBlock({
   onSelectEvent: (event: OperationsEvent) => void;
   compact?: boolean;
 }) {
+  const english = useWorkspaceEnglish();
   const delayed = model.events
     .filter((event) => event.recommendedDecision !== "continue_monitoring")
     .sort(
@@ -1554,15 +1771,15 @@ function DecisionBottleneckBlock({
     .slice(0, compact ? 3 : 5);
   return (
     <Block
-      title="의사결정 병목"
+      title={localized(english, "의사결정 병목", "Decision bottlenecks")}
       eyebrow="DECISION BOTTLENECK"
       icon={<TimerReset size={15} />}
+      guidance={localized(english, "승인된 SLA가 없는 상태에서는 임의의 지연 판정을 하지 않고, Case 발생 후 경과시간만 비교합니다.", "When no approved SLA exists, this view avoids inventing an overdue threshold and compares elapsed time since each case began.")}
       className={compact ? "span-6 executive-summary-card" : "span-12"}
     >
       <p className="rw-bottleneck-sla-note">
-        <strong>대기시간 기준</strong> 현재 Backend에 승인된 Decision SLA 계약이
-        없어 SLA 초과 여부를 임의 계산하지 않습니다. 아래 값은 Case 발생 후
-        경과시간입니다.
+        <strong>{localized(english, "대기시간 기준", "Waiting-time basis")}</strong>{" "}
+        {localized(english, "현재 Backend에 승인된 Decision SLA 계약이 없어 SLA 초과 여부를 임의 계산하지 않습니다. 아래 값은 Case 발생 후 경과시간입니다.", "There is no approved Decision SLA contract in the backend, so this view does not infer an SLA breach. Values below are elapsed time since each case was created.")}
       </p>
       {compact && delayed.length ? (
         <div className="rw-composed-list rw-bottleneck-compact">
@@ -1578,11 +1795,11 @@ function DecisionBottleneckBlock({
               <div>
                 <strong>{event.assetName}</strong>
                 <small>
-                  {ownerLabel(event.assignedEngineer)} ·{" "}
-                  {decisionLabel(event.recommendedDecision)}
+                  {ownerLabel(event.assignedEngineer, english)} ·{" "}
+                  {decisionLabel(event.recommendedDecision, english)}
                 </small>
               </div>
-              <b>{duration(waitingMinutes(event.observedAt))}</b>
+              <b>{duration(waitingMinutes(event.observedAt), english)}</b>
             </button>
           ))}
         </div>
@@ -1590,14 +1807,14 @@ function DecisionBottleneckBlock({
         <div
           className="rw-bottleneck-table"
           role="table"
-          aria-label="지연 Decision Case"
+          aria-label={localized(english, "지연 Decision Case", "Delayed decision cases")}
         >
           <header role="row">
             <span>Case</span>
-            <span>대기</span>
+            <span>{localized(english, "대기", "Waiting")}</span>
             <span>Owner</span>
-            <span>결정 요청</span>
-            <span>영향</span>
+            <span>{localized(english, "결정 요청", "Decision request")}</span>
+            <span>{localized(english, "영향", "Impact")}</span>
           </header>
           {delayed.map((event) => {
             const active = selectedEvent?.eventId === event.eventId;
@@ -1613,26 +1830,26 @@ function DecisionBottleneckBlock({
                 onClick={() => onSelectEvent(event)}
               >
                 <strong>{event.assetName}</strong>
-                <span>{duration(waitingMinutes(event.observedAt))}</span>
-                <span>{ownerLabel(event.assignedEngineer)}</span>
-                <span>{decisionLabel(event.recommendedDecision)}</span>
+                <span>{duration(waitingMinutes(event.observedAt), english)}</span>
+                <span>{ownerLabel(event.assignedEngineer, english)}</span>
+                <span>{decisionLabel(event.recommendedDecision, english)}</span>
                 <span>
                   {impact === "high"
-                    ? "높음"
+                    ? localized(english, "높음", "High")
                     : impact === "medium"
-                      ? "중간"
+                      ? localized(english, "중간", "Medium")
                       : impact === "low"
-                        ? "낮음"
+                        ? localized(english, "낮음", "Low")
                         : event.estimatedDowntimeMinutes !== null
-                          ? `${event.estimatedDowntimeMinutes}분 노출`
-                          : "확인 중"}
+                          ? localized(english, `${event.estimatedDowntimeMinutes}분 노출`, `${event.estimatedDowntimeMinutes} min exposure`)
+                          : localized(english, "확인 중", "Reviewing")}
                 </span>
               </button>
             );
           })}
         </div>
       ) : (
-        <Empty text="현재 판단 대기 Case가 없습니다." />
+        <Empty text={localized(english, "현재 판단 대기 Case가 없습니다.", "There are no decision-pending cases.")} />
       )}
     </Block>
   );
@@ -1643,30 +1860,31 @@ function WorkflowLifecycleBlock({
 }: {
   detail: OperationsEventDetailModel | null;
 }) {
+  const english = useWorkspaceEnglish();
   const lifecycle = detail?.closedLoop?.lifecycleSummary ?? null;
   return (
     <Block
-      title="현재 Workflow 단계"
+      title={localized(english, "현재 Workflow 단계", "Current workflow stage")}
       eyebrow="CLOSED LOOP"
       icon={<ClipboardCheck size={15} />}
+      guidance={localized(english, "현재 Case가 점검·승인·정비·후속 관측 중 어디까지 진행됐는지와 다음 단계만 요약합니다.", "Summarizes how far the selected case has progressed through inspection, approval, maintenance, and follow-up observation, plus the next stage.")}
       className="span-6"
     >
       {lifecycle ? (
         <div className="rw-composed-lifecycle">
-          <strong>{lifecycle.currentStepLabel}</strong>
+          <strong>{english ? workflowStatusLabel(lifecycle.currentStep, true) : lifecycle.currentStepLabel}</strong>
           <div>
             {lifecycle.completedSteps.map((step) => (
-              <span key={step}>{workflowStatusLabel(step)}</span>
+              <span key={step}>{workflowStatusLabel(step, english)}</span>
             ))}
           </div>
-          <p>다음 단계: {workflowStatusLabel(lifecycle.nextStep)}</p>
+          <p>{localized(english, "다음 단계:", "Next stage:")} {workflowStatusLabel(lifecycle.nextStep, english)}</p>
         </div>
       ) : (
         <div className="rw-workflow-prerequisite">
-          <strong>작업 요청 전</strong>
+          <strong>{localized(english, "작업 요청 전", "Before work request")}</strong>
           <p>
-            현재 Case의 근거 snapshot은 준비되어 있습니다. 운영 관리자가 점검
-            작업요청을 생성하면 closed-loop가 시작됩니다.
+            {localized(english, "현재 Case의 근거 snapshot은 준비되어 있습니다. 운영 관리자가 점검 작업요청을 생성하면 closed-loop가 시작됩니다.", "The evidence snapshot for this case is ready. The closed loop begins when an operations manager creates an inspection work request.")}
           </p>
         </div>
       )}
@@ -1675,6 +1893,7 @@ function WorkflowLifecycleBlock({
 }
 
 function CaseLineageBlock({ props }: { props: RoleComposedWorkspaceProps }) {
+  const english = useWorkspaceEnglish();
   const event = props.selectedEvent;
   const detail = props.detail;
   const firstDecision =
@@ -1707,21 +1926,21 @@ function CaseLineageBlock({ props }: { props: RoleComposedWorkspaceProps }) {
       state: event ? "done" : "pending",
       headline: event
         ? `${event.assetName} · ${probability(event.failureProbability)}`
-        : "이벤트 선택 필요",
+        : localized(english, "이벤트 선택 필요", "Select an event"),
       detail: event
-        ? `${event.status} · ${dateTime(event.observedAt)}`
-        : "공장 상태맵에서 설비를 선택하세요.",
+        ? `${riskLabel(event.status, english)} · ${dateTime(event.observedAt, english)}`
+        : localized(english, "공장 상태맵에서 설비를 선택하세요.", "Select an asset from the factory status map."),
     },
     {
       id: "evidence",
       label: "Evidence",
       state: detail?.topFactors.length ? "done" : "pending",
       headline: detail?.topFactors.length
-        ? `${detail.topFactors.length}개 모델 근거`
-        : "근거 조회 중",
+        ? `${formatNumber(detail.topFactors.length, english)}${english ? " model evidence items" : "개 모델 근거"}`
+        : localized(english, "근거 조회 중", "Loading evidence"),
       detail: detail?.inspectionTargets[0]?.componentLabel
-        ? `점검 대상 ${detail.inspectionTargets[0].componentLabel}`
-        : "센서·모델·SOP 근거 연결",
+        ? localized(english, `점검 대상 ${detail.inspectionTargets[0].componentLabel}`, `Inspection target: ${detail.inspectionTargets[0].componentLabel}`)
+        : localized(english, "센서·모델·SOP 근거 연결", "Sensor, model, and SOP evidence connected"),
     },
     {
       id: "decision",
@@ -1729,11 +1948,11 @@ function CaseLineageBlock({ props }: { props: RoleComposedWorkspaceProps }) {
       state: firstDecision ? "done" : event ? "active" : "pending",
       headline:
         firstDecision?.title ??
-        decisionLabel(event?.recommendedDecision) ??
-        "판단 대기",
+        decisionLabel(event?.recommendedDecision, english) ??
+        localized(english, "판단 대기", "Decision pending"),
       detail: firstDecision
-        ? `${firstDecision.actor} · ${dateTime(firstDecision.createdAt)}`
-        : "운영 판단과 Owner가 기록됩니다.",
+        ? `${firstDecision.actor} · ${dateTime(firstDecision.createdAt, english)}`
+        : localized(english, "운영 판단과 Owner가 기록됩니다.", "The operational decision and owner will be recorded here."),
     },
     {
       id: "action",
@@ -1744,26 +1963,26 @@ function CaseLineageBlock({ props }: { props: RoleComposedWorkspaceProps }) {
           : "active"
         : "pending",
       headline: latestWork
-        ? `${latestWork.workType} · ${workflowStatusLabel(latestWork.status)}`
-        : (detail?.closedLoop?.primaryAction?.label ?? "점검 작업요청 미생성"),
+        ? `${latestWork.workType} · ${workflowStatusLabel(latestWork.status, english)}`
+        : (workflowActionLabel(detail?.closedLoop?.primaryAction, english) ?? localized(english, "점검 작업요청 미생성", "Inspection work request not created")),
       detail: latestWork
-        ? `${latestWork.workOrderId} · ${latestWork.actorDisplayName ?? latestWork.assignedTo ?? "담당 미정"}`
-        : "승인된 점검·정비 작업이 연결됩니다.",
+        ? `${latestWork.workOrderId} · ${latestWork.actorDisplayName ?? latestWork.assignedTo ?? localized(english, "담당 미정", "Owner pending")}`
+        : localized(english, "승인된 점검·정비 작업이 연결됩니다.", "Approved inspection and maintenance work will be connected here."),
     },
     {
       id: "outcome",
       label: "Outcome",
       state: finalReportReady ? "done" : completedAt ? "active" : "pending",
       headline: finalReportReady
-        ? "정비 후 관측 확인 완료"
+        ? localized(english, "정비 후 관측 확인 완료", "Post-maintenance observation verified")
         : completedAt
-          ? "정비 후 관측 대기"
-          : "결과 대기",
+          ? localized(english, "정비 후 관측 대기", "Awaiting post-maintenance observation")
+          : localized(english, "결과 대기", "Outcome pending"),
       detail: finalReportReady
-        ? `정비 완료 ${dateTime(completedAt)} · 검증된 후속 관측과 보고 snapshot 연결`
+        ? localized(english, `정비 완료 ${dateTime(completedAt, false)} · 검증된 후속 관측과 보고 snapshot 연결`, `Maintenance completed ${dateTime(completedAt, true)} · verified follow-up observation and report snapshot connected`)
         : completedAt
-          ? "정비 완료만으로 Outcome을 확정하지 않습니다. 후속 관측이 필요합니다."
-          : "승인된 Action이 완료된 뒤 Outcome 관측을 시작합니다.",
+          ? localized(english, "정비 완료만으로 Outcome을 확정하지 않습니다. 후속 관측이 필요합니다.", "Maintenance completion alone does not confirm the outcome. Follow-up observation is required.")
+          : localized(english, "승인된 Action이 완료된 뒤 Outcome 관측을 시작합니다.", "Outcome observation begins after the approved action is completed."),
     },
   ];
   return (
@@ -1771,6 +1990,7 @@ function CaseLineageBlock({ props }: { props: RoleComposedWorkspaceProps }) {
       title="Event → Outcome lineage"
       eyebrow="CASE LINEAGE"
       icon={<GitBranch size={15} />}
+      guidance={localized(english, "하나의 Case 안에서 Event → Evidence → Decision → Action → Outcome의 연결이 끊기지 않았는지 확인합니다.", "Checks that Event → Evidence → Decision → Action → Outcome remain connected within one case.")}
       className="span-12"
     >
       <div className="rw-case-lineage">
@@ -1788,7 +2008,7 @@ function CaseLineageBlock({ props }: { props: RoleComposedWorkspaceProps }) {
             type="button"
             onClick={() => props.onOpenAsset(event.assetId, event.eventId)}
           >
-            설비 근거 열기
+            {localized(english, "설비 근거 열기", "Open asset evidence")}
           </button>
           <button
             type="button"
@@ -1803,8 +2023,8 @@ function CaseLineageBlock({ props }: { props: RoleComposedWorkspaceProps }) {
             }
           >
             {props.experienceKind === "operations"
-              ? "보고 초안 이어보기"
-              : "보고 산출물 보기"}
+              ? localized(english, "보고 초안 이어보기", "Continue report draft")
+              : localized(english, "보고 산출물 보기", "Open report artifact")}
           </button>
         </div>
       ) : null}
@@ -1817,23 +2037,26 @@ function WorkflowActionsBlock({
 }: {
   props: RoleComposedWorkspaceProps;
 }) {
+  const english = useWorkspaceEnglish();
   const asset = selectedAsset(props.model, props.selectedEvent);
   if (!props.selectedEvent || !asset)
     return (
       <Block
-        title="업무 실행"
+        title={localized(english, "업무 실행", "Workflow actions")}
         eyebrow="ACTION"
         icon={<Wrench size={15} />}
+        guidance={localized(english, "선택 Case의 승인 가능한 작업만 실행할 수 있으며 근거 snapshot과 작업 이력이 함께 남습니다.", "Only governed actions for the selected case can be executed, with the evidence snapshot and action history preserved.")}
         className="span-12"
       >
-        <Empty text="작업할 이벤트를 선택하세요." />
+        <Empty text={localized(english, "작업할 이벤트를 선택하세요.", "Select an event to work on.")} />
       </Block>
     );
   return (
     <Block
-      title="업무 실행"
+      title={localized(english, "업무 실행", "Workflow actions")}
       eyebrow="GOVERNED ACTION"
       icon={<Wrench size={15} />}
+      guidance={localized(english, "선택 Case의 승인 가능한 작업만 실행할 수 있으며 근거 snapshot과 작업 이력이 함께 남습니다.", "Only governed actions for the selected case can be executed, with the evidence snapshot and action history preserved.")}
       className="span-12"
     >
       <MaintenanceWorkflowActionPanel
@@ -1849,6 +2072,7 @@ function WorkflowActionsBlock({
         canManage={props.canManageWorkflow}
         canFieldExecute={props.canExecuteFieldWorkflow}
         canMaintenanceExecute={props.experienceKind === "maintenance" && props.canExecuteFieldWorkflow}
+        locale={english ? "en-US" : "ko-KR"}
         onChanged={props.onWorkflowChanged}
       />
       <MaintenanceCostDecisionPanel
@@ -1856,6 +2080,7 @@ function WorkflowActionsBlock({
         workspaceId={props.model.context.workspaceId}
         eventId={props.selectedEvent.eventId}
         guidance={props.detail?.inspectionTargets.find((item) => item.inspectionGuidance)?.inspectionGuidance ?? null}
+        locale={english ? "en-US" : "ko-KR"}
         onChanged={props.onWorkflowChanged}
       />
       <OperationalDecisionSupportPanel
@@ -1867,6 +2092,7 @@ function WorkflowActionsBlock({
         riskStatus={props.selectedEvent.status}
         role={operationalDecisionBriefRole(props.role)}
         canMaterialize={props.canMaterializeAgentSummary}
+        locale={english ? "en-US" : "ko-KR"}
       />
     </Block>
   );
@@ -1877,11 +2103,13 @@ function SensorSignalsBlock({
 }: {
   detail: OperationsEventDetailModel | null;
 }) {
+  const english = useWorkspaceEnglish();
   return (
     <Block
-      title="센서 · 피쳐"
+      title={localized(english, "센서 · 피쳐", "Sensors & features")}
       eyebrow="OBSERVED SIGNALS"
       icon={<RadioTower size={15} />}
+      guidance={localized(english, "판단 시점에 연결된 센서 관측값과 품질 상태를 보여주며 원본 설비·센서 이름은 번역하지 않습니다.", "Shows sensor observations and quality status connected to the decision timestamp. Raw asset and sensor names remain unchanged.")}
       className="span-6"
     >
       {detail?.sensors.length ? (
@@ -1892,7 +2120,7 @@ function SensorSignalsBlock({
                 <strong>{sensor.label}</strong>
                 <small>
                   {sensor.observedAt
-                    ? dateTime(sensor.observedAt)
+                    ? dateTime(sensor.observedAt, english)
                     : (sensor.qualityStatus ?? "")}
                 </small>
               </div>
@@ -1904,7 +2132,7 @@ function SensorSignalsBlock({
           ))}
         </div>
       ) : (
-        <Empty text="선택 설비의 센서 근거를 불러오는 중입니다." />
+        <Empty text={localized(english, "선택 설비의 센서 근거를 불러오는 중입니다.", "Loading sensor evidence for the selected asset.")} />
       )}
     </Block>
   );
@@ -1915,11 +2143,13 @@ function EvidenceFactorsBlock({
 }: {
   detail: OperationsEventDetailModel | null;
 }) {
+  const english = useWorkspaceEnglish();
   return (
     <Block
-      title="위험 기여 근거"
+      title={localized(english, "위험 기여 근거", "Risk-contribution evidence")}
       eyebrow="MODEL EVIDENCE"
       icon={<ChartNoAxesCombined size={15} />}
+      guidance={localized(english, "모델이 현재 위험도를 높이거나 낮춘 주요 피쳐와 기여 방향만 요약합니다.", "Summarizes the main features that increased or decreased the current risk score and their contribution direction.")}
       className="span-6"
     >
       {detail?.topFactors.length ? (
@@ -1931,12 +2161,14 @@ function EvidenceFactorsBlock({
             <article key={factor.id}>
               <div>
                 <strong>
-                  {displaySensorFactorLabel(factor.feature, factor.label)}
+                  {english
+                    ? englishSensorFactorLabel(factor.feature)
+                    : displaySensorFactorLabel(factor.feature, factor.label)}
                 </strong>
                 <small>
-                  {factorDirectionLabel(factor.direction)} ·{" "}
-                  {displayExplanationMethod(factor.explanationMethod) ??
-                    "모델 근거"}
+                  {factorDirectionLabel(factor.direction, english)} ·{" "}
+                  {explanationMethodLabel(factor.explanationMethod, english) ??
+                    localized(english, "모델 근거", "Model evidence")}
                 </small>
               </div>
               <b>{Math.round(Math.abs(factor.contribution) * 100)}%</b>
@@ -1944,7 +2176,7 @@ function EvidenceFactorsBlock({
           ))}
         </div>
       ) : (
-        <Empty text="모델 기여 근거가 없습니다." />
+        <Empty text={localized(english, "모델 기여 근거가 없습니다.", "No model-contribution evidence is available.")} />
       )}
     </Block>
   );
@@ -1955,11 +2187,13 @@ function InspectionTargetsBlock({
 }: {
   detail: OperationsEventDetailModel | null;
 }) {
+  const english = useWorkspaceEnglish();
   return (
     <Block
-      title="점검 대상"
+      title={localized(english, "점검 대상", "Inspection targets")}
       eyebrow="INSPECTION PLAN"
       icon={<ClipboardCheck size={15} />}
+      guidance={localized(english, "센서·모델·SOP 근거에서 실제 현장 확인 대상으로 좁혀진 부품과 위치, 점검 방법을 보여줍니다.", "Shows components, locations, and inspection methods narrowed down from sensor, model, and SOP evidence for field verification.")}
       className="span-6"
     >
       {detail?.inspectionTargets.length ? (
@@ -1967,16 +2201,16 @@ function InspectionTargetsBlock({
           {detail.inspectionTargets.slice(0, 5).map((target) => (
             <article key={target.targetId}>
               <strong>{target.componentLabel}</strong>
-              <span>{target.locationLabel ?? "위치 확인 필요"}</span>
+              <span>{target.locationLabel ?? localized(english, "위치 확인 필요", "Location needs review")}</span>
               <p>
                 {target.inspectionMethod ??
-                  displayInspectionAssociation(target.association)}
+                  inspectionAssociationLabel(target.association, english)}
               </p>
             </article>
           ))}
         </div>
       ) : (
-        <Empty text="현재 근거에서 특정된 점검 대상이 없습니다." />
+        <Empty text={localized(english, "현재 근거에서 특정된 점검 대상이 없습니다.", "No inspection target has been identified from the current evidence.")} />
       )}
     </Block>
   );
@@ -1991,6 +2225,7 @@ function MaintenanceHistoryBlock({
   companyContext: OperationsCompanyContext | null;
   assetId: string | null | undefined;
 }) {
+  const english = useWorkspaceEnglish();
   const records =
     companyContext?.maintenance_records.filter(
       (item) => item.asset_id === assetId,
@@ -1998,26 +2233,27 @@ function MaintenanceHistoryBlock({
   const runtime = detail?.equipmentHistory ?? [];
   return (
     <Block
-      title="정비 · 설비 이력"
+      title={localized(english, "정비 · 설비 이력", "Maintenance & asset history")}
       eyebrow="MAINTENANCE HISTORY"
       icon={<History size={15} />}
+      guidance={localized(english, "선택 설비에 연결된 과거 정비 기록과 runtime 이력을 함께 보여주되 원문 기록 내용은 그대로 유지합니다.", "Shows historical maintenance records and runtime history connected to the selected asset while preserving source record text as-is.")}
       className="span-6"
     >
       {records.length || runtime.length ? (
         <div className="rw-composed-timeline">
           {records.slice(0, 4).map((item) => (
             <article key={item.id}>
-              <time>{dateTime(item.occurred_at)}</time>
+              <time>{dateTime(item.occurred_at, english)}</time>
               <strong>{item.component}</strong>
               <p>{item.symptom}</p>
               <small>
-                {item.action} · 결과: {item.result}
+                {item.action} · {localized(english, "결과:", "Result:")} {item.result}
               </small>
             </article>
           ))}
           {runtime.slice(0, 4).map((item, index) => (
             <article key={`${item.occurredAt}-${index}`}>
-              <time>{dateTime(item.occurredAt)}</time>
+              <time>{dateTime(item.occurredAt, english)}</time>
               <strong>{item.kind}</strong>
               <p>{item.description}</p>
               <small>{item.source}</small>
@@ -2025,7 +2261,7 @@ function MaintenanceHistoryBlock({
           ))}
         </div>
       ) : (
-        <Empty text="연결된 과거 정비 기록이 없습니다." />
+        <Empty text={localized(english, "연결된 과거 정비 기록이 없습니다.", "No linked maintenance history is available.")} />
       )}
     </Block>
   );
@@ -2040,6 +2276,7 @@ function MaintenanceEffectBlock({
   companyContext: OperationsCompanyContext | null;
   assetId: string | null | undefined;
 }) {
+  const english = useWorkspaceEnglish();
   const completedAt = maintenanceCompletedAt(detail);
   const boundary = completedAt ? new Date(completedAt).getTime() : null;
   const riskPoints = [...(detail?.riskSeries ?? [])].sort((left, right) =>
@@ -2108,17 +2345,18 @@ function MaintenanceEffectBlock({
     : null;
   return (
     <Block
-      title="정비 효과 Before / After"
+      title={localized(english, "정비 효과 Before / After", "Maintenance effect Before / After")}
       eyebrow="MAINTENANCE OUTCOME"
       icon={<TrendingDown size={15} />}
+      guidance={localized(english, "정비 완료 시점을 기준으로 전후 위험도·알림·센서 관측을 비교하며, 후속 관측이 없으면 효과를 확정하지 않습니다.", "Compares risk, alerts, and sensor observations before and after maintenance completion. No effect is confirmed until follow-up observations exist.")}
       className="span-12"
     >
       {completedAt ? (
         <div className="rw-maintenance-effect">
           <header>
             <div>
-              <span>정비 완료 기준</span>
-              <strong>{dateTime(completedAt)}</strong>
+              <span>{localized(english, "정비 완료 기준", "Maintenance completed")}</span>
+              <strong>{dateTime(completedAt, english)}</strong>
             </div>
             <b
               className={
@@ -2126,29 +2364,29 @@ function MaintenanceEffectBlock({
               }
             >
               {riskDelta === null
-                ? "후속 관측 수집 중"
-                : `위험도 ${riskDelta > 0 ? "+" : ""}${Math.round(riskDelta * 100)}%p`}
+                ? localized(english, "후속 관측 수집 중", "Collecting follow-up observations")
+                : `${localized(english, "위험도", "Risk")} ${riskDelta > 0 ? "+" : ""}${Math.round(riskDelta * 100)}%p`}
             </b>
           </header>
           <div className="rw-maintenance-effect-grid">
             <article>
-              <span>정비 전 위험</span>
+              <span>{localized(english, "정비 전 위험", "Risk before maintenance")}</span>
               <strong>{probability(beforeAverage)}</strong>
-              <small>관측 {beforeRisk.length}건</small>
+              <small>{localized(english, `관측 ${beforeRisk.length}건`, `${formatNumber(beforeRisk.length, true)} observations`)}</small>
             </article>
             <article>
-              <span>정비 후 위험</span>
+              <span>{localized(english, "정비 후 위험", "Risk after maintenance")}</span>
               <strong>{probability(afterAverage)}</strong>
-              <small>관측 {afterRisk.length}건</small>
+              <small>{localized(english, `관측 ${afterRisk.length}건`, `${formatNumber(afterRisk.length, true)} observations`)}</small>
             </article>
             <article>
-              <span>알림 빈도</span>
+              <span>{localized(english, "알림 빈도", "Alert frequency")}</span>
               <strong>
                 {beforeRisk.length && afterRisk.length
                   ? `${beforeAlerts} → ${afterAlerts}`
-                  : "관측 대기"}
+                  : localized(english, "관측 대기", "Awaiting observations")}
               </strong>
-              <small>비정상 관측 수</small>
+              <small>{localized(english, "비정상 관측 수", "Abnormal observations")}</small>
             </article>
           </div>
           {sensorEffects.length ? (
@@ -2157,18 +2395,18 @@ function MaintenanceEffectBlock({
                 <article key={item.id}>
                   <span>{item.label}</span>
                   <strong>
-                    {item.before.toLocaleString("ko-KR", {
+                    {formatNumber(item.before, english, {
                       maximumFractionDigits: 1,
                     })}{" "}
                     →{" "}
-                    {item.after.toLocaleString("ko-KR", {
+                    {formatNumber(item.after, english, {
                       maximumFractionDigits: 1,
                     })}
                     {item.unit ? ` ${item.unit}` : ""}
                   </strong>
                   <small>
                     {item.delta > 0 ? "+" : ""}
-                    {item.delta.toLocaleString("ko-KR", {
+                    {formatNumber(item.delta, english, {
                       maximumFractionDigits: 1,
                     })}
                   </small>
@@ -2177,22 +2415,21 @@ function MaintenanceEffectBlock({
             </div>
           ) : (
             <p>
-              정비 전후 관측 구간이 충분해지면 핵심 센서의 회복 여부를 함께 표시합니다.
+              {localized(english, "정비 전후 관측 구간이 충분해지면 핵심 센서의 회복 여부를 함께 표시합니다.", "When enough observations exist before and after maintenance, recovery of key sensors will be shown here.")}
             </p>
           )}
         </div>
       ) : historical ? (
         <div className="rw-maintenance-history-fallback">
-          <strong>참고 · 과거 유사 정비</strong>
+          <strong>{localized(english, "참고 · 과거 유사 정비", "Reference · similar prior maintenance")}</strong>
           <p>{historical.action}</p>
           <span>{historical.result}</span>
           <small>
-            {dateTime(historical.occurred_at)} · 현재 Decision Case의 Outcome이
-            아닙니다.
+            {dateTime(historical.occurred_at, english)} · {localized(english, "현재 Decision Case의 Outcome이 아닙니다.", "This is not the outcome of the current decision case.")}
           </small>
         </div>
       ) : (
-        <Empty text="현재 Case에 연결된 정비 완료 및 정비 후 관측이 생기면 before/after 효과를 표시합니다." />
+        <Empty text={localized(english, "현재 Case에 연결된 정비 완료 및 정비 후 관측이 생기면 before/after 효과를 표시합니다.", "Before/after effects will appear after maintenance completion and post-maintenance observations are connected to this case.")} />
       )}
     </Block>
   );
@@ -2205,12 +2442,14 @@ function MaterialContextBlock({
   companyContext: OperationsCompanyContext | null;
   assetId: string | null | undefined;
 }) {
+  const english = useWorkspaceEnglish();
   const materials = relevantMaterials(companyContext, assetId);
   return (
     <Block
-      title="자재 · 예비품"
+      title={localized(english, "자재 · 예비품", "Materials & spare parts")}
       eyebrow="MATERIAL CONTEXT"
       icon={<PackageSearch size={15} />}
+      guidance={localized(english, "선택 설비에 연결된 자재 재고와 재주문 기준, 리드타임을 함께 보여 정비 실행 제약을 확인합니다.", "Shows inventory, reorder points, and lead time for materials linked to the selected asset to surface maintenance execution constraints.")}
       className="span-6"
     >
       {materials.length ? (
@@ -2220,7 +2459,7 @@ function MaterialContextBlock({
               <div>
                 <strong>{item.name}</strong>
                 <small>
-                  {item.category} · 리드타임 {item.lead_time_days}일
+                  {item.category} · {localized(english, `리드타임 ${item.lead_time_days}일`, `lead time ${item.lead_time_days} days`)}
                 </small>
               </div>
               <b
@@ -2230,13 +2469,13 @@ function MaterialContextBlock({
                     : ""
                 }
               >
-                {item.on_hand_quantity}개
+                {formatNumber(item.on_hand_quantity, english)}{english ? " units" : "개"}
               </b>
             </article>
           ))}
         </div>
       ) : (
-        <Empty text="선택 설비에 연결된 자재 master가 없습니다." />
+        <Empty text={localized(english, "선택 설비에 연결된 자재 master가 없습니다.", "No material master data is linked to the selected asset.")} />
       )}
     </Block>
   );
@@ -2251,6 +2490,7 @@ function DecisionHistoryBlock({
   context: OperationsCompanyContext | null;
   assetId: string | null | undefined;
 }) {
+  const english = useWorkspaceEnglish();
   const decisions =
     context?.decisions
       .filter(
@@ -2261,16 +2501,17 @@ function DecisionHistoryBlock({
       .slice(0, 5) ?? [];
   return (
     <Block
-      title="판단 이력"
+      title={localized(english, "판단 이력", "Decision history")}
       eyebrow="DECISION LINEAGE"
       icon={<FileClock size={15} />}
+      guidance={localized(english, "선택 설비와 연결된 과거 판단과 현재 Case 활동을 시간순 근거로 확인합니다.", "Reviews prior decisions linked to the selected asset together with current case activity as chronological evidence.")}
       className="span-6"
     >
       {decisions.length || detail?.activity.length ? (
         <div className="rw-composed-timeline">
           {decisions.map((item) => (
             <article key={item.id}>
-              <time>{dateTime(item.decided_at)}</time>
+              <time>{dateTime(item.decided_at, english)}</time>
               <strong>{item.title}</strong>
               <p>{item.decision}</p>
               <small>{item.source_ref}</small>
@@ -2278,7 +2519,7 @@ function DecisionHistoryBlock({
           ))}
           {detail?.activity.slice(0, 4).map((item) => (
             <article key={item.id}>
-              <time>{dateTime(item.createdAt)}</time>
+              <time>{dateTime(item.createdAt, english)}</time>
               <strong>{item.title}</strong>
               <p>{item.detail}</p>
               <small>{item.actor}</small>
@@ -2286,7 +2527,7 @@ function DecisionHistoryBlock({
           ))}
         </div>
       ) : (
-        <Empty text="연결된 판단 이력이 없습니다." />
+        <Empty text={localized(english, "연결된 판단 이력이 없습니다.", "No linked decision history is available.")} />
       )}
     </Block>
   );
@@ -2309,6 +2550,7 @@ function ReportSummaryBlock({
   onOpenReport: RoleComposedWorkspaceProps["onOpenReport"];
   compact?: boolean;
 }) {
+  const english = useWorkspaceEnglish();
   const [brief, setBrief] =
     useState<OperationsAgentReviewSummaryResponse | null>(null);
   const defaultReportType: ReportType =
@@ -2432,53 +2674,54 @@ function ReportSummaryBlock({
     : false;
   const artifactStatus =
     maintenanceDone && outcomeObserved
-      ? "검토 가능한 결과 보고"
-      : "업무 진행 중 · 초안";
+      ? localized(english, "검토 가능한 결과 보고", "Outcome report ready for review")
+      : localized(english, "업무 진행 중 · 초안", "Work in progress · draft");
   return (
     <Block
-      title={compact ? "보고 준비 상태" : "역할별 보고 요약"}
+      title={compact ? localized(english, "보고 준비 상태", "Report readiness") : localized(english, "역할별 보고 요약", "Role-specific report summary")}
       eyebrow="GROUNDED REPORT"
       icon={<FileText size={15} />}
+      guidance={localized(english, "현재 Case의 고정 근거 snapshot을 바탕으로 역할별 보고 산출물의 준비 상태와 연결 근거를 확인합니다.", "Shows readiness and linked evidence for role-specific report artifacts grounded in the selected case's fixed evidence snapshot.")}
       className={compact ? "span-6 executive-summary-card" : "span-12"}
     >
       {roleSummary && headline ? (
         <div className="rw-composed-report">
           <div className="rw-report-controls">
             <label>
-              <span>보고 유형</span>
+              <span>{localized(english, "보고 유형", "Report type")}</span>
               <select
                 value={reportType}
                 onChange={(event) =>
                   setReportType(event.target.value as ReportType)
                 }
               >
-                <option value="inspection-summary">현장 점검 요약</option>
-                <option value="operations-decision">운영 판단 보고</option>
-                <option value="executive-brief">경영진 Executive Brief</option>
+                <option value="inspection-summary">{localized(english, "현장 점검 요약", "Field inspection summary")}</option>
+                <option value="operations-decision">{localized(english, "운영 판단 보고", "Operations decision report")}</option>
+                <option value="executive-brief">{localized(english, "경영진 Executive Brief", "Executive brief")}</option>
                 <option value="maintenance-effect">
-                  정비 효과 before-after
+                  {localized(english, "정비 효과 before-after", "Maintenance effect before-after")}
                 </option>
-                <option value="weekly-risk">주간 리스크 요약</option>
+                <option value="weekly-risk">{localized(english, "주간 리스크 요약", "Weekly risk summary")}</option>
               </select>
             </label>
             <span>
               {variantLoading
-                ? "보고 전환 중"
+                ? localized(english, "보고 전환 중", "Switching report")
                 : brief?.summary?.mode === "llm" || report?.mode === "llm"
-                  ? "AI 근거 요약"
-                  : "검증된 기본 보고"}
+                  ? localized(english, "AI 근거 요약", "AI evidence summary")
+                  : localized(english, "검증된 기본 보고", "Verified baseline report")}
             </span>
           </div>
           {report ? (
             <div className="rw-report-artifact-meta">
               <span>{artifactStatus}</span>
-              <strong>{displayReportType(report.reportType)}</strong>
-              <small>{displayArtifactKind(report.reportId)}</small>
-              <small>관측 기준 {dateTime(report.asOf ?? detail?.event.observedAt)}</small>
+              <strong>{reportTypeLabel(report.reportType, english)}</strong>
+              <small>{artifactKindLabel(report.reportId, english)}</small>
+              <small>{localized(english, "관측 기준", "Observed as of")} {dateTime(report.asOf ?? detail?.event.observedAt, english)}</small>
               <small className="rw-technical-metadata">Case {event?.eventId ?? "—"}</small>
               <small className="rw-technical-metadata">artifact {report.reportId}</small>
               {report.revision > 0 ? (
-                <small>수정본 {report.revision}</small>
+                <small>{localized(english, `수정본 ${report.revision}`, `Revision ${report.revision}`)}</small>
               ) : null}
             </div>
           ) : null}
@@ -2499,14 +2742,15 @@ function ReportSummaryBlock({
             </div>
           ) : null}
           {!compact ? (
-            <details className="rw-report-evidence rw-technical-metadata">
+            <details className="rw-report-evidence">
               <summary>
-                근거 데이터 확인 · {new Set(evidenceRefs).size} refs
+                {localized(english, "세부 근거", "Evidence details")} · {formatNumber(new Set(evidenceRefs).size, english)}{english ? " items" : "건"}
               </summary>
               <ul>
                 {[...new Set(evidenceRefs)].slice(0, 12).map((ref) => (
                   <li key={ref}>
-                    <code>{ref}</code>
+                    <span>{evidenceReferenceLabel(ref, english)}</span>
+                    <code className="rw-technical-metadata">{ref}</code>
                   </li>
                 ))}
               </ul>
@@ -2525,7 +2769,7 @@ function ReportSummaryBlock({
                 )
               }
             >
-              내용 미리보기
+              {localized(english, "내용 미리보기", "Preview content")}
             </button>
             <button
               type="button"
@@ -2539,12 +2783,12 @@ function ReportSummaryBlock({
                 )
               }
             >
-              보고서 출력 화면
+              {localized(english, "보고서 출력 화면", "Open report output")}
             </button>
           </div>
         </div>
       ) : (
-        <Empty text="선택 이벤트의 grounded report를 불러오는 중입니다." />
+        <Empty text={localized(english, "선택 이벤트의 grounded report를 불러오는 중입니다.", "Loading the grounded report for the selected event.")} />
       )}
     </Block>
   );
@@ -2557,6 +2801,7 @@ function ContextEvidenceBlock({
   context: OperationsCompanyContext | null;
   assetId: string | null | undefined;
 }) {
+  const english = useWorkspaceEnglish();
   const decisions =
     context?.decisions
       .filter(
@@ -2567,9 +2812,10 @@ function ContextEvidenceBlock({
       .slice(0, 3) ?? [];
   return (
     <Block
-      title="조직 · 회의 · 의사결정 문맥"
+      title={localized(english, "조직 · 회의 · 의사결정 문맥", "Organization, meeting & decision context")}
       eyebrow="ONTOLOGY CONTEXT"
       icon={<Building2 size={15} />}
+      guidance={localized(english, "설비 사건을 조직 책임·회의 기록·기존 의사결정과 연결해 업무 문맥이 어디서 왔는지 보여줍니다.", "Connects the asset event to organizational ownership, meeting records, and prior decisions so the source of business context is visible.")}
       className="span-12"
     >
       {context ? (
@@ -2605,7 +2851,7 @@ function ContextEvidenceBlock({
           </div>
           {context.meeting_minutes.slice(0, 2).map((meeting) => (
             <article className="rw-composed-meeting" key={meeting.id}>
-              <span>{dateTime(meeting.occurred_at)}</span>
+              <span>{dateTime(meeting.occurred_at, english)}</span>
               <strong>{meeting.title}</strong>
               <p>{meeting.summary}</p>
             </article>
@@ -2619,7 +2865,7 @@ function ContextEvidenceBlock({
           ))}
         </div>
       ) : (
-        <Empty text="회사 및 조직 문맥을 불러오는 중입니다." />
+        <Empty text={localized(english, "회사 및 조직 문맥을 불러오는 중입니다.", "Loading company and organization context.")} />
       )}
     </Block>
   );
@@ -2632,18 +2878,18 @@ function DataQualityBlock({
   detail: OperationsEventDetailModel | null;
   model: OperationsBootstrapModel;
 }) {
+  const english = useWorkspaceEnglish();
   const warnings = detail?.dataQualityWarnings ?? [];
   return (
     <Block
-      title="데이터 품질 확인 필요"
+      title={localized(english, "데이터 품질 확인 필요", "Data quality review required")}
       eyebrow="DATA QUALITY HOLD"
       icon={<AlertTriangle size={15} />}
+      guidance={localized(english, "품질 경고가 남아 있는 동안에는 위험도·생산 영향·정비 필요성을 확정 판단하지 않도록 의사결정을 보류합니다.", "Keeps decisions on risk, production impact, and maintenance need on hold while data-quality warnings remain unresolved.")}
       className="span-12 is-warning-block"
     >
       <p>
-        현재 데이터 품질 보류 항목이 {model.metrics.dataQualityHold}건 있습니다.
-        품질 문제가 해소되기 전에는 고장 위험·생산 영향·정비 필요성을 확정하지
-        않습니다.
+        {localized(english, `현재 데이터 품질 보류 항목이 ${formatNumber(model.metrics.dataQualityHold, false)}건 있습니다. 품질 문제가 해소되기 전에는 고장 위험·생산 영향·정비 필요성을 확정하지 않습니다.`, `There are ${formatNumber(model.metrics.dataQualityHold, true)} data-quality hold item(s). Failure risk, production impact, and maintenance need are not confirmed until the quality issues are resolved.`)}
       </p>
       {warnings.length ? (
         <ul>
@@ -2839,6 +3085,8 @@ function renderBlock(
 }
 
 export function RoleComposedWorkspace(props: RoleComposedWorkspaceProps) {
+  const { locale } = useI18n();
+  const english = locale === "en-US";
   const materials = relevantMaterials(
     props.companyContext,
     props.selectedEvent?.assetId,
@@ -2878,18 +3126,18 @@ export function RoleComposedWorkspace(props: RoleComposedWorkspaceProps) {
     props.surfaceId,
   );
   const promotionReason = signals.hasDataQualityHold
-    ? `우선순위 상승 · 데이터 품질 확인 ${props.model.metrics.dataQualityHold.toLocaleString("ko-KR")}건`
+    ? localized(english, `우선순위 상승 · 데이터 품질 확인 ${formatNumber(props.model.metrics.dataQualityHold, false)}건`, `Priority raised · ${formatNumber(props.model.metrics.dataQualityHold, true)} data-quality item(s) need review`)
     : props.experienceKind === "operations" && signals.hasDecisionBacklog
-      ? `우선순위 상승 · 판단 대기 ${props.model.metrics.pendingDecisions.toLocaleString("ko-KR")}건`
+      ? localized(english, `우선순위 상승 · 판단 대기 ${formatNumber(props.model.metrics.pendingDecisions, false)}건`, `Priority raised · ${formatNumber(props.model.metrics.pendingDecisions, true)} decision(s) pending`)
       : props.experienceKind === "engineering" && signals.hasCriticalRisk
-        ? `우선순위 상승 · 긴급 설비 ${props.model.metrics.critical.toLocaleString("ko-KR")}대`
+        ? localized(english, `우선순위 상승 · 긴급 설비 ${formatNumber(props.model.metrics.critical, false)}대`, `Priority raised · ${formatNumber(props.model.metrics.critical, true)} critical asset(s)`)
         : props.experienceKind === "executive" &&
             signals.hasHighProductionExposure
-          ? `우선순위 상승 · 선택 Case의 생산·재무 노출이 기준치를 초과했습니다`
+          ? localized(english, "우선순위 상승 · 선택 Case의 생산·재무 노출이 기준치를 초과했습니다", "Priority raised · selected case production and financial exposure exceeds the threshold")
           : signals.hasMaterialConstraint
-            ? "우선순위 상승 · 선택 Case의 자재 제약을 먼저 확인합니다"
+            ? localized(english, "우선순위 상승 · 선택 Case의 자재 제약을 먼저 확인합니다", "Priority raised · review selected case material constraints first")
             : signals.hasMaintenanceOutcome
-              ? "우선순위 상승 · 정비 완료 후 효과 확인이 필요합니다"
+              ? localized(english, "우선순위 상승 · 정비 완료 후 효과 확인이 필요합니다", "Priority raised · confirm post-maintenance effect")
               : null;
   const promotionReasonSurfaces = new Set([
     "factory-status",
@@ -2902,7 +3150,8 @@ export function RoleComposedWorkspace(props: RoleComposedWorkspaceProps) {
     (!props.surfaceId || promotionReasonSurfaces.has(props.surfaceId));
 
   return (
-    <div
+    <WorkspaceEnglishContext.Provider value={english}>
+      <div
       className={`rw-composed-grid composition-${props.experienceKind}`}
       data-testid={`role-composed-${props.experienceKind}`}
       data-surface={props.surfaceId ?? "default"}
@@ -2912,10 +3161,11 @@ export function RoleComposedWorkspace(props: RoleComposedWorkspaceProps) {
       {shouldShowPromotionReason && promotionReason ? (
         <div className="rw-composition-reason" role="status">
           <strong>{promotionReason}</strong>
-          <span>현재 운영 상태에 따라 중요한 블록을 위로 배치했습니다.</span>
+          <span>{localized(english, "현재 운영 상태에 따라 중요한 블록을 위로 배치했습니다.", "Important blocks were brought forward based on the current operating state.")}</span>
         </div>
       ) : null}
       {blocks.map((id) => renderBlock(id, props))}
-    </div>
+      </div>
+    </WorkspaceEnglishContext.Provider>
   );
 }

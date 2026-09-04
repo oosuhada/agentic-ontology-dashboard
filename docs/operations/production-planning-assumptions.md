@@ -308,7 +308,7 @@ estimated_lost_units =
   `operation_context` summary와 rich production-planning field를 모두 소비하도록 정렬해야 한다.
 - 정비 overlay/readiness가 화면에 필요하면 `equipment_history[]`를 확장하지 않고
   `maintenance_context` 또는 runtime-status typed section을 additive로 붙인다.
-  이 section의 공식 공개 위치는 Maintenance/Diagnosis/ViewModel 팀 합의 후 schema에 반영한다.
+  이 section의 공식 공개 위치는 Maintenance/Diagnosis/ViewModel 제품 결정 후 schema에 반영한다.
 - `operation-context.schema.json`은 화면용 ViewModel이 아니라 Backend composer가 읽는 운영 context
   fixture 계약이다. Frontend가 이 fixture를 직접 파싱하거나 생산량을 재계산하지 않는다.
 - 시간 정합성은 Backend composer에서 `event.observation.timestamp`와

@@ -183,8 +183,8 @@ failure_consequence_cost
 | 미조치 | 0.82 | 55,261 / 121,336 / 274,151원 | 계산 가능 |
 
 계획 정비와 재점검의 미래 위험확률을 Cost What-if가 추정·보간하지 않는다. 향후
-Diagnosis가 해당 horizon의 공식 Prediction을 제공하거나 팀이 별도의 governed
-sensitivity contract를 승인한 뒤에만 계산 가능 상태로 전환한다.
+Generator Runtime과 Backend promotion 경로가 해당 horizon의 공식 Prediction을 제공하거나
+별도의 governed sensitivity contract가 승인된 뒤에만 계산 가능 상태로 전환한다.
 
 ## 5. 결과 해석 경계
 
@@ -244,14 +244,15 @@ sensitivity contract를 승인한 뒤에만 계산 가능 상태로 전환한다
 | 미조치 | 냉각 전용 현재/미래 기대손실이 없어 `insufficient` |
 
 일반 설비 위험확률이나 공구 교체 확률을 냉각 이상 확률로 재사용하지 않는다. 향후
-Diagnosis가 냉각 이상에 대한 공식 horizon별 Prediction을 제공하거나 팀이 별도의
-governed sensitivity contract를 승인한 뒤에만 나머지 시점을 계산 가능하게 전환한다.
+Generator Runtime과 Backend promotion 경로가 냉각 이상에 대한 공식 horizon별 Prediction을
+제공하거나 별도의 governed sensitivity contract가 승인된 뒤에만 나머지 시점을 계산
+가능하게 전환한다.
 
 Product UI는 위 한계를 숨긴 채 최적 시점 비교처럼 표현하지 않는다. 현재 계산 가능한
 `immediate`만 **즉시 복구 예상 비용**으로 표시하며, 계획·재점검·미조치 option은 공유
 결과 계약과 감사·후속 확장을 위해 Backend snapshot에 보존하되 사용자 비교 카드에는
 노출하지 않는다.
 
-최종 발표에서는 이를 현재 데이터 제약에 따른 의도적인 fail-closed 범위로 설명한다.
+제품 설명에서는 이를 현재 데이터 제약에 따른 의도적인 fail-closed 범위로 명시한다.
 향후 냉각 이상 전용 horizon별 Prediction, 실제 정비시간, 부품·외주 견적과 미조치 손실
 이력이 확보되면 동일 계약을 이용해 즉시·계획·미조치 비용 비교로 확장할 수 있다.

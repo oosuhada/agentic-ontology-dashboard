@@ -148,7 +148,7 @@ export function ContextAssistantDrawer({
               </strong>
             ) : null}
             {context?.retrievalCount !== null && context?.retrievalCount !== undefined ? (
-              <small>검증된 SOP 안내 · {context.retrievalCount}</small>
+              <small>{english ? "Validated SOP guidance" : "검증된 SOP 안내"} · {context.retrievalCount}</small>
             ) : null}
           </div>
         ) : null}

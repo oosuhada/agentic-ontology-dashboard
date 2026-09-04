@@ -302,6 +302,32 @@ class ManufacturingOntologyAdapter:
             )
         )
 
+        for item in context.get("assets") or []:
+            asset_id = str(item.get("asset_id") or "")
+            if not asset_id:
+                continue
+            object_id = equipment_object_id(asset_id)
+            if asset_id not in seen_equipment:
+                seen_equipment.add(asset_id)
+                objects.append(
+                    ObjectRecord(
+                        id=object_id,
+                        object_type="equipment",
+                        workspace_id=self.workspace_id,
+                        properties={**item, "context_kind": context_kind},
+                        source_refs=[str(item.get("source_ref") or f"asset-master:{asset_id}")],
+                    )
+                )
+            links.append(
+                LinkRecord(
+                    id=f"company_owns_equipment:{asset_id}",
+                    link_type="company_owns_equipment",
+                    source_object_id=company_id,
+                    target_object_id=object_id,
+                    workspace_id=self.workspace_id,
+                )
+            )
+
         for item in context.get("organization_units") or []:
             object_id = str(item["id"])
             objects.append(
@@ -334,6 +360,29 @@ class ManufacturingOntologyAdapter:
                     source_refs=[f"company-context:{object_id}"],
                 )
             )
+
+        vendor_ids: set[str] = set()
+        for item in context.get("vendors") or []:
+            object_id = str(item["id"])
+            vendor_ids.add(object_id)
+            objects.append(
+                ObjectRecord(
+                    id=object_id,
+                    object_type="vendor",
+                    workspace_id=self.workspace_id,
+                    properties={**item, "context_kind": context_kind},
+                    source_refs=[str(item.get("source_ref") or f"company-context:{object_id}")],
+                )
+            )
+            links.append(
+                LinkRecord(
+                    id=f"company_has_vendor:{object_id}",
+                    link_type="company_has_vendor",
+                    source_object_id=company_id,
+                    target_object_id=object_id,
+                    workspace_id=self.workspace_id,
+                )
+            )
             links.append(
                 LinkRecord(
                     id=f"company_sells_product:{object_id}",
@@ -364,6 +413,17 @@ class ManufacturingOntologyAdapter:
                     workspace_id=self.workspace_id,
                 )
             )
+            vendor_id = str(item.get("preferred_vendor_id") or "")
+            if vendor_id and vendor_id in vendor_ids:
+                links.append(
+                    LinkRecord(
+                        id=f"vendor_supplies_material:{vendor_id}:{object_id}",
+                        link_type="vendor_supplies_material",
+                        source_object_id=vendor_id,
+                        target_object_id=object_id,
+                        workspace_id=self.workspace_id,
+                    )
+                )
             for asset_id in item.get("related_asset_ids") or []:
                 if str(asset_id) not in seen_equipment:
                     continue
@@ -386,6 +446,48 @@ class ManufacturingOntologyAdapter:
                     workspace_id=self.workspace_id,
                     properties={**item, "context_kind": context_kind},
                     source_refs=[f"company-context:{object_id}"],
+                )
+            )
+
+        for item in context.get("kpi_snapshots") or []:
+            object_id = str(item["id"])
+            objects.append(
+                ObjectRecord(
+                    id=object_id,
+                    object_type="kpi_snapshot",
+                    workspace_id=self.workspace_id,
+                    properties={**item, "context_kind": context_kind},
+                    source_refs=[str(item.get("source_ref") or f"company-context:{object_id}")],
+                )
+            )
+            links.append(
+                LinkRecord(
+                    id=f"company_has_kpi_snapshot:{object_id}",
+                    link_type="company_has_kpi_snapshot",
+                    source_object_id=company_id,
+                    target_object_id=object_id,
+                    workspace_id=self.workspace_id,
+                )
+            )
+
+        for item in context.get("financial_periods") or []:
+            object_id = str(item["id"])
+            objects.append(
+                ObjectRecord(
+                    id=object_id,
+                    object_type="financial_period",
+                    workspace_id=self.workspace_id,
+                    properties={**item, "context_kind": context_kind},
+                    source_refs=[str(item.get("source_ref") or f"company-context:{object_id}")],
+                )
+            )
+            links.append(
+                LinkRecord(
+                    id=f"company_has_financial_period:{object_id}",
+                    link_type="company_has_financial_period",
+                    source_object_id=company_id,
+                    target_object_id=object_id,
+                    workspace_id=self.workspace_id,
                 )
             )
             links.append(
@@ -483,6 +585,27 @@ class ManufacturingOntologyAdapter:
                         workspace_id=self.workspace_id,
                     )
                 )
+
+        for item in context.get("documents") or []:
+            object_id = str(item["id"])
+            objects.append(
+                ObjectRecord(
+                    id=object_id,
+                    object_type="knowledge_document",
+                    workspace_id=self.workspace_id,
+                    properties={**item, "context_kind": context_kind},
+                    source_refs=[str(item.get("source_ref") or f"company-context:{object_id}")],
+                )
+            )
+            links.append(
+                LinkRecord(
+                    id=f"company_has_knowledge_document:{object_id}",
+                    link_type="company_has_knowledge_document",
+                    source_object_id=company_id,
+                    target_object_id=object_id,
+                    workspace_id=self.workspace_id,
+                )
+            )
 
     def _append_activity_objects(
         self,

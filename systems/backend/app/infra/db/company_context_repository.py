@@ -16,12 +16,17 @@ from app.infra.db.postgresql_repositories import is_postgresql
 CONTEXT_RECORD_TYPES = (
     "organization_units",
     "plants",
+    "assets",
     "products",
     "materials",
+    "vendors",
     "business_metrics",
+    "kpi_snapshots",
+    "financial_periods",
     "maintenance_records",
     "meeting_minutes",
     "decisions",
+    "documents",
 )
 
 

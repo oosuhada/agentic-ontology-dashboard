@@ -327,6 +327,13 @@
   grid-template-columns: 27px minmax(0,1fr)!important;
   padding: 5px 7px!important;
 }
+.rw-preview-left nav button:focus {
+  outline: none;
+}
+.rw-preview-left nav button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb,var(--rw-cyan) 72%,transparent);
+}
 .rw-preview-body,
 .rw-preview-shell.assistant-open .rw-preview-body,
 .rw-preview-shell.assistant-closed .rw-preview-body,
@@ -544,8 +551,27 @@
   :root[data-density="comfortable"] .rw-preview-shell.left-collapsed .rw-preview-body {
     grid-template-columns: 56px minmax(0,1fr)!important;
   }
+
+  /* The settings sheet is part of the navigation rail, not a flyout into the
+     work canvas. Keep enough rail width for its two-column controls and make
+     its right edge land inside the rail at every desktop density. */
+  .rw-preview-shell:not(.left-collapsed) {
+    --rw-left-rail-width: 276px;
+  }
+  .rw-preview-shell:not(.left-collapsed) .rw-preview-body {
+    grid-template-columns: var(--rw-left-rail-width) minmax(0,1fr)!important;
+  }
+  .rw-preview-shell:not(.left-collapsed) .rw-preview-main::before,
+  .rw-preview-shell:not(.left-collapsed) .rw-preview-main::after {
+    left:var(--rw-left-rail-width)!important;
+  }
+  .rw-preview-shell:not(.left-collapsed) .rw-preview-settings-panel {
+    left:-6px;
+    width:calc(100% + 12px);
+    max-width:none;
+  }
 }
-:root[data-technical-metadata="hidden"] .rw-technical-metadata { display:none!important; }
+:root:not([data-technical-metadata="shown"]) .rw-technical-metadata { display:none!important; }
 .rw-preview-shell .rw-preview-left .rw-preview-left-heading span,
 .rw-preview-shell .rw-preview-left .rw-preview-nav-group>header,
 .rw-preview-shell .rw-preview-left .rw-preview-scope span,

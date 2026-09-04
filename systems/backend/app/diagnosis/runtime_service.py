@@ -1535,6 +1535,38 @@ class PredictiveMaintenanceRuntimeService:
             source_contract="result_artifact",
         )
 
+    def post_maintenance_runtime_status(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        asset_id: str,
+        maintenance_event_id: str,
+    ) -> dict[str, Any] | None:
+        resolver = getattr(self.repository, "post_maintenance_runtime_status_row", None)
+        if not callable(resolver):
+            return None
+        row = resolver(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            asset_id=asset_id,
+            maintenance_event_id=maintenance_event_id,
+        )
+        if row is None:
+            return None
+        return {
+            "status": str(row.get("status") or ""),
+            "failure_reason": row.get("failure_reason"),
+            "observed_at": row.get("observed_at"),
+            "model_id": row.get("model_id"),
+            "model_version": row.get("model_version"),
+            "lineage": row.get("lineage") or {},
+            "received_at": row.get("received_at"),
+            "updated_at": row.get("updated_at"),
+        }
+
     @staticmethod
     def _dashboard_event_id(result: GovernedProductResult) -> str:
         return result.artifact_id or result.provenance.prediction_id

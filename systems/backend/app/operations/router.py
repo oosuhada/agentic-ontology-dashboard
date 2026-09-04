@@ -362,6 +362,8 @@ def _packet_evidence(
                     "document_type": item.get("document_type"),
                     "related_asset_ids": item.get("related_asset_ids") or [],
                     "context_kind": item.get("context_kind"),
+                    "source_sha256": item.get("source_sha256"),
+                    "source_updated_at": item.get("source_updated_at"),
                 },
             })
     return evidence[:top_k]

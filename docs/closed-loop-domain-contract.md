@@ -1,6 +1,6 @@
 # Closed-loop Domain 계약
 
-이 문서는 `closed-loop-implementation-plan.md`의 PR 1 구현 기준이다. HTTP, DB,
+이 문서는 Closed-loop 객체, 상태 전이와 lineage의 canonical domain contract다. HTTP, DB,
 Product Result/Evidence projection은 이 범위에 포함하지 않는다.
 
 사용자 역할, 역할별 Action, `available_actions`, Event API additive compatibility, 오류와 E2E 소비 규칙은
@@ -178,7 +178,7 @@ Prediction 실행을 transaction 안에서 동기 수행하지 않는다.
 ## Product Result/Evidence 연동 선행 조건
 
 PR 1은 아래 필드를 임의 생성하지 않고 필수 lineage로 정의한다. 실제 materialization을
-연결하는 PR은 호범 담당 계약에서 공식 source가 제공된 뒤에만 시작한다.
+연결 구현은 Backend Result/Evidence 계약에서 공식 source가 제공된 뒤에만 시작한다.
 
 - `source_policy_version`: recommendation 또는 Event Evidence Projection에서 사용할
   공식 policy version source를 먼저 확정한다. `unknown` 기본값을 만들지 않는다.

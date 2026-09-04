@@ -187,13 +187,16 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
             .sort((left, right) => (
               (stepPriority[left.current_step ?? ""] ?? 99)
               - (stepPriority[right.current_step ?? ""] ?? 99)
-            ))
-            .find((item) => payload.events.some((event) => event.eventId === item.event_id));
+            ))[0] ?? null;
           const firstEvent = activeWorkflow
             ? payload.events.find((event) => event.eventId === activeWorkflow.event_id) ?? payload.events[0]
             : payload.events[0];
-          patch.eventId = firstEvent.eventId;
-          patch.assetId = firstEvent.assetId;
+          // An active workflow is not an item in the latest-Event feed. Keep
+          // following its immutable source Event even after newer predictions
+          // push that Event out of the bootstrap summary. Updating the URL
+          // triggers a second, explicit snapshot load for that Event.
+          patch.eventId = activeWorkflow?.event_id ?? firstEvent.eventId;
+          patch.assetId = activeWorkflow?.asset_id ?? firstEvent.assetId;
         }
         if (Object.keys(patch).length) updateSelection(patch, { replace: true });
       })
@@ -203,7 +206,7 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
       })
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
-  }, [projectId, refreshVersion, selection.workspaceId]);
+  }, [projectId, refreshVersion, selection.eventId, selection.workspaceId]);
 
   const selectedEvent = useMemo(() => {
     return model?.events.find((item) => item.eventId === selection.eventId) ?? null;

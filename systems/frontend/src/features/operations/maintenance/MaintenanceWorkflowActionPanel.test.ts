@@ -23,4 +23,11 @@ describe("post-maintenance result polling", () => {
       stop: false,
     });
   });
+
+  it("localizes polling failures for the English reliability workspace", () => {
+    expect(postMaintenancePollingFailure(new Error("connection reset"), 3, "en-US")).toEqual({
+      message: "Post-maintenance result lookup failed 3 consecutive times: connection reset",
+      stop: false,
+    });
+  });
 });

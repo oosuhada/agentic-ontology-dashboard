@@ -3,8 +3,7 @@
 ## 기준
 
 이 문서는 Canonical V3.1 기반 예지보전 제품의 현재 Operations 요구사항 기준선이다.
-필드 근거는 [V3.1 검증표](./v3.1-field-validation.md), 프로토타입 이관 당시의 차이는
-[2026-08 Week 2 Gap 분석](./history/2026-08-week2/prototype-operations-gap-analysis.md)을 provenance로 참고한다.
+필드 근거는 [V3.1 검증표](./v3.1-field-validation.md)를 참고한다.
 
 요구사항은 현재 실행 가능한 기능인 `Current Baseline`과 제품 목표인 `Target`을
 구분한다. 현재 구현돼 있다는 이유만으로 Target을 확정하지 않으며, Target 요구사항은
@@ -13,22 +12,26 @@
 ## 제품 데이터 흐름
 
 ```text
-gen_data의 버전된 합성 원천 데이터
-→ systems/generator의 Feature·Model Artifact
-→ systems/backend/diagnosis의 runtime inference
+gen_data live source
+→ live-ingestor
+→ Backend observation tables
+→ systems/generator의 Runtime Feature·Prediction
+→ Prediction Result Batch
+→ systems/backend의 검증·Threshold Policy·Product Result 승격
 → Product Result Artifact·Evidence
 → API
-→ Dashboard·Report
+→ 역할별 Dashboard·Report
 ```
 
-- Canonical V3.1은 seed와 생성 정책으로 사전에 생성된 합성 데이터셋이다.
-- 현재 Replay는 저장된 관측값과 사전 계산된 예측을 시간순으로 공개한다.
-- Replay 중 센서값을 새로 생성하는 실시간 센서 서버로 표현하지 않는다.
+- Canonical V3.1은 seed와 생성 정책을 검증하는 versioned reference다.
+- 운영 화면의 최신 Result는 Generator Runtime이 실제 관측 이력으로 만든 Prediction Result
+  Batch를 Backend가 검증·승격한 결과다.
+- Frontend는 Product Result를 생성하거나 presentation 전용 tick을 운영 데이터에 주입하지 않는다.
 - Closed-loop Target에서는 Canonical Replay를 수정하지 않고 정비 대상 설비만 별도
   `maintenance_replay_overlay` branch에서 정비 후 Observation을 생성한다.
 - Runtime Overlay는 실제 센서 수집이나 Canonical source로 표현하지 않으며 대상 설비
   branch clock만 Fast-forward한다.
-- Product Result Artifact의 운영 판단값은 Backend diagnosis가 생성한다.
+- Generator는 score를 계산하고 Backend는 threshold와 업무 정책을 적용해 운영 판단값을 생성한다.
 - What-if 결과는 별도 합성 분석 결과이며 Product Result Artifact의
   `failure_probability`, `status_grade`, `top_factors`, `recommended_action`을 덮어쓰지 않는다.
 
@@ -45,19 +48,10 @@ gen_data의 버전된 합성 원천 데이터
 
 UI 표시 문자열은 역할 매핑에서 분리해 후속 사용자 검증 후 변경할 수 있게 한다.
 
-## 개발 역할
+## 시스템 책임
 
-개발 역할의 2026-08 Week 2 provenance는
-[역할 분담 및 산출물 정의](./history/2026-08-week2/team-role-and-deliverables.md)에 보존한다.
-현재 구현 책임은 `docs/architecture.md`와 [Runtime Ownership](./runtime-ownership-integration.md)을
-우선하며, 아래 표는 당시 역할 분담의 후속 작업 추적을 위한 참고다.
-
-| 담당 | 공식 역할 | 당시 핵심 책임 | 주요 산출물 |
-|---|---|---|---|
-| 우수 · 팀원1 | Frontend / Operations 화면 | 공통 Product Result Artifact·Evidence를 Overview·Objects·Operations·Event Executive Brief에 연결 | 화면 구현, 캡처, 데모 흐름, API 연결 상태 |
-| 광우 · 팀원2 | Contract / Requirements / Specifications | 요구사항·기능·스키마·API·리포트·Operations 설계 계약과 Traceability 관리 | 문서 6종, 결정 기록, Current/Target 구분 |
-| 성민 · 팀원3 | Prediction / Data / API | `gen_data` 원천 생성·재현성과 `ontology_dashboard`의 semantic/ML·Prediction·Product Result Artifact/Evidence 연결 | 원천 검증, Model Artifact, Prediction 목록·상세 조회, provenance |
-| 호범 · 팀원4 | Report / LLM | Product Result Artifact와 Evidence를 deterministic 우선의 근거 기반 역할별 Report로 변환 | Event Report 입력·출력, 생성·검증 API, fallback, 예시 결과 |
+구현 책임은 개인이 아니라 `docs/architecture.md`와
+[Runtime Ownership](./runtime-ownership-integration.md)의 시스템 경계로 구분한다.
 
 세부 시스템 책임은 다음과 같이 구분한다.
 
@@ -68,16 +62,12 @@ UI 표시 문자열은 역할 매핑에서 분리해 후속 사용자 검증 후
   - Observation Dataset의 구조와 컬럼 역할을 분석하여 불변 Preprocessing Plan을 발행한다.
   - Ontology Mapping을 조회하지 않고 Feature Schema/Recipe 및 Label Schema를 실행하여 Feature Dataset Bundle을 발행한다.
   - Feature Dataset Bundle을 소비하여 모델을 학습·평가하고 versioned Model Artifact를 발행한다.
-- `systems/backend/app/diagnosis`: Model Artifact 검증·로드, runtime inference,
+- `systems/backend/app/diagnosis`: Prediction Result Batch 검증·승격,
   Product Result Artifact와 Evidence 생성.
 - Frontend: API가 제공한 공통 결과의 사용자 화면 표현.
 - Report: 검증된 구조화 결과의 역할별 문장·블록 생성.
-- `experiments/preventive_intervention`: 광우가 별도 확장으로 진행하는 비배포 What-if
-  분석 Producer. Contract/Docs 역할이나 Report 책임을 대체하지 않는다.
-
-과거 역할표의 `팀원2=Report`, `팀원3=API`, `팀원4=Pipeline` 표기는 사용하지 않는다.
-API는 하나의 담당으로 뭉뚱그리지 않고 Prediction·조회 API는 성민, Report 생성 API는
-호범, API 계약 문서와 Traceability는 광우가 담당한다.
+- `experiments/preventive_intervention`: 비배포 What-if 분석 Producer.
+  Product Result와 Report 책임을 대체하지 않는다.
 
 ## Operations 화면
 
@@ -231,7 +221,7 @@ Canonical 파일에 임의의 금액을 역기입하지 않고 버전된 Economi
 | 1 | `actual` | 자산대장·ERP·MES·CMMS·구매 및 수리 이력 |
 | 2 | `vendor_quote` | 제조사·공급사 견적과 유지보수 계약 |
 | 3 | `public_reference` | 조달가격·공식 임금 통계·공식 요금표 대리값 |
-| 4 | `policy_assumption` | 팀 승인 산정식과 저·기준·고 범위 |
+| 4 | `policy_assumption` | 승인된 산정식과 저·기준·고 범위 |
 | 5 | `synthetic` | 데모용 합성 경제 시나리오 |
 | 6 | `missing` | 계산 불가 또는 입력 필요 |
 

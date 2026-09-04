@@ -1842,7 +1842,11 @@ class MaintenanceRepository:
                     RecommendationStatus.SUPERSEDED.value,
                 ),
             ).fetchall()
-        return tuple(self._work_order_from_row(row) for row in rows)
+        return tuple(
+            self._work_order_from_row(row)
+            for row in rows
+            if not self._is_retired_presentation_work_order_row(row)
+        )
 
     def get_maintenance_action(
         self,
@@ -2233,6 +2237,11 @@ class MaintenanceRepository:
             """,
             (scope.organization_id, scope.project_id, scope.workspace_id, recommendation_id),
         ).fetchone()
+
+    @classmethod
+    def _is_retired_presentation_work_order_row(cls, row: Mapping[str, Any]) -> bool:
+        authorization = cls._decoded(row["authorization_json"])
+        return isinstance(authorization, dict) and authorization.get("scope") == "presentation-demo"
 
     @classmethod
     def _work_order_from_row(cls, row: Mapping[str, Any]) -> WorkOrder:

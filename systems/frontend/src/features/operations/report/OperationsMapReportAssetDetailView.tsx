@@ -115,19 +115,17 @@ function CanonicalSeriesChart({
             if (typeof point.value !== "number" || typeof point.y !== "number") return null;
             const timeLabel = pointLabel(point, "관측 시각 미제공");
             const valueLabel = formatValue(point.value, unit ?? "");
-            const tooltipWidth = 192;
+            const tooltipWidth = 220;
             const tooltipX = Math.min(frame.right - tooltipWidth - 4, Math.max(frame.left + 4, point.x - tooltipWidth / 2));
-            const tooltipY = Math.min(frame.bottom - 36, Math.max(frame.top + 4, point.y - 42));
+            const tooltipY = Math.min(frame.bottom - 50, Math.max(frame.top + 4, point.y - 56));
             return (
               <g key={`${point.observedAt}-${index}`} className="asset-chart-hover-point">
                 <circle className={index === points.length - 1 ? "asset-current-marker" : "asset-crossing-marker"} cx={point.x} cy={point.y} r={index === points.length - 1 ? 5 : 3} style={{ fill: color, opacity: point.qualityStatus === "bad" ? 0.42 : 1 }} />
-                <circle className="asset-chart-hit-target" cx={point.x} cy={point.y} r="10" tabIndex={0} aria-label={`${timeLabel} ${valueLabel}`}>
-                  <title>{`${timeLabel} · ${valueLabel} · 품질 ${point.qualityStatus ?? "unknown"}`}</title>
-                </circle>
+                <circle className="asset-chart-hit-target" cx={point.x} cy={point.y} r="10" tabIndex={0} aria-label={`${timeLabel} ${valueLabel}`} />
                 <g className="asset-chart-tooltip" transform={`translate(${tooltipX} ${tooltipY})`}>
-                  <rect width={tooltipWidth} height="33" rx="6" />
-                  <text x="9" y="13">{timeLabel}</text>
-                  <text className="is-value" x="9" y="26">{valueLabel} · {point.qualityStatus ?? "unknown"}</text>
+                  <rect width={tooltipWidth} height="46" rx="7" />
+                  <text x="12" y="17">{timeLabel}</text>
+                  <text className="is-value" x="12" y="37">{valueLabel} · {point.qualityStatus ?? "unknown"}</text>
                 </g>
               </g>
             );

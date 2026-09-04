@@ -9,10 +9,10 @@ JSON key 목표안은 [스키마 정의서](./schema-definition.md)를 따른다
 
 책임 분리:
 
-- 팀원3: `/overview`, `/objects`, `/operations` 등 조회·집계 API와 ReportInput에
+- Query API: `/overview`, `/objects`, `/operations` 등 조회·집계 API와 ReportInput에
   필요한 원천·집계 필드 제공
-- 팀원4: 현행 Event Report 및 V2 `/reports/executive` 리포트 API 계약·구현
-- 팀원2: API·스키마·리포트 계약 문서화와 추적성 관리
+- Report API: 현행 Event Report 및 V2 `/reports/executive` 리포트 API 계약·구현
+- Contract layer: API·스키마·리포트 계약과 추적성 관리
 
 > 이 문서는 Backend 제품 API 계약이다. Generator daemon의 내부 학습 API는 Generator 내부
 > 운영 계약을 따른다. Generator 내부 API는 외부 제품
@@ -160,7 +160,7 @@ site/cell/유형/기간 Query는 Target이며 이번 주 필수 변경이 아니
 `Operations*` 타입명은 기존 Operations 화면 구현명으로만 참고하고, Product API 계약명은
 `AssetDetail`, `AssetDetailViewModel`처럼 도메인 객체명으로 표기한다.
 
-설비 상세 화면, 피쳐별 센서 그래프, 위험도 그래프, evidence gap 표시를 위한 composition endpoint다. Backend adapter가 Product Result Artifact/Evidence, Backend Observation read contract와 Feature Executor result, Backend Diagnosis Runtime Prediction History Query Contract, Activity/Maintenance source를 병합한다.
+설비 상세 화면, 피쳐별 센서 그래프, 위험도 그래프, evidence gap 표시를 위한 composition endpoint다. Backend adapter가 Product Result Artifact/Evidence, Observation read contract, Generator Runtime Feature/Prediction 결과, Activity/Maintenance source를 병합한다.
 
 필수 Query: 없음. 선택 Query: `project_id`, `dataset_version_id`.
 
@@ -248,14 +248,14 @@ site/cell/유형/기간 Query는 Target이며 이번 주 필수 변경이 아니
 }
 ```
 
-`features[].history.points`는 Backend canonical/overlay Observation read contract와 Backend
-Feature Executor result에서 파생한다. 같은 history가 공유하는 provenance는
+`features[].history.points`는 Backend canonical/overlay Observation read contract와 Generator
+Runtime Feature result에서 파생한다. 같은 history가 공유하는 provenance는
 `features[].history.source_ref` envelope에 한 번만 두며, point에는 시간·값·품질만 둔다. `systems/generator`는 Feature/Label 의미, History Requirement,
-transform contract, Model Artifact publish를 소유하지만, Product API가 소비하는 제품 runtime
-series를 publish하지 않는다. Product API 계약은 `gen_data` 내부 파일명이나 canonical CSV를 직접
-의존하지 않는다.
-`risk_series`는 Backend Diagnosis Runtime Prediction History Query Contract에서 파생해야 한다.
-현재 canonical source는 Backend Diagnosis가 생성한 `pm_result_artifacts`의 asset별 append-only
+transform contract, Model Artifact publish와 Prediction Result Batch를 소유한다. Product API는
+Generator 내부 staging 형식이 아니라 Backend가 승격한 Product Result를 소비하며 `gen_data` 내부
+파일명이나 canonical CSV를 직접 의존하지 않는다.
+`risk_series`는 Backend Product Result History Query Contract에서 파생해야 한다.
+현재 canonical source는 Backend가 승격한 `pm_result_artifacts`의 asset별 append-only
 Product Result history다. 상세 payload가 실제로 필요한 경우에만 `prediction_result_id`로
 `prediction_results`를 조회한다. public Product API는 내부 테이블 shape를 직접 노출하지 않는다.
 `pm_prediction_timeline`, `gen_data`의 `model_outputs/prediction_timeline.jsonl` 또는 legacy
@@ -295,7 +295,7 @@ quality/status 정보를 보존한다. 화면 표시용 `number[]`만 반환하�
 
 `POST /reports/executive`는 [리포트 정의서](./report-specification.md)의 V2
 `ReportInput`/`ReportOutput` 후보이며 현행 API를 대체하지 않는다. 이번 단계에서는
-팀원4가 담당하며, 이번 단계에서는 endpoint를 수정·구현하지 않고 mock 입력과
+Report API 경계가 담당하며, 이번 단계에서는 endpoint를 수정·구현하지 않고 mock 입력과
 deterministic 출력 계약부터 검증한다.
 
 ## 5. 오류 envelope
@@ -349,17 +349,17 @@ deterministic 출력 계약부터 검증한다.
 - 정비 후 Runtime Overlay의 Target 상태는 `equipment_under_maintenance`, `warming_up`,
   `history_insufficient`, `ready`, `predicted`를 사용한다. 기존 Result의 `status_grade`를
   이 준비 상태로 덮어쓰지 않는다.
-- Runtime Overlay readiness는 Backend Diagnosis가 현재 Model Artifact의
+- Runtime Overlay readiness는 Generator Runtime이 현재 Model Artifact의
   `history_requirement.json`으로 결정한다. `gen_data`는 Overlay Observation을 지속
-  생성하고 availability를 알릴 뿐 readiness를 판정하지 않는다. 진행률 필드의 구체적인
-  shape는 canonical read location과 함께 후속 Backend integration에서 결정한다.
+  생성하고 availability를 알릴 뿐 readiness를 판정하지 않는다. Backend는 전달된 Batch의
+  준비 상태와 lineage를 검증해 Product 상태로 반영한다.
 - Runtime Overlay의 이벤트·Observation lineage는
   [`../closed-loop-runtime-overlay-contract.md`](../closed-loop-runtime-overlay-contract.md)를 따른다.
 - Observation `source_kind`는 Target 구현에서 `canonical_observation` 또는
   `maintenance_replay_overlay`를 반환한다. Overlay 응답은 `simulation_session_id`,
   `overlay_branch_id`, `maintenance_event_id`, `history_segment_id`를 함께 보존한다.
 - 최신 결과 pagination은 `offset`, `limit`, `total`을 유지한다.
-- `status_grade`는 runtime inference가 생성하는 Result Artifact 계약에 포함한다.
+- `status_grade`는 Generator score에 Backend threshold 정책을 적용해 생성하는 Result Artifact 계약에 포함한다.
 - stale은 timezone을 포함한 최신 `observed_at` 기준 프론트 24시간 Operations 정책을 유지한다.
 - Identity/RBAC는 `process_manager`, `process_engineer`, `maintenance_technician` role code를 사용하고,
   기존 `manager`/`engineer`는 Report/UI compatibility view alias로 유지한다.

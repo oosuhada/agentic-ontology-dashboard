@@ -9,7 +9,9 @@
 
 1. **Observation/Feature Series 책임 정립 (생산자 경계 확립 작업)**:
    - Generator 시스템을 센서/프로토콜 로그로부터 정제된 Observation 및 Feature Series를 생성하는 공식 생산자(Producer)로 정의합니다.
-   - 제품 런타임(Backend Diagnosis)은 `gen_data`의 저수준 프로토콜 로그 파일을 직접 파싱하지 않고, Generator가 가공·발행한 정제된 Observation/Feature 산출물 및 Model Artifact를 소비하도록 단방향 데이터 흐름을 확립합니다.
+   - Backend는 `gen_data`의 저수준 프로토콜 로그 파일이나 Model Artifact를 직접 소비하지 않는다.
+     Generator Runtime이 정제된 Observation으로 Feature와 Prediction Result Batch를 만들고,
+     Backend가 이를 검증·판정·승격하는 단방향 데이터 흐름을 확립합니다.
 
 2. **SensorRecord v2 프로토콜과 Reference Fixture (Target dependency)**:
    - `gen_data`의 SensorRecord v2 프로토콜 투영(`protocol/provenance.jsonl`) 및 Protocol-to-Observation Golden Vector는 향후 도입될 **Target dependency(미병합)**입니다.

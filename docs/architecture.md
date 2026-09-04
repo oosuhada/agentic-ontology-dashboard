@@ -1,15 +1,15 @@
 # 프로젝트 아키텍처 — systems/ 도메인 구조와 Artifact 계약
 
-> 이 문서는 PR #8에서 확정한 저장소 책임 경계를 상위 계약으로 사용한다. 실제 코드 구조와 배포 경계가 이 문서와 모순되지 않도록 함께 갱신한다.
+> 이 문서는 저장소의 현재 시스템 책임 경계를 정의한다. 실제 코드 구조와 배포 경계가 이 문서와 모순되지 않도록 함께 갱신한다.
 
 ---
 
 ## 1. 저장소 수준 책임 경계
 
-`Biz-CollabCraft/gen_data`와 `Biz-CollabCraft/ontology_dashboard`는 다음 단방향 책임 흐름을 따른다.
+`gen_data source runtime`와 `oosuhada/agentic-ontology-dashboard`는 다음 단방향 책임 흐름을 따른다.
 
 ```text
-Biz-CollabCraft/gen_data
+gen_data source runtime
 Source Data Producer
 raw / simulation / synthetic sensor data
 SensorRecord v2 protocol provenance files
@@ -173,13 +173,14 @@ Feature 실행은 ontology node 또는 Ontology Mapping을 조회하지 않는�
 
 ## 4. Versioned Model Artifact contract
 
-Generator와 Backend 사이의 계약은 `systems/generator/model/model_store`라는 **로컬 물리 경로**가 아니라 versioned Model Artifact의 **형식과 식별자 및 `MODEL_ARTIFACT_URI` 주입 방식**이다.
+Model Artifact는 Generator 학습과 Runtime Prediction 사이의 versioned 계약이다. Generator와
+Backend 사이의 운영 계약은 `Prediction Result Batch`다.
 
 ### 4.1 Model Artifact 원칙
 
 - Model Artifact는 `systems/generator`가 발행하는 불변(immutable) 산출물 패키지다.
-- `MODEL_ARTIFACT_URI` 또는 injected provider를 통해서만 Backend에 전달된다.
-  Backend는 sibling 경로(`../generator/...`)나 물리 디렉터리를 정적으로 탐색하지 않는다.
+- `MODEL_ARTIFACT_URI` 또는 injected provider를 통해 Generator Runtime에 전달된다.
+  Backend는 sibling 경로(`../generator/...`)나 Model Artifact 물리 디렉터리를 탐색하지 않는다.
 - 각 `model_id` + `model_version` 조합은 재사용되지 않는다 (immutable publish).
 - publish는 atomic하게 수행되며, 실패 시 부분 결과를 남기지 않고 run registry도
   갱신하지 않는다.
@@ -207,17 +208,19 @@ model_store/
         └── metrics.json
 ```
 
-Backend는 sibling directory 구조를 알아서는 안 된다. 실제 위치는 `MODEL_ARTIFACT_URI` 또는 동등한 환경설정/URI로 외부 주입한다.
+Generator Runtime 외부의 consumer는 sibling directory 구조를 알아서는 안 된다. 실제 위치는
+`MODEL_ARTIFACT_URI` 또는 동등한 환경설정/URI로 Generator에 주입한다.
 
 예시:
 
 ```text
 MODEL_ARTIFACT_URI=/mnt/model-artifacts
-MODEL_ARTIFACT_URI=s3://team-artifacts/pdm-models
+MODEL_ARTIFACT_URI=s3://product-artifacts/pdm-models
 MODEL_ARTIFACT_URI=registry://pdm/production
 ```
 
-스캐폴딩 단계에서는 모든 URI scheme의 adapter를 구현하지 않아도 되지만, Backend 코드·문서·Docker 기본값이 `../generator/...` 같은 sibling 경로를 전제로 해서는 안 된다.
+스캐폴딩 단계에서는 모든 URI scheme의 adapter를 구현하지 않아도 되지만, Backend 코드·문서·Docker
+기본값이 Model Artifact를 직접 로드하는 sibling 경로를 전제로 해서는 안 된다.
 
 ### 4.3 Publish/consume 규칙
 
@@ -233,11 +236,9 @@ MODEL_ARTIFACT_URI=registry://pdm/production
 
 Backend는 모델을 **학습하거나 동일 Model Artifact를 다시 로드하여 중복 추론을 수행하지 않는다**. Generator가 입력 관측 데이터로부터 Runtime Feature를 생성하고 모델별 raw score를 산출하여 `Prediction Result Batch`로 전달하면, Backend는 이를 수신하여 Threshold Policy를 적용하고, 해당 설비의 센서 근거 및 metadata를 조회하여 제품이 실제 소비하는 **Product Result Artifact, Evidence와 Report를 최종 생성**한다.
 
-Generator는 Report나 Evidence를 생성하지 않으며, Backend의 수신 및 판정 파이프라인 연동은 후속 구현으로 진행된다.
-
-> **Current vs Target 책임 구분**:
-> - **Current (현재 PR 구현 범위)**: Generator가 활성 Model Artifact별 점수(`score`)를 계산하여 설비별 K-V Dictionary(`model_results: dict[str, ModelPredictionResult]`) 구조의 `Prediction Result Batch`를 생성하고 Outbox에 저장한 뒤 `GENERATOR_PREDICTION_RESULT_URL`로 멱등 송신한다.
-> - **Target (후속 Backend 구현 범위)**: Backend가 `POST /internal/prediction-results` 엔드포인트를 제공하여 배치를 수신·저장하고, Threshold Policy 적용, 최종 이상 판정, Diagnosis, Product Result Artifact, Evidence, Report 생성, Dashboard 알림 및 재학습/후속 조치를 수행한다.
+Generator는 Report나 Evidence를 생성하지 않는다. Backend는 `POST /internal/prediction-results`에서
+Batch를 수신·저장하고 Threshold Policy, 최종 이상 판정, Diagnosis, Product Result Artifact,
+Evidence, Report, Dashboard 알림과 후속 조치를 수행한다.
 
 ### 5.1 Backend Canonical Root 및 목표 디렉터리 구조
 
@@ -471,9 +472,9 @@ python systems/verify_architecture.py
 
 ---
 
-## 10. 후속 #9 integration 기준
+## 10. 통합 기준
 
-PR #9의 대규모 실행 코드는 이 PR에서 이동하지 않는다. 이후 재배치 시 다음 책임으로 귀속한다.
+코드 재배치와 신규 기능은 다음 책임 경계를 유지한다.
 
 - semantic extraction / mapping / topology / feature / training / runtime prediction / aggregation / anomaly signal → `systems/generator`
 - anomaly signal consumption / Product Result Artifact / Evidence / Report → `systems/backend`

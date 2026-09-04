@@ -130,7 +130,7 @@ part of the selection contract.
    only if the product needs instance-level attribution beyond the current local
    proxy factor contract.
 
-These items extend the existing ML lifecycle plan in
-`docs/final_team_role_and_step_plan.md`: retraining, quality regression,
-runtime feature parity, model limitation provenance, golden-vector tests, and
-artifact reproducibility remain active responsibilities after first release.
+These items extend the product direction in `docs/product-direction.md` and the
+runtime ownership contract. Retraining, quality regression, runtime feature parity,
+model limitation provenance, golden-vector tests, and artifact reproducibility
+remain active product responsibilities after first release.

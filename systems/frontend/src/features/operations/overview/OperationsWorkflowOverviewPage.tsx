@@ -7,6 +7,7 @@ import {
   ClipboardList,
   DatabaseZap,
   Gauge,
+  Info,
   LineChart,
   Printer,
   RefreshCw,
@@ -14,7 +15,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   createOperationsAgentReviewSummary,
@@ -190,6 +191,22 @@ const MISSING_PLANNING_BASIS = "생산 영향 계산 정보 없음";
 const FACTORY_SITE_IDS = ["S01", "S02", "S03", "S04"];
 const FACTORY_CELL_IDS = ["L01", "L02", "L03", "L04", "L05"];
 const FACTORY_LAYOUT_NOTICE = "공장 배치 기준 · 연결된 설비의 실시간 상태와 위험도를 표시합니다";
+const LIVE_FEATURE_NOTICE = "센서명은 현장 용어로 표시하며, 관측 이력과 최신값 및 단기 추세 범위를 한 그래프에서 확인할 수 있습니다.";
+
+function DelayedHelp({ label, detail }: { label: string; detail: string }) {
+  const tooltipId = useId();
+  return (
+    <button
+      type="button"
+      className="operations-delayed-help"
+      aria-label={label}
+      aria-describedby={tooltipId}
+    >
+      <Info size={14} aria-hidden="true" />
+      <span id={tooltipId} role="tooltip">{detail}</span>
+    </button>
+  );
+}
 const FACTORY_SITE_LABELS: Record<string, string> = {
   S01: "1구역",
   S02: "2구역",
@@ -1586,10 +1603,17 @@ function FactoryMonitoringMapPanel({
   onPreviewAssetSlot: (asset: OperationsAsset, slot: FactoryCellSlot, cell: FactoryCellLayout) => void;
 }) {
   return (
-    <OperationsPanel title="공장 설비 상태맵" eyebrow="실시간 라인/셀 현황" className="operations-process-panel operations-factory-map-panel">
-      <div className="operations-plan-impact-note">
-        {FACTORY_LAYOUT_NOTICE} · {planningBasis.fallback ? "생산 영향 데이터 미연결" : "생산계획 연계"} · {planningBasis.value}
-      </div>
+    <OperationsPanel
+      title="공장 설비 상태맵"
+      eyebrow="실시간 라인/셀 현황"
+      className="operations-process-panel operations-factory-map-panel"
+      actions={(
+        <DelayedHelp
+          label="공장 설비 상태맵 안내"
+          detail={`${FACTORY_LAYOUT_NOTICE} · ${planningBasis.fallback ? "생산 영향 데이터 미연결" : "생산계획 연계"} · ${planningBasis.value}`}
+        />
+      )}
+    >
       {factoryCells.length ? (
         <div className={`operations-factory-map focus-${focusMode}`}>
           <div className="operations-factory-map-toolbar">
@@ -1655,7 +1679,7 @@ function FactoryMonitoringMapPanel({
                               >
                                 <span>{displayAssetShortName(asset)}</span>
                                 {isLiveDemoFocus ? <small className="operations-live-node-risk">{formatProbability(liveRisk)}</small> : null}
-                                {tone !== "normal" ? <b className="operations-asset-alert-badge" aria-label={`${operationsMonitorStatusLabel(liveStatus ?? asset.status)} 알림`}>{isLiveDemoFocus ? "LIVE" : tone === "critical" ? "!" : "1"}</b> : null}
+                                {tone !== "normal" ? <b className="operations-asset-alert-badge" aria-label={`${operationsMonitorStatusLabel(liveStatus ?? asset.status)} 알림`}>{tone === "critical" ? "!" : "1"}</b> : null}
                               </button>
                             ) : (
                               <div key={slot.id} className={`operations-factory-asset-node ${tone} ${slot.kind}`} title={title} aria-label={title}>
@@ -2262,7 +2286,25 @@ function MapReportFeatureSeries({
   const range = max - min || Number.EPSILON;
   const chartWidth = liveDemo ? 1040 : 900;
   const chartHeight = 260;
-  const frame = { left: 48, right: liveDemo ? 934 : 858, top: liveDemo ? 34 : 22, bottom: 204 };
+  const liveHistoryRightByWindow: Record<OperationsSensorWindowId, number> = {
+    "1h": 780,
+    "3h": 820,
+    "6h": 850,
+    "12h": 880,
+    "24h": 910,
+    "7d": 930,
+    "30d": 942,
+  };
+  const forecastHorizonByWindow: Record<OperationsSensorWindowId, string> = {
+    "1h": "+10분",
+    "3h": "+30분",
+    "6h": "+1시간",
+    "12h": "+1시간",
+    "24h": "+2시간",
+    "7d": "+12시간",
+    "30d": "+1일",
+  };
+  const frame = { left: 48, right: liveDemo ? liveHistoryRightByWindow[windowId] : 858, top: liveDemo ? 34 : 22, bottom: 204 };
   const forecastRight = liveDemo ? 1002 : frame.right;
   const width = frame.right - frame.left;
   const totalSlots = visiblePoints.length + (currentObservedAt ? 1 : 0);
@@ -2313,8 +2355,14 @@ function MapReportFeatureSeries({
   const currentPoint = currentNumericValue === null || !currentObservedAt ? null : { x: xAt(visiblePoints.length), y: yAt(currentNumericValue), value: currentNumericValue };
   const livePoint = currentPoint ?? latestHistory ?? null;
   const liveValue = livePoint && typeof livePoint.value === "number" ? livePoint.value : currentNumericValue;
-  const liveValueLabel = liveValue === null ? "값 없음" : `${liveValue.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}${unit ? ` ${unit}` : ""}`;
-  const livePillWidth = Math.min(132, Math.max(56, liveValueLabel.length * 7.2 + 20));
+  const previousLiveValue = latestHistory && typeof latestHistory.value === "number" ? latestHistory.value : null;
+  const liveDelta = liveValue !== null && previousLiveValue !== null ? liveValue - previousLiveValue : 0;
+  const liveDirection = Math.abs(liveDelta) < 0.001 ? "steady" : liveDelta > 0 ? "rising" : "falling";
+  const liveDeltaLabel = liveDirection === "steady"
+    ? ""
+    : ` ${liveDirection === "rising" ? "▲" : "▼"}${Math.abs(liveDelta).toLocaleString("ko-KR", { maximumFractionDigits: 2 })}`;
+  const liveValueLabel = liveValue === null ? "값 없음" : `${liveValue.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}${unit ? ` ${unit}` : ""}${liveDeltaLabel}`;
+  const livePillWidth = Math.min(156, Math.max(62, liveValueLabel.length * 7.6 + 22));
   const livePillX = livePoint
     ? clamp(livePoint.x - livePillWidth / 2, frame.left + 4, forecastRight - livePillWidth - 4)
     : forecastRight - livePillWidth - 4;
@@ -2362,7 +2410,7 @@ function MapReportFeatureSeries({
     <section className={[primary ? "asset-series-block is-primary" : "asset-series-block", liveDemo ? "is-live-chart" : ""].filter(Boolean).join(" ")}>
       <header className="asset-series-heading">
         <div><RotateCcw size={17} /><strong>{title}</strong></div>
-        <span className="asset-baseline-key"><i style={{ background: color }} />{liveDemo ? "10분 요약 라인 · 터치/호버 정확값 · 최신 관측" : seriesRangeLabel(visiblePoints, windowId, window)}</span>
+        <span className="asset-baseline-key"><i style={{ background: color }} />{liveDemo ? "관측 이력 · 최신 관측" : seriesRangeLabel(visiblePoints, windowId, window)}</span>
       </header>
       <svg className="asset-series-chart" viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label={`${title} 관측 흐름`}>
         <rect className="asset-chart-frame" x={frame.left} y={frame.top} width={width} height={height} />
@@ -2405,16 +2453,19 @@ function MapReportFeatureSeries({
         ) : null}
         {currentPoint ? (
           <g>
-            {latestHistory && typeof latestHistory.y === "number" ? <line className="asset-current-extension-line" x1={latestHistory.x} x2={currentPoint.x} y1={latestHistory.y} y2={currentPoint.y} style={{ stroke: color }} /> : null}
+            {latestHistory && typeof latestHistory.y === "number" ? <line key={currentObservedAt ?? "current"} className="asset-current-extension-line asset-live-tick-segment" x1={latestHistory.x} x2={currentPoint.x} y1={latestHistory.y} y2={currentPoint.y} style={{ stroke: color }} /> : null}
             <path className="asset-current-value-marker" d={`M ${currentPoint.x} ${currentPoint.y - 6} L ${currentPoint.x + 6} ${currentPoint.y} L ${currentPoint.x} ${currentPoint.y + 6} L ${currentPoint.x - 6} ${currentPoint.y} Z`} style={{ fill: color }} />
           </g>
         ) : null}
         {liveDemo && livePoint && typeof livePoint.y === "number" ? (
-          <g className="asset-live-layer">
+          <g className={`asset-live-layer is-${liveDirection}`}>
             <line className="asset-live-cursor" x1={livePoint.x} x2={livePoint.x} y1={frame.top} y2={frame.bottom} />
-            <circle className="asset-live-ring" cx={livePoint.x} cy={livePoint.y} r="9" style={{ stroke: color }} />
-            <circle className="asset-live-dot" cx={livePoint.x} cy={livePoint.y} r="4.8" style={{ fill: color }} />
-            <g className="asset-live-value-pill is-top" transform={`translate(${livePillX} ${livePillY})`}>
+            <line className="asset-live-level" x1={frame.left} x2={livePoint.x} y1={livePoint.y} y2={livePoint.y} style={{ stroke: color }} />
+            <g className="asset-live-marker-motion" style={{ transform: `translate(${livePoint.x}px, ${livePoint.y}px)` }}>
+              <circle className="asset-live-ring" cx="0" cy="0" r="9" style={{ stroke: color }} />
+              <circle className="asset-live-dot" cx="0" cy="0" r="4.8" style={{ fill: color }} />
+            </g>
+            <g className="asset-live-value-pill is-top" style={{ transform: `translate(${livePillX}px, ${livePillY}px)` }}>
               <rect width={livePillWidth} height="26" rx="7" />
               <text x={livePillWidth / 2} y="17" textAnchor="middle">{liveValueLabel}</text>
             </g>
@@ -2437,22 +2488,15 @@ function MapReportFeatureSeries({
           const lowLabel = point.bucketMin !== undefined && point.bucketMinObservedAt
             ? `저 ${point.bucketMin.toLocaleString("ko-KR", { maximumFractionDigits: 3 })}${unit ? ` ${unit}` : ""} · ${formatSeriesTooltipTime(point.bucketMinObservedAt)}`
             : "";
-          const tooltipWidth = point.bucketCount ? 254 : 184;
-          const tooltipHeight = point.bucketCount ? 52 : 33;
+          const tooltipWidth = point.bucketCount ? 292 : 220;
+          const tooltipHeight = point.bucketCount ? 70 : 46;
           const tooltipX = clamp(point.x - tooltipWidth / 2, frame.left + 4, frame.right - tooltipWidth - 4);
           const tooltipY = clamp(point.y - tooltipHeight - 9, frame.top + 4, frame.bottom - tooltipHeight - 4);
-          const readoutWidth = 126;
-          const readoutX = clamp(point.x - readoutWidth / 2, frame.left + 4, frame.right - readoutWidth - 4);
           const hitBandX = clamp(point.x - hitBandWidth / 2, frame.left, frame.right - hitBandWidth);
           return (
             <g key={`${point.observedAt}-hit-${index}`} className="asset-chart-hover-point">
               <rect className="asset-chart-hit-band" x={hitBandX} y={frame.top} width={hitBandWidth} height={height} />
               <line className="asset-hover-crosshair" x1={point.x} x2={point.x} y1={frame.top} y2={frame.bottom} />
-              <g className="asset-chart-floating-readout" transform={`translate(${readoutX} ${frame.top + 3})`}>
-                <rect width={readoutWidth} height="36" rx="7" />
-                <text x={readoutWidth / 2} y="13" textAnchor="middle">{timeLabel}</text>
-                <text className="is-value" x={readoutWidth / 2} y="28" textAnchor="middle">{valueLabel}</text>
-              </g>
               <circle
                 className="asset-chart-hit-target"
                 cx={point.x}
@@ -2460,37 +2504,31 @@ function MapReportFeatureSeries({
                 r="10"
                 tabIndex={0}
                 aria-label={`${timeLabel} ${valueLabel}`}
-              >
-                <title>{point.bucketCount
-                  ? `${timeLabel} · 평균 ${valueLabel} · ${highLabel} · ${lowLabel} · ${point.bucketCount}개 관측`
-                  : `${timeLabel} · ${valueLabel} · 품질 ${point.qualityStatus ?? "unknown"}`}</title>
-              </circle>
+              />
               <g className="asset-chart-tooltip" transform={`translate(${tooltipX} ${tooltipY})`}>
                 <rect width={tooltipWidth} height={tooltipHeight} rx="6" />
-                <text x="9" y="13">{point.bucketCount ? `10분 요약 ${timeLabel}` : timeLabel}</text>
-                <text className="is-value" x="9" y="26">{point.bucketCount ? `평균 ${valueLabel}` : `${valueLabel} · ${point.qualityStatus ?? "unknown"}`}</text>
-                {point.bucketCount ? <text x="9" y="38">{highLabel}</text> : null}
-                {point.bucketCount ? <text x="9" y="49">{lowLabel}</text> : null}
+                <text x="12" y="17">{point.bucketCount ? `10분 요약 · ${timeLabel}` : timeLabel}</text>
+                <text className="is-value" x="12" y="36">{point.bucketCount ? `평균 ${valueLabel}` : `${valueLabel} · ${point.qualityStatus ?? "unknown"}`}</text>
+                {point.bucketCount ? <text x="12" y="52">{highLabel}</text> : null}
+                {point.bucketCount ? <text x="12" y="66">{lowLabel}</text> : null}
               </g>
             </g>
           );
         })}
         {currentPoint && currentObservedAt ? (
           <g className="asset-chart-hover-point">
-            <circle className="asset-chart-hit-target" cx={currentPoint.x} cy={currentPoint.y} r="11" tabIndex={0} aria-label={`현재 ${formatSeriesTooltipTime(currentObservedAt)} ${currentPoint.value.toLocaleString("ko-KR", { maximumFractionDigits: 3 })}${unit ? ` ${unit}` : ""}`}>
-              <title>{`현재 · ${formatSeriesTooltipTime(currentObservedAt)} · ${currentPoint.value.toLocaleString("ko-KR", { maximumFractionDigits: 3 })}${unit ? ` ${unit}` : ""}`}</title>
-            </circle>
-            <g className="asset-chart-tooltip" transform={`translate(${frame.right - 188} ${clamp(currentPoint.y - 42, frame.top + 4, frame.bottom - 36)})`}>
-              <rect width="184" height="33" rx="6" />
-              <text x="9" y="13">현재 · {formatSeriesTooltipTime(currentObservedAt)}</text>
-              <text className="is-value" x="9" y="26">{currentPoint.value.toLocaleString("ko-KR", { maximumFractionDigits: 3 })}{unit ? ` ${unit}` : ""}</text>
+            <circle className="asset-chart-hit-target" cx={currentPoint.x} cy={currentPoint.y} r="11" tabIndex={0} aria-label={`현재 ${formatSeriesTooltipTime(currentObservedAt)} ${currentPoint.value.toLocaleString("ko-KR", { maximumFractionDigits: 3 })}${unit ? ` ${unit}` : ""}`} />
+            <g className="asset-chart-tooltip" transform={`translate(${frame.right - 224} ${clamp(currentPoint.y - 56, frame.top + 4, frame.bottom - 50)})`}>
+              <rect width="220" height="46" rx="7" />
+              <text x="12" y="17">현재 · {formatSeriesTooltipTime(currentObservedAt)}</text>
+              <text className="is-value" x="12" y="37">{currentPoint.value.toLocaleString("ko-KR", { maximumFractionDigits: 3 })}{unit ? ` ${unit}` : ""}</text>
             </g>
           </g>
         ) : null}
         <text className="asset-chart-axis" x={frame.left} y={xAxisY} textAnchor="start">{formatSeriesTime(visiblePoints[0].observedAt)}</text>
         {middlePoint && visiblePoints.length > 2 ? <text className="asset-chart-axis" x={xAt(middleIndex)} y={xAxisY} textAnchor="middle">{formatSeriesTime(middlePoint.observedAt)}</text> : null}
         {currentPoint ? <text className="asset-chart-axis asset-current-axis" x={currentPoint.x} y={xAxisY} textAnchor="middle">{liveDemo ? "실시간" : `현재 ${currentTimeLabel}`}</text> : endHistoryPoint ? <text className="asset-chart-axis" x={frame.right} y={xAxisY} textAnchor="end">{formatSeriesTime(endHistoryPoint.observedAt)}</text> : null}
-        {liveDemo ? <text className="asset-chart-axis" x={forecastRight} y={xAxisY} textAnchor="end">+30s</text> : null}
+        {liveDemo ? <text className="asset-chart-axis" x={forecastRight} y={xAxisY} textAnchor="end">{forecastHorizonByWindow[windowId]}</text> : null}
         <text className="asset-chart-axis-title" x={chartWidth / 2} y={xAxisTitleY} textAnchor="middle">시간</text>
       </svg>
     </section>
@@ -2544,6 +2582,7 @@ function FeatureSeriesCollection({
       <header>
         <LineChart size={14} />
         <strong>{title}</strong>
+        <DelayedHelp label={`${title} 안내`} detail={LIVE_FEATURE_NOTICE} />
         <div className="asset-window-control" role="group" aria-label="관측 기간 선택">
           {SENSOR_WINDOW_OPTIONS.map((option) => (
             <button
@@ -2973,9 +3012,6 @@ function AssetPreviewPanel({
                   emptyTitle="관측 이력 없음"
                   emptyDetail={detailError || "현재 선택 설비에 연결된 주요 피쳐 이력이 없습니다."}
                 />
-                <p className="operations-live-feature-note">
-                  원본 필드명 대신 한국어 현장 용어로 표시합니다. LIVE 그래프는 과거 관측 이력 위에 지금 값과 단기 추세 범위를 함께 표시합니다.
-                </p>
               </section>
               <dl className="operations-monitoring-detail-grid" aria-label="선택 설비 현재 상태">
                 <div><dt>설비명</dt><dd>{assetDisplayName}</dd></div>
@@ -3003,16 +3039,22 @@ function AssetPreviewPanel({
               </dl>
 
               <section className="operations-production-impact-block" aria-label="생산 영향">
-                <header><Activity size={14} /><strong>생산 영향</strong><span>계획 기준 추정</span></header>
+                <header>
+                  <Activity size={14} />
+                  <strong>생산 영향</strong>
+                  <span>계획 기준 추정</span>
+                  <DelayedHelp
+                    label="생산 영향 산정 안내"
+                    detail={`${planningBasisFromDetail(detail).value} · 합성 용량 모델 기반 계획 영향 추정이며 고장확률, 위험도, 점검 근거와 권고 판단에는 영향을 주지 않습니다.`}
+                  />
+                </header>
                 <dl>
                   <div><dt>계획 영향</dt><dd>{productionLossLabel(planningImpact?.estimatedLossUnits ?? null)}</dd></div>
                   <div><dt>상태</dt><dd>{planningImpact ? PLANNING_STATUS_LABEL[planningImpact.status] : "생산 영향 미산정"}</dd></div>
                   <div><dt>생산 영향 수준</dt><dd>{lineSummary ? productionImpactLevelLabel(lineSummary, detail) : "생산 영향 수준 미연결"}</dd></div>
                   <div><dt>검토 우선순위</dt><dd>{lineSummary ? reviewPriorityLabel(lineSummary, detail) : "검토 우선순위 미제공"}</dd></div>
-                  <div className="is-wide"><dt>근거</dt><dd>{planningBasisFromDetail(detail).value}</dd></div>
                   <div className="is-wide"><dt>다음 검토</dt><dd>{planningImpact ? `${planningImpact.nextAction} · 현장 점검 요청 필요` : "데이터 품질 확인 필요"}</dd></div>
                 </dl>
-                <p>합성 용량 모델 기반 계획 영향 추정 · 고장확률, 위험도, 점검 근거, 권고 판단을 변경하지 않습니다.</p>
               </section>
               {lineSummary ? (
                 <section className="operations-line-asset-list" aria-label="라인 위험 설비 목록">

@@ -1,7 +1,7 @@
 # Model Artifact Publish 계약 명세서
 
 - **문서 상태**: `확정 계약 (Confirmed Contract)` — 최초 공식 `model-artifact-v1.0`
-- **관련 저장소**: `Biz-CollabCraft/ontology_dashboard`
+- **관련 저장소**: `oosuhada/agentic-ontology-dashboard`
 - **대상 파이프라인**: `systems/generator/model` (`model_registry.py`, `model_store`) & `systems/backend/app/diagnosis`
 
 > 이 계약은 최초 공식 `model-artifact-v1.0`이다. 이전에 저장소 코드·문서·테스트에서
@@ -199,13 +199,13 @@ rolling mean/std, lag, EMA 등의 시계열 피처는 단일 Current Observation
 
 | 구분 | Run registry | Model Artifact |
 |---|---|---|
-| 목적 | 내부 운영 메타데이터 (어떤 run이 언제 실행됐는지) | Backend가 신뢰하고 로드하는 제품 계약 |
+| 목적 | 내부 운영 메타데이터 (어떤 run이 언제 실행됐는지) | Generator 학습·Runtime이 신뢰하고 로드하는 모델 계약 |
 | 불변성 | 매 run마다 갱신됨 | `model_version` 단위로 immutable |
-| 소비자 | 팀 내부 | `systems/backend/app/diagnosis` |
+| 소비자 | Generator 내부 운영 | `systems/generator` training/runtime pipeline |
 
 두 책임을 분리한다. run registry(`models_store/registry.json`)만 구현하고
 Model Artifact publish API를 생략하지 않는다. run registry에만 기록하고
-publish를 생략하면 Backend가 새 모델을 영구히 로드할 수 없다.
+publish를 생략하면 Generator Runtime이 새 모델을 재현 가능하게 활성화할 수 없다.
 
 ---
 

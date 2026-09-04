@@ -2,8 +2,8 @@
 
 ## 1. 문서 지위와 목적
 
-이 문서는 최종 예지보전 시연에서 정비 결과를 새로운 Observation과 Runtime
-Prediction으로 연결하는 시스템 간 Target 계약이다.
+이 문서는 정비 결과를 새로운 Observation과 Runtime Prediction으로 연결하는 시스템 간
+운영 계약이다.
 
 기존 계약과의 책임은 다음처럼 나눈다.
 
@@ -12,7 +12,6 @@ Prediction으로 연결하는 시스템 간 Target 계약이다.
 | `closed-loop-domain-contract.md` | Recommendation, Decision, WorkOrder, MaintenanceAction, MaintenanceEvent의 상태와 불변식 |
 | `closed-loop-product-consumption-contract.md` | Product API/UI의 역할, Action, 상태·오류 소비 방식 |
 | 이 문서 | Closed-loop 완료 이벤트 → 대상 설비 Runtime Overlay → Generator 런타임 추론 및 Backend 판정 연결 |
-| `closed-loop-implementation-plan.md` | 구현 PR 순서와 담당자별 인계 |
 
 이 문서는 Canonical V3.1 또는 과거 Result/Evidence를 수정하는 계약이 아니다.
 Closed-loop가 발행하는 `maintenance.*` 기계 판독 계약은
@@ -69,7 +68,7 @@ Closed-loop 책임 원칙:
 Canonical/source reference Replay는 계속 read-only다. Canonical CSV에 없는 값을
 Canonical Replay가 생성한다고 표현하지 않는다.
 
-Runtime Overlay는 Closed-loop 시연을 위한 별도의 opt-in 실행 경로다.
+Runtime Overlay는 Closed-loop 실행을 위한 별도의 opt-in 경로다.
 
 ```text
 Canonical 예정값
@@ -454,13 +453,13 @@ decision이다. 기존 Result의 `status_grade`와 Runtime Overlay 준비 상태
 
 ## 14. 역할 경계
 
-| 담당 | 소유 책임 | 소유하지 않는 책임 |
+| 시스템 경계 | 소유 책임 | 소유하지 않는 책임 |
 |---|---|---|
-| 광우 / Closed-loop | Maintenance 상태, transaction, 단계별 Outbox 이벤트, 운영 lineage | Overlay 생성, Feature 계산, Prediction |
-| 성민 / `gen_data` Generator·Replay | 대상 설비 pause/branch, Snapshot effect, branch-local Fast-forward, 지속 Overlay Observation 생성/available | Model Artifact/history requirement 해석, readiness 판정, Product Result/Evidence |
+| Closed-loop domain | Maintenance 상태, transaction, 단계별 Outbox 이벤트, 운영 lineage | Overlay 생성, Feature 계산, Prediction |
+| `gen_data` Generator·Replay | 대상 설비 pause/branch, Snapshot effect, branch-local Fast-forward, 지속 Overlay Observation 생성/available | Model Artifact/history requirement 해석, readiness 판정, Product Result/Evidence |
 | Generator / Runtime Pipeline | Overlay Observation 전처리, Runtime Feature 추출, Model Artifact 기반 raw score 추론, `Prediction Result Batch` Outbox 송신 | Threshold 적용, 최종 이상 판정, Product Result/Evidence/Report/알림 생성 |
-| 호범 / Backend Diagnosis (후속 구현) | `Prediction Result Batch` 수신, Threshold 정책 적용, 최종 이상 판정, Diagnosis, Product Result/Evidence/Report/알림 생성, 재학습/후속 조치 지시 | Overlay 센서 생성, ML 피처 직접 계산/중복 추론 |
-| 우수 / Product API·UI·E2E | 진행 상태·결과 노출, 통합 시나리오 검증 | Domain 상태·Prediction 의미 재계산 |
+| Backend Diagnosis | `Prediction Result Batch` 수신, Threshold 정책 적용, 최종 이상 판정, Diagnosis, Product Result/Evidence/Report/알림 생성, 재학습/후속 조치 지시 | Overlay 센서 생성, ML 피처 직접 계산/중복 추론 |
+| Product API·UI·E2E | 진행 상태·결과 노출, 통합 시나리오 검증 | Domain 상태·Prediction 의미 재계산 |
 
 `ontology_dashboard/systems/generator`의 책임은 Feature/Label, training, Model Artifact
 publish 및 Runtime Prediction Pipeline(추론 점수 계산 및 `Prediction Result Batch` 송신)이며 최종 이상 판정과 Report/Evidence 생성 주체가 아니다.

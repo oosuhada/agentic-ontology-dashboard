@@ -1,5 +1,5 @@
 # Hanbit Tech Reliability Operations
-## 예지보전 기반 제조 운영 의사결정 워크스페이스 제출 보고서
+## 예지보전 기반 제조 운영 의사결정 워크스페이스 구현 보고서
 
 ## 1. 프로젝트 개요
 
@@ -82,14 +82,14 @@ Event
 
 | 정보 | 현재 출처 | 성격 | 표현 원칙 |
 |---|---|---|---|
-| 설비 관측 | runtime sensor stream / Team DB | runtime data | 관측 사실 |
+| 설비 관측 | runtime sensor stream / Mac mini PostgreSQL | runtime data | 관측 사실 |
 | Product Result | `pm_result_artifacts` | immutable runtime artifact | 예측 결과 |
 | Model Artifact | Generator model artifact store | versioned artifact | 모델 provenance |
 | SOP | demo inspection fixture | synthetic governance context | 데모 근거임을 명시 |
 | 회의록/결정문 | company-context fixture | synthetic governance context | 데모 조직 context |
 | 생산 손실 수량 | capacity model | derived estimate | 실제 실적과 구분 |
 | 매출/공헌이익 노출 | demo economics model | derived estimate | 회계 손실 확정 금지 |
-| 점검/승인/정비 milestone | Team DB workflow 기록 또는 presentation seed | operational/demo record | 사용자 Action과 seed 구분 |
+| 점검/승인/정비 milestone | PostgreSQL workflow 기록 또는 versioned fixture | operational record | 사용자 Action과 fixture 구분 |
 | 정비 후 위험 감소 | 후속 Result Artifact | runtime evaluation | 후속 결과 없으면 미확정 |
 
 ## 6. 데모 기업과 조직
@@ -198,11 +198,11 @@ Executive Brief
 
 상세 근거는 정비 효과, 개선 과제, 설비 상태 근거로 drill-down한다.
 
-## 8. 시연 시나리오 전략
+## 8. 재현 가능한 검증 시나리오
 
 ### 8.1 Gold Scenario
 
-저장소의 `EVT-GS-002 / CNC-S04-L04-01`은 공구 마모와 토크 상호작용, SOP 근거, 점검 흐름을 설명하기 위한 fixture 기반 Gold Scenario다.
+저장소의 `EVT-GS-002 / CNC-S04-L04-01`은 공구 마모와 토크 상호작용, SOP 근거, 점검 흐름을 검증하기 위한 fixture 기반 Gold Scenario다.
 
 이 시나리오는 테스트와 의미 설명에 사용한다.
 
@@ -212,18 +212,18 @@ Executive Brief
 - 공구/회전체 SOP
 - 생산 영향 추정
 
-### 8.2 Production Demo Case
+### 8.2 Production Verification Case
 
-실제 `dashboard.oosu.dev` 시연에서는 Team DB의 immutable `RESULT#...`를 하나 선택해 `DEMO_EVENT_ID`로 고정한다.
+실제 `dashboard.oosu.dev`에서는 Mac mini PostgreSQL의 immutable `RESULT#...`를 선택해 명시적 Event ID로 고정할 수 있다.
 
-Production Demo Case의 조건:
+Production Verification Case의 조건:
 
 - API에서 복원 가능한 Event
 - reload 및 live refresh 이후에도 같은 Event 유지
 - Engineer / Operations / Executive / Report가 동일 Event를 참조
-- closed-loop 전체를 보여줄 경우 해당 Event에 실제 workflow activity가 연결됨
+- closed-loop 검증 시 해당 Event에 실제 workflow activity가 연결됨
 
-**Gold Scenario와 Production Demo Case가 같은 설비일 수는 있지만 동일 Event라고 간주하지 않는다.**
+**Gold Scenario와 Production Verification Case가 같은 설비일 수는 있지만 동일 Event라고 간주하지 않는다.**
 
 ## 9. Offline Model Lifecycle
 
@@ -261,18 +261,18 @@ Live Observation
 → prediction-result-batch-v1
 → Backend /internal/prediction-results
 → validation / promotion
-→ Team DB pm_result_artifacts
+→ PostgreSQL pm_result_artifacts
 → Event / Evidence / Decision Case / Report ViewModel
 → Reliability Operations Frontend
 ```
 
-현재 배포에서는 Generator Runtime이 runtime prediction batch를 생성하고, Backend가 수신한 batch의 scope, 중복, schema와 product 계약을 검증한 뒤 Team DB의 Product Result read boundary로 승격한다. 즉 **runtime scoring 실행 위치**와 **제품 Result Artifact의 검증·승격·조회 책임**을 구분한다.
+현재 배포에서는 Generator Runtime이 runtime prediction batch를 생성하고, Backend가 수신한 batch의 scope, 중복, schema와 product 계약을 검증한 뒤 PostgreSQL의 Product Result read boundary로 승격한다. 즉 **runtime scoring 실행 위치**와 **제품 Result Artifact의 검증·승격·조회 책임**을 구분한다.
 
 이 설명은 초기 설계 문서의 ownership 표현과 일부 다를 수 있으며, **제출 보고서는 현재 production에 배포된 실행 구조를 기준으로 한다.**
 
 ### 10.1 Current Architecture 정본
 
-팀 발표와 제출 보고서에서는 아래 구조를 단일 정본으로 사용한다.
+현재 제품 문서에서는 아래 구조를 단일 정본으로 사용한다.
 
 ```text
 Offline
@@ -287,15 +287,15 @@ Live Source
 → live-ingestor
 → Generator Runtime Prediction
 → Backend Validation / Promotion
-→ Team DB Product Result Artifact
+→ PostgreSQL Product Result Artifact
 → Product UI / Report / Assistant Context
 ```
 
 핵심 책임 분리는 다음과 같다.
 
 - Generator Runtime: runtime feature 구성과 prediction batch 생성
-- Backend: scope, schema, 중복, product contract 검증 및 Team DB 승격
-- Team DB: 운영 화면과 report가 참조하는 authoritative product record
+- Backend: scope, schema, 중복, product contract 검증 및 PostgreSQL 승격
+- PostgreSQL: 운영 화면과 report가 참조하는 authoritative product record
 - Frontend: Result, Evidence, Decision, Action, Report를 역할별 업무 흐름으로 재구성
 
 ### 10.2 Runtime Timing 정의
@@ -310,7 +310,7 @@ Live Source
 | Backend promotion | prediction result 수신 후 validation/promotion |
 | Product UI | 약 10초 자동 refresh로 최신 Result 확인 |
 
-### 10.3 Model Quality 발표 요약
+### 10.3 Model Quality Release 요약
 
 모델 품질은 “정확도가 높다”가 아니라 release gate를 통과한 모델과 아직 운영 성숙도가 낮은 모델을 구분해 설명한다.
 
@@ -322,9 +322,9 @@ Live Source
 
 CNC 모델은 leave-one-site-out AP 0.604와 threshold 0.07 기준 operating point를 함께 설명한다. Compressor 모델은 한계를 숨기지 않고 operational maturity가 낮은 모델로 분리한다.
 
-## 11. Team DB와 배포 구조
+## 11. 운영 DB와 배포 구조
 
-현재 production 서비스는 Mac mini의 containerized application과 Team DB를 사용한다.
+현재 production 서비스는 Mac mini의 containerized application과 전용 PostgreSQL을 사용한다.
 
 주요 runtime service:
 
@@ -335,9 +335,9 @@ CNC 모델은 leave-one-site-out AP 0.604와 threshold 0.07 기준 operating poi
 - redis
 - production support services
 
-Backend와 live runtime은 Team DB를 authoritative operational database로 사용한다.
+Backend와 live runtime은 Mac mini PostgreSQL을 authoritative operational database로 사용한다.
 
-Team DB에는 다음과 같은 제품 기록이 유지된다.
+PostgreSQL에는 다음과 같은 제품 기록이 유지된다.
 
 - Product Result Artifact
 - prediction inbox/promotion 기록
@@ -347,7 +347,7 @@ Team DB에는 다음과 같은 제품 기록이 유지된다.
 - Maintenance Recommendation / Decision / Action / Event
 - 사용자 및 프로젝트 scope
 
-presentation용 workflow record를 seed할 수 있지만, 이는 live sensor observation이나 실제 고장 사실을 조작하는 용도가 아니라 **업무 milestone을 재현하기 위한 demo operational record**다.
+개발·회귀 검증용 workflow fixture를 적재할 수 있지만, 이는 live sensor observation이나 실제 고장 사실을 조작하는 용도가 아니라 **업무 milestone을 결정론적으로 재현하기 위한 검증 기록**이다.
 
 ## 12. 역할별 Frontend
 
@@ -441,7 +441,7 @@ Result / Event
 
 중요한 것은 마지막 단계다. 정비 완료 event만으로 설비를 정상으로 확정하지 않는다.
 
-현재 프로젝트에는 maintenance replay/runtime overlay를 통해 정비 후 observation을 다시 prediction pipeline에 연결하기 위한 계약과 구현이 존재한다. 다만 presentation seed 자체는 workflow milestone을 재현하는 데이터일 수 있으며, `risk_after`를 실제 새 Result Artifact 없이 임의로 정상화하지 않는다.
+현재 프로젝트에는 maintenance replay/runtime overlay를 통해 정비 후 observation을 다시 prediction pipeline에 연결하기 위한 계약과 구현이 존재한다. 다만 workflow fixture는 milestone을 재현하는 데이터일 수 있으며, `risk_after`를 실제 새 Result Artifact 없이 임의로 정상화하지 않는다.
 
 따라서 후속 Result가 없을 때 UI와 보고서는 **재관측 대기 / 결과 대기** 상태를 유지해야 한다.
 
@@ -456,7 +456,7 @@ Result / Event
 - Decision Lead Time: Event/Case 기준 판단 milestone
 - Backlog: 현재 workflow state와 Owner를 기준으로 계산
 
-데모 seed를 사용하는 경우에도 timestamp 간 관계를 명시적으로 구성하고, 의미 없는 `0분`을 성공 KPI처럼 표시하지 않는다.
+검증 fixture를 사용하는 경우에도 timestamp 간 관계를 명시적으로 구성하고, 의미 없는 `0분`을 성공 KPI처럼 표시하지 않는다.
 
 ## 17. 품질 관리와 Release Gate
 
@@ -583,9 +583,9 @@ role/report type별 artifact를 생성하고 Event lineage를 유지한다.
 
 contract/eval 테스트는 grounding, source reference, tool boundary를 검증하지만, 발표용 객관 지표로는 별도 20~30개 synthetic/internal question set이 필요하다. 제출·발표 시에는 `Grounded answer rate`, `Unsupported claim reject`, `Correct source citation`, `Correct role framing`, `Boundary violation`을 수치로 제시하는 것을 목표로 한다.
 
-### Team DB operational dependency
+### Operational database dependency
 
-production demo는 Team DB, generator-runtime, live-ingestor, backend가 함께 정상 동작해야 한다. 발표 전 health 및 Event 복원 검증이 필요하다.
+production은 Mac mini PostgreSQL, generator-runtime, live-ingestor와 backend가 함께 정상 동작해야 한다. 배포 후 health와 Event 복원 상태를 확인해야 한다.
 
 ### Report lifecycle
 
@@ -604,7 +604,7 @@ production demo는 Team DB, generator-runtime, live-ingestor, backend가 함께 
 - report 승인 / 배포 / revision lifecycle 강화
 - RAG 문서의 권한·최신성·버전 governance
 - 모바일 현장 입력 및 offline fallback
-- Demo Case를 명시적으로 관리하는 presentation fixture/selection 도구
+- 회귀 검증 Case를 명시적으로 관리하는 fixture/selection 도구
 
 ## 22. 결론
 

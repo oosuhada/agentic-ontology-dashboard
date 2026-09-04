@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import os
 import json
 import time
@@ -138,7 +139,15 @@ class ManufacturingPredictiveMaintenanceService:
         Static reference data remains the bootstrap for stable masters. Once a record
         exists in persistence, the DB copy is authoritative for that project/workspace.
         """
-        base = public_company_context(load_company_context())
+        full = self._company_context_snapshot(project_id=project_id, workspace_id=workspace_id)
+        base = public_company_context(full)
+        base["context_storage"] = dict(full.get("context_storage") or {})
+        return base
+
+    def _company_context_snapshot(self, *, project_id: str, workspace_id: str) -> dict[str, Any]:
+        """Return the full server-side corpus with persisted records overlaid by id."""
+
+        base = copy.deepcopy(load_company_context())
         if self.company_context_query is None:
             return base
         try:
@@ -190,7 +199,7 @@ class ManufacturingPredictiveMaintenanceService:
             query,
             asset_id=asset_id,
             top_k=top_k,
-            context=self.company_context(project_id=project_id, workspace_id=workspace_id),
+            context=self._company_context_snapshot(project_id=project_id, workspace_id=workspace_id),
         )
 
     def _closed_loop_context_for_fixture(

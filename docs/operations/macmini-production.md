@@ -9,7 +9,7 @@ URIs.
 Generator and Backend never import one another's implementation or search a
 sibling physical path.
 
-Operational source data is supplied by `Biz-CollabCraft/gen_data` through its
+Operational source data is supplied by `gen_data source runtime` through its
 canonical file/artifact contract. Generator persistent state, cache policy,
 startup commands, backup scripts and the concrete Compose layout are documented
 in `infra/macmini/README.md`.

@@ -7,9 +7,12 @@
 - 정본 앱 진입점: `systems.generator.app.main:app` (Application Factory `create_app()` 제공)
 - 호환성 진입점: `systems.generator.generator_main:app` (Compatibility Shim)
 - Base path: (별도 접두사 없음, `generator` 프로세스가 단독으로 사용)
-- 책임: Generator는 단계별 Versioned Observation/Failure Dataset, Preprocessing Plan, Feature Dataset Bundle 및 Model Artifact를 발행한다. Generator의 최종 책임 끝점은 Model Artifact와 활성 버전 포인터(`latest.json`) 발행이다.
+- 책임: Generator는 단계별 Versioned Observation/Failure Dataset, Preprocessing Plan, Feature
+  Dataset Bundle 및 Model Artifact를 발행하고, 런타임 관측으로 score를 계산해 Prediction
+  Result Batch를 Backend에 전달한다.
 
-Backend Diagnosis는 발행된 Model Artifact와 Observation history를 소비하여 runtime inference, Product Result Artifact 및 Evidence를 생성한다.
+Backend는 Prediction Result Batch를 검증·멱등 저장하고 threshold와 업무 정책을 적용해 Product
+Result Artifact 및 Evidence로 승격한다.
 
 Extraction이 사용하는 protocol field Mapping은 canonical Observation 변환 계약이다. Feature 실행 계약은 Feature Schema/Recipe이며 Ontology Mapping이 아니다.
 
@@ -17,7 +20,9 @@ Extraction이 사용하는 protocol field Mapping은 canonical Observation 변�
 
 ## 2. 책임 경계 (허용 / 금지 범위)
 
-[런타임 소유권 통합 계약](./runtime-ownership-integration.md) 및 ADR-002 Invariant 22·23에 따라 다음 경계를 엄격히 준수한다:
+[런타임 소유권 통합 계약](./runtime-ownership-integration.md) 및
+[ADR-003](../architecture-decisions/ADR-003-generator-runtime-prediction-result-and-backend-decision-ownership.md)에
+따라 다음 경계를 엄격히 준수한다.
 
 ### 허용 범위
 - `GET /health` (데몬 상태 확인)
@@ -42,16 +47,18 @@ Extraction이 사용하는 protocol field Mapping은 canonical Observation 변�
 > **Generator 전체 책임 및 Backend 연계 책임 경계**:
 >
 > - Generator는 단계별 Versioned Observation/Failure Dataset, Preprocessing Plan, Feature Dataset Bundle 및 Model Artifact를 발행한다.
-> - Generator의 최종 실행 책임 끝점은 versioned Model Artifact 발행과 Model Artifact의 canonical active-version pointer 관리까지다.
+> - Generator의 실행 책임은 versioned Model Artifact 발행과 활성 포인터 관리뿐 아니라 Runtime
+>   Feature, Model score와 Prediction Result Batch delivery까지다.
 > - Preprocessing Plan의 `latest.json`은 해당 Dataset version에서 현재 선택된 Preprocessing Plan을 가리키는 포인터이며, Model Artifact 활성 버전 포인터와 동일한 파일 또는 저장 경계를 의미하지 않는다.
-> - Backend 런타임에서 Model Artifact store의 canonical active-version pointer를 읽어 진단 모델을 reload하고 소비하는 연계 작업은 Generator 구현 완료 조건에 포함하지 않으며, 별도의 Backend 연계 작업으로 진행한다.
+> - Backend는 Generator의 Model Artifact나 Feature executor를 직접 실행하지 않고 전달된 Batch를
+>   검증·판정·승격한다.
 
 ### 금지 범위
 - `POST /internal/predict`, `POST /internal/predict/file`
-- 사용자 요청 기반 runtime inference
+- Frontend 사용자 요청에 직접 결합된 ad-hoc inference
 - `data_preprocessed/predictions/*.json` 파일 생성
 - Product Result Artifact / Evidence 생성
-- `PredictionOutput` 등 Backend runtime 응답 형식 노출
+- Product Result, Evidence와 사용자용 Report 형식 노출
 - Frontend의 Generator 직접 호출
 
 ---
@@ -269,7 +276,8 @@ models_store/cache/preprocessing_plans/
 - 학습에 성공한 모델은 immutable한 Model Artifact 패키지(`model-artifact-v1.0`)로 발행됩니다.
 - 동일한 `model_id`와 `model_version` 조합의 기존 아티팩트는 덮어쓰지 않습니다.
 - 발행 위치는 `MODEL_ARTIFACT_URI` 환경변수 또는 주입된 artifact 경로를 사용합니다.
-- Backend 진단 런타임이 소비하는 정본은 Manifest와 Role 파일을 온전히 포함한 Model Artifact입니다.
+- Generator 학습과 Runtime Prediction이 소비하는 정본은 Manifest와 Role 파일을 온전히 포함한
+  Model Artifact입니다. Backend는 Model Artifact 대신 versioned Prediction Result Batch를 소비합니다.
 
 ### 5.5 Current Startup · Shutdown · 동시성 계약
 
