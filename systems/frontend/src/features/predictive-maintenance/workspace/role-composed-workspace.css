@@ -446,3 +446,44 @@
 .rw-feature-threshold-label {
   font-size: var(--rw-card-meta, 12px)!important;
 }
+
+.rw-composed-block .mvp-decision-support {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, .22);
+}
+
+.rw-composed-block .mvp-decision-support>header,
+.rw-composed-block .mvp-decision-support__status,
+.rw-composed-block .mvp-decision-support__options,
+.rw-composed-block .mvp-decision-support__sources div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.rw-composed-block .mvp-decision-support__facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.rw-composed-block .mvp-decision-support__facts div,
+.rw-composed-block .mvp-decision-support__options article,
+.rw-composed-block .mvp-decision-support__section,
+.rw-composed-block .mvp-decision-support__sources {
+  padding: 9px;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 11px;
+  background: rgba(15, 23, 42, .18);
+}
+
+.rw-composed-block .mvp-decision-support__error,
+.rw-composed-block .mvp-decision-support__section.is-warning {
+  color: #fecaca;
+}

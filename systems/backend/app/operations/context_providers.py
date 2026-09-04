@@ -282,18 +282,26 @@ def _adapter_gap(
 
 
 def _history_record(item: dict[str, Any], *, source_prefix: str) -> dict[str, Any]:
+    record_type = source_prefix.removeprefix("closed-loop://")
+    preferred_ids = {
+        "work-order": ("work_order_id",),
+        "inspection-result": ("inspection_result_id", "work_order_id"),
+        "maintenance-action": ("maintenance_action_id", "work_order_id"),
+        "maintenance-event": (
+            "maintenance_event_id",
+            "maintenance_action_id",
+            "work_order_id",
+        ),
+        "activity": ("activity_id", "id", "work_order_id"),
+    }.get(record_type, ())
     record_id = str(
-        item.get("work_order_id")
-        or item.get("inspection_result_id")
-        or item.get("maintenance_action_id")
-        or item.get("maintenance_event_id")
-        or item.get("activity_id")
+        next((item.get(key) for key in preferred_ids if item.get(key)), None)
         or item.get("id")
         or ""
     )
     return {
         "record_id": record_id,
-        "record_type": source_prefix.removeprefix("closed-loop://"),
+        "record_type": record_type,
         "status": str(item.get("status") or item.get("outcome") or ""),
         "activity_type": str(item.get("activity_type") or ""),
         "recorded_at": str(

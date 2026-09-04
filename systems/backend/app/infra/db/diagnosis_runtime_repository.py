@@ -41,64 +41,6 @@ class PredictiveMaintenanceRuntimeRepository:
             project_id=project_id,
         )
 
-    def save_demo_cnc_observation(
-        self,
-        *,
-        organization_id: str,
-        project_id: str,
-        workspace_id: str,
-        dataset_version_id: str,
-        observed_at: datetime,
-        asset_id: str,
-        site_id: str,
-        cell_id: str,
-        observation: dict[str, Any],
-        source_sha256: str,
-    ) -> dict[str, Any]:
-        with self._connection(organization_id, project_id) as connection:
-            row = connection.execute(
-                """
-                INSERT INTO pm_cnc_observations(
-                    organization_id,project_id,workspace_id,dataset_version_id,
-                    observed_at,asset_id,site_id,cell_id,is_operating,operating_state,
-                    product_type,air_temperature_k,process_temperature_k,
-                    rotational_speed_rpm,torque_nm,tool_wear_min,
-                    generator_version,source_sha256,created_at
-                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,true,'degraded_live_demo',
-                          %s,%s,%s,%s,%s,%s,'presentation-live-v1',%s,now())
-                ON CONFLICT (dataset_version_id,asset_id,observed_at) DO UPDATE SET
-                    is_operating=EXCLUDED.is_operating,
-                    operating_state=EXCLUDED.operating_state,
-                    product_type=EXCLUDED.product_type,
-                    air_temperature_k=EXCLUDED.air_temperature_k,
-                    process_temperature_k=EXCLUDED.process_temperature_k,
-                    rotational_speed_rpm=EXCLUDED.rotational_speed_rpm,
-                    torque_nm=EXCLUDED.torque_nm,
-                    tool_wear_min=EXCLUDED.tool_wear_min,
-                    generator_version=EXCLUDED.generator_version,
-                    source_sha256=EXCLUDED.source_sha256
-                RETURNING asset_id,observed_at,torque_nm,tool_wear_min,process_temperature_k - air_temperature_k AS temperature_gap_k
-                """,
-                (
-                    organization_id,
-                    project_id,
-                    workspace_id,
-                    dataset_version_id,
-                    observed_at,
-                    asset_id,
-                    site_id,
-                    cell_id,
-                    str(observation["product_type"]),
-                    float(observation["air_temperature_k"]),
-                    float(observation["process_temperature_k"]),
-                    float(observation["rotational_speed_rpm"]),
-                    float(observation["torque_nm"]),
-                    float(observation["tool_wear_min"]),
-                    source_sha256,
-                ),
-            ).fetchone()
-        return dict(row) if row else {}
-
     def resolve_version(
         self,
         *,

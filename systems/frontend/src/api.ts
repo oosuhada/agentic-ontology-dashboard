@@ -11,6 +11,8 @@ import type {
 import type { AgentQueryInput, AgentRunPage, AgentRunResponse } from "./features/agent/types";
 import type {
   EvidenceSnapshotBasisWire,
+  OperationsDecisionBriefRole,
+  OperationsDecisionSupportResponse,
   OperationsAgentReviewPacket,
   OperationsAgentReviewSummaryResponse,
   OperationsAgentReviewWorkflowRunsResponse,
@@ -1015,6 +1017,50 @@ export function createOperationsAgentReviewSummary(input: {
   if (input.eventId) params.set("event_id", input.eventId);
   return request<OperationsAgentReviewSummaryResponse>(
     `/api/objects/${encodeURIComponent(input.assetId)}/agent-review-summary?${params.toString()}`,
+    { method: "POST" },
+  );
+}
+
+export function getOperationsDecisionSupportBrief(input: {
+  assetId: string;
+  projectId: string;
+  workspaceId: string;
+  evidenceSnapshotId: string;
+  decisionAsOf: string;
+  role: OperationsDecisionBriefRole;
+}): Promise<OperationsDecisionSupportResponse> {
+  const params = new URLSearchParams({
+    project_id: input.projectId,
+    workspace_id: input.workspaceId,
+    evidence_snapshot_id: input.evidenceSnapshotId,
+    decision_as_of: input.decisionAsOf,
+    role: input.role,
+  });
+  return request<OperationsDecisionSupportResponse>(
+    `/api/objects/${encodeURIComponent(input.assetId)}/decision-support-brief?${params.toString()}`,
+  );
+}
+
+export function createOperationsDecisionSupportBrief(input: {
+  assetId: string;
+  projectId: string;
+  workspaceId: string;
+  evidenceSnapshotId: string;
+  decisionAsOf: string;
+  role: OperationsDecisionBriefRole;
+  riskStatus: string;
+}): Promise<OperationsDecisionSupportResponse> {
+  const params = new URLSearchParams({
+    project_id: input.projectId,
+    workspace_id: input.workspaceId,
+    evidence_snapshot_id: input.evidenceSnapshotId,
+    decision_as_of: input.decisionAsOf,
+    role: input.role,
+    risk_status: input.riskStatus,
+    trigger: "ui_manual_regeneration",
+  });
+  return request<OperationsDecisionSupportResponse>(
+    `/api/objects/${encodeURIComponent(input.assetId)}/decision-support-brief?${params.toString()}`,
     { method: "POST" },
   );
 }

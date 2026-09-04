@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import json
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -32,6 +33,19 @@ from app.operations.domain_context_adapters import (
     DomainReviewContextAdapter,
     ManufacturingFixtureReviewContextAdapter,
 )
+from app.operations.operational_context_contract import OperationalRequestIdentity
+from app.operations.operational_context_ports import (
+    FixtureMaintenanceReadinessContextReadPort,
+    FixtureProductionDecisionContextReadPort,
+    FixtureQualityDeliveryContextReadPort,
+)
+from app.operations.operational_evidence_selection import (
+    EvidenceSelectionStrategy,
+    evaluate_evidence_selection,
+    project_evidence_candidates,
+    select_evidence_candidates,
+)
+from app.operations.operational_relation_resolver import resolve_operational_relations
 
 from .context import ContextProviderFactory
 from .contracts import (
@@ -373,6 +387,78 @@ class ManufacturingPredictiveMaintenanceService:
             ),
         )
 
+    def agent_review_evidence_selection(
+        self,
+        asset_id: str,
+        project_id: str = "manufacturing-demo-project",
+        *,
+        organization_id: str = "ORG-001",
+        workspace_id: str = "manufacturing-demo",
+        dataset_version_id: str | None = None,
+        decision_as_of: datetime | None = None,
+        retrieved_at: datetime | None = None,
+        role: str = "process_manager",
+        max_candidates: int = 8,
+        required_evidence_ids: set[str] | None = None,
+        required_limitation_ids: set[str] | None = None,
+    ) -> dict[str, Any]:
+        """Return S0/S1 evidence selection trace for versioned operation context."""
+
+        fixture = self._fixture_for_asset(
+            asset_id,
+            project_id,
+            dataset_version_id=dataset_version_id,
+        )
+        artifact = self._product_result_artifact(fixture)
+        now = datetime.now(timezone.utc)
+        identity = OperationalRequestIdentity(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            asset_id=asset_id,
+            evidence_snapshot_id=str(artifact["artifact_id"]),
+            decision_as_of=decision_as_of or now,
+        )
+        contexts = self._operational_selection_contexts(
+            identity=identity,
+            retrieved_at=retrieved_at or now,
+        )
+        relations = resolve_operational_relations(identity=identity, contexts=contexts)
+        candidates = project_evidence_candidates(
+            identity=identity,
+            contexts=contexts,
+            relation_resolution=relations,
+        )
+        full = select_evidence_candidates(
+            candidates,
+            strategy=EvidenceSelectionStrategy.FULL_CONTEXT,
+        )
+        selected = select_evidence_candidates(
+            candidates,
+            strategy=EvidenceSelectionStrategy.DETERMINISTIC,
+            role=role,
+            max_candidates=max_candidates,
+        )
+        metrics = evaluate_evidence_selection(
+            full_context=full,
+            selected=selected,
+            required_evidence_ids=required_evidence_ids or set(),
+            required_limitation_ids=required_limitation_ids or set(),
+        )
+        return {
+            "schema_version": "agent-review-evidence-selection-v1.0",
+            "asset_id": asset_id,
+            "project_id": project_id,
+            "identity": identity.model_dump(mode="json"),
+            "relation_resolution": relations.model_dump(mode="json"),
+            "strategies": {
+                "S0": full.model_dump(mode="json"),
+                "S1": selected.model_dump(mode="json"),
+            },
+            "metrics": metrics.model_dump(mode="json"),
+            "mutation_allowed": False,
+        }
+
     def agent_review_summary(
         self,
         asset_id: str,
@@ -632,6 +718,32 @@ class ManufacturingPredictiveMaintenanceService:
             "history": fixture["history"],
             "runtime": fixture["runtime"],
             "activity": self.repository.event_activity(event_id),
+        }
+
+    def _operational_selection_contexts(
+        self,
+        *,
+        identity: OperationalRequestIdentity,
+        retrieved_at: datetime,
+    ) -> dict[str, Any]:
+        fixture_root = self.root / "data" / "fixtures" / "operation_context"
+
+        def load_context(name: str) -> dict[str, Any]:
+            return json.loads((fixture_root / name).read_text(encoding="utf-8"))
+
+        return {
+            "production": FixtureProductionDecisionContextReadPort(
+                context=load_context("operational-decision-context-v1.json"),
+                source_ref="fixture:production",
+            ).lookup(identity=identity, retrieved_at=retrieved_at),
+            "maintenance_readiness": FixtureMaintenanceReadinessContextReadPort(
+                context=load_context("maintenance-readiness-context-v1.json"),
+                source_ref="fixture:maintenance",
+            ).lookup(identity=identity, retrieved_at=retrieved_at),
+            "quality_delivery": FixtureQualityDeliveryContextReadPort(
+                context=load_context("quality-delivery-context-v1.json"),
+                source_ref="fixture:quality",
+            ).lookup(identity=identity, retrieved_at=retrieved_at),
         }
 
     def _fixture_for_asset(

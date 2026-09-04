@@ -80,6 +80,9 @@ class _RuntimeService:
     def timeline(self, **_kwargs):
         return {"items": []}
 
+    def company_context_documents(self, *_args, **_kwargs):
+        return []
+
 
 def test_runtime_operation_context_is_explicit_and_actionable():
     result = _runtime_result()
@@ -153,6 +156,7 @@ def test_exact_runtime_event_connects_sop_inspection_target_and_assistant_eviden
     )
     evidence = _packet_evidence(
         packet,
+        service=service,
         project_id="manufacturing-demo-project",
         workspace_id="manufacturing-demo",
         top_k=8,

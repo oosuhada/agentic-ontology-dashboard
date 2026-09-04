@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import uuid
 
+from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 
 from app.common.rate_limit import RateLimitRule, RateLimiter
@@ -23,6 +24,7 @@ from app.dependencies import (
     MANUFACTURING_WORKSPACE,
     get_identity_service,
     get_ontology_service,
+    get_operational_decision_support_service,
     get_predictive_maintenance_runtime_service,
     get_rate_limiter,
     get_runtime_asset_detail_service,
@@ -38,10 +40,17 @@ from app.ontology.ontology_domain import ActionInvocation
 from app.ontology.projection import inspection_object_id, risk_event_object_id
 from app.ontology.ontology_service import OntologyService
 from .service import EventNotFound, ManufacturingPredictiveMaintenanceService
+from .operational_context_contract import OperationalRequestIdentity
+from .operational_decision_brief import DecisionBriefRole
+from .operational_decision_support_port import (
+    DecisionSupportMaterializationInProgress,
+    OperationalDecisionSupportService,
+)
 from .sop_retrieval import retrieve_inspection_sops
 
 router = APIRouter(prefix="/api", tags=["manufacturing-domain-pack"])
 AGENT_REVIEW_SUMMARY_MATERIALIZE_RATE = RateLimitRule(limit=12, window_seconds=60)
+DECISION_SUPPORT_MATERIALIZE_RATE = RateLimitRule(limit=12, window_seconds=60)
 register_equipment_routes(
     router,
     service_dependency=get_service,
@@ -1396,6 +1405,136 @@ def create_agent_review_summary(
         )
         summary, trace = _dynamic_summary_from_packet(service=service, packet=packet)
     return {"summary": summary, "trace": trace}
+
+
+def _decision_support_identity(
+    *,
+    principal: Principal,
+    project_id: str,
+    workspace_id: str,
+    asset_id: str,
+    evidence_snapshot_id: str,
+    decision_as_of: datetime,
+) -> OperationalRequestIdentity:
+    if not principal.is_admin and project_id not in principal.project_scopes:
+        raise AuthError(403, "project_scope_denied", "허용된 Project 범위를 벗어난 판단 지원 요청입니다.")
+    if not principal.is_admin and workspace_id not in principal.workspace_scopes:
+        raise AuthError(403, "workspace_scope_denied", "허용된 Workspace 범위를 벗어난 판단 지원 요청입니다.")
+    if principal.active_project_id != project_id:
+        raise AuthError(409, "active_project_mismatch", "먼저 요청 Project를 활성화해야 합니다.")
+    if decision_as_of.tzinfo is None or decision_as_of.utcoffset() is None:
+        raise HTTPException(status_code=422, detail="decision_as_of must include timezone")
+    if decision_as_of > datetime.now(timezone.utc):
+        raise HTTPException(status_code=422, detail="decision_as_of cannot be in the future")
+    return OperationalRequestIdentity(
+        organization_id=principal.organization_id,
+        project_id=project_id,
+        workspace_id=workspace_id,
+        asset_id=asset_id,
+        evidence_snapshot_id=evidence_snapshot_id,
+        decision_as_of=decision_as_of,
+    )
+
+
+@router.get("/objects/{asset_id}/decision-support-brief")
+def get_decision_support_brief(
+    asset_id: str,
+    project_id: str = Query(default="manufacturing-demo-project"),
+    workspace_id: str = Query(default=MANUFACTURING_WORKSPACE, max_length=160),
+    evidence_snapshot_id: str = Query(min_length=1, max_length=240),
+    decision_as_of: datetime = Query(),
+    role: DecisionBriefRole = Query(default=DecisionBriefRole.PROCESS_ENGINEER),
+    principal: Principal = Depends(require_permission("events.read")),
+    decision_support: OperationalDecisionSupportService = Depends(get_operational_decision_support_service),
+):
+    identity = _decision_support_identity(
+        principal=principal,
+        project_id=project_id,
+        workspace_id=workspace_id,
+        asset_id=asset_id,
+        evidence_snapshot_id=evidence_snapshot_id,
+        decision_as_of=decision_as_of,
+    )
+    brief, trace = decision_support.cached_brief(identity=identity, actor_role=role)
+    return JSONResponse(
+        status_code=200 if brief is not None else 202,
+        content={
+            "brief": brief.model_dump(mode="json") if brief is not None else None,
+            "trace": asdict(trace),
+        },
+    )
+
+
+@router.post("/objects/{asset_id}/decision-support-brief")
+def create_decision_support_brief(
+    asset_id: str,
+    project_id: str = Query(default="manufacturing-demo-project"),
+    workspace_id: str = Query(default=MANUFACTURING_WORKSPACE, max_length=160),
+    evidence_snapshot_id: str = Query(min_length=1, max_length=240),
+    decision_as_of: datetime = Query(),
+    role: DecisionBriefRole = Query(default=DecisionBriefRole.PROCESS_MANAGER),
+    risk_status: str = Query(default="critical", min_length=1, max_length=80),
+    trigger: Literal["manual_materialization", "ui_manual_regeneration"] = Query(default="manual_materialization"),
+    principal: Principal = Depends(require_permission("agent.review.materialize")),
+    _: None = Depends(require_csrf),
+    decision_support: OperationalDecisionSupportService = Depends(get_operational_decision_support_service),
+    limiter: RateLimiter = Depends(get_rate_limiter),
+):
+    identity = _decision_support_identity(
+        principal=principal,
+        project_id=project_id,
+        workspace_id=workspace_id,
+        asset_id=asset_id,
+        evidence_snapshot_id=evidence_snapshot_id,
+        decision_as_of=decision_as_of,
+    )
+    limiter.check(
+        bucket="decision-support-brief.materialize",
+        subject=rate_limit_subject(
+            principal.user_id,
+            project_id,
+            workspace_id,
+            asset_id,
+            evidence_snapshot_id,
+            role.value,
+            trigger,
+        ),
+        rule=DECISION_SUPPORT_MATERIALIZE_RATE,
+    )
+    try:
+        brief, trace = decision_support.materialize(
+            identity=identity,
+            actor_role=role,
+            risk_status=risk_status,
+            trigger=trigger,
+        )
+    except (ValueError, DecisionSupportMaterializationInProgress) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"brief": brief.model_dump(mode="json"), "trace": asdict(trace)}
+
+
+@router.get("/projects/{project_id}/decision-support-workflow-runs")
+def list_decision_support_workflow_runs(
+    project_id: str,
+    asset_id: str | None = Query(default=None, max_length=160),
+    status: Literal["running", "completed", "partial", "failed"] | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=100),
+    principal: Principal = Depends(require_permission("admin.audit.read")),
+    decision_support: OperationalDecisionSupportService = Depends(get_operational_decision_support_service),
+):
+    if not principal.is_admin and project_id not in principal.project_scopes:
+        raise AuthError(403, "project_scope_denied", "허용된 Project 범위를 벗어난 평가 이력입니다.")
+    if principal.active_project_id != project_id:
+        raise AuthError(409, "active_project_mismatch", "먼저 요청 Project를 활성화해야 합니다.")
+    return {
+        "items": decision_support.workflow_runs(
+            organization_id=principal.organization_id,
+            project_id=project_id,
+            asset_id=asset_id,
+            status=status,
+            limit=limit,
+        )
+    }
 
 
 @router.get("/projects/{project_id}/agent-review-workflow-runs")

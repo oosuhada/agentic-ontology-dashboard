@@ -1,3 +1,68 @@
+export type OperationsDecisionBriefRole =
+  | "process_manager"
+  | "process_engineer"
+  | "maintenance_technician"
+  | "system_admin";
+
+export interface OperationsDecisionSupportBrief {
+  schema_version: string;
+  frame: {
+    evidence_snapshot_id: string;
+    decision_as_of: string;
+    actor_role: OperationsDecisionBriefRole;
+    risk_status: string;
+    asset_id: string;
+    active_constraints: string[];
+    context_version_set: Record<string, string>;
+  };
+  why_now: {
+    order_ids: string[];
+    wip_units: number | null;
+    lot_ids: string[];
+    earliest_due_at: string | null;
+    decision_blockers: string[];
+    source_refs: string[];
+  };
+  relationships: Array<{
+    relationship_type: string;
+    from_ref: string;
+    to_ref: string;
+    status: string;
+    source_refs: string[];
+  }>;
+  readiness: Record<string, unknown>;
+  option_comparison: Array<{
+    option: string;
+    calculation_state: string;
+    assumptions: Record<string, unknown>;
+    formula: string | null;
+    source_refs: string[];
+  }>;
+  gaps: Array<{
+    state: string;
+    owner_domain: string;
+    blocks_options: string[];
+    detail: Record<string, unknown>;
+  }>;
+  source_classifications: Record<string, string>;
+  source_refs: string[];
+  limitations: string[];
+  mutation_available: false;
+  recommendation: null;
+}
+
+export interface OperationsDecisionSupportResponse {
+  brief: OperationsDecisionSupportBrief | null;
+  trace: {
+    status: string;
+    reason: string | null;
+    reused: boolean;
+    workflow_run_id: string | null;
+    context_version_set: Record<string, string>;
+    temporal_validation: string;
+  };
+}
+
 export type OperationsView =
   "overview" | "objects" | "operations" | "reports" | "system";
 export type OperationsDashboardMode = "workflow" | "classic";

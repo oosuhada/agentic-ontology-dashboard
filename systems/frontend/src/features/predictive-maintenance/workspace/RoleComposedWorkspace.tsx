@@ -33,6 +33,7 @@ import type {
   OperationsAsset,
   OperationsBootstrapModel,
   OperationsCompanyContext,
+  OperationsDecisionBriefRole,
   OperationsEvent,
   OperationsEventDetailModel,
   OperationsReportTab,
@@ -50,6 +51,7 @@ import {
 } from "../../operations/displayLabels";
 import { MaintenanceWorkflowActionPanel } from "../../operations/maintenance/MaintenanceWorkflowActionPanel";
 import { MaintenanceCostDecisionPanel } from "../../operations/maintenance/MaintenanceCostDecisionPanel";
+import { OperationalDecisionSupportPanel } from "../../operations/overview/OperationalDecisionSupportPanel";
 import type { ReliabilityExperienceKind } from "./roleExperience";
 import {
   resolveReliabilityComposition,
@@ -191,6 +193,12 @@ function criticalityLabel(
   if (value === "medium") return "중간";
   if (value === "low") return "낮음";
   return "확인 필요";
+}
+
+function operationalDecisionBriefRole(
+  value: OperationsRoleLens,
+): OperationsDecisionBriefRole {
+  return value === "process_manager" ? "process_manager" : "process_engineer";
 }
 
 function factorDirectionLabel(value: "risk_up" | "risk_down") {
@@ -1849,6 +1857,16 @@ function WorkflowActionsBlock({
         eventId={props.selectedEvent.eventId}
         guidance={props.detail?.inspectionTargets.find((item) => item.inspectionGuidance)?.inspectionGuidance ?? null}
         onChanged={props.onWorkflowChanged}
+      />
+      <OperationalDecisionSupportPanel
+        assetId={asset.assetId}
+        projectId={props.model.context.projectId}
+        workspaceId={props.model.context.workspaceId}
+        evidenceSnapshotId={props.detail?.snapshotBasis?.artifactId ?? null}
+        decisionAsOf={props.selectedEvent.observedAt}
+        riskStatus={props.selectedEvent.status}
+        role={operationalDecisionBriefRole(props.role)}
+        canMaterialize={props.canMaterializeAgentSummary}
       />
     </Block>
   );

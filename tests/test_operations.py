@@ -1730,7 +1730,7 @@ def test_agent_review_summary_absorbs_adapter_context_into_role_quotes(
     assert "주축 구동 커플링 키트" in role_quotes["field_operator"]
     assert "7월 22일" in role_quotes["process_manager"]
     assert "약 51건" in role_quotes["process_manager"]
-    assert "기계 동력" in role_quotes["process_manager"]
+    assert "모터 출력" in role_quotes["process_manager"]
     assert "점검 요청" in role_quotes["process_manager"]
     assert set(summary["source_refs"]).issubset(set(packet["source_refs"]))
     assert "자동 승인" in summary["boundary_note"]
