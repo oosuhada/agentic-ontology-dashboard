@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADRs)
 
-이 디렉터리는 `Biz-CollabCraft/ontology_dashboard` 프로젝트의 주요 아키텍처 의사결정(Architecture Decisions)을 기록하는 공간입니다.
+이 디렉터리는 `oosuhada/agentic-ontology-dashboard` 프로젝트의 주요 아키텍처 의사결정(Architecture Decisions)을 기록하는 공간입니다.
 
 ## 목록
 

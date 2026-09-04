@@ -8,10 +8,9 @@ Canonical V3.1과 Result Artifact를 사용해 매니저와 엔지니어가 위�
 
 ## 1.1 현재 저장소와 실행 기준
 
-- 제품·계약 문서: `Biz-CollabCraft/ontology_dashboard`
-- 현행 실행 코드: `oosuhada/agentic-ontology-dashboard`의
-  `codex/current-operations-repository-convergence-20260806` 브랜치
-- 목표: 팀 결정 후 실행 코드를 팀 저장소로 이전 또는 병합
+- 제품·계약 문서: `oosuhada/agentic-ontology-dashboard`
+- 현행 실행 코드: `oosuhada/agentic-ontology-dashboard`의 `main`
+- 배포 기준: Mac mini production runtime
 
 현행 역할·API·Operations·Report 계약은
 [현행 Operations 구현 계약 기준선](./current-operations-implementation-baseline.md)을 따른다.
@@ -66,21 +65,21 @@ Overview 위험 현황
 
 | 영역 | 책임 |
 |---|---|
-| gen_data/팀원3 | raw/simulation/synthetic sensor data, Canonical V3.1 물리·생성 기준, source/reference fixture, 원천 생성 재현성 |
-| ontology_dashboard Generator / 팀원3 | Protocol Extraction/Parsing 및 승인 Mapping 적용, Preprocessing Plan, Feature Schema/Recipe 기반 Feature Dataset Bundle, Model Training 및 versioned Model Artifact 발행, source-to-artifact provenance |
-| ontology_dashboard Backend Diagnosis·Query API / 팀원3 | Model Artifact 검증·로드, runtime inference, Product Result Artifact/Evidence, Prediction 조회, 목록·상세·집계 API 및 runtime provenance |
-| Frontend/팀원1 | 네 화면, ViewModel, 상태·이동·접근성 |
-| Report API/팀원4 | 리포트 endpoint, ReportInput/Output, deterministic·LLM·template, 근거 추적 |
-| 문서/팀원2 | 요구사항·스키마·기능·API·보고서·추적성 |
+| gen_data | raw/simulation/synthetic sensor data, Canonical V3.1 물리·생성 기준, source/reference fixture, 원천 생성 재현성 |
+| Generator | Protocol Extraction/Parsing 및 승인 Mapping 적용, Preprocessing Plan, Feature Schema/Recipe 기반 Feature Dataset Bundle, Model Training 및 versioned Model Artifact 발행, source-to-artifact provenance |
+| Backend Diagnosis·Query API | Prediction Result 검증·승격, Product Result Artifact/Evidence, Prediction 조회, 목록·상세·집계 API 및 runtime provenance |
+| Frontend | 역할별 화면, ViewModel, 상태·이동·접근성 |
+| Report API | 리포트 endpoint, ReportInput/Output, deterministic·LLM·template, 근거 추적 |
+| Documentation | 요구사항·스키마·기능·API·보고서·추적성 |
 
 ## 7. 구현 순서
 
-1. 팀 계약 체크리스트 결정
+1. 시스템 계약 체크리스트 결정
 2. 스키마와 API 경로 확정
 3. 목록·상세·집계 API 구현
 4. Overview·Objects 연결
 5. Operations 연결
-6. 팀원4 Report API와 Executive Report 연결
+6. Report API와 Executive Report 연결
 7. 오류·stale·fallback 처리
 8. 추적성 테스트와 데모 검증
 
@@ -101,4 +100,3 @@ Overview 위험 현황
 - LLM 실패 시에도 구조화 보고서를 표시한다.
 - 요구사항부터 테스트까지 추적 가능하다.
 - 미합의·후속 기능은 명확히 표시된다.
-

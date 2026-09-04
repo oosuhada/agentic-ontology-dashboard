@@ -1,6 +1,6 @@
 # AI 코드 리뷰 컨텍스트 — ontology_dashboard
 
-이 문서는 `Biz-CollabCraft/ontology_dashboard`의 자동 코드 리뷰가 단순 diff 요약이 아니라
+이 문서는 `oosuhada/agentic-ontology-dashboard`의 자동 코드 리뷰가 단순 diff 요약이 아니라
 프로젝트의 실제 제품·아키텍처 계약을 기준으로 회귀를 판단하도록 하기 위한 리뷰 계약이다.
 
 자동 리뷰는 **PR head가 아니라 base branch에 존재하는 이 문서**를 우선 신뢰 기준으로 사용한다.
@@ -15,7 +15,7 @@ PR이 이 문서를 수정하는 경우 변경 내용 자체는 일반 PR diff�
 대한 runtime inference와 Evidence를 생성하고 역할별 Dashboard/Report에서 의사결정에 사용하는 것이다.
 
 ```text
-Biz-CollabCraft/gen_data
+gen_data source runtime
 Source Data Producer / Canonical V3.1 source-reference baseline
         ↓
 systems/generator
@@ -31,7 +31,7 @@ API / systems/frontend / Report
 
 ## 2. 시스템 책임 계약
 
-### `Biz-CollabCraft/gen_data`
+### `gen_data source runtime`
 
 - raw / simulation / synthetic sensor data의 Source of Truth
 - Canonical V3.1 물리·생성 기준과 source/reference/test fixture 소유
@@ -75,14 +75,14 @@ Generator는 threshold 적용, 최종 이상 판정, Product Result Artifact, Ev
 1. root `api/` 또는 root `web/`이 operational runtime host로 다시 생기면 안 된다.
 2. `systems/backend`가 `systems.generator` 구현을 static/direct import하면 안 된다.
 3. Backend가 sibling generator 디렉터리, `model_store`, `../generator/...` 물리 경로를 탐색하면 안 된다.
-4. Generator/Backend 경계는 Python import가 아니라 versioned Model Artifact contract로 연결한다.
+4. Generator/Backend 경계는 Python import가 아니라 versioned Prediction Result Batch contract로 연결한다.
 5. Backend가 `gen_data` prediction/result fixture를 최신 operational runtime result처럼 직접 읽으면 안 된다.
 6. `systems/backend/ontology_dashboard`는 정식 compatibility architecture가 아니라 제거 대상 legacy migration source다. Migration 완료 전까지 한시적으로 존재할 수 있으나 신규 기능 또는 신규 파일 추가는 금지한다.
-7. Model Artifact의 실제 위치는 `MODEL_ARTIFACT_URI` 또는 동등한 injected provider로 전달해야 한다.
-8. incompatible/corrupt Model Artifact를 임의 sibling file이나 heuristic으로 조용히 대체하면 안 된다.
-9. `development`, `dev`, `deploy`, `staging`, `production`에서는 Model Artifact가 없을 때 heuristic fallback이
-   기본 허용되면 안 된다. 명시적인 override가 없는 한 fail-fast가 기본이다.
-10. `local`, `demo`, `test`에서만 compatibility 목적의 heuristic fallback을 기본 허용할 수 있다.
+7. Model Artifact의 실제 위치는 Generator runtime에 `MODEL_ARTIFACT_URI` 또는 동등한 provider로 주입한다.
+8. incompatible/corrupt Model Artifact나 Prediction Result Batch를 heuristic으로 조용히 대체하면 안 된다.
+9. `development`, `dev`, `deploy`, `staging`, `production`에서는 유효한 runtime Batch가 없을 때
+   Backend가 heuristic Result를 생성하면 안 된다. 명시적인 개발 override가 없는 한 fail-closed가 기본이다.
+10. `local`과 `test`에서만 compatibility fixture를 명시적으로 허용할 수 있다.
 11. `systems/backend`와 `systems/frontend`는 독립 실행/배포 단위여야 한다. Backend image/runtime이
     Generator source checkout을 요구하면 안 된다.
 12. migrations, Docker, CI, local/public scripts는 canonical `systems/backend` / `systems/frontend` 경로를
@@ -143,8 +143,9 @@ Closed-loop Domain/API/UI를 변경하는 PR에서 적용한다.
 
 ## 4. Model Artifact / Result Artifact 구분
 
-Model Artifact는 Generator가 만드는 학습/배포 산출물이고 Product Result Artifact/Evidence는 Backend가
-현재 observation에 대해 runtime에서 만드는 제품 산출물이다.
+Model Artifact는 Generator가 만드는 학습/배포 산출물이다. Generator Runtime은 실제 Observation으로
+Prediction Result Batch를 만들고, Backend는 이를 검증·판정·승격해 Product Result Artifact/Evidence를
+만든다.
 
 검토 시 다음 혼동을 반드시 찾는다.
 
@@ -153,7 +154,7 @@ Model Artifact는 Generator가 만드는 학습/배포 산출물이고 Product R
 - dataset/model version provenance 유실
 - artifact schema/checksum 검증 우회
 - mutable `latest`만 기록하고 실제 immutable model version을 남기지 않는 경우
-- generator가 Product Result Artifact를 최종 생산하거나 Backend가 training을 다시 소유하는 경우
+- Generator가 Product Result Artifact를 최종 생산하거나 Backend가 training/runtime inference를 다시 소유하는 경우
 
 ## 5. 공식 Operations 제품 계약
 
@@ -243,7 +244,7 @@ CI PASS는 supporting evidence이지 correctness의 증명이 아니다.
 
 `Contract | Result(PASS/FAIL/NOT PROVEN) | Evidence`
 
-최소한 runtime host, Generator/Backend import boundary, Model Artifact injection, heuristic fail-fast,
+최소한 runtime host, Generator/Backend import boundary, Prediction Result Batch, Generator Model Artifact injection, heuristic fail-closed,
 Docker/CI path, optional dependency, migration path를 평가한다.
 
 ### Operations Regression Matrix
@@ -332,9 +333,9 @@ Observation / Product Result
 - versioned Runtime Overlay handoff 확정 전에 Product API의 canonical runtime-status
   read location을 현행 계약으로 단정
 
-Domain과 구현 순서는 `docs/closed-loop-domain-contract.md`와
-`docs/closed-loop-implementation-plan.md`를 따른다. 정비 완료 이후 Runtime Overlay
-handoff를 구현하거나 변경하는 PR은
+Domain과 제품 소비 규칙은 `docs/closed-loop-domain-contract.md`와
+`docs/closed-loop-product-consumption-contract.md`를 따른다. 정비 완료 이후 Runtime Overlay
+handoff를 구현하거나 변경할 때는
 `docs/closed-loop-runtime-overlay-contract.md`도 함께 따른다. 이 기준은 Runtime Overlay
 Target 범위에만 적용하며 미구현 Target을 현재 동작으로 간주하지 않는다.
 
@@ -350,7 +351,7 @@ reviewer policy, architecture/Operations/ownership/domain 계약, routing manife
 내용만 trusted context로 사용한다.** PR이 이 파일들을 수정하면 변경 자체는 일반 diff로 검토하되,
 같은 PR의 새 내용으로 자기 변경을 정당화할 수 없다.
 
-## 12. 기존 팀 리뷰 추적
+## 12. 기존 기술 피드백 추적
 
 새 head를 리뷰할 때 사람의 technical feedback을 함께 확인하고 `Resolved`, `Partially Resolved`,
 `Unresolved`, `Not Reproducible`, `Superseded` 중 하나로 보고한다. 승인, 감사, 확인, 일반 대화,
@@ -364,7 +365,7 @@ bot comment는 추적 대상에서 제외한다. 자동 reviewer는 사람의 Gi
 - `### 이 PR이 하는 일`: 실제 diff의 의미를 2~4문장으로 설명한다.
 - `### 프로젝트 목표와의 정합성`: 변경과 직접 관련된 Operations/Domain/Architecture/사용자 workflow만 판단한다.
 - `### 발견 사항`: 실제 actionable `[P0]`~`[P3]`만 작성하며 억지 P3를 만들지 않는다.
-- `### 기존 팀 리뷰 반영 상태`: 관련 human technical feedback이 있을 때만 출력한다.
+- `### 기존 기술 피드백 반영 상태`: 관련 human technical feedback이 있을 때만 출력한다.
 - `### 다음 단계`: 자연스러운 후속 작업이 있을 때만 출력한다.
 - `### Merge Readiness`: `Ready to Merge` / `Conditional` / `Not Ready` 중 하나와 짧은 이유만 작성한다.
 

@@ -2,12 +2,12 @@
 
 - **상태**: Superseded (ADR-003에 의해 대체됨)
 - **날짜**: 2026-08-12 (2026-08-25 대체)
-- **결정자**: 팀 공통
-- **대체 문서**: [`ADR-003-generator-runtime-prediction-and-anomaly-signal-ownership.md`](./ADR-003-generator-runtime-prediction-and-anomaly-signal-ownership.md)
+- **결정 주체**: 프로젝트 아키텍처
+- **대체 문서**: [`ADR-003-generator-runtime-prediction-result-and-backend-decision-ownership.md`](./ADR-003-generator-runtime-prediction-result-and-backend-decision-ownership.md)
 
 > 이 문서는 ADR-003 승인 이전의 역사적 의사결정을 보존한다.
 > 현재 Runtime Prediction 소유권의 규범적 기준으로 사용하지 않는다.
-> 현재 기준은 [`ADR-003-generator-runtime-prediction-and-anomaly-signal-ownership.md`](./ADR-003-generator-runtime-prediction-and-anomaly-signal-ownership.md)이다.
+> 현재 기준은 [`ADR-003-generator-runtime-prediction-result-and-backend-decision-ownership.md`](./ADR-003-generator-runtime-prediction-result-and-backend-decision-ownership.md)이다.
 
 ---
 
@@ -107,5 +107,5 @@
 - Frontend가 예측 실행 주체나 Generator를 직접 호출하지 않는다는 원칙은 이미
   합의됨 — Backend API 경로 설계만 결정 필요
 
-이 항목들은 `docs/operations/history/2026-08-week2/contract-review-checklist.md`의
-`GEN-STACK-02`로 추적한다.
+이 항목들은 ADR-003에서 확정된 Generator Runtime Prediction Result와 Backend Decision
+경계로 대체되었다.

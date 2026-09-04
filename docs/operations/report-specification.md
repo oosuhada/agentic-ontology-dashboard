@@ -62,8 +62,8 @@ sections, actions, citations, limitations, generated_at
 구현체가 아니라 Evidence-to-Report 변환 레퍼런스로만 사용하며 전용 필드를 공식
 ReportInput에 그대로 복사하지 않는다.
 
-리포트 관련 API의 계약 검증과 향후 구현은 팀원4가 담당한다. 팀원3의 조회·집계
-API는 ReportInput 구성에 필요한 원천 필드를 제공하고 팀원2는 계약을 문서화한다.
+리포트 API는 조회·집계 API가 제공하는 원천 필드로 ReportInput을 구성하고,
+versioned report contract가 입력·출력과 근거 추적 규칙을 고정한다.
 
 ```text
 Canonical V3.1
@@ -199,7 +199,7 @@ scored_asset_count + data_quality_hold_count = total_asset_count
 
 ### 5.3 ReportRiskAsset
 
-`top_risk_assets`의 최대 개수는 팀원1·4 합의 후 확정한다. 권장값은 5개다.
+`top_risk_assets`의 최대 개수는 제품·Report 계약에서 확정하며 권장값은 5개다.
 
 | 필드 | 타입 | 필수 | 출처 |
 |---|---|:---:|---|
@@ -407,7 +407,7 @@ fallback이 사용돼도 `ReportOutput` 구조를 유지하고 `generation_metho
 - deterministic ReportOutput 샘플
 - `evidence_references.source_field` 매핑 예시
 - 금지 표현 검증 목록
-- 팀원2가 계약으로 정리하고 팀원3 조회·집계 API가 제공할 필요 필드 목록
+- 계약과 조회·집계 API가 함께 제공해야 할 필요 필드 목록
 - `evaluation_truth` 미사용 확인 결과
 
 ## 13. 리포트 API 담당 확인 사항
@@ -421,4 +421,3 @@ fallback이 사용돼도 `ReportOutput` 구조를 유지하고 `generation_metho
 | RPT-DEC-05 | deterministic/template fallback 구현 위치 |
 | RPT-DEC-06 | provider timeout, retry와 최대 생성시간 |
 | RPT-DEC-07 | 추가 금지 표현과 사용자 고지 문구 |
-

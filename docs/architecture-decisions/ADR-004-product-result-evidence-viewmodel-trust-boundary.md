@@ -2,7 +2,7 @@
 
 - **상태**: Proposed (제안)
 - **날짜**: 2026-08-29
-- **결정자**: 팀 확인 필요
+- **결정 주체**: 프로젝트 아키텍처 검토 필요
 - **관련 문서**:
   - [`ADR-003-generator-runtime-prediction-result-and-backend-decision-ownership.md`](./ADR-003-generator-runtime-prediction-result-and-backend-decision-ownership.md)
   - [`../plans/ai-workflow/2026-08-29-002-product-result-evidence-materialization-plan.md`](../plans/ai-workflow/2026-08-29-002-product-result-evidence-materialization-plan.md)

@@ -2,7 +2,7 @@
 
 - **상태**: Accepted (확정)
 - **날짜**: 2026-08-25
-- **결정자**: 팀 공통
+- **결정 주체**: 프로젝트 아키텍처
 - **선행/대체 문서**: [`ADR-002-training-runtime-prediction-ownership.md`](./ADR-002-training-runtime-prediction-ownership.md) (Superseded)
 
 ---

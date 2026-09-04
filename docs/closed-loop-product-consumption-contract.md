@@ -7,9 +7,8 @@
 [`closed-loop-domain-contract.md`](./closed-loop-domain-contract.md)이며, 이 문서는 Domain 상태를
 재정의하지 않는다.
 
-합의 근거는 2026-08-18 PR #42 Conversation의 Product/API/UI 소비 계약 코멘트다.
-PR #42가 `main`에 merge된 뒤에도 Backend Domain과 Product/UI가 서로 다른 상태·역할·Action 의미를
-만들지 않도록 저장소 안의 공식 계약으로 승격한다.
+Backend Domain과 Product/UI가 서로 다른 상태·역할·Action 의미를 만들지 않도록 저장소 안의
+공식 소비 계약으로 유지한다.
 
 문서 정본의 역할은 다음과 같이 나눈다.
 
@@ -18,11 +17,9 @@ PR #42가 `main`에 merge된 뒤에도 Backend Domain과 Product/UI가 서로 �
 | `docs/closed-loop-domain-contract.md` | Closed-loop 객체 경계, 상태 전이, lineage, Domain invariant |
 | `docs/closed-loop-product-consumption-contract.md` | 사용자 역할, Product Action, `available_actions`, Event API 소비, 오류, E2E, 구현 소유권 |
 | `docs/closed-loop-runtime-overlay-contract.md` | 정비 완료 이후 대상 설비 Overlay와 정비 후 Runtime Prediction handoff |
-| `docs/closed-loop-implementation-plan.md` | 구현 단계, PR 순서, 변경 예약 범위 |
 
 문서가 충돌하면 Domain 상태 자체는 Domain 계약을, Product/API/UI 표현과 소비 방식은 이
-문서를, 정비 완료 이후 Runtime Overlay handoff는 Runtime Overlay 계약을 따른다. 구현
-계획은 canonical contract를 참조하는 실행 계획으로 취급한다.
+문서를, 정비 완료 이후 Runtime Overlay handoff는 Runtime Overlay 계약을 따른다.
 
 ## 2. 핵심 원칙
 
@@ -497,7 +494,7 @@ Recommendation / WorkOrder / MaintenanceAction ID는 E2E 코드에 하드코딩�
 
 ## 11. 역할 경계와 구현 소유권
 
-### 광우
+### Closed-loop domain
 
 - Closed-loop Domain
 - Persistence
@@ -508,7 +505,7 @@ Recommendation / WorkOrder / MaintenanceAction ID는 E2E 코드에 하드코딩�
 - OpenAPI
 - Closed-loop backend tests
 
-광우가 직접 소유하지 않는 범위:
+Closed-loop domain이 직접 소유하지 않는 범위:
 
 - `systems/generator/`
 - `systems/backend/app/diagnosis/`
@@ -525,30 +522,16 @@ Recommendation / WorkOrder / MaintenanceAction ID는 E2E 코드에 하드코딩�
 
 이 문서는 Backend와 Frontend 사이의 공유 contract이므로 양쪽 구현에서 공식 참조 문서로 사용한다.
 
-## 12. 구현 순서·충돌 및 migration 기준
+## 12. 구현 및 migration 기준
 
-### 12.1 PR #41과 공통 파일
+Closed-loop Persistence/API는 canonical `systems/backend/app` 도메인, repository/PostgreSQL,
+outbox, migration과 contract test를 함께 변경한다. 제거 대상인
+`systems/backend/ontology_dashboard` compatibility 경로에는 신규 기능을 추가하지 않는다.
 
-2026-08-18 문서 확정 시점에 PR #41은 OPEN이며 다음 공통 파일을 수정 중이다.
+### 12.1 migration 번호
 
-- `systems/backend/ontology_dashboard/routers/manufacturing.py`
-- `systems/backend/ontology_dashboard/openapi_contracts.py`
-- `systems/backend/ontology_dashboard/service.py`
-
-따라서 Closed-loop Persistence/API 구현은 독립적인 `closed_loop/`, repository/PostgreSQL, outbox,
-migration, repository/domain test부터 진행할 수 있다. 위 공통 wiring 파일은 PR #41이 정리되거나 merge된
-뒤 최신 `main`을 반영해 연결하는 것을 기본 순서로 한다. 구현 시점에 PR #41 상태가 달라졌다면 과거
-상태를 가정하지 말고 다시 확인한다.
-
-### 12.2 migration 번호
-
-문서 확정 기준 `main` commit `4a9f094cb20c71258e702597846f9bdac4399178`에서 PostgreSQL과 SQLite의
-최신 migration은 모두 `0029_governed_event_automation.sql`이다. 따라서 이 기준선에서 시작하는 첫
-Closed-loop migration은 `0030_closed_loop_...sql`을 사용한다.
-
-단, 구현 branch가 최신 `main`을 반영했을 때 `0030` 이상 migration이 이미 존재하면 기존 번호를
-덮어쓰지 않고 그 다음 번호를 사용한다. migration 번호는 이 문서의 숫자보다 최신 `main`의 실제
-파일을 우선한다.
+새 migration은 현재 `main`의 마지막 migration 번호를 확인하고 그 다음 번호를 사용한다. 기존
+번호를 덮어쓰거나 운영 DB에 적용된 migration을 다시 작성하지 않는다.
 
 ## 13. 완료 조건
 

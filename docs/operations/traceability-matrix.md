@@ -2,8 +2,8 @@
 
 ## 1. 목적
 
-요구사항이 기능, 화면, API, 스키마와 테스트까지 연결되는지 확인한다. PR #9 통합
-이후 현행 경로와 파일명은 팀 저장소의 실제 구현을 기준으로 기록하고, 구현되지 않은
+요구사항이 기능, 화면, API, 스키마와 테스트까지 연결되는지 확인한다. 현행 경로와
+파일명은 저장소의 실제 구현을 기준으로 기록하고, 구현되지 않은
 목표 경로와 테스트 ID는 `V2 제안`으로 구분한다.
 
 표의 `/overview`, `/objects`, `/operations`, `/reports/executive`는 목표 설계 경로다.
@@ -26,22 +26,23 @@
 
 ### 1.2 Generator 파이프라인 추적
 
-| 계약 | 구현 | 테스트 | 담당 PR |
+| 계약 | 구현 | 테스트 | 상태 |
 |---|---|---|---|
-| Extraction Plan | `systems/generator/extraction` | extraction tests | #21 |
-| Feature partition/order | `feature_builder.py` | feature isolation tests | #21 |
-| Horizon Label | `feature_label_service.py` | label contract tests | #21 |
-| Model Artifact publish | model publish/registry | artifact round-trip | #22 |
-| Training daemon | `generator_main.py` | import/API tests | #23 |
-| Runtime inference | Backend diagnosis | Result Artifact tests | #24의 Generator runtime 코드를 제거하고 Backend 구현으로 재구성 필요 |
+| Extraction Plan | `systems/generator/extraction` | extraction tests | 구현 |
+| Feature partition/order | `feature_builder.py` | feature isolation tests | 구현 |
+| Horizon Label | `feature_label_service.py` | label contract tests | 구현 |
+| Model Artifact publish | model publish/registry | artifact round-trip | 구현 |
+| Training daemon | `generator_main.py` | import/API tests | 구현 |
+| Runtime prediction | `systems/generator/app/runtime_pipeline` | runtime stage / batch contract tests | 구현 |
+| Result validation / promotion | `systems/backend/app/diagnosis` | inbox / promotion / Result Artifact tests | 구현 |
 
 상세는 `docs/operations/generator-feature-label-contract.md`,
 `docs/operations/model-artifact-publish-contract.md`,
-`docs/architecture-decisions/ADR-002-training-runtime-prediction-ownership.md`를 따른다.
+`docs/architecture-decisions/ADR-003-generator-runtime-prediction-result-and-backend-decision-ownership.md`를 따른다.
 
 ### 1.3 V2 변경 제안 추적
 
-조회·집계 API는 팀원3, 아래 Executive Report API와 RPT 테스트는 팀원4가 담당한다.
+조회·집계 API와 Executive Report API는 각각의 versioned contract와 아래 추적 항목을 따른다.
 
 | 요구사항 | 기능 | 화면 | API | 스키마 | 테스트 |
 |---|---|---|---|---|---|
