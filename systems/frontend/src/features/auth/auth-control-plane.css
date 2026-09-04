@@ -245,9 +245,7 @@
   min-height: 48px;
 }
 .auth-page .demo-account-option { height: var(--auth-field-height); min-height: var(--auth-field-height); }
-.auth-page .demo-account-card,
-.auth-page .demo-account-info,
-.auth-page .demo-account-info-trigger { height: 100%; min-height: 0; }
+.auth-page .demo-account-card { height: 100%; min-height: 0; }
 :root[data-density="comfortable"] .auth-page .demo-account-option { height: 48px; min-height: 48px; }
 .auth-page .auth-card .auth-form > label,
 .auth-page .demo-account-picker > .demo-account-heading { color: var(--fd-text-secondary); font-size: var(--auth-body-size)!important; font-weight: 800!important; line-height: 1.25; letter-spacing: 0; text-transform: none; outline: none; }

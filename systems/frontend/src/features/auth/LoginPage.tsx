@@ -92,7 +92,6 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [openInfo, setOpenInfo] = useState<string | null>(null);
   const roleContextDescription = english
     ? "Connect the same equipment event and evidence across engineering investigation, operational decisions, and executive reporting."
     : "같은 설비 이상 사건과 근거를 엔지니어의 조사, 운영 관리자의 판단, 경영진의 보고 언어로 연결합니다.";
@@ -129,7 +128,6 @@ export function LoginPage() {
     if (!account) return;
     setEmail(account.email);
     setPassword(account.password);
-    setOpenInfo(null);
   }
 
   return (
@@ -218,33 +216,18 @@ export function LoginPage() {
                   className="demo-account-card"
                   type="button"
                   onClick={() => selectDemo(account.email)}
+                  aria-describedby={preferences.showGuidance ? `role-help-${account.email.split("@")[0]}` : undefined}
                 >
                   <strong>
                     {english ? account.label.en : account.label.ko}
                   </strong>
+                  {preferences.showGuidance ? <Info className="demo-account-help-icon" size={13} aria-hidden="true" /> : null}
                 </button>
                 {preferences.showGuidance ? <div
-                  className={`demo-account-info ${openInfo === account.email ? "is-open" : ""}`}
+                  id={`role-help-${account.email.split("@")[0]}`}
+                  className="demo-account-popover"
+                  role="tooltip"
                 >
-                  <button
-                    type="button"
-                    className="demo-account-info-trigger"
-                    aria-label={
-                      english
-                        ? `${account.label.en} details`
-                        : `${account.label.ko} 상세 정보`
-                    }
-                    aria-expanded={openInfo === account.email}
-                    title={english ? "Role details" : "역할 상세"}
-                    onClick={() =>
-                      setOpenInfo((current) =>
-                        current === account.email ? null : account.email,
-                      )
-                    }
-                  >
-                    <Info size={13} />
-                  </button>
-                  <div className="demo-account-popover">
                     <strong>
                       {english ? account.label.en : account.label.ko}
                     </strong>
@@ -254,7 +237,6 @@ export function LoginPage() {
                         : account.description.ko}
                     </p>
                     <small>{account.email}</small>
-                  </div>
                 </div> : null}
               </div>
             ))}
