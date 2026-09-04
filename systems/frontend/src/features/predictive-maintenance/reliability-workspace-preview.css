@@ -559,8 +559,9 @@
     left:var(--rw-left-rail-width)!important;
   }
   .rw-preview-shell:not(.left-collapsed) .rw-preview-settings-panel {
-    width:calc(var(--rw-left-rail-width) - 18px);
-    max-width:calc(100% - 18px);
+    left:-6px;
+    width:calc(100% + 12px);
+    max-width:none;
   }
 }
 :root:not([data-technical-metadata="shown"]) .rw-technical-metadata { display:none!important; }
