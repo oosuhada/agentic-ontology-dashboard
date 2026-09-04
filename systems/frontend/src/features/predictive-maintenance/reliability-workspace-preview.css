@@ -544,6 +544,24 @@
   :root[data-density="comfortable"] .rw-preview-shell.left-collapsed .rw-preview-body {
     grid-template-columns: 56px minmax(0,1fr)!important;
   }
+
+  /* The settings sheet is part of the navigation rail, not a flyout into the
+     work canvas. Keep enough rail width for its two-column controls and make
+     its right edge land inside the rail at every desktop density. */
+  .rw-preview-shell:not(.left-collapsed) {
+    --rw-left-rail-width: 276px;
+  }
+  .rw-preview-shell:not(.left-collapsed) .rw-preview-body {
+    grid-template-columns: var(--rw-left-rail-width) minmax(0,1fr)!important;
+  }
+  .rw-preview-shell:not(.left-collapsed) .rw-preview-main::before,
+  .rw-preview-shell:not(.left-collapsed) .rw-preview-main::after {
+    left:var(--rw-left-rail-width)!important;
+  }
+  .rw-preview-shell:not(.left-collapsed) .rw-preview-settings-panel {
+    width:calc(var(--rw-left-rail-width) - 18px);
+    max-width:calc(100% - 18px);
+  }
 }
 :root:not([data-technical-metadata="shown"]) .rw-technical-metadata { display:none!important; }
 .rw-preview-shell .rw-preview-left .rw-preview-left-heading span,
