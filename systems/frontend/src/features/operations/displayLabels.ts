@@ -257,3 +257,42 @@ export function displayReviewPriority(value?: string | null): string {
   if (!value) return "검토 우선순위 미제공";
   return REVIEW_PRIORITY_LABELS[value] ?? value;
 }
+
+const REPORT_TYPE_LABELS: Record<string, string> = {
+  "inspection-summary": "점검 결과 요약",
+  "operations-decision": "운영 판단 보고",
+  "executive-brief": "경영진 운영 브리프",
+  "maintenance-effect": "정비 효과 비교",
+  "weekly-risk": "주간 운영 리스크",
+};
+
+export function displayReportType(value?: string | null): string {
+  if (!value) return "보고 유형 확인 필요";
+  return REPORT_TYPE_LABELS[value] ?? "업무 보고";
+}
+
+export function displayArtifactKind(value?: string | null): string {
+  if (!value) return "근거 묶음 확인 필요";
+  if (value.startsWith("pm-report:")) return "현재 Case 보고서 초안";
+  if (value.startsWith("RESULT#")) return "선택 Case 예측 근거";
+  if (value.startsWith("result-artifact://")) return "예측 결과 근거";
+  return "연결된 기술 근거";
+}
+
+export function displayDataSource(value?: string | null): string {
+  if (!value) return "연결된 운영 데이터";
+  const normalized = value.toLowerCase();
+  if (normalized.includes("wall-clock-live") || normalized.includes("live")) return "실시간 설비 관측 데이터";
+  if (normalized.includes("canonical")) return "검증된 기준 관측 데이터";
+  if (normalized.includes("presentation") || normalized.includes("demo")) return "시연용 고정 관측 데이터";
+  return "연결된 설비 관측 데이터";
+}
+
+export function displayModelRelease(value?: string | null): string {
+  if (!value) return "적용 모델 확인 필요";
+  const normalized = value.toLowerCase();
+  if (normalized.includes("cnc") && normalized.includes("random-forest")) return "CNC 고장 위험 예측 모델 v3";
+  if (normalized.includes("compressor")) return "공기압축기 고장 위험 예측 모델";
+  if (normalized.includes("logistic") || normalized.includes("logreg")) return "기준 고장 위험 예측 모델";
+  return "배포 승인된 고장 위험 예측 모델";
+}

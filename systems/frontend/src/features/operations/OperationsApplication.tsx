@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { navigate } from "../../routing";
+import { getOpenInspectionWorkOrders } from "../../api";
 import type {
   OperationsAsset,
   OperationsBootstrapModel,
@@ -153,7 +154,12 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
     setLoading(true);
     setError(null);
     loadOperationsBootstrap(projectId, selection.workspaceId, selection.eventId)
-      .then((payload) => {
+      .then(async (payload) => {
+        if (cancelled) return;
+        const openWorkOrders = await getOpenInspectionWorkOrders(
+          projectId,
+          payload.context.workspaceId,
+        ).catch(() => ({ items: [] }));
         if (cancelled) return;
         setModel(payload);
         const selectedEvent = payload.events.find((item) => item.eventId === selection.eventId) ?? null;
@@ -165,8 +171,29 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
         if (!selection.eventId && selectedAsset?.eventId) patch.eventId = selectedAsset.eventId;
         if (!selection.assetId && selectedEvent) patch.assetId = selectedEvent.assetId;
         if (!selection.assetId && !selection.eventId && payload.events[0] && (selection.view === "operations" || selection.view === "reports")) {
-          patch.eventId = payload.events[0].eventId;
-          patch.assetId = payload.events[0].assetId;
+          const stepPriority: Record<string, number> = {
+            maintenance_in_progress: 0,
+            inspection_in_progress: 1,
+            inspection_approved: 2,
+            inspection_requested: 3,
+            inspection_completed: 4,
+            recommendation_proposed: 5,
+            maintenance_requested: 6,
+            maintenance_approved: 7,
+            post_maintenance_observation_pending: 8,
+            ready_for_reprediction: 9,
+          };
+          const activeWorkflow = [...openWorkOrders.items]
+            .sort((left, right) => (
+              (stepPriority[left.current_step ?? ""] ?? 99)
+              - (stepPriority[right.current_step ?? ""] ?? 99)
+            ))
+            .find((item) => payload.events.some((event) => event.eventId === item.event_id));
+          const firstEvent = activeWorkflow
+            ? payload.events.find((event) => event.eventId === activeWorkflow.event_id) ?? payload.events[0]
+            : payload.events[0];
+          patch.eventId = firstEvent.eventId;
+          patch.assetId = firstEvent.assetId;
         }
         if (Object.keys(patch).length) updateSelection(patch, { replace: true });
       })

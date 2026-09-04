@@ -538,9 +538,119 @@ class MaintenanceLoopService:
                 project_id=project_id,
                 workspace_id=workspace_id,
             )
-        return {
-            "items": [item.model_dump(mode="json") for item in work_orders]
-        }
+        items = []
+        for work_order in work_orders:
+            lineage = self.repository.event_lineage(
+                workspace_id=workspace_id,
+                event_id=work_order.event_id,
+            )
+            if self._post_maintenance_result_exists(
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                work_order=work_order,
+                lineage=lineage,
+            ):
+                continue
+            inspection_results = [
+                item
+                for item in lineage.get("inspection_results") or []
+                if item.get("work_order_id") == work_order.work_order_id
+            ]
+            items.append(
+                {
+                    **work_order.model_dump(mode="json"),
+                    "inspection_outcome": (
+                        inspection_results[-1].get("outcome")
+                        if inspection_results
+                        else None
+                    ),
+                    "current_step": self._inspection_workflow_current_step(
+                        work_order=work_order,
+                        lineage=lineage,
+                    ),
+                }
+            )
+        return {"items": items}
+
+    def _post_maintenance_result_exists(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        work_order: Any,
+        lineage: Mapping[str, Any],
+    ) -> bool:
+        maintenance_events = list(lineage.get("maintenance_events") or [])
+        if not maintenance_events or self.replay_session_query is None:
+            return False
+        resolver = getattr(self.replay_session_query, "post_maintenance_result", None)
+        if not callable(resolver):
+            return False
+        maintenance_event_id = maintenance_events[-1].get("maintenance_event_id")
+        if not maintenance_event_id:
+            return False
+        try:
+            result = resolver(
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                asset_id=work_order.asset_id,
+                maintenance_event_id=maintenance_event_id,
+            )
+        except (KeyError, ValueError):
+            return False
+        return result is not None
+
+    @staticmethod
+    def _inspection_workflow_current_step(
+        *,
+        work_order: Any,
+        lineage: Mapping[str, Any],
+    ) -> str:
+        if work_order.status is WorkOrderStatus.REQUESTED:
+            return "inspection_requested"
+        if work_order.status is WorkOrderStatus.APPROVED:
+            return "inspection_approved"
+        if work_order.status is WorkOrderStatus.IN_PROGRESS:
+            return "inspection_in_progress"
+
+        maintenance_actions = list(lineage.get("maintenance_actions") or [])
+        if maintenance_actions:
+            status = maintenance_actions[-1].get("status")
+            if status == "in_progress":
+                return "maintenance_in_progress"
+            if status == "planned":
+                return "maintenance_approved"
+            if status == "completed":
+                return "post_maintenance_observation_pending"
+
+        maintenance_work_orders = [
+            item
+            for item in lineage.get("work_orders") or []
+            if item.get("work_type") == WorkOrderType.MAINTENANCE.value
+        ]
+        if maintenance_work_orders:
+            status = maintenance_work_orders[-1].get("status")
+            if status == WorkOrderStatus.REQUESTED.value:
+                return "maintenance_requested"
+            if status == WorkOrderStatus.APPROVED.value:
+                return "maintenance_approved"
+            if status == WorkOrderStatus.IN_PROGRESS.value:
+                return "maintenance_in_progress"
+            if status == WorkOrderStatus.COMPLETED.value:
+                return "post_maintenance_observation_pending"
+
+        manual_recommendations = [
+            item
+            for item in lineage.get("recommendations") or []
+            if item.get("recommendation_origin") == "operations_manual"
+            and item.get("source_inspection_work_order_id") == work_order.work_order_id
+        ]
+        if manual_recommendations:
+            return "recommendation_proposed"
+        return "inspection_completed"
 
     def complete_inspection(
         self,

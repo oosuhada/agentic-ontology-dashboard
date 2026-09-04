@@ -64,18 +64,17 @@ function displayDateTime(value: string | null | undefined, english: boolean) {
   return parsed.toLocaleString(english ? "en-US" : "ko-KR", { dateStyle: "short", timeStyle: "short" });
 }
 
-function shouldShowOperationalFocus(surfaceId: string, hasSelectedEvent: boolean) {
-  if (hasSelectedEvent) return false;
-  return new Set([
-    "decision-case",
-    "production-impact",
-    "maintenance-approval",
-    "assets",
-    "sensor-features",
-    "inspection",
-    "maintenance-history",
-    "work-targets",
-  ]).has(surfaceId);
+const OPERATIONAL_FOCUS_SURFACES = new Set([
+  "decision-case",
+  "maintenance-approval",
+  "inspection",
+  "my-work",
+  "work-targets",
+  "factory-status",
+]);
+
+function shouldShowOperationalFocus(surfaceId: string) {
+  return OPERATIONAL_FOCUS_SURFACES.has(surfaceId);
 }
 
 const LIFECYCLE_LABELS: Record<OperationsClosedLoopLifecycleStep, [string, string]> = {
@@ -447,6 +446,29 @@ export function ReliabilityWorkspacePreview({
   const workOrderCount = detail?.closedLoop?.workOrders.length ?? 0;
   const lifecycleSummary = detail?.closedLoop?.lifecycleSummary ?? null;
   const primaryAction = detail?.closedLoop?.primaryAction ?? null;
+  const focusPrimaryAction = primaryAction
+    ? {
+      label: primaryAction.label,
+      ownerLabel: primaryAction.ownerLabel,
+      disabled: false,
+      disabledReason: null,
+    }
+    : selectedEvent
+      ? {
+        label: experience.kind === "operations"
+          ? (english ? "Review inspection decision" : "점검 요청 판단하기")
+          : experience.kind === "executive"
+            ? (english ? "Open the current case report" : "현재 Case 보고 열기")
+            : (english ? "Review evidence and start work" : "근거 확인 후 점검 시작하기"),
+        ownerLabel: experience.kind === "operations"
+          ? (english ? "Operations manager" : "운영 관리자")
+          : experience.kind === "executive"
+            ? (english ? "Executive reviewer" : "경영진 검토자")
+            : (english ? "Field engineer" : "현장 엔지니어"),
+        disabled: false,
+        disabledReason: null,
+      }
+      : null;
   const lifecycleCompletedSteps = lifecycleSummary?.completedSteps.map((step) => ({
     id: step,
     label: lifecycleLabel(step, english) ?? step,
@@ -495,9 +517,6 @@ export function ReliabilityWorkspacePreview({
     ?? selectedEvent?.observedAt
     ?? context.observedAt
     ?? context.refreshedAt;
-  const previewMutationReason = english
-    ? "This summary card is read-only. Use the governed action block for approval or field execution."
-    : "이 요약 카드는 읽기 전용입니다. 승인·현장 실행은 권한이 적용된 업무 실행 블록에서 수행합니다.";
   const agentSummary = agentSummaryResponse?.summary ?? null;
   const roleSummary = agentSummary?.role_summaries.find((item) => (
     experience.kind === "operations"
@@ -527,7 +546,7 @@ export function ReliabilityWorkspacePreview({
     assignedEngineer: selectedEvent?.assignedEngineer ?? null,
     currentLifecycleLabel: lifecycleCurrentForDisplay?.label ?? null,
     nextLifecycleLabel: lifecycleNextForDisplay?.label ?? null,
-    primaryActionLabel: primaryAction?.label ?? null,
+    primaryActionLabel: focusPrimaryAction?.label ?? null,
     evidenceCount: evidence.length,
     evidenceSummary: assistantEvidenceItems.length
       ? assistantEvidenceItems.join(" · ")
@@ -579,12 +598,12 @@ export function ReliabilityWorkspacePreview({
     detail,
     lifecycleCurrentLabel: lifecycleCurrentForDisplay?.label ?? null,
     lifecycleNextLabel: lifecycleNextForDisplay?.label ?? null,
-    primaryActionLabel: primaryAction?.label ?? null,
+    primaryActionLabel: focusPrimaryAction?.label ?? null,
     roleHeadline: english ? experience.primaryQuestion.en : experience.primaryQuestion.ko,
     roleDetail: english ? experience.operationalFocusHint.en : experience.operationalFocusHint.ko,
     english,
   });
-  const showOperationalFocus = shouldShowOperationalFocus(activeNav.id, Boolean(selectedEvent));
+  const showOperationalFocus = shouldShowOperationalFocus(activeNav.id);
   const lifecycleMode = activeNav.id === "decision-case" ? "full" : selectedEvent ? "compact" : "idle";
   const selectionTarget = experience.kind === "operations"
     ? { id: "decision-case", view: "operations" as const, label: english ? "Open Decision Case" : "Decision Case 열기" }
@@ -593,6 +612,11 @@ export function ReliabilityWorkspacePreview({
       : experience.kind === "executive"
         ? { id: "factory-status", view: "overview" as const, label: english ? "Open factory evidence" : "설비 상태 근거 열기" }
         : { id: "work-targets", view: "objects" as const, label: english ? "Open work target" : "작업 대상 열기" };
+  const primaryActionTarget = experience.kind === "operations"
+    ? { id: primaryAction?.actionId?.includes("maintenance") ? "maintenance-approval" : "inspection", view: "operations" as const }
+    : experience.kind === "executive"
+      ? { id: "report-draft", view: "reports" as const }
+      : { id: "inspection", view: "operations" as const };
 
   async function ask(question: string) {
     const trimmed = question.trim();
@@ -697,7 +721,7 @@ export function ReliabilityWorkspacePreview({
               <header><strong>{english ? "Workspace settings" : "사용자 환경"}</strong><small>{user.display_name}</small></header>
               <div className="rw-preview-settings-group"><span>{english ? "Language" : "언어"}</span><div className="rw-preview-segmented two"><button type="button" className={!english ? "is-active" : ""} onClick={() => setReliabilityLocale("ko-KR")}>한국어</button><button type="button" className={english ? "is-active" : ""} onClick={() => setReliabilityLocale("en-US")}>English</button></div></div>
               <div className="rw-preview-settings-group"><span>{english ? "Theme" : "화면 테마"}</span><div className="rw-preview-segmented three">{(["light", "dark", "system"] as const).map((value) => <button type="button" key={value} className={preferences.theme === value ? "is-active" : ""} onClick={() => setTheme(value)}>{value === "light" ? (english ? "Light" : "라이트") : value === "dark" ? (english ? "Dark" : "다크") : (english ? "System" : "시스템")}</button>)}</div></div>
-              <div className="rw-preview-settings-group"><span>{english ? "Display preset" : "화면 프리셋"}</span><div className="rw-preview-segmented three">{(["compact", "standard", "accessible"] as const).map((value) => <button type="button" key={value} className={preset === value ? "is-active" : ""} onClick={() => setPreset(value)}>{value === "compact" ? (english ? "Report" : "보고/프린트") : value === "standard" ? (english ? "Desktop" : "데스크톱") : (english ? "Presentation" : "발표/프로젝터")}</button>)}</div></div>
+              <div className="rw-preview-settings-group"><span>{english ? "Display preset" : "화면 프리셋"}</span><div className="rw-preview-segmented four">{(["compact", "standard", "large", "accessible"] as const).map((value) => <button type="button" key={value} className={preset === value ? "is-active" : ""} onClick={() => setPreset(value)}>{value === "compact" ? (english ? "Report" : "보고/프린트") : value === "standard" ? (english ? "Desktop" : "데스크톱") : value === "large" ? (english ? "Large" : "큰 글씨") : (english ? "Presentation" : "발표/프로젝터")}</button>)}</div></div>
               {experience.kind === "engineering" ? <button type="button" className="rw-preview-settings-action" onClick={() => setShowTechnicalMetadata(!preferences.showTechnicalMetadata)}><span>{english ? "Technical metadata" : "기술 메타데이터"}</span><strong>{preferences.showTechnicalMetadata ? (english ? "Shown" : "표시") : (english ? "Hidden" : "숨김")}</strong></button> : null}
               <button type="button" className="rw-preview-settings-action" onClick={onRefresh} disabled={refreshing}><span><RefreshCw size={12} />{english ? "Refresh data" : "최신 데이터 다시 확인"}</span></button>
               <button type="button" className="rw-preview-settings-action" onClick={() => { setLeftOpen(false); setAssistantOpen(false); setSettingsOpen(false); }}><span><Focus size={12} />{english ? "Focus mode" : "집중 모드"}</span></button>
@@ -716,7 +740,8 @@ export function ReliabilityWorkspacePreview({
               <strong>{displayLineLabel(selectedEvent.line)} <i>›</i> {displayAssetName({ assetId: selectedEvent.assetId, displayName: selectedEvent.assetName })}</strong>
             </div>
             <div className="rw-preview-selection-anchor__facts">
-              <span>{selectedEvent.eventId}</span>
+              <span>{english ? "Observation" : "관측 기준"} {displayDateTime(selectedEvent.observedAt, english)}</span>
+              <span className="rw-technical-metadata">{selectedEvent.eventId}</span>
               <b>{english ? "Risk" : "위험"} {probability(selectedEvent.failureProbability)}</b>
               <em>{riskStatusLabel(selectedEvent.status, english)}</em>
             </div>
@@ -749,20 +774,26 @@ export function ReliabilityWorkspacePreview({
               lifecycle={{
                 currentLabel: lifecycleCurrentForDisplay?.label ?? (english ? "Current step is being confirmed" : "현재 처리 단계 확인 중"),
                 nextLabel: lifecycleNextForDisplay?.label ?? null,
-                ownerLabel: primaryAction?.ownerLabel ?? null,
+                ownerLabel: focusPrimaryAction?.ownerLabel ?? null,
               }}
-              primaryAction={primaryAction ? {
-                label: primaryAction.label,
-                ownerLabel: primaryAction.ownerLabel,
-                disabled: true,
-                disabledReason: primaryAction.disabledReason ?? previewMutationReason,
-              } : null}
+              primaryAction={focusPrimaryAction}
+              onPrimaryAction={focusPrimaryAction ? () => onNavigate(primaryActionTarget.id, primaryActionTarget.view) : undefined}
               freshness={{
                 observedAt: freshnessObservedAt,
                 label: freshnessObservedAt,
                 sourceLabel: null,
               }}
               locale={locale}
+              focusLabel={experience.kind === "operations"
+                ? (english ? "NEXT DECISION" : "다음 판단")
+                : experience.kind === "executive"
+                  ? (english ? "REPORTING FOCUS" : "보고 포커스")
+                  : (english ? "MY NEXT TASK" : "내 다음 작업")}
+              actionLabel={experience.kind === "operations"
+                ? (english ? "Decision entry" : "판단 진입")
+                : experience.kind === "executive"
+                  ? (english ? "Report entry" : "보고 진입")
+                  : (english ? "Start next task" : "지금 할 일")}
             />
           </div> : null}
           <div className="rw-preview-content">{children}</div>

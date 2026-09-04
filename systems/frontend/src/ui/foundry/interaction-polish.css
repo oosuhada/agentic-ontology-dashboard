@@ -112,12 +112,12 @@ button, input, select, textarea { line-height: var(--od-leading-control); }
 .od-display-options.three-up { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .od-display-options.two-up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .od-display-theme-options button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
-.od-display-presets { display: grid; gap: 4px; }
+.od-display-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 .od-display-presets button {
   display: grid;
   min-height: var(--od-control-height);
-  grid-template-columns: minmax(92px, auto) minmax(0, 1fr);
-  align-items: center;
+  grid-template-columns: 1fr;
+  align-content: center;
   justify-content: stretch;
   gap: 4px 10px;
   border: 1px solid var(--fd-border);
@@ -352,8 +352,8 @@ button, input, select, textarea { line-height: var(--od-leading-control); }
   --od-font-scale: 1 !important;
 }
 .od-display-popover .od-display-presets button {
-  min-height: 44px !important;
-  height: 44px !important;
+  min-height: 64px !important;
+  height: auto !important;
 }
 .od-display-popover .od-display-presets button strong,
 .od-display-popover .od-display-options button,

@@ -16,7 +16,12 @@ import {
   formatProbability,
   formatTimestamp,
 } from "../components/OperationsUi";
-import { displayEventAssetName, displayEventLabel, fieldFailureLabel } from "../displayLabels";
+import {
+  displayDataSource,
+  displayEventAssetName,
+  displayModelRelease,
+  fieldFailureLabel,
+} from "../displayLabels";
 
 const DECISION_OPTIONS: Array<{
   decision: OperationsDecision;
@@ -207,7 +212,7 @@ export function OperationsOperationsPage({
         <OperationsPanel title={`작업요청 후보 · ${queue.length}`} eyebrow="작업요청 대기열" className="operations-operation-queue-panel">
           {queue.length ? <div className="operations-operation-queue">{queue.map((event) => (
             <button type="button" key={event.eventId} className={event.eventId === selectedEventId ? "is-selected" : ""} onClick={() => { setDecision(event.recommendedDecision); onSelectEvent(event); }}>
-              <div><OperationsStatusBadge status={event.status} /><strong>{displayEventAssetName(event)}</strong><code>{displayEventLabel(event)}</code></div>
+              <div><OperationsStatusBadge status={event.status} /><strong>{displayEventAssetName(event)}</strong><span>관측 {formatTimestamp(event.observedAt)}</span></div>
               <dl><div><dt>위험</dt><dd>{formatProbability(event.failureProbability)}</dd></div><div><dt>영향</dt><dd>{formatMinutes(event.estimatedDowntimeMinutes)}</dd></div></dl>
               <span>{DECISION_LABEL[event.recommendedDecision]} · Decision Case</span>
               <small>{event.assignedEngineer ?? "미배정"}</small>
@@ -217,10 +222,10 @@ export function OperationsOperationsPage({
 
         <section className="operations-operation-detail">
           {!selectedEvent ? (
-            <OperationsState kind="empty" title="작업요청 후보를 선택하세요" detail={selectedEventId ? `요청한 ${displayEventLabel(selectedEventId)}을 현재 데이터에서 찾지 못했습니다.` : "왼쪽 큐에서 후보를 선택하면 관련 설비, 근거, 허용된 기록 액션을 확인할 수 있습니다."} />
+            <OperationsState kind="empty" title="작업요청 후보를 선택하세요" detail={selectedEventId ? "요청한 과거 Case를 현재 데이터에서 찾지 못했습니다. 목록에서 다른 Case를 선택해 주세요." : "왼쪽 큐에서 후보를 선택하면 관련 설비, 근거, 허용된 기록 액션을 확인할 수 있습니다."} />
           ) : (
             <>
-              <OperationsPanel title={displayEventAssetName(selectedEvent)} eyebrow={`작업요청 후보 · ${displayEventLabel(selectedEvent)}`} actions={<><button type="button" className="operations-button secondary" onClick={() => onOpenAsset(selectedEvent)}><Wrench size={14} />설비 보기</button><button type="button" className="operations-button secondary" onClick={() => onOpenReport(selectedEvent)}><FileText size={14} />보고서 보기</button></>}>
+              <OperationsPanel title={displayEventAssetName(selectedEvent)} eyebrow={`작업요청 후보 · 관측 ${formatTimestamp(selectedEvent.observedAt)}`} actions={<><button type="button" className="operations-button secondary" onClick={() => onOpenAsset(selectedEvent)}><Wrench size={14} />설비 보기</button><button type="button" className="operations-button secondary" onClick={() => onOpenReport(selectedEvent)}><FileText size={14} />보고서 보기</button></>}>
                 <section className="operations-manager-impact-strip" aria-label="생산 영향과 판단 기준">
                   <article><span>생산 계획</span><strong>{plannedUnits === null ? "-" : `${plannedUnits.toLocaleString()}개`}</strong><small>{planningContext?.productionPlan?.planDate ?? "계획 데이터 확인 중"}</small></article>
                   <article><span>제품 / 라인</span><strong>{eventImpact?.productVariant ?? "-"}</strong><small>{eventImpact?.line ?? selectedEvent.line}</small></article>
@@ -351,7 +356,7 @@ export function OperationsOperationsPage({
                     </OperationsPanel>
                   </div>
 
-                  <OperationsPanel title="근거 위치" eyebrow="TRACEABILITY"><p className="operations-muted">관측 묶음 {detail.provenance.datasetVersionId} · 모델 {detail.provenance.modelVersion ?? "사용 불가"} · 자세한 센서, 요인, 출처는 전체 근거 화면에서 확인합니다.</p></OperationsPanel>
+                  <OperationsPanel title="근거 위치" eyebrow="TRACEABILITY"><p className="operations-muted">{displayDataSource(detail.provenance.sourceVersion)}와 {displayModelRelease(detail.provenance.modelVersion)}를 기준으로 작성했습니다. 자세한 센서, 판단 근거, 기술 출처는 전체 근거 화면에서 확인합니다.</p></OperationsPanel>
                 </>
               ) : null}
               {message ? <div className={`operations-action-message is-${message.kind}`} role="status"><strong>{message.kind === "success" ? "저장 완료" : "저장 실패"}</strong><span>{message.text}</span></div> : null}

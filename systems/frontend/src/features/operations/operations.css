@@ -408,6 +408,7 @@
 .operations-report-output-card > footer { display: flex; justify-content: flex-end; }
 .operations-report-output-card > footer .operations-button { min-width: 96px; }
 .operations-workflow-print-report { display: none; }
+.operations-print-root { display: none; }
 .operations-monitoring-hero { display: flex; align-items: end; justify-content: space-between; gap: 16px; padding: 18px 20px; border: 1px solid rgba(76,144,240,.18); border-radius: 12px; background: linear-gradient(135deg, rgba(76,144,240,.12), rgba(69,184,128,.07)), var(--operations-surface); box-shadow: 0 18px 42px rgba(0,0,0,.18); }
 .operations-monitoring-hero > div { display: grid; gap: 5px; min-width: 0; }
 .operations-monitoring-hero span { color: #9cc5fa; font-size: 10px; font-weight: 950; letter-spacing: .12em; text-transform: uppercase; }
@@ -2354,19 +2355,28 @@
   .operations-detail-drawer .operations-side-map-report .target-list article,
   .operations-detail-drawer .operations-side-map-report .asset-series-block { box-shadow: none !important; break-inside: avoid; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   .operations-detail-drawer .operations-asset-preview > header { display: grid !important; grid-template-columns: auto minmax(0,1fr) !important; padding-bottom: 6px !important; }
-  body.operations-workflow-print-mode .operations-app { visibility: hidden !important; }
-  body.operations-workflow-print-mode .operations-workflow-print-report,
-  body.operations-workflow-print-mode .operations-workflow-print-report * { visibility: visible !important; }
+  body.operations-workflow-print-mode > #root { display: none !important; }
+  body.operations-workflow-print-mode .operations-print-root {
+    --operations-bg: #fff;
+    --operations-surface: #fff;
+    --operations-text: #17212c;
+    --operations-muted: #526176;
+    --operations-dim: #64748b;
+    display: block !important;
+    min-height: 0 !important;
+    background: #fff !important;
+  }
   body.operations-workflow-print-mode .operations-workflow-print-report {
-    position: absolute !important;
-    inset: 0 auto auto 0 !important;
-    display: grid !important;
+    position: static !important;
+    display: block !important;
     gap: 8mm !important;
     width: 100% !important;
-    min-height: 100% !important;
-    padding: 10mm !important;
-    background: var(--operations-bg) !important;
-    color: var(--operations-text) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #17212c !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
@@ -2376,9 +2386,9 @@
     padding: 6mm !important;
     border: 1px solid rgba(181,196,214,.24) !important;
     border-radius: 8px !important;
-    background: var(--operations-surface) !important;
+    background: #fff !important;
     box-shadow: none !important;
-    break-inside: avoid;
+    break-inside: auto;
   }
   body.operations-workflow-print-mode .operations-workflow-print-report > header { display: grid !important; gap: 2mm !important; }
   body.operations-workflow-print-mode .operations-workflow-print-report > header span,
@@ -2390,6 +2400,7 @@
   body.operations-workflow-print-mode .operations-workflow-print-report dl { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 4mm !important; margin: 0 !important; }
   body.operations-workflow-print-mode .operations-workflow-print-report dd { margin: 1mm 0 0 !important; font-weight: 850 !important; }
   body.operations-workflow-print-mode .operations-workflow-print-report h2 { margin: 0 0 4mm !important; font-size: 13pt !important; }
+  body.operations-workflow-print-mode .operations-workflow-print-report h2 { break-after: avoid; }
   body.operations-workflow-print-mode .operations-workflow-print-report article { padding: 3mm 0 !important; border-top: 1px solid rgba(181,196,214,.14) !important; break-inside: avoid; }
   body.operations-workflow-print-mode .operations-workflow-print-report article:first-of-type { border-top: 0 !important; }
 }

@@ -41,12 +41,15 @@ import type {
 } from "../../operations/api/operationsContracts";
 import {
   displayExplanationMethod,
+  displayArtifactKind,
   displayInspectionAssociation,
+  displayReportType,
   displaySensorFactorLabel,
   displaySensorLabel,
   fieldFailureLabel,
 } from "../../operations/displayLabels";
 import { MaintenanceWorkflowActionPanel } from "../../operations/maintenance/MaintenanceWorkflowActionPanel";
+import { MaintenanceCostDecisionPanel } from "../../operations/maintenance/MaintenanceCostDecisionPanel";
 import type { ReliabilityExperienceKind } from "./roleExperience";
 import {
   resolveReliabilityComposition,
@@ -1837,6 +1840,14 @@ function WorkflowActionsBlock({
         snapshotBasis={props.detail?.snapshotBasis ?? null}
         canManage={props.canManageWorkflow}
         canFieldExecute={props.canExecuteFieldWorkflow}
+        canMaintenanceExecute={props.experienceKind === "maintenance" && props.canExecuteFieldWorkflow}
+        onChanged={props.onWorkflowChanged}
+      />
+      <MaintenanceCostDecisionPanel
+        projectId={props.model.context.projectId}
+        workspaceId={props.model.context.workspaceId}
+        eventId={props.selectedEvent.eventId}
+        guidance={props.detail?.inspectionTargets.find((item) => item.inspectionGuidance)?.inspectionGuidance ?? null}
         onChanged={props.onWorkflowChanged}
       />
     </Block>
@@ -2105,12 +2116,12 @@ function MaintenanceEffectBlock({
             <article>
               <span>정비 전 위험</span>
               <strong>{probability(beforeAverage)}</strong>
-              <small>{beforeRisk.length} observations</small>
+              <small>관측 {beforeRisk.length}건</small>
             </article>
             <article>
               <span>정비 후 위험</span>
               <strong>{probability(afterAverage)}</strong>
-              <small>{afterRisk.length} observations</small>
+              <small>관측 {afterRisk.length}건</small>
             </article>
             <article>
               <span>알림 빈도</span>
@@ -2119,7 +2130,7 @@ function MaintenanceEffectBlock({
                   ? `${beforeAlerts} → ${afterAlerts}`
                   : "관측 대기"}
               </strong>
-              <small>비정상 risk points</small>
+              <small>비정상 관측 수</small>
             </article>
           </div>
           {sensorEffects.length ? (
@@ -2148,8 +2159,7 @@ function MaintenanceEffectBlock({
             </div>
           ) : (
             <p>
-              센서 before/after window가 충분해지면 핵심 feature의 정규화 여부를
-              함께 표시합니다.
+              정비 전후 관측 구간이 충분해지면 핵심 센서의 회복 여부를 함께 표시합니다.
             </p>
           )}
         </div>
@@ -2444,14 +2454,13 @@ function ReportSummaryBlock({
           {report ? (
             <div className="rw-report-artifact-meta">
               <span>{artifactStatus}</span>
-              <strong>{report.reportType}</strong>
-              <small>Case {event?.eventId ?? "—"}</small>
-              <small>artifact {report.reportId}</small>
-              <small>
-                as-of {dateTime(report.asOf ?? detail?.event.observedAt)}
-              </small>
+              <strong>{displayReportType(report.reportType)}</strong>
+              <small>{displayArtifactKind(report.reportId)}</small>
+              <small>관측 기준 {dateTime(report.asOf ?? detail?.event.observedAt)}</small>
+              <small className="rw-technical-metadata">Case {event?.eventId ?? "—"}</small>
+              <small className="rw-technical-metadata">artifact {report.reportId}</small>
               {report.revision > 0 ? (
-                <small>rev {report.revision}</small>
+                <small>수정본 {report.revision}</small>
               ) : null}
             </div>
           ) : null}
@@ -2472,7 +2481,7 @@ function ReportSummaryBlock({
             </div>
           ) : null}
           {!compact ? (
-            <details className="rw-report-evidence">
+            <details className="rw-report-evidence rw-technical-metadata">
               <summary>
                 근거 데이터 확인 · {new Set(evidenceRefs).size} refs
               </summary>
@@ -2500,8 +2509,19 @@ function ReportSummaryBlock({
             >
               내용 미리보기
             </button>
-            <button type="button" onClick={() => window.print()}>
-              출력 전 확인
+            <button
+              type="button"
+              onClick={() =>
+                onOpenReport(
+                  event?.eventId ?? null,
+                  event?.assetId ?? null,
+                  reportType === "inspection-summary"
+                    ? "inspection-request"
+                    : "executive-brief",
+                )
+              }
+            >
+              보고서 출력 화면
             </button>
           </div>
         </div>

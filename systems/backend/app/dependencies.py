@@ -312,6 +312,9 @@ def build_live_predictive_maintenance_service(
         "predictor_factory": configured_predictor,
         "artifact_builder": build_product_result_artifact,
     }
+    simulation_session_id = (
+        os.getenv("ONTOLOGY_DASHBOARD_SIMULATION_SESSION_ID", "").strip() or None
+    )
     return LivePredictiveMaintenanceService(
         dataset=LiveDatasetIngestionAdapter(
             target,
@@ -320,14 +323,12 @@ def build_live_predictive_maintenance_service(
                 "ONTOLOGY_DASHBOARD_ALLOW_ACCELERATED_SIMULATION", "0"
             ).lower()
             in {"1", "true", "yes"},
+            simulation_session_id=simulation_session_id,
         ),
         diagnosis=LiveDiagnosisApplicationAdapter(
             snapshot_root=runtime_pipeline_input_root,
             enqueue_client=enqueue_client,
-            simulation_session_id=(
-                os.getenv("ONTOLOGY_DASHBOARD_SIMULATION_SESSION_ID", "").strip()
-                or None
-            ),
+            simulation_session_id=simulation_session_id,
         ),
         maintenance=LiveMaintenanceOverlayAdapter(
             snapshot_root=runtime_pipeline_input_root,

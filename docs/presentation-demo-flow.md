@@ -4,7 +4,12 @@
 
 발표는 기능 목록을 나열하는 방식이 아니라, **하나의 immutable Decision Case를 데이터/모델 → Evidence → Decision/Action → 역할별 Product/Report로 이어서 설명하는 방식**으로 진행한다.
 
-현재 production은 Team DB의 live Result를 사용하고 첫 화면도 telemetry에 따라 adaptive하게 달라질 수 있으므로, 특정 설비나 최신 Event를 문서에 영구 고정하지 않는다. 발표 전 하나의 immutable `RESULT#...`를 `DEMO_EVENT_ID`로 확정하고 모든 발표자가 같은 Event를 사용한다.
+현재 production은 Team DB의 live Result를 사용하고 첫 화면도 telemetry에 따라 adaptive하게 달라질 수 있으므로, 특정 설비나 최신 Event를 문서에 영구 고정하지 않는다. 발표 직전 아래 두 Case를 서로 다른 설비로 확정한다.
+
+- `PROOF_EVENT_ID`: 점검·정비·후속 관측·새 Product Result가 모두 연결된 완료 증명 Case. 타임라인, Before/After, 운영·경영진 보고에 사용한다.
+- `ACTIVE_EVENT_ID`: 실제 고위험 Result는 이미 존재하지만 점검 요청은 아직 생성하지 않은 진행형 Case. 운영 관리자 요청 → 현장 수락·기록 → 관리자 판단 → 보고서 초안 흐름에 사용한다.
+
+위험 발생 순간을 발표 중 기다리거나 브라우저가 임의의 Result를 생성하게 하지 않는다. 실시간성은 실제 runtime에서 이미 수신된 최신 관측 시각과 Result 전환으로 증명한다. 별도의 synthetic tick은 `?demo_stream=simulated`를 명시한 내부 시연 모드에서만 허용하며 실제 runtime 화면과 혼용하지 않는다.
 
 ---
 
@@ -69,7 +74,7 @@ Executive 관점과 전체 통합 마무리
 
 | 시간 | 발표자 | 화면/내용 | 핵심 메시지 |
 |---|---|---|---|
-| 0:00–1:20 | 우수 | 문제 정의 → Login → 동일 `DEMO_EVENT_ID` | 같은 사건을 역할별로 다른 깊이로 본다 |
+| 0:00–1:20 | 우수 | 문제 정의 → Login → 동일 `PROOF_EVENT_ID` | 같은 사건을 역할별로 다른 깊이로 본다 |
 | 1:20–3:20 | 성민 | Engineer 원인 분석 + ML lineage | 관측값이 재현 가능한 Model Artifact와 Result로 바뀐다 |
 | 3:20–5:45 | 광우 | Operations Decision Case + Closed-loop | Evidence가 사람의 Decision과 Action으로 이어진다 |
 | 5:45–7:45 | 호범 | Evidence → Assistant → Report | AI 출력도 같은 Evidence와 Event에 grounded된다 |
@@ -105,10 +110,10 @@ Gold Scenario와 live Result가 같은 설비를 가리키더라도 같은 Event
 ### 4.2 발표 전에 반드시 고정할 값
 
 ```text
-DEMO_EVENT_ID    = RESULT#...
-DEMO_ASSET_ID    = ...
-DEMO_ASSET_NAME  = ...
-DEMO_OBSERVED_AT = ...
+PROOF_EVENT_ID    = RESULT#...  # 완료 이력·Before/After·보고 증명
+PROOF_ASSET_ID    = ...
+ACTIVE_EVENT_ID   = RESULT#...  # 점검 요청부터 직접 수행할 별도 Case
+ACTIVE_ASSET_ID   = ...
 ```
 
 권장 Case 조건:
@@ -132,7 +137,7 @@ DEMO_OBSERVED_AT = ...
 | 우선 | 보강 항목 | 발표에서 답해야 하는 질문 | 준비할 증거 |
 |---|---|---|---|
 | P0 | 정비 후 실제 재예측 Closed-loop | 정비 후 위험도가 실제로 내려간 결과가 있나요? | Before Result → Maintenance → After Observation → New Result |
-| P0 | 발표용 고정 Case 재현성 | 발표 중 DB가 바뀌어도 같은 사건을 보여주나요? | `DEMO_EVENT_ID`, `DEMO_ASSET_ID`, deep link |
+| P0 | 발표용 고정 Case 재현성 | 발표 중 DB가 바뀌어도 같은 사건을 보여주나요? | `PROOF_EVENT_ID`, `ACTIVE_EVENT_ID`, deep link |
 | P1 | 모델 성능 설명 | 정확도와 모델 선택 근거는 무엇인가요? | Model Quality 표, selected/rejected 근거 |
 | P1 | “실시간” 정의 | 진짜 realtime인가요, polling인가요? | source/ingest/prediction/backend/UI timing 표 |
 | P1 | Assistant/RAG 평가 | 근거 없는 답변을 어떻게 막나요? | groundedness/source/boundary scorecard |
@@ -214,7 +219,8 @@ https://dashboard.oosu.dev/login
 
 ### Decision lineage
 
-- [ ] `DEMO_EVENT_ID` API/UI 복원 가능
+- [ ] `PROOF_EVENT_ID` API/UI 복원 가능
+- [ ] `ACTIVE_EVENT_ID`에 기존 진행 workflow가 없음
 - [ ] reload 후 동일 Event 유지
 - [ ] 최소 두 refresh tick 후 동일 Event 유지
 - [ ] Case header / Evidence / Action / Report가 동일 Event 사용
@@ -245,7 +251,7 @@ https://dashboard.oosu.dev/login
 - 엔지니어 / 운영 관리 / 경영진 역할
 - 역할 설명은 info popover로 숨겨져 있고 선택 UI는 간결한 점
 - 발표/프로젝터 preset
-- 동일 `DEMO_EVENT_ID`
+- 동일 `PROOF_EVENT_ID`
 
 ### 설명 순서
 
@@ -353,7 +359,7 @@ Gold Scenario를 설명해야 할 때는 다음 정도만 예로 든다.
 회전 속도
 ```
 
-하지만 live `DEMO_EVENT_ID`의 factor가 다르면 실제 화면의 factor를 그대로 설명한다.
+하지만 `PROOF_EVENT_ID`의 factor가 다르면 실제 화면의 factor를 그대로 설명한다.
 
 ### 핵심 멘트
 
@@ -413,7 +419,7 @@ FOLLOW-UP · 후속
 
 ### 보여줄 closed-loop
 
-가능하면 동일 `DEMO_EVENT_ID`에서 다음 흐름을 보여준다.
+먼저 동일 `PROOF_EVENT_ID`에서 다음 완료 흐름을 보여준다.
 
 ```text
 Result / Evidence
@@ -425,7 +431,10 @@ Result / Evidence
 → Maintenance Action
 → Maintenance Event
 → Follow-up Observation
+→ New Product Result
 ```
+
+그 다음 `ACTIVE_EVENT_ID`로 전환해 점검 요청 생성 → 현장 수락 → 점검 결과 기록까지만 직접 수행한다. 위험 발생을 기다리거나 완료 증명 Case에 새 작업을 덧붙이지 않는다.
 
 ### 강조할 것
 
@@ -508,7 +517,7 @@ Executive Brief
 
 - report type 변경
 - 실제 artifact ID 변경
-- `Case {DEMO_EVENT_ID}` 유지
+- `Case {PROOF_EVENT_ID}` 유지
 - source/evidence reference
 
 ### 핵심 멘트
@@ -653,7 +662,7 @@ EVIDENCE · 근거/상세
 
 ### live Case의 데이터가 바뀌었을 때
 
-준비한 `DEMO_EVENT_ID` deep link로 다시 연다.
+준비한 `PROOF_EVENT_ID` deep link로 다시 연다.
 
 ### closed-loop activity가 보이지 않을 때
 

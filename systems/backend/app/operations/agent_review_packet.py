@@ -8,6 +8,7 @@ from app.operations.context_providers import (
     AgentReviewContext,
     compose_default_agent_review_context,
 )
+from app.diagnosis.presentation_dictionary import partition_factors
 
 
 FORBIDDEN_AGENT_ACTIONS = [
@@ -402,6 +403,11 @@ def _model_expression_context(view_model: dict[str, Any]) -> dict[str, Any]:
                 "source_ref": factor_source_ref,
             }
         )
+    partitioned = partition_factors(factors, "ko-KR")
+    physical_factors = [
+        {key: value for key, value in item.items() if key != "presentation_kind"}
+        for item in partitioned["physical"]
+    ]
     return {
         "source_type": str(evidence.get("source_kind") or "product_result_artifact"),
         "model_version": str(evidence.get("model_version") or snapshot_basis.get("model_version") or ""),
@@ -410,7 +416,7 @@ def _model_expression_context(view_model: dict[str, Any]) -> dict[str, Any]:
         "threshold": risk.get("threshold"),
         "confidence_label": str(risk.get("confidence_label") or ""),
         "top_factors": sorted(
-            factors,
+            physical_factors,
             key=lambda item: abs(float(item.get("contribution") or 0.0)),
             reverse=True,
         )[:5],

@@ -634,9 +634,21 @@ export interface OpenInspectionWorkOrderReadModel {
   equipment_id: string;
   asset_type: string;
   work_type: "inspection";
-  status: "requested" | "approved" | "in_progress";
+  status: "requested" | "approved" | "in_progress" | "completed";
   assigned_to?: string | null;
   assigned_at?: string | null;
+  inspection_outcome?: "no_action_required" | "maintenance_recommended" | "data_check_required" | null;
+  current_step?:
+    | "inspection_requested"
+    | "inspection_approved"
+    | "inspection_in_progress"
+    | "inspection_completed"
+    | "recommendation_proposed"
+    | "maintenance_requested"
+    | "maintenance_approved"
+    | "maintenance_in_progress"
+    | "post_maintenance_observation_pending"
+    | "ready_for_reprediction";
 }
 
 export interface MaintenanceCostAnalysisRequest {
@@ -804,39 +816,6 @@ export function getPredictiveMaintenanceLatestResults(
   return request<ProductResultPage>(
     `${predictiveMaintenanceBase(projectId, workspaceId)}/results/latest?${params.toString()}`,
     { signal },
-  );
-}
-
-export interface PredictiveMaintenanceRealtimeDemoTickResponse {
-  batch_id: string;
-  validation_status: "accepted" | "duplicate" | "conflict" | "rejected";
-  promotion_status: "promoted" | "already_promoted" | "partially_promoted" | "not_promoted";
-  product_result_created: boolean;
-  product_result_ids: string[];
-  artifact_ids: string[];
-  tick: {
-    asset_id: string;
-    asset_type: "compressor" | "cnc";
-    site_id: string;
-    cell_id: string;
-    event_id: string;
-    score: number;
-    status_grade: "normal" | "attention" | "warning" | "critical";
-    observed_at: string;
-  };
-}
-
-export function createPredictiveMaintenanceRealtimeDemoTick(
-  projectId: string,
-  workspaceId: string,
-  datasetVersionId?: string | null,
-): Promise<PredictiveMaintenanceRealtimeDemoTickResponse> {
-  const params = new URLSearchParams();
-  if (datasetVersionId) params.set("dataset_version_id", datasetVersionId);
-  const query = params.size ? `?${params.toString()}` : "";
-  return request<PredictiveMaintenanceRealtimeDemoTickResponse>(
-    `${predictiveMaintenanceBase(projectId, workspaceId)}/demo/realtime-tick${query}`,
-    { method: "POST", body: JSON.stringify({}) },
   );
 }
 

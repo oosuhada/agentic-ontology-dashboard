@@ -15,6 +15,7 @@ import { useState, type ReactNode } from "react";
 import type { OperationsContextModel, OperationsDashboardMode, OperationsRoleLens, OperationsView } from "../api/operationsContracts";
 import { OperationsFreshness } from "../components/OperationsUi";
 import { HanbitLogo } from "../../../ui/foundry/HanbitLogo";
+import { displayDataSource } from "../displayLabels";
 
 const VIEW_LABELS: Record<OperationsView, { label: string; description: string }> = {
   overview: { label: "Overview", description: "운영 상황판" },
@@ -110,7 +111,7 @@ export function OperationsShell({
         <div className="operations-header-context" aria-label="현재 운영 문맥">
           <div><span>Project</span><strong>{context.projectName}</strong></div>
           <div><span>Workspace</span><strong>{context.workspaceName}</strong></div>
-          <div className="is-dataset"><span>Dataset</span><strong title={context.datasetLabel}>{context.sourceVersion ?? "Dataset"} · {context.datasetVersionId}</strong></div>
+          <div className="is-dataset"><span>데이터 기준</span><strong>{displayDataSource(context.sourceVersion)}</strong></div>
         </div>
         <div className="operations-header-actions">
           {!workflowMode ? (

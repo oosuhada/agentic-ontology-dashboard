@@ -262,13 +262,14 @@ def _select_live_dataset_for_project_users(
                         dataset_version_id,selection_mode,created_at,updated_at
                     )
                     SELECT pm.organization_id,pm.project_id,%s,pm.user_id,
-                           %s,'explicit',now(),now()
+                           %s,'automatic',now(),now()
                     FROM project_memberships pm
                     WHERE pm.organization_id=%s AND pm.project_id=%s
                       AND pm.status='active'
                     ON CONFLICT (organization_id,project_id,workspace_id,user_id)
                     DO UPDATE SET dataset_version_id=EXCLUDED.dataset_version_id,
-                                  selection_mode='explicit',updated_at=now()
+                                  selection_mode='automatic',updated_at=now()
+                    WHERE pm_workspace_dataset_selections.selection_mode='automatic'
                     RETURNING user_id
                     """,
                     (
@@ -600,6 +601,7 @@ def main() -> int:
                 "interval_minutes": OBSERVATION_INTERVAL_MINUTES,
                 "product_cycle_minutes": 20,
                 "rate_profile": "balanced_demo",
+                "scenario_profile": "continuous_reliability",
                 "speed": args.speed,
                 "continuous": True,
                 "publish_opcua": False,

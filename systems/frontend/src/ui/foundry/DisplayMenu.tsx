@@ -18,7 +18,9 @@ export function DisplayMenu({ className = "" }: { className?: string }) {
     ? [t("display.preset.compact"), t("display.preset.compactDetail")]
     : value === "standard"
       ? [t("display.preset.standard"), t("display.preset.standardDetail")]
-      : [t("display.preset.accessible"), t("display.preset.accessibleDetail")];
+      : value === "large"
+        ? [t("display.preset.large"), t("display.preset.largeDetail")]
+        : [t("display.preset.accessible"), t("display.preset.accessibleDetail")];
   const textSizeLabel = (value: (typeof DISPLAY_TEXT_SIZE_OPTIONS)[number]["value"]) => value === "small"
     ? t("display.size.small")
     : value === "default"

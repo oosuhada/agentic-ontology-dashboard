@@ -15,6 +15,7 @@ from app.operations.agent_review_summary_provider import (
     AgentReviewSummaryProvider,
 )
 from app.operations.ports import AuditRepositoryPort
+from app.diagnosis.presentation_dictionary import PRESENTATION_DICTIONARY_VERSION
 
 SUMMARY_MATERIALIZATION_VERSION = "agent-review-summary-materialization-v1.1"
 
@@ -197,6 +198,7 @@ def summary_key_payload(
         "packet_schema_version": str(packet.get("schema_version") or ""),
         "summary_schema_version": "agent-review-summary-v1.0",
         "prompt_version": AGENT_REVIEW_SUMMARY_PROMPT_VERSION,
+        "presentation_dictionary_version": PRESENTATION_DICTIONARY_VERSION,
         "model_version": _provider_model_version(provider),
         "source_sha256": source_sha256,
         "context_sha256": _summary_context_sha256(packet),

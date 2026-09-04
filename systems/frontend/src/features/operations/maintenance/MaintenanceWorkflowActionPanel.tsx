@@ -116,6 +116,7 @@ export function MaintenanceWorkflowActionPanel({
   snapshotBasis,
   canManage,
   canFieldExecute,
+  canMaintenanceExecute,
   onChanged,
   onStatusChanged,
   onPostMaintenancePrediction,
@@ -131,6 +132,7 @@ export function MaintenanceWorkflowActionPanel({
   snapshotBasis: OperationsEvidenceSnapshotBasis | null;
   canManage: boolean;
   canFieldExecute: boolean;
+  canMaintenanceExecute: boolean;
   onChanged?: () => void;
   onStatusChanged?: (status: MaintenanceWorkflowDisplayStatus) => void;
   onPostMaintenancePrediction?: (prediction: PostMaintenancePredictionSummary) => void;
@@ -487,16 +489,20 @@ export function MaintenanceWorkflowActionPanel({
       }) : null;
     } else if (state.action?.status === "planned") {
       label = "정비 시작";
-      helper = "승인된 Maintenance Action을 시작합니다.";
-      enabled = canFieldExecute;
+      helper = canMaintenanceExecute
+        ? "승인된 정비 작업을 시작합니다."
+        : "정비 실행 권한이 있는 정비 담당자에게 인계된 단계입니다.";
+      enabled = canMaintenanceExecute;
       command = () => startMaintenanceAction({
         projectId, workspaceId, maintenanceActionId: state.action!.maintenance_action_id,
         idempotencyKey: commandKey(eventId, "maintenance-start", state.action!.maintenance_action_id),
       });
     } else if (state.action?.status === "in_progress") {
       label = "정비 완료";
-      helper = "정비 결과를 기록하고 immutable Maintenance Event를 생성합니다.";
-      enabled = canFieldExecute;
+      helper = canMaintenanceExecute
+        ? "정비 결과를 기록하고 변경 불가능한 정비 이력을 생성합니다."
+        : "정비 완료 기록은 배정된 정비 담당자만 수행할 수 있습니다.";
+      enabled = canMaintenanceExecute;
       command = () => completeMaintenanceAction({
         projectId,
         workspaceId,
@@ -506,8 +512,10 @@ export function MaintenanceWorkflowActionPanel({
       });
     } else if (state.maintenanceEvent && !state.action?.restart_at) {
       label = "정비 후 관측 재개";
-      helper = "정비 상태 patch를 반영한 Runtime Overlay 재생을 요청합니다.";
-      enabled = canFieldExecute;
+      helper = canMaintenanceExecute
+        ? "정비 결과를 반영한 설비 관측을 재개하고 실제 재예측을 요청합니다."
+        : "관측 재개는 정비 완료를 기록한 정비 담당자가 수행합니다.";
+      enabled = canMaintenanceExecute;
       command = () => requestMaintenanceReplay({
         projectId,
         workspaceId,

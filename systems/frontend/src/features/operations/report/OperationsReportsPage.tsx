@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import type { OperationsAsset, OperationsBootstrapModel, OperationsEvent, OperationsEventDetailModel, OperationsReportTab, OperationsRiskStatus } from "../api/operationsContracts";
 import type { ReliabilityExperienceKind } from "../../predictive-maintenance/workspace/roleExperience";
 import { DECISION_LABEL, formatMinutes, formatProbability, formatTimestamp } from "../components/OperationsUi";
-import { displayAssetName, displayAssetShortName, displayEventAssetName, displayEventLabel, fieldFactorItem, fieldFailureLabel } from "../displayLabels";
+import { displayAssetName, displayAssetShortName, displayDataSource, displayEventAssetName, fieldFactorItem, fieldFailureLabel } from "../displayLabels";
 import { OperationsExecutiveReportPage } from "./OperationsExecutiveReportPage";
 import { OperationsInspectionReportPage } from "./OperationsInspectionReportPage";
 import { OperationsMapReportAssetDetailView } from "./OperationsMapReportAssetDetailView";
@@ -222,7 +222,7 @@ function OperationsStatusMapReport({
       </header>
 
       <section className="kpis" aria-label="예지보전 상태 KPI">
-        <ReportKpi icon={Gauge} label="전체 설비" value={`${model.metrics.totalAssets}대`} detail={model.context.datasetVersionId} />
+        <ReportKpi icon={Gauge} label="전체 설비" value={`${model.metrics.totalAssets}대`} detail={displayDataSource(model.context.sourceVersion)} />
         <ReportKpi icon={AlertTriangle} label="위험/경고" value={`${model.metrics.critical + model.metrics.warning}대`} detail={`위험 ${model.metrics.critical} · 경고 ${model.metrics.warning}`} tone="warm" />
         <ReportKpi icon={ClipboardCheck} label="판단 대기" value={`${model.metrics.pendingDecisions}건`} detail="점검·정지 검토·데이터 확인" />
         <ReportKpi icon={Clock3} label="예상 영향" value={formatMinutes(model.metrics.estimatedDowntimeMinutes)} detail="이벤트 합산" />
@@ -419,7 +419,7 @@ function OperationsSummaryReport({
           {actionableEvents.map((event) => (
             <button key={event.eventId} type="button" className={event.eventId === selected?.eventId ? "active" : ""} onClick={() => onSelectEvent(event)}>
               <strong>{displayEventAssetName(event)}</strong>
-              <span>{event.line} · {displayEventLabel(event)}</span>
+              <span>{event.line} · 관측 {formatTimestamp(event.observedAt)}</span>
               <b>{formatProbability(event.failureProbability)}</b>
               <small>{DECISION_LABEL[event.recommendedDecision]}</small>
             </button>

@@ -60,6 +60,8 @@ export interface OperationalFocusProps {
   freshness?: OperationalFocusFreshnessViewModel | null;
   locale?: OperationalFocusLocale;
   onPrimaryAction?: () => void;
+  focusLabel?: string;
+  actionLabel?: string;
 }
 
 function freshnessText(
@@ -90,6 +92,8 @@ export function OperationalFocus({
   freshness = null,
   locale = "ko-KR",
   onPrimaryAction,
+  focusLabel,
+  actionLabel,
 }: OperationalFocusProps) {
   const copy = COPY[locale];
   const domId = asset.id.replace(/[^A-Za-z0-9_-]/g, "-");
@@ -106,7 +110,7 @@ export function OperationalFocus({
       <header className="operational-focus-object">
         <div className="operational-focus-object-mark" aria-hidden="true"><Factory size={16} /></div>
         <div className="operational-focus-object-copy">
-          <span>{copy.eyebrow}</span>
+          <span>{focusLabel ?? copy.eyebrow}</span>
           <h2 id={`operational-focus-title-${domId}`}>{asset.name}</h2>
           <div className="operational-focus-object-meta">
             {asset.contextLabel ? <small>{asset.contextLabel}</small> : null}
@@ -196,7 +200,7 @@ export function OperationalFocus({
       <footer className="operational-focus-footer">
         <div className="operational-focus-action">
           <div>
-            <span>{copy.action}</span>
+            <span>{actionLabel ?? copy.action}</span>
             {primaryAction?.ownerLabel && primaryAction.ownerLabel !== lifecycle.ownerLabel ? <small>{primaryAction.ownerLabel}</small> : null}
           </div>
           {primaryAction ? (

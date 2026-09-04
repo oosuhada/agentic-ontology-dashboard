@@ -2247,6 +2247,7 @@ def _ensure_live_version(
     *,
     predictor_factory: Callable[[str], Any],
     artifact_builder: Callable[..., dict[str, Any]],
+    simulation_session_id: str | None = None,
 ) -> tuple[str, str]:
     psycopg, dict_row, Jsonb = _postgres_modules()
     with psycopg.connect(database_url, row_factory=dict_row) as connection:
@@ -2254,12 +2255,23 @@ def _ensure_live_version(
             _set_scope(connection)
             existing = connection.execute(
                 """
-                SELECT id,dataset_id FROM dataset_versions
+                SELECT id,dataset_id,profile_json FROM dataset_versions
                 WHERE organization_id=%s AND project_id=%s AND workspace_id=%s
                   AND source_version=%s
+                  AND (
+                    (%s IS NULL AND COALESCE(profile_json->>'simulation_session_id','')='')
+                    OR profile_json->>'simulation_session_id'=%s
+                  )
                 ORDER BY version_number DESC LIMIT 1
                 """,
-                (ORGANIZATION_ID, PROJECT_ID, WORKSPACE_ID, LIVE_SOURCE_VERSION),
+                (
+                    ORGANIZATION_ID,
+                    PROJECT_ID,
+                    WORKSPACE_ID,
+                    LIVE_SOURCE_VERSION,
+                    simulation_session_id,
+                    simulation_session_id,
+                ),
             ).fetchone()
             base = connection.execute(
                 """
@@ -2341,7 +2353,8 @@ def _ensure_live_version(
                     (dataset_id,),
                 ).fetchone()["value"]
             )
-            version_id = f"dsv-{uuid.uuid5(uuid.NAMESPACE_URL, f'{dataset_id}:{LIVE_SOURCE_VERSION}')}"
+            version_epoch = simulation_session_id or "shared-wall-clock"
+            version_id = f"dsv-{uuid.uuid5(uuid.NAMESPACE_URL, f'{dataset_id}:{LIVE_SOURCE_VERSION}:{version_epoch}')}"
             profile = dict(base["profile_json"] or {})
             profile["row_counts"] = {
                 "compressor_sensor_observation": 0,
@@ -2360,8 +2373,12 @@ def _ensure_live_version(
                 "cutover_seed_history_source_version": str(seed["source_version"]),
                 "cutover_seed_policy": "latest_non_future_result_then_live_history_only",
             }
+            profile["simulation_session_id"] = simulation_session_id
+            profile["stream_epoch_policy"] = (
+                "isolated_simulation_session" if simulation_session_id else "shared_wall_clock"
+            )
             checksum = hashlib.sha256(
-                f"{dataset_id}:{LIVE_SOURCE_VERSION}:sensor-stream-contract-v1".encode("utf-8")
+                f"{dataset_id}:{LIVE_SOURCE_VERSION}:{version_epoch}:sensor-stream-contract-v1".encode("utf-8")
             ).hexdigest()
             connection.execute(
                 """
@@ -2633,11 +2650,15 @@ class LiveDatasetIngestionAdapter:
         predictor_factory: Callable[[str], Any],
         artifact_builder: Callable[..., dict[str, Any]],
         allow_accelerated_simulation: bool = False,
+        simulation_session_id: str | None = None,
     ) -> None:
         self.database_url = _normalize_database_url(database_url)
         self.predictor_factory = predictor_factory
         self.artifact_builder = artifact_builder
         self.allow_accelerated_simulation = bool(allow_accelerated_simulation)
+        self.simulation_session_id = (
+            simulation_session_id.strip() if simulation_session_id else None
+        )
 
     def prepare_batch(
         self, *, stream_root: str | Path, active_overlay_assets: set[str]
@@ -2646,6 +2667,7 @@ class LiveDatasetIngestionAdapter:
             self.database_url,
             predictor_factory=self.predictor_factory,
             artifact_builder=self.artifact_builder,
+            simulation_session_id=self.simulation_session_id,
         )
         latest = _latest_ingested_at(self.database_url, dataset_version_id)
         canonical_asset_ids = _dataset_asset_ids(self.database_url, dataset_version_id)

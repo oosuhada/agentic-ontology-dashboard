@@ -15,9 +15,9 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   createOperationsAgentReviewSummary,
-  createPredictiveMaintenanceRealtimeDemoTick,
   getOperationsAgentReviewSummary,
 } from "../../../api";
 import type {
@@ -55,7 +55,6 @@ import {
   displayAssetShortName,
   displayAssetType,
   displayEventAssetName,
-  displayEventLabel,
   displayProductionImpact,
   displayReviewPriority,
   displaySensorLabel,
@@ -363,7 +362,7 @@ function demoStatusForRisk(risk: number): OperationsRiskStatus {
 }
 
 function isGeneratedResultEvent(eventId: string | null | undefined): boolean {
-  return Boolean(eventId?.startsWith("RESULT#GEN-") || eventId?.includes("demo-live"));
+  return Boolean(eventId?.startsWith("RESULT#GEN-"));
 }
 
 function liveFactorLabel(factor: OperationsAsset["topFactors"][number]): string {
@@ -1762,7 +1761,6 @@ export function OperationsWorkflowOverviewPage({
   const [factorySlotPreview, setFactorySlotPreview] = useState<FactorySlotPreview | null>(null);
   const [factoryFocusMode, setFactoryFocusMode] = useState<"all" | "exceptions">("exceptions");
   const [postMaintenancePredictions, setPostMaintenancePredictions] = useState<Record<string, PostMaintenancePredictionSummary>>({});
-  const [liveTickError, setLiveTickError] = useState<string | null>(null);
   const autoOpenedDrawerKeyRef = useRef<string | null>(null);
   const suppressAutoOpenDrawerRef = useRef(false);
   const handlePostMaintenancePrediction = useCallback((assetId: string, prediction: PostMaintenancePredictionSummary) => {
@@ -1776,37 +1774,6 @@ export function OperationsWorkflowOverviewPage({
       return { ...current, [assetId]: prediction };
     });
   }, []);
-  useEffect(() => {
-    if (model.context.projectId !== "manufacturing-demo-project" || model.context.workspaceId !== "manufacturing-demo") return;
-    let cancelled = false;
-    let inFlight = false;
-    const createTick = async () => {
-      if (cancelled || inFlight || document.visibilityState === "hidden") return;
-      inFlight = true;
-      try {
-        await createPredictiveMaintenanceRealtimeDemoTick(
-          model.context.projectId,
-          model.context.workspaceId,
-          model.context.datasetVersionId,
-        );
-        if (!cancelled) {
-          setLiveTickError(null);
-          onRefresh();
-        }
-      } catch (reason) {
-        if (!cancelled) setLiveTickError(reason instanceof Error ? reason.message : "실시간 생성 tick 호출 실패");
-      } finally {
-        inFlight = false;
-      }
-    };
-  const first = window.setTimeout(() => { void createTick(); }, 900);
-  const timer = window.setInterval(() => { void createTick(); }, 5_000);
-  return () => {
-      cancelled = true;
-      window.clearTimeout(first);
-      window.clearInterval(timer);
-    };
-  }, [model.context.datasetVersionId, model.context.projectId, model.context.workspaceId, onRefresh]);
   useEffect(() => {
     if (!selectedAsset || detailDrawerOpen) return;
     if (suppressAutoOpenDrawerRef.current) return;
@@ -1822,9 +1789,7 @@ export function OperationsWorkflowOverviewPage({
     setDetailDrawerOpen(true);
     setDetailDrawerTab("status");
   }, [detailDrawerOpen, selectedAsset, selectedEvent?.eventId]);
-  // Live demo ticks update cards and map emphasis only. They must not mutate
-  // the selected Case because that writes asset_id/event_id into the URL and
-  // reopens the detail drawer after login or after the user closes it.
+  // The browser only visualizes Product Results received from Generator Runtime.
   const drawerAssetSource = factorySlotPreview?.slot.asset ?? (factorySlotPreview ? null : selectedAsset);
   const drawerPrediction = drawerAssetSource ? postMaintenancePredictions[drawerAssetSource.assetId] : null;
   const drawerAsset = drawerAssetSource && drawerPrediction
@@ -2065,7 +2030,7 @@ export function OperationsWorkflowOverviewPage({
             <AlertTriangle className="operations-plan-impact-icon" size={15} aria-hidden="true" />
             <span>최대 계획 영향</span>
             <strong>{productionLossLabel(maxPlanningImpact?.estimatedLossUnits ?? null)}</strong>
-            <small>{maxPlanningImpact ? `${displayEventLabel(maxPlanningImpact.eventId)} / ${displayFactoryAssetName(maxPlanningImpact.assetId) ?? displayAssetName({ assetId: maxPlanningImpact.assetId })}` : "계획 영향 미산정"}</small>
+            <small>{maxPlanningImpact ? `${displayFactoryAssetName(maxPlanningImpact.assetId) ?? displayAssetName({ assetId: maxPlanningImpact.assetId })} · 현재 선택 Case` : "계획 영향 미산정"}</small>
           </article>
           <article className="operations-plan-impact-card">
             <ClipboardCheck className="operations-plan-impact-icon" size={15} aria-hidden="true" />
@@ -2110,7 +2075,7 @@ export function OperationsWorkflowOverviewPage({
             <DatabaseZap className="operations-plan-impact-icon" size={15} aria-hidden="true" />
             <span>데이터 품질 확인</span>
             <strong>{dataQualityCount.toLocaleString()}건</strong>
-            <small>{dataQualityEvent ? `${displayEventAssetName(dataQualityEvent)} / ${displayEventLabel(dataQualityEvent)}` : "품질 보류 없음"}</small>
+            <small>{dataQualityEvent ? `${displayEventAssetName(dataQualityEvent)} · 관측 ${formatTimestamp(dataQualityEvent.observedAt)}` : "품질 보류 없음"}</small>
           </article>
           <article className="operations-plan-impact-card">
             <Clock3 className="operations-plan-impact-icon" size={15} aria-hidden="true" />
@@ -2225,7 +2190,7 @@ export function OperationsWorkflowOverviewPage({
           />
           <aside className="operations-detail-drawer" role="dialog" aria-modal="true" aria-label="선택 설비 상세">
             <button type="button" className="operations-detail-drawer-close" aria-label="선택 설비 상세 닫기" onClick={closeDetailDrawer}><X size={16} /></button>
-            <AssetPreviewPanel asset={drawerAsset} factorySlotPreview={factorySlotPreview} candidate={drawerCandidate} lineSummary={drawerLineSummary} factors={drawerFactors} riskPercent={drawerRiskPercent} planningImpact={drawerPlanningImpact} detail={drawerDetail} detailLoading={factorySlotPreview && !drawerAsset ? false : detailLoading} detailError={factorySlotPreview && !drawerAsset ? null : detailError} sensorWindow={sensorWindow} liveDemo={liveDemo} liveTickError={liveTickError} role={role} currentUserId={currentUserId} activeTab={detailDrawerTab} workStatus={drawerWorkStatus} workStatusSource={drawerLifecycleSummary ? "작업 이력" : drawerClosedLoop ? "업무 기록" : "현재 판단"} workId={drawerWorkId} workActionLabel={drawerActionLabel} workActionHelper={drawerActionHelper} workActionDisabled={drawerWorkActionDisabled} lifecycleSummary={drawerLifecycleSummary} activityTimeline={drawerClosedLoop?.timeline ?? []} assignee={drawerAssignee} canMaterializeAgentSummary={canMaterializeAgentSummary} canManageWorkflow={canManageWorkflow} canExecuteFieldWorkflow={canExecuteFieldWorkflow} projectId={model.context.projectId} workspaceId={model.context.workspaceId} datasetVersionId={model.context.datasetVersionId} eventId={drawerEventId} onChanged={onRefresh} onPostMaintenancePrediction={handlePostMaintenancePrediction} onTabChange={setDetailDrawerTab} onSensorWindowChange={onSensorWindowChange} onPreviewAsset={onPreviewAsset} />
+            <AssetPreviewPanel asset={drawerAsset} factorySlotPreview={factorySlotPreview} candidate={drawerCandidate} lineSummary={drawerLineSummary} factors={drawerFactors} riskPercent={drawerRiskPercent} planningImpact={drawerPlanningImpact} detail={drawerDetail} detailLoading={factorySlotPreview && !drawerAsset ? false : detailLoading} detailError={factorySlotPreview && !drawerAsset ? null : detailError} sensorWindow={sensorWindow} liveDemo={liveDemo} role={role} experienceKind={experienceKind} currentUserId={currentUserId} activeTab={detailDrawerTab} workStatus={drawerWorkStatus} workStatusSource={drawerLifecycleSummary ? "작업 이력" : drawerClosedLoop ? "업무 기록" : "현재 판단"} workId={drawerWorkId} workActionLabel={drawerActionLabel} workActionHelper={drawerActionHelper} workActionDisabled={drawerWorkActionDisabled} lifecycleSummary={drawerLifecycleSummary} activityTimeline={drawerClosedLoop?.timeline ?? []} assignee={drawerAssignee} canMaterializeAgentSummary={canMaterializeAgentSummary} canManageWorkflow={canManageWorkflow} canExecuteFieldWorkflow={canExecuteFieldWorkflow} projectId={model.context.projectId} workspaceId={model.context.workspaceId} datasetVersionId={model.context.datasetVersionId} eventId={drawerEventId} onChanged={onRefresh} onPostMaintenancePrediction={handlePostMaintenancePrediction} onTabChange={setDetailDrawerTab} onSensorWindowChange={onSensorWindowChange} onPreviewAsset={onPreviewAsset} />
           </aside>
         </div>
       ) : null}
@@ -2655,8 +2620,8 @@ function AssetPreviewPanel({
   detailError,
   sensorWindow,
   liveDemo,
-  liveTickError,
   role,
+  experienceKind,
   currentUserId,
   activeTab,
   workStatus,
@@ -2693,8 +2658,8 @@ function AssetPreviewPanel({
   detailError: string | null;
   sensorWindow: OperationsSensorWindowId;
   liveDemo: RealtimeDemoSnapshot;
-  liveTickError: string | null;
   role: OperationsRoleLens;
+  experienceKind: ReliabilityExperienceKind;
   currentUserId: string;
   activeTab: DrawerTab;
   workStatus: WorkStatus;
@@ -2780,7 +2745,6 @@ function AssetPreviewPanel({
     if (!asset) return;
     setPrintReportTab(reportTab);
     setReportOutputOpen(false);
-    window.setTimeout(() => window.print(), 100);
   };
   const agentSummaryKey = asset
     ? `${asset.assetId}:${candidate?.event.eventId ?? ""}:${candidate?.event.datasetVersionId ?? ""}:${sensorWindow}`
@@ -2828,10 +2792,21 @@ function AssetPreviewPanel({
   }, [activeTab, agentSummaryKey, agentSummaryLoading, agentSummaryRequestKey, asset, role]);
   useEffect(() => {
     if (!printReportTab) return;
+    let cancelled = false;
     document.body.classList.add("operations-workflow-print-mode");
     const clearPrintMode = () => setPrintReportTab(null);
     window.addEventListener("afterprint", clearPrintMode);
+    void (async () => {
+      await document.fonts?.ready;
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      if (!cancelled) {
+        window.print();
+        if (!cancelled) setPrintReportTab(null);
+      }
+    })();
     return () => {
+      cancelled = true;
       document.body.classList.remove("operations-workflow-print-mode");
       window.removeEventListener("afterprint", clearPrintMode);
     };
@@ -2960,7 +2935,6 @@ function AssetPreviewPanel({
                       <span>{selectedLiveSnapshot.sourceLabel}</span>
                       <strong>{formatProbability(selectedLiveSnapshot.risk)} · {operationsMonitorStatusLabel(selectedLiveSnapshot.status)}</strong>
                       <small>{selectedLiveSnapshot.signal}</small>
-                      {liveTickError ? <em>생성 tick 지연 · {liveTickError}</em> : null}
                     </div>
                     <div className="operations-live-signal-factors">
                       {selectedLiveSnapshot.factors.length ? selectedLiveSnapshot.factors.map((factor) => (
@@ -3090,6 +3064,7 @@ function AssetPreviewPanel({
                   snapshotBasis={detail?.snapshotBasis ?? null}
                   canManage={canManageWorkflow}
                   canFieldExecute={canExecuteFieldWorkflow}
+                  canMaintenanceExecute={experienceKind === "maintenance" && canExecuteFieldWorkflow}
                   onChanged={refreshWorkflow}
                   onStatusChanged={setWorkflowStatus}
                   onPostMaintenancePrediction={reportPostMaintenancePrediction}
@@ -3325,6 +3300,7 @@ function AssetPreviewPanel({
                 snapshotBasis={detail?.snapshotBasis ?? null}
                 canManage={canManageWorkflow}
                 canFieldExecute={canExecuteFieldWorkflow}
+                canMaintenanceExecute={experienceKind === "maintenance" && canExecuteFieldWorkflow}
                 onChanged={refreshWorkflow}
                 onStatusChanged={setWorkflowStatus}
                 onPostMaintenancePrediction={reportPostMaintenancePrediction}
@@ -3338,18 +3314,21 @@ function AssetPreviewPanel({
               onClose={() => setReportOutputOpen(false)}
             />
           ) : null}
-          {printReportTab ? (
-            <WorkflowPrintReport
-              reportTab={printReportTab}
-              asset={asset}
-              detail={detail}
-              factors={factors}
-              inspectionTargets={inspectionTargets}
-              planningImpact={planningImpact}
-              workStatus={workStatus}
-              assignee={assignee}
-              workId={workId}
-            />
+          {printReportTab ? createPortal(
+            <div id="operations-print-root" className="operations-print-root operations-app">
+              <WorkflowPrintReport
+                reportTab={printReportTab}
+                asset={asset}
+                detail={detail}
+                factors={factors}
+                inspectionTargets={inspectionTargets}
+                planningImpact={planningImpact}
+                workStatus={workStatus}
+                assignee={assignee}
+                workId={workId}
+              />
+            </div>,
+            document.body,
           ) : null}
         </div>
       ) : <OperationsState kind="empty" title="선택된 설비가 없습니다" detail="왼쪽의 설비 또는 라인을 선택하세요." />}

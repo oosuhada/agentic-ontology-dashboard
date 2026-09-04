@@ -330,7 +330,7 @@ GET /api/ontology/registry
 GET /api/ontology/objects
 ```
 
-현재 상태: 기본 조회 구현됨, Operations 필터 gap 존재  
+현재 상태: 기본 조회 구현됨, Operations 필터 gap 존재
 필요 권한: `ontology.objects.read`
 
 현재 query:

@@ -10,6 +10,7 @@ import {
   formatProbability,
   formatTimestamp,
 } from "../components/OperationsUi";
+import { displayAssetName } from "../displayLabels";
 
 export function OperationsClassicOverviewPage({
   model,
@@ -43,7 +44,7 @@ export function OperationsClassicOverviewPage({
       <section className="operations-overview-actions" aria-label="주요 이동">
         <button type="button" className="operations-button primary" onClick={() => topAssets[0] && onOpenAsset(topAssets[0].assetId, topAssets[0].eventId)} disabled={!topAssets.length}><Boxes size={15} />우선 설비 열기</button>
         <button type="button" className="operations-button secondary" onClick={() => pendingEvents[0] && onOpenEvent(pendingEvents[0].eventId, pendingEvents[0].assetId)} disabled={!pendingEvents.length}><ClipboardCheck size={15} />판단 업무 열기</button>
-        <button type="button" className="operations-button secondary" onClick={() => onOpenReport(pendingEvents[0]?.eventId ?? null, pendingEvents[0]?.assetId ?? null)}><FileText size={15} />Event Executive Brief</button>
+        <button type="button" className="operations-button secondary" onClick={() => onOpenReport(pendingEvents[0]?.eventId ?? null, pendingEvents[0]?.assetId ?? null)}><FileText size={15} />경영진 보고 열기</button>
         <button type="button" className="operations-button ghost" onClick={onRefresh}><RefreshCw size={15} />새로고침</button>
       </section>
 
@@ -53,7 +54,7 @@ export function OperationsClassicOverviewPage({
             <div className="operations-line-risk-list">
               {model.lineRisk.slice(0, 8).map((line) => (
                 <article key={line.line}>
-                  <header><strong>{line.line}</strong><span>{line.total} assets · 평균 {formatProbability(line.averageRisk)}</span></header>
+                  <header><strong>{line.line}</strong><span>설비 {line.total}대 · 평균 {formatProbability(line.averageRisk)}</span></header>
                   <div className="operations-risk-track" aria-label={`${line.line} 평균 위험 ${formatProbability(line.averageRisk)}`}><i style={{ width: `${Math.max(4, ((line.averageRisk ?? 0) / maxLineRisk) * 100)}%` }} /></div>
                   <footer><span className="is-normal">정상 {line.normal}</span><span>주의 {line.attention}</span><span className="is-warning">경고 {line.warning}</span><span className="is-critical">위험 {line.critical}</span>{line.dataQualityHold ? <span className="is-hold">데이터 확인 {line.dataQualityHold}</span> : null}</footer>
                 </article>
@@ -68,7 +69,7 @@ export function OperationsClassicOverviewPage({
               {topAssets.map((asset, index) => (
                 <button type="button" key={asset.assetId} onClick={() => onOpenAsset(asset.assetId, asset.eventId)}>
                   <span className="operations-rank">{String(index + 1).padStart(2, "0")}</span>
-                  <div><strong>{asset.displayName}</strong><small>{asset.assetId} · {asset.line}</small></div>
+                  <div><strong>{displayAssetName({ assetId: asset.assetId, displayName: asset.displayName })}</strong><small>{asset.line} · 최근 관측 기준</small></div>
                   <OperationsStatusBadge status={asset.status} />
                   <b>{formatProbability(asset.failureProbability)}</b>
                   <ArrowRight size={15} />
@@ -84,7 +85,7 @@ export function OperationsClassicOverviewPage({
           <div className="operations-event-inbox">
             {pendingEvents.map((item) => (
               <button type="button" key={item.eventId} onClick={() => onOpenEvent(item.eventId, item.assetId)}>
-                <div className="operations-event-title"><OperationsStatusBadge status={item.status} /><strong>{item.assetName}</strong><code>{item.eventId}</code></div>
+                <div className="operations-event-title"><OperationsStatusBadge status={item.status} /><strong>{displayAssetName({ assetId: item.assetId, displayName: item.assetName })}</strong><span>관측 {formatTimestamp(item.observedAt)}</span></div>
                 <div className="operations-event-metrics"><span>위험 <b>{formatProbability(item.failureProbability)}</b></span><OperationsConfidenceBadge confidence={item.confidence} /><span>영향 <b>{formatMinutes(item.estimatedDowntimeMinutes)}</b></span></div>
                 <div className="operations-event-decision"><span>{DECISION_LABEL[item.recommendedDecision]}</span><small>{item.assignedEngineer ?? "미배정"} · {formatTimestamp(item.observedAt)}</small></div>
                 <ArrowRight size={16} />

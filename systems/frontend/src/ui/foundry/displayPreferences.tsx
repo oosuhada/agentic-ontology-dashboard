@@ -20,7 +20,7 @@ export interface DisplayPreferences {
   showTechnicalMetadata: boolean;
 }
 
-export type DisplayPreset = "compact" | "standard" | "accessible";
+export type DisplayPreset = "compact" | "standard" | "large" | "accessible";
 
 interface DisplayPreferencesContextValue {
   preferences: DisplayPreferences;
@@ -43,6 +43,7 @@ const DEFAULT_PREFERENCES: DisplayPreferences = {
 const PRESETS: Record<DisplayPreset, Pick<DisplayPreferences, "textSize" | "density">> = {
   compact: { textSize: "small", density: "compact" },
   standard: { textSize: "default", density: "standard" },
+  large: { textSize: "large", density: "standard" },
   accessible: { textSize: "extra-large", density: "comfortable" },
 };
 
@@ -192,6 +193,7 @@ export const DISPLAY_DENSITY_OPTIONS: ReadonlyArray<{ value: DisplayDensity; lab
 export const DISPLAY_PRESET_OPTIONS: ReadonlyArray<{ value: DisplayPreset; label: string; detail: string }> = [
   { value: "compact", label: "Compact", detail: "Print/report review with more rows per page" },
   { value: "standard", label: "Standard", detail: "Desktop operations and everyday monitoring" },
+  { value: "large", label: "Large", detail: "Larger work content with the desktop layout preserved" },
   { value: "accessible", label: "Presentation", detail: "Projector-friendly text and touch targets" },
 ];
 

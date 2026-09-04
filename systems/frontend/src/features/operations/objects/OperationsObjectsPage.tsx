@@ -13,7 +13,12 @@ import {
   formatProbability,
   formatTimestamp,
 } from "../components/OperationsUi";
-import { displayEventLabel, fieldFailureLabel } from "../displayLabels";
+import {
+  displayAssetName,
+  displayAssetType,
+  displayReviewPriority,
+  fieldFailureLabel,
+} from "../displayLabels";
 
 function qualityLabel(value: string | undefined) {
   if (value === "good") return "정상";
@@ -91,7 +96,7 @@ export function OperationsObjectsPage({
       <div className="operations-object-layout">
         <OperationsPanel title={`Assets · ${visibleAssets.length.toLocaleString()}`} eyebrow="ASSET SURFACE" className="operations-object-table-panel">
           <div className="operations-object-filters">
-            <label className="operations-search"><Search size={15} /><input aria-label="설비 검색" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="설비 ID, 이름, 라인, 담당자 검색" /></label>
+            <label className="operations-search"><Search size={15} /><input aria-label="설비 검색" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="설비 이름, 위치, 담당자 검색" /></label>
             <label><span>라인</span><select aria-label="라인 필터" value={line} onChange={(event) => setLine(event.target.value)}><option value="all">전체 라인</option>{lines.map((item) => <option key={item}>{item}</option>)}</select></label>
             <label><span>상태</span><select aria-label="상태 필터" value={status} onChange={(event) => setStatus(event.target.value as OperationsRiskStatus | "all")}><option value="all">전체 상태</option><option value="critical">위험</option><option value="warning">경고</option><option value="attention">주의</option><option value="normal">정상</option><option value="data_quality_hold">데이터 확인</option></select></label>
             <label><span>담당자</span><select aria-label="담당자 필터" value={assignee} onChange={(event) => setAssignee(event.target.value)}><option value="all">전체 담당자</option>{assignees.map((item) => <option key={item}>{item}</option>)}</select></label>
@@ -114,8 +119,8 @@ export function OperationsObjectsPage({
                         style={{ transform: `translateY(${virtualRow.start}px)` }}
                         onClick={() => onSelectAsset(asset)}
                       >
-                        <span><strong>{asset.displayName}</strong><code>{asset.assetId}</code></span>
-                        <span><strong>{asset.assetType.toUpperCase()}</strong><small>{asset.line} · {asset.cell}</small></span>
+                        <span><strong>{displayAssetName({ assetId: asset.assetId, displayName: asset.displayName })}</strong><small>최근 관측 {formatTimestamp(asset.observedAt)}</small></span>
+                        <span><strong>{displayAssetType(asset.assetType)}</strong><small>{asset.line} · {asset.cell}</small></span>
                         <span><OperationsStatusBadge status={asset.status} /></span>
                         <span><b>{formatProbability(asset.failureProbability)}</b></span>
                         <span><OperationsConfidenceBadge confidence={asset.confidence} /></span>
@@ -132,11 +137,11 @@ export function OperationsObjectsPage({
 
         <aside className="operations-object-inspector" aria-label="선택 설비 Inspector">
           {!selectedAsset ? (
-                <OperationsState kind="empty" title="설비를 선택하세요" detail={selectedAssetId ? `요청한 설비 ${selectedAssetId}를 현재 데이터에서 찾지 못했습니다.` : "목록에서 설비를 선택하면 상태, 근거, 작업 연결을 확인할 수 있습니다."} />
+                <OperationsState kind="empty" title="설비를 선택하세요" detail={selectedAssetId ? "요청한 설비를 현재 데이터에서 찾지 못했습니다. 목록에서 다른 설비를 선택해 주세요." : "목록에서 설비를 선택하면 상태, 근거, 작업 연결을 확인할 수 있습니다."} />
           ) : (
             <>
               <header className="operations-inspector-hero">
-                <div><span>ASSET INSPECTOR</span><h2>{selectedAsset.displayName}</h2><code>{selectedAsset.assetId}</code></div>
+                <div><span>선택 설비</span><h2>{displayAssetName({ assetId: selectedAsset.assetId, displayName: selectedAsset.displayName })}</h2><small>{selectedAsset.line} · 최근 관측 {formatTimestamp(selectedAsset.observedAt)}</small></div>
                 <OperationsStatusBadge status={selectedAsset.status} />
               </header>
               <section className="operations-inspector-section">
@@ -155,9 +160,9 @@ export function OperationsObjectsPage({
               </section>
 
               <section className="operations-inspector-section">
-                <header><span>Context · Review</span><strong>{detail?.reviewPriority?.level ?? "gap-aware"}</strong></header>
+                <header><span>운영 검토</span><strong>{displayReviewPriority(detail?.reviewPriority?.level)}</strong></header>
                 <dl className="operations-inspector-summary">
-                  <div><dt>검토 우선순위</dt><dd>{detail?.reviewPriority?.level ?? "확인 필요"}</dd></div>
+                  <div><dt>검토 우선순위</dt><dd>{displayReviewPriority(detail?.reviewPriority?.level)}</dd></div>
                   <div><dt>중요도 근거</dt><dd>{detail?.criticalityBasis.length ? detail.criticalityBasis.join(", ") : "확인 필요"}</dd></div>
                   <div><dt>마지막 정비</dt><dd>{valueOrGap(detail?.maintenanceContext?.lastMaintenanceDaysAgo, "일 전")}</dd></div>
                   <div><dt>30일 유사 Event</dt><dd>{valueOrGap(detail?.maintenanceContext?.similarEvents30d, "건")}</dd></div>
@@ -170,11 +175,11 @@ export function OperationsObjectsPage({
               <section className="operations-inspector-section">
                 <header><span>근거 / 진단</span><strong>{fieldFailureLabel(selectedAsset.predictedFailureType)}</strong></header>
                 <dl className="operations-sensor-grid">
-                  <div><dt>관련 이벤트</dt><dd>{selectedAsset.eventId ? displayEventLabel(selectedAsset.eventId) : "이벤트 연결 없음"}</dd></div>
+                  <div><dt>관련 판단</dt><dd>{selectedAsset.eventId ? "현재 관측 Case 연결됨" : "연결된 판단 없음"}</dd></div>
                   <div><dt>진단</dt><dd>{DECISION_LABEL[selectedAsset.recommendedDecision]}</dd></div>
                   <div><dt>신뢰도</dt><dd>{selectedAsset.confidenceScore === null ? selectedAsset.confidence : formatProbability(selectedAsset.confidenceScore)}</dd></div>
                 </dl>
-                {detailLoading ? <OperationsState kind="loading" title="근거 로딩" detail="선택 이벤트의 현재 관측과 과거 이력을 확인하고 있습니다." /> : detailError ? <OperationsState kind="error" title="센서 근거를 불러오지 못했습니다" detail={detailError} onRetry={onRetryDetail} /> : detail?.sensors.length ? <dl className="operations-sensor-grid">{detail.sensors.map((sensor) => <div key={sensor.id}><dt>{sensor.label}</dt><dd>{sensor.value === null || sensor.value === "" ? "—" : String(sensor.value)} {sensor.unit}<small>현재 {qualityLabel(sensor.qualityStatus)} · 이력 {sensor.historyPointCount ?? 0}개{sensor.historySourceRef ? ` · ${sensor.historySourceRef}` : ""}</small></dd></div>)}</dl> : <p className="operations-muted">이 설비와 연결된 이벤트 근거가 없습니다.</p>}
+                {detailLoading ? <OperationsState kind="loading" title="근거 로딩" detail="선택 이벤트의 현재 관측과 과거 이력을 확인하고 있습니다." /> : detailError ? <OperationsState kind="error" title="센서 근거를 불러오지 못했습니다" detail={detailError} onRetry={onRetryDetail} /> : detail?.sensors.length ? <dl className="operations-sensor-grid">{detail.sensors.map((sensor) => <div key={sensor.id}><dt>{sensor.label}</dt><dd>{sensor.value === null || sensor.value === "" ? "—" : String(sensor.value)} {sensor.unit}<small>현재 {qualityLabel(sensor.qualityStatus)} · 이력 {sensor.historyPointCount ?? 0}개</small></dd></div>)}</dl> : <p className="operations-muted">이 설비와 연결된 이벤트 근거가 없습니다.</p>}
                 {factors.length ? <div className="operations-factor-list">{factors.slice(0, 5).map((factor) => <article key={factor.id}><div><strong>{factor.label}</strong><span>{factor.value === null ? "—" : factor.value.toLocaleString()} {factor.unit}</span></div><div className="operations-factor-track"><i style={{ width: `${Math.max(4, Math.min(100, factor.contribution * 100))}%` }} /></div><b>{factor.direction === "risk_up" ? "위험 증가" : "위험 완화"}</b></article>)}</div> : <p className="operations-muted">설명 가능한 기여 요인이 제공되지 않았습니다.</p>}
               </section>
 

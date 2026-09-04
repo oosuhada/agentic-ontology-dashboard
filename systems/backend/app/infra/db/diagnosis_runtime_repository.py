@@ -233,6 +233,7 @@ class PredictiveMaintenanceRuntimeRepository:
                   AND s.project_id=%s
                   AND s.workspace_id=%s
                   AND s.user_id=%s
+                  AND s.selection_mode='explicit'
                   AND v.organization_id=s.organization_id
                   AND v.project_id=s.project_id
                   AND v.workspace_id=s.workspace_id
@@ -633,6 +634,7 @@ class PredictiveMaintenanceRuntimeRepository:
             "project_id=%s",
             "workspace_id=%s",
             "dataset_version_id=%s",
+            "model_version<>'presentation-live-v1'",
         ]
         parameters: list[Any] = [
             organization_id,
@@ -693,6 +695,7 @@ class PredictiveMaintenanceRuntimeRepository:
                 FROM pm_result_artifacts
                 WHERE organization_id=%s AND project_id=%s AND workspace_id=%s
                   AND dataset_version_id=%s AND asset_id=%s
+                  AND model_version<>'presentation-live-v1'
                   AND observed_at >= %s AND observed_at <= %s
                 ORDER BY observed_at,created_at,artifact_id
                 LIMIT %s
@@ -914,6 +917,7 @@ class PredictiveMaintenanceRuntimeRepository:
             "workspace_id=%s",
             "dataset_version_id=%s",
             "observed_at<=%s",
+            "model_version<>'presentation-live-v1'",
         ]
         parameters: list[Any] = [
             organization_id,
@@ -1058,6 +1062,7 @@ class PredictiveMaintenanceRuntimeRepository:
                 FROM pm_result_artifacts
                 WHERE organization_id=%s AND project_id=%s AND workspace_id=%s
                   AND dataset_version_id=%s
+                  AND model_version<>'presentation-live-v1'
                 ORDER BY asset_id,observed_at DESC,created_at DESC,artifact_id DESC
                 """,
                 (organization_id, project_id, workspace_id, dataset_version_id),

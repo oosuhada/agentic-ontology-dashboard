@@ -140,6 +140,7 @@
 .rw-report-actions { justify-content: flex-end; margin: 8px 0 0; }
 .rw-report-actions button { border: 1px solid rgba(96,165,250,.3); border-radius: 6px; padding: 6px 9px; color: inherit; background: rgba(59,130,246,.08); font-size: 9px; font-weight: 800; }
 .rw-report-artifact-meta { display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-bottom:9px; padding:7px 8px; border:1px solid rgba(148,163,184,.12); border-radius:7px; background:rgba(148,163,184,.035); }.rw-report-artifact-meta span { color:#2563eb; font-size:7px; font-weight:900; letter-spacing:.08em; }.rw-report-artifact-meta strong,.rw-report-artifact-meta small { font-size:8px; }.rw-report-artifact-meta small { color:var(--rw-muted,#8ea0b3); }
+:root[data-technical-metadata="hidden"] .rw-technical-metadata { display:none!important; }
 .rw-composed-context > div:first-child > strong { font-size: 14px; }
 .rw-composed-context > div:first-child p { margin: 4px 0; font-size: 10px; line-height: 1.5; }
 .rw-composed-context > div:first-child small { color: var(--rw-muted, #8ea0b3); font-size: 8px; }
@@ -331,6 +332,37 @@
   --rw-card-body: 16px;
   --rw-card-strong: 17px;
   --rw-card-metric: 22px;
+}
+
+/* Component typography follows textSize; density owns geometry only. */
+:root[data-text-size="small"] .rw-composed-grid {
+  --rw-card-meta: 11px;
+  --rw-card-body: 12px;
+  --rw-card-strong: 13px;
+  --rw-card-metric: 15px;
+}
+:root[data-text-size="default"] .rw-composed-grid {
+  --rw-card-meta: 12px;
+  --rw-card-body: 13px;
+  --rw-card-strong: 14px;
+  --rw-card-metric: 18px;
+}
+:root[data-text-size="large"] .rw-composed-grid {
+  --rw-card-meta: 13px;
+  --rw-card-body: 15px;
+  --rw-card-strong: 16px;
+  --rw-card-metric: 20px;
+}
+:root[data-text-size="extra-large"] .rw-composed-grid {
+  --rw-card-meta: 14px;
+  --rw-card-body: 16px;
+  --rw-card-strong: 17px;
+  --rw-card-metric: 22px;
+}
+
+@media (min-width: 981px) {
+  :root[data-density="comfortable"] .rw-composed-block { grid-column: span 6; }
+  :root[data-density="comfortable"] .rw-composed-block.span-12 { grid-column: span 12; }
 }
 .rw-composed-grid :where(
   .rw-composition-reason span,

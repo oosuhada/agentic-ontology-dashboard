@@ -360,6 +360,9 @@
 .rw-preview-segmented.three {
   grid-template-columns: 1fr;
 }
+.rw-preview-segmented.four {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 
 :root[data-density="compact"] .rw-preview-main {
   --rw-main-meta: 11px;
@@ -376,6 +379,37 @@
   --rw-main-title: 31px;
 }
 :root[data-density="comfortable"] .rw-preview-main {
+  --rw-main-meta: 13px;
+  --rw-main-small: 14px;
+  --rw-main-body: 16px;
+  --rw-main-strong: 17px;
+  --rw-main-title: 42px;
+}
+
+/* Text presets apply only to the work canvas. Product chrome deliberately
+   keeps the stable sizes defined below, regardless of the selected preset. */
+:root[data-text-size="small"] .rw-preview-main {
+  --rw-main-meta: 11px;
+  --rw-main-small: 12px;
+  --rw-main-body: 12px;
+  --rw-main-strong: 13px;
+  --rw-main-title: 24px;
+}
+:root[data-text-size="default"] .rw-preview-main {
+  --rw-main-meta: 12px;
+  --rw-main-small: 12px;
+  --rw-main-body: 13px;
+  --rw-main-strong: 14px;
+  --rw-main-title: 31px;
+}
+:root[data-text-size="large"] .rw-preview-main {
+  --rw-main-meta: 12px;
+  --rw-main-small: 13px;
+  --rw-main-body: 15px;
+  --rw-main-strong: 16px;
+  --rw-main-title: 36px;
+}
+:root[data-text-size="extra-large"] .rw-preview-main {
   --rw-main-meta: 13px;
   --rw-main-small: 14px;
   --rw-main-body: 16px;
@@ -464,6 +498,54 @@
 :root[data-density="comfortable"] .rw-preview-shell .rw-preview-settings-panel .rw-preview-settings-group>span {
   font-size: 12px!important;
 }
+
+/* Presets own only the scrollable work canvas. Navigation, top bar, settings,
+   assistant and the lifecycle footer keep the desktop/default geometry. */
+:root[data-density="compact"] .rw-preview-shell .rw-preview-left,
+:root[data-density="standard"] .rw-preview-shell .rw-preview-left,
+:root[data-density="comfortable"] .rw-preview-shell .rw-preview-left {
+  gap: 7px;
+  padding: 13px 9px 8px;
+}
+:root[data-density="compact"] .rw-preview-shell .rw-preview-left nav button,
+:root[data-density="standard"] .rw-preview-shell .rw-preview-left nav button,
+:root[data-density="comfortable"] .rw-preview-shell .rw-preview-left nav button {
+  min-height: 50px;
+  grid-template-columns: 27px minmax(0,1fr);
+  padding: 5px 7px;
+}
+:root[data-density="compact"] .rw-preview-shell .rw-preview-left nav small,
+:root[data-density="standard"] .rw-preview-shell .rw-preview-left nav small,
+:root[data-density="comfortable"] .rw-preview-shell .rw-preview-left nav small {
+  display: block;
+}
+:root[data-density="compact"] .rw-preview-shell.left-collapsed .rw-preview-left nav button,
+:root[data-density="standard"] .rw-preview-shell.left-collapsed .rw-preview-left nav button,
+:root[data-density="comfortable"] .rw-preview-shell.left-collapsed .rw-preview-left nav button {
+  grid-template-columns: 1fr;
+  justify-items: center;
+}
+:root[data-density="compact"] .rw-preview-shell .rw-preview-bottom,
+:root[data-density="standard"] .rw-preview-shell .rw-preview-bottom,
+:root[data-density="comfortable"] .rw-preview-shell .rw-preview-bottom {
+  padding: 5px 6px 6px;
+}
+@media (min-width: 861px) {
+  :root[data-density="compact"] .rw-preview-shell .rw-preview-body,
+  :root[data-density="standard"] .rw-preview-shell .rw-preview-body,
+  :root[data-density="comfortable"] .rw-preview-shell .rw-preview-body,
+  :root[data-density="compact"] .rw-preview-shell.assistant-closed .rw-preview-body,
+  :root[data-density="standard"] .rw-preview-shell.assistant-closed .rw-preview-body,
+  :root[data-density="comfortable"] .rw-preview-shell.assistant-closed .rw-preview-body {
+    grid-template-columns: 224px minmax(0,1fr)!important;
+  }
+  :root[data-density="compact"] .rw-preview-shell.left-collapsed .rw-preview-body,
+  :root[data-density="standard"] .rw-preview-shell.left-collapsed .rw-preview-body,
+  :root[data-density="comfortable"] .rw-preview-shell.left-collapsed .rw-preview-body {
+    grid-template-columns: 56px minmax(0,1fr)!important;
+  }
+}
+:root[data-technical-metadata="hidden"] .rw-technical-metadata { display:none!important; }
 .rw-preview-shell .rw-preview-left .rw-preview-left-heading span,
 .rw-preview-shell .rw-preview-left .rw-preview-nav-group>header,
 .rw-preview-shell .rw-preview-left .rw-preview-scope span,

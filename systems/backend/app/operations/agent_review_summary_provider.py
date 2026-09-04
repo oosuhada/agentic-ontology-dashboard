@@ -31,9 +31,11 @@ Hard contract:
 - Keep baseline_summary.role_summaries role, label, and source_refs unchanged.
 - You may improve only title, summary, and role_summaries[*].quote. These fields must stay
   read-only Korean prose grounded in baseline_summary and agent_review_packet.
+- Use the packet's display_name values as user language. Never infer meaning from raw field,
+  artifact, model, dataset, or source identifiers.
 """.strip()
 
-AGENT_REVIEW_SUMMARY_PROMPT_VERSION = "agent-review-summary-prompt-v1.0"
+AGENT_REVIEW_SUMMARY_PROMPT_VERSION = "agent-review-summary-prompt-v1.1"
 
 
 class AgentReviewSummaryProvider:

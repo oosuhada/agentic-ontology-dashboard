@@ -66,6 +66,13 @@ from .runtime_schema import (
     TimelinePrediction,
 )
 from .ports import ALLOWED_DERIVED_MEASURES, DiagnosisRuntimeRepositoryPort
+from .presentation_dictionary import (
+    PRESENTATION_DICTIONARY_VERSION,
+    asset_display_name,
+    partition_factors,
+    presentation_field,
+    source_display_name,
+)
 
 AppLocale = Literal["ko-KR", "en-US"]
 
@@ -190,7 +197,7 @@ def _localize_legacy_top_factors(
     return [
         {
             **factor,
-            "display_name": _pm_label(PM_FEATURE_LABELS, locale, str(factor.get("feature") or "")),
+            "display_name": presentation_field(str(factor.get("feature") or ""), locale)["label"],
             "normal_range": (
                 fallback_range
                 if str(factor.get("normal_range") or "") in {"", "근거 부족"}
@@ -1737,6 +1744,10 @@ class PredictiveMaintenanceRuntimeService:
         )
         evidence = canonical_evidence if view == "canonical" else legacy_evidence
         factors = legacy_evidence["top_factors"]
+        presentation_factors = partition_factors(factors, locale)
+        physical_factors = presentation_factors["physical"]
+        decision_basis = presentation_factors["decision_basis"]
+        asset_label = asset_display_name(result.asset_id, locale)
         resolved_report_type = report_type or (
             "executive-brief" if role == "executive" else "inspection-summary" if role == "engineer" else "operations-decision"
         )
@@ -1747,14 +1758,23 @@ class PredictiveMaintenanceRuntimeService:
             "report_type": resolved_report_type,
             "locale": locale,
             "mode": "deterministic_result_artifact",
+            "presentation_dictionary_version": PRESENTATION_DICTIONARY_VERSION,
+            "presentation_facts": {
+                "asset_label": asset_label,
+                "risk_percent": round(result.failure_probability * 100, 1),
+                "prediction_horizon_hours": result.prediction_horizon_hours,
+                "physical_factors": physical_factors,
+                "decision_basis": decision_basis,
+                "technical_metadata": presentation_factors["technical_metadata"],
+            },
             "headline": (
-                f"{result.asset_id} · {status_label} · 고장 위험"
+                f"{asset_label} · {status_label} · 고장 위험"
                 if locale == "ko-KR"
-                else f"{result.asset_id} · {status_label} failure risk"
+                else f"{asset_label} · {status_label} failure risk"
             ),
             "summary": (
-                f"관리형 Result Artifact는 {result.prediction_horizon_hours}시간 이내 이진 고장 위험을 "
-                f"{result.failure_probability * 100:.1f}%로 산출했습니다. 정책 권장 조치는 실행 전에 사람이 검토해야 합니다."
+                f"이 설비는 {result.prediction_horizon_hours}시간 이내 고장 위험이 "
+                f"{result.failure_probability * 100:.1f}%로 분류됐습니다. 현장 점검 전에는 원인을 확정하지 않으며 모든 조치는 담당자가 검토합니다."
                 if locale == "ko-KR"
                 else (
                     f"The governed Result Artifact reports {result.failure_probability * 100:.1f}% "
@@ -1779,15 +1799,29 @@ class PredictiveMaintenanceRuntimeService:
                                 f"{str(item.get('direction')).replace('_', ' ')}"
                             )
                         )
-                        for item in factors
+                        for item in physical_factors
+                    ) or (
+                        "현재 결과에는 센서별 기여도 근거가 포함되지 않았습니다. 현장 점검 전에는 원인을 확정하지 않습니다."
+                        if locale == "ko-KR"
+                        else "This result does not include sensor-level contribution evidence. The cause remains unconfirmed until field inspection."
                     ),
-                    "evidence_field_ids": [item["evidence_field_id"] for item in factors],
+                    "evidence_field_ids": [item["evidence_field_id"] for item in physical_factors],
+                },
+                {
+                    "section_id": "decision-basis",
+                    "title": "판정 기준" if locale == "ko-KR" else "Decision basis",
+                    "body": (
+                        f"모델 위험 점수와 운영 판정 기준을 비교해 {status_label} 상태로 분류했습니다."
+                        if locale == "ko-KR"
+                        else f"The model score was compared with the operating threshold and classified as {status_label}."
+                    ),
+                    "evidence_field_ids": [item["evidence_field_id"] for item in decision_basis],
                 },
                 {
                     "section_id": "maintenance",
                     "title": "정비 이력" if locale == "ko-KR" else "Maintenance history",
                     "body": (
-                        f"이 자산에는 Canonical 정비 이벤트 {len(maintenance)}건이 연결되어 있습니다."
+                        f"이 설비에는 확인된 점검·정비 이력 {len(maintenance)}건이 연결되어 있습니다."
                         if locale == "ko-KR"
                         else f"{len(maintenance)} canonical maintenance events are linked to this asset."
                     ),
@@ -1795,10 +1829,10 @@ class PredictiveMaintenanceRuntimeService:
                 },
                 {
                     "section_id": "provenance",
-                    "title": "Release 출처" if locale == "ko-KR" else "Release provenance",
+                    "title": "데이터 기준" if locale == "ko-KR" else "Data basis",
                     "body": (
-                        f"{context.source_version} · {result.provenance.model_version} · "
-                        f"{result.provenance.schema_version}"
+                        f"{source_display_name(context.source_version, locale)}와 "
+                        f"{source_display_name(result.provenance.model_version, locale)}을 기준으로 작성했습니다."
                     ),
                     "evidence_field_ids": source_refs[:2],
                 },
@@ -1834,33 +1868,33 @@ class PredictiveMaintenanceRuntimeService:
                 "low": "낮음" if locale == "ko-KR" else "low",
             }.get(equipment.criticality, "확인 필요" if locale == "ko-KR" else "not provided")
             if resolved_report_type == "operations-decision":
-                report["headline"] = f"{result.asset_id} · 경영 의사결정 요청"
+                report["headline"] = f"{asset_label} · 경영 의사결정 요청"
                 report["summary"] = f"현재 위험도 {risk_text}, 상태 {status_label}입니다. 현재 요청된 판단은 '{action_label}'이며 자동 실행되지 않습니다."
                 report["sections"] = [
                     {"section_id": "decision-request", "title": "의사결정 요청", "body": action_label, "evidence_field_ids": ["recommended_decision"]},
                     {"section_id": "operational-exposure", "title": "운영 노출", "body": f"설비 중요도 {criticality_label} · 예상 정지 노출 {equipment.estimated_downtime_minutes}분", "evidence_field_ids": ["equipment.criticality", "equipment.estimated_downtime_minutes"]},
                 ]
             elif resolved_report_type == "inspection-summary":
-                report["headline"] = f"{result.asset_id} · 현장 확인 필요"
+                report["headline"] = f"{asset_label} · 현장 확인 필요"
                 report["summary"] = f"현재 위험도 {risk_text}입니다. 예측 결과는 고장 확정이 아니며 '{action_label}'을 통해 현장 확인이 필요합니다."
                 report["sections"] = [
                     {"section_id": "inspection-request", "title": "확인 요청", "body": action_label, "evidence_field_ids": ["recommended_decision"]},
                     {"section_id": "inspection-limit", "title": "판단 경계", "body": "현장 점검 전에는 원인과 정비 필요성을 확정하지 않습니다.", "evidence_field_ids": ["status"]},
                 ]
             elif resolved_report_type == "maintenance-effect":
-                report["headline"] = f"{result.asset_id} · 정비 효과 확인 대기"
+                report["headline"] = f"{asset_label} · 정비 효과 확인 대기"
                 report["summary"] = "이 Event에 직접 연결된 Maintenance Event와 정비 후 관측이 확인되기 전에는 정비 효과를 현재 Case의 Outcome으로 표시하지 않습니다."
                 report["sections"] = [
                     {"section_id": "maintenance-state", "title": "현재 상태", "body": "정비 완료와 후속 관측의 인과 연결을 확인해야 합니다.", "evidence_field_ids": ["status"]},
                 ]
             elif resolved_report_type == "weekly-risk":
-                report["headline"] = f"주간 리스크 참고 · {result.asset_id}"
+                report["headline"] = f"주간 리스크 참고 · {asset_label}"
                 report["summary"] = f"선택 Case snapshot의 위험도는 {risk_text}, 상태는 {status_label}입니다. 전체 주간 포트폴리오 집계와는 구분합니다."
                 report["sections"] = [
                     {"section_id": "case-risk", "title": "선택 Case", "body": report["summary"], "evidence_field_ids": ["status", "failure_probability"]},
                 ]
             else:
-                report["headline"] = f"Executive Brief · {result.asset_id}"
+                report["headline"] = f"경영진 운영 브리프 · {asset_label}"
                 report["summary"] = f"현재 위험도 {risk_text}, 상태 {status_label}입니다. 고장 유형은 현장 확인 전 가설이며 현재 경영 판단 요청은 '{action_label}'입니다."
                 report["sections"] = [
                     {"section_id": "executive-status", "title": "경영 판단 요약", "body": report["summary"], "evidence_field_ids": ["status", "failure_probability", "recommended_decision"]},
