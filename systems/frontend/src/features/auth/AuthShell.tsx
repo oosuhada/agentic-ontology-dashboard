@@ -63,11 +63,15 @@ export function AuthShell({
   eyebrow,
   title,
   description,
+  showDescription = true,
+  showTraceabilityNote = true,
   children,
 }: {
   eyebrow: string;
   title: string;
   description: string;
+  showDescription?: boolean;
+  showTraceabilityNote?: boolean;
   children: React.ReactNode;
 }) {
   const { locale } = useI18n();
@@ -91,7 +95,7 @@ export function AuthShell({
       </header>
       <div className="auth-control-plane">
         <aside className="auth-resource-context">
-          <header><span><Activity size={20} /></span><div><small>HANBIT TECH · RELIABILITY OPERATIONS</small><strong>{english ? "Connect equipment risk to operational decisions" : "설비 리스크를 운영 의사결정으로 연결"}</strong><small>Live status → Decision Case → Outcome</small></div></header>
+          <header><span><Activity size={20} /></span><div><strong>{english ? "Connect equipment risk to operational decisions" : "설비 리스크를 운영 의사결정으로 연결"}</strong><small>Live status → Decision Case → Outcome</small></div></header>
           <section className="auth-product-story" aria-roledescription="carousel" aria-label={english ? "Product capabilities" : "제품 주요 기능"}>
             <div className="auth-story-copy" key={story.eyebrow}>
               <span className="section-label">{story.eyebrow}</span>
@@ -99,25 +103,25 @@ export function AuthShell({
               <p>{english ? story.detail.en : story.detail.ko}</p>
             </div>
             <ProductStoryVisual kind={story.visual} english={english} />
+            <section className="auth-value-strip">
+              <span><Gauge size={15} /><strong>Live</strong><small>{english ? "Live equipment status" : "실시간 설비 상태"}</small></span>
+              <span><ShieldCheck size={15} /><strong>Traceable</strong><small>{english ? "Evidence-based decisions" : "근거 기반 판단"}</small></span>
+              <span><Wrench size={15} /><strong>Closed loop</strong><small>{english ? "Maintenance outcomes" : "정비 결과 확인"}</small></span>
+            </section>
             <footer className="auth-story-controls">
               <div>{PRODUCT_STORIES.map((item, index) => <button type="button" key={item.eyebrow} className={index === storyIndex ? "is-active" : ""} onClick={() => setStoryIndex(index)} aria-label={english ? `Product story ${index + 1}` : `${index + 1}번째 제품 소개`} aria-current={index === storyIndex ? "true" : undefined} />)}</div>
               <span><button type="button" onClick={() => moveStory(-1)} aria-label={english ? "Previous" : "이전"}><ArrowLeft size={14} /></button><button type="button" onClick={() => moveStory(1)} aria-label={english ? "Next" : "다음"}><ArrowRight size={14} /></button></span>
             </footer>
           </section>
-          <section className="auth-value-strip">
-            <span><Gauge size={15} /><strong>Live</strong><small>{english ? "Live equipment status" : "실시간 설비 상태"}</small></span>
-            <span><ShieldCheck size={15} /><strong>Traceable</strong><small>{english ? "Evidence-based decisions" : "근거 기반 판단"}</small></span>
-            <span><Wrench size={15} /><strong>Closed loop</strong><small>{english ? "Maintenance outcomes" : "정비 결과 확인"}</small></span>
-          </section>
         </aside>
         <section className="auth-panel">
           <div className="auth-card">
             <div className="auth-card-heading"><span><LockKeyhole size={18} /></span><div><span className="eyebrow">{eyebrow}</span><h2>{title}</h2></div></div>
-            <p className="auth-description">{description}</p>
+            {showDescription ? <p className="auth-description">{description}</p> : null}
             {children}
-            <footer><ShieldCheck size={12} /><span>{english
+            {showTraceabilityNote ? <footer><ShieldCheck size={12} /><span>{english
               ? "Monitoring follows the latest observation, while Decision Cases and Executive Briefs stay tied to the evidence snapshot used for the decision."
-              : "Monitoring은 최신 관측을 따르고, Decision Case와 Executive Brief는 선택한 근거 snapshot을 기준으로 추적합니다."}</span></footer>
+              : "Monitoring은 최신 관측을 따르고, Decision Case와 Executive Brief는 선택한 근거 snapshot을 기준으로 추적합니다."}</span></footer> : null}
           </div>
         </section>
       </div>

@@ -91,6 +91,9 @@ export function LoginPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [openInfo, setOpenInfo] = useState<string | null>(null);
+  const roleContextDescription = english
+    ? "Connect the same equipment event and evidence across engineering investigation, operational decisions, and executive reporting."
+    : "같은 설비 이상 사건과 근거를 엔지니어의 조사, 운영 관리자의 판단, 경영진의 보고 언어로 연결합니다.";
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -136,10 +139,10 @@ export function LoginPage() {
           : "실시간 설비 현황에서 운영 판단과 경영 보고까지"
       }
       description={
-        english
-          ? "Connect the same equipment event and evidence across engineering investigation, operational decisions, and executive reporting."
-          : "같은 설비 이상 사건과 근거를 엔지니어의 조사, 운영 관리자의 판단, 경영진의 보고 언어로 연결합니다."
+        roleContextDescription
       }
+      showDescription={false}
+      showTraceabilityNote={false}
     >
       <form className="auth-form" onSubmit={submit}>
         <label>
@@ -193,7 +196,12 @@ export function LoginPage() {
               : "역할별 Reliability Operations 계정"
           }
         >
-          <header>{english ? "Choose a role" : "역할 선택"}</header>
+          <header
+            className="demo-account-heading"
+            tabIndex={0}
+            title={roleContextDescription}
+            aria-label={`${english ? "Choose a role" : "역할 선택"}. ${roleContextDescription}`}
+          >{english ? "Choose a role" : "역할 선택"}</header>
           <div
             className="demo-account-grid"
             role="group"
