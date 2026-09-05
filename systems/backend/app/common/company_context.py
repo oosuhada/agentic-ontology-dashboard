@@ -19,6 +19,14 @@ from .runtime_settings import project_root
 
 _TOKEN = re.compile(r"[0-9A-Za-z가-힣_.:-]+")
 
+
+def _document_allowed_roles(document_type: str) -> list[str]:
+    if document_type in {"financial_statement", "financial_actual"}:
+        return ["tenant_admin", "executive_viewer", "process_manager", "quality_auditor", "fde"]
+    if document_type in {"quality_incident", "capa_record", "safety_event"}:
+        return ["tenant_admin", "process_manager", "process_engineer", "quality_auditor", "fde"]
+    return []
+
 @lru_cache(maxsize=1)
 def load_company_context() -> dict[str, Any]:
     path = project_root() / "data" / "fixtures" / "company" / "company-context.json"
@@ -72,6 +80,26 @@ def public_company_context(payload: dict[str, Any] | None = None) -> dict[str, A
         key=lambda item: str(item.get("period") or ""),
         reverse=True,
     )[:54]
+    bounded["production_orders"] = sorted(
+        payload.get("production_orders") or [],
+        key=lambda item: str(item.get("scheduled_at") or ""),
+        reverse=True,
+    )[:36]
+    bounded["quality_incidents"] = sorted(
+        payload.get("quality_incidents") or [],
+        key=lambda item: str(item.get("occurred_at") or ""),
+        reverse=True,
+    )[:18]
+    bounded["purchase_orders"] = sorted(
+        payload.get("purchase_orders") or [],
+        key=lambda item: str(item.get("ordered_at") or ""),
+        reverse=True,
+    )[:24]
+    bounded["capa_records"] = sorted(
+        payload.get("capa_records") or [],
+        key=lambda item: str(item.get("opened_at") or ""),
+        reverse=True,
+    )[:18]
     result = {
         key: bounded[key]
         for key in (
@@ -93,6 +121,13 @@ def public_company_context(payload: dict[str, Any] | None = None) -> dict[str, A
     result["financial_periods"] = list(bounded.get("financial_periods") or [])
     result["kpi_snapshots"] = list(bounded.get("kpi_snapshots") or [])
     result["corpus_summary"] = dict(payload.get("corpus_summary") or {})
+    for key in (
+        "production_orders",
+        "quality_incidents",
+        "purchase_orders",
+        "capa_records",
+    ):
+        result[key] = list(bounded.get(key) or [])
     return result
 
 
@@ -131,6 +166,7 @@ def _record_document(record: dict[str, Any], *, kind: str, title: str) -> dict[s
         "source_ref": str(record.get("source_ref") or f"company-context:{record.get('id') or kind}"),
         "source_sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
         "source_updated_at": str(source_updated_at) if source_updated_at else None,
+        "allowed_roles": _document_allowed_roles(kind),
         "structured": record,
     }
 
@@ -144,6 +180,7 @@ def _normalize_document(document: dict[str, Any]) -> dict[str, Any]:
         normalized.get("effective_from") or normalized.get("occurred_at") or normalized.get("period"),
     )
     normalized.setdefault("related_asset_ids", [])
+    normalized.setdefault("allowed_roles", _document_allowed_roles(str(normalized.get("document_type") or "")))
     return normalized
 
 
@@ -194,6 +231,50 @@ def company_documents(context: dict[str, Any] | None = None) -> list[dict[str, A
         _record_document(item, kind="kpi_actual", title=f"{item.get('period', '')} {item.get('metric_key', 'KPI')}")
         for item in context.get("kpi_snapshots") or []
     )
+    documents.extend(
+        _record_document(
+            item,
+            kind="production_order",
+            title=f"생산 오더 {item.get('order_id') or item.get('id') or ''} · {item.get('product_id') or ''}",
+        )
+        for item in context.get("production_orders") or []
+    )
+    documents.extend(
+        _record_document(
+            item,
+            kind="quality_incident",
+            title=f"품질 이상 {item.get('id') or ''} · {item.get('defect_type') or ''}",
+        )
+        for item in context.get("quality_incidents") or []
+    )
+    documents.extend(
+        _record_document(
+            item,
+            kind="purchase_order",
+            title=f"구매 오더 {item.get('purchase_order_id') or item.get('id') or ''} · {item.get('material_name') or item.get('material_id') or ''}",
+        )
+        for item in context.get("purchase_orders") or []
+    )
+    documents.extend(
+        _record_document(
+            item,
+            kind="capa_record",
+            title=f"CAPA {item.get('id') or ''} · {item.get('root_cause') or ''}",
+        )
+        for item in context.get("capa_records") or []
+    )
+    documents.extend(
+        _record_document(item, kind="shift_handoff", title=f"교대 인계 {item.get('id') or ''}")
+        for item in context.get("shift_handoffs") or []
+    )
+    documents.extend(
+        _record_document(item, kind="calibration_record", title=f"교정 이력 {item.get('id') or ''}")
+        for item in context.get("calibration_records") or []
+    )
+    documents.extend(
+        _record_document(item, kind="safety_event", title=f"안전 이벤트 {item.get('id') or ''}")
+        for item in context.get("safety_events") or []
+    )
     return documents
 
 
@@ -201,6 +282,7 @@ def retrieve_company_documents(
     query: str,
     *,
     asset_id: str | None = None,
+    roles: list[str] | None = None,
     top_k: int = 4,
     context: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
@@ -212,7 +294,11 @@ def retrieve_company_documents(
 
     query_tokens = _tokens(query)
     ranked: list[tuple[int, str, dict[str, Any]]] = []
+    role_set = set(roles or [])
     for document in company_documents(context):
+        allowed_roles = set(str(item) for item in document.get("allowed_roles") or [])
+        if allowed_roles and not (allowed_roles & role_set):
+            continue
         related_assets = {str(item) for item in document.get("related_asset_ids") or []}
         text = " ".join(
             [
@@ -237,6 +323,13 @@ def retrieve_company_documents(
             "decision_record": ("의사결정", "결정", "승인", "decision"),
             "material_master": ("자재", "부품", "재고", "조달", "lead time", "inventory", "part"),
             "site_sop": ("sop", "절차", "점검 방법", "정비 방법", "매뉴얼"),
+            "production_order": ("생산", "오더", "계획", "납기", "mes", "production", "schedule"),
+            "quality_incident": ("품질", "불량", "scrap", "yield", "defect", "quality"),
+            "purchase_order": ("구매", "발주", "입고", "eta", "조달", "purchase", "supplier"),
+            "capa_record": ("capa", "rca", "원인", "재발", "시정", "예방"),
+            "shift_handoff": ("교대", "인계", "handoff", "shift"),
+            "calibration_record": ("교정", "calibration", "센서 정확도", "계측"),
+            "safety_event": ("안전", "loto", "작업허가", "near miss", "safety"),
         }
         if any(token in query_lower for token in intent_groups.get(kind, ())):
             intent_score = 5

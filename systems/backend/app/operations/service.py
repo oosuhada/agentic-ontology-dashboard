@@ -95,6 +95,7 @@ class ManufacturingPredictiveMaintenanceService:
         domain_review_context_adapter: DomainReviewContextAdapter | None = None,
         maintenance_lineage_query: MaintenanceLineageQueryPort | None = None,
         company_context_query: CompanyContextQueryPort | None = None,
+        knowledge_search: Any | None = None,
         workspace_id: str = "manufacturing-demo",
     ) -> None:
         self.root = Path(root)
@@ -126,6 +127,7 @@ class ManufacturingPredictiveMaintenanceService:
         self.agent_review_context_registry = agent_review_context_registry
         self.maintenance_lineage_query = maintenance_lineage_query
         self.company_context_query = company_context_query
+        self.knowledge_search = knowledge_search
         self.workspace_id = workspace_id
         self.domain_review_context_adapter = (
             domain_review_context_adapter
@@ -193,11 +195,30 @@ class ManufacturingPredictiveMaintenanceService:
         project_id: str,
         workspace_id: str,
         asset_id: str | None = None,
+        roles: list[str] | None = None,
         top_k: int = 4,
     ) -> list[dict[str, Any]]:
+        if self.knowledge_search is not None:
+            try:
+                indexed = self.knowledge_search.search_project(
+                    query,
+                    project_id=project_id,
+                    workspace_id=workspace_id,
+                    roles=roles,
+                    asset_id=asset_id,
+                    top_k=top_k,
+                )
+                if indexed:
+                    return indexed
+            except Exception:
+                # Retrieval remains read-only enrichment. Preserve the bounded,
+                # source-referenced deterministic fallback when the index is
+                # unavailable or being rebuilt.
+                pass
         return retrieve_company_documents(
             query,
             asset_id=asset_id,
+            roles=roles,
             top_k=top_k,
             context=self._company_context_snapshot(project_id=project_id, workspace_id=workspace_id),
         )
@@ -935,6 +956,7 @@ class ManufacturingPredictiveMaintenanceService:
             project_id=project_id,
             workspace_id=workspace_id,
             asset_id=equipment_id or None,
+            roles=["process_manager"] if role == "manager" else ["process_engineer"],
             top_k=8,
         )
         evidence["company_context_documents"] = [

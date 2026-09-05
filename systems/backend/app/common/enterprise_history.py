@@ -213,6 +213,242 @@ def _kpi_snapshots(maintenance: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return result
 
 
+def _production_orders() -> list[dict[str, Any]]:
+    assets = [asset for asset in _asset_ids() if asset.startswith("CNC-")]
+    products = ("HX-M", "HX-H", "HX-L")
+    records: list[dict[str, Any]] = []
+    sequence = 1
+    for month_index, (year, month) in enumerate(_MONTHS):
+        days = monthrange(year, month)[1]
+        for slot in range(24):
+            asset_id = assets[(month_index * 13 + slot * 5) % len(assets)]
+            product = products[(month_index + slot) % len(products)]
+            planned = 180 + (slot * 23 + month_index * 17) % 620
+            yield_ratio = 0.965 + ((slot + month_index) % 7) * 0.004
+            actual = int(planned * min(0.995, yield_ratio))
+            scheduled = datetime(year, month, 1 + (slot * 3 + month_index) % days, 7 + slot % 3, 0, tzinfo=KST)
+            records.append({
+                "id": f"production:PO-{sequence:05d}",
+                "order_id": f"PO-{year}{month:02d}-{slot + 1:03d}",
+                "asset_id": asset_id,
+                "product_id": f"product:{product}",
+                "scheduled_at": _iso(scheduled),
+                "completed_at": _iso(scheduled + timedelta(hours=6 + slot % 5)),
+                "planned_units": planned,
+                "actual_units": actual,
+                "scrap_units": max(0, planned - actual - (slot % 4)),
+                "schedule_status": "completed" if slot % 11 else "completed_late",
+                "source_ref": f"mes-order:PO-{sequence:05d}",
+            })
+            sequence += 1
+    return records
+
+
+def _quality_incidents(production_orders: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    sequence = 1
+    for month_index, (year, month) in enumerate(_MONTHS):
+        month_orders = [item for item in production_orders if str(item["scheduled_at"]).startswith(f"{year}-{month:02d}")]
+        for slot in range(8):
+            order = month_orders[(slot * 3 + month_index) % len(month_orders)]
+            severity = "major" if slot % 7 == 0 else "minor"
+            records.append({
+                "id": f"quality:QI-{sequence:04d}",
+                "occurred_at": str(order["completed_at"]),
+                "asset_id": order["asset_id"],
+                "production_order_id": order["id"],
+                "product_id": order["product_id"],
+                "defect_type": ("치수 편차" if slot % 3 == 0 else "표면 조도" if slot % 3 == 1 else "가공 버 발생"),
+                "severity": severity,
+                "affected_units": 2 + (slot * 5 + month_index) % 18,
+                "disposition": "전수 선별 및 원인 검토" if severity == "major" else "격리 후 재검",
+                "suspected_component": _COMPONENTS[(slot + month_index) % len(_COMPONENTS)][0],
+                "source_ref": f"qms:QI-{sequence:04d}",
+            })
+            sequence += 1
+    return records
+
+
+def _purchase_orders(materials: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    sequence = 1
+    for month_index, (year, month) in enumerate(_MONTHS):
+        for slot in range(12):
+            material = materials[(month_index * 7 + slot * 5) % len(materials)]
+            placed = datetime(year, month, 2 + (slot * 2) % min(24, monthrange(year, month)[1]), 10, 0, tzinfo=KST)
+            lead = int(material.get("lead_time_days") or 10)
+            delayed = slot % 9 == 0
+            eta = placed + timedelta(days=lead + (5 if delayed else 0))
+            quantity = max(2, int(material.get("reorder_point") or 4) * (2 + slot % 3))
+            records.append({
+                "id": f"purchase:PO-{sequence:04d}",
+                "purchase_order_id": f"MRO-{year}{month:02d}-{slot + 1:03d}",
+                "material_id": material["id"],
+                "material_name": material["name"],
+                "material_category": material["category"],
+                "vendor_id": material.get("preferred_vendor_id"),
+                "related_asset_ids": list(material.get("related_asset_ids") or []),
+                "ordered_at": _iso(placed),
+                "expected_at": _iso(eta),
+                "received_at": None if year == 2026 and month == 8 and slot > 7 else _iso(eta + timedelta(days=1 if delayed else 0)),
+                "ordered_quantity": quantity,
+                "unit_cost_krw": material["unit_cost_krw"],
+                "status": "open" if year == 2026 and month == 8 and slot > 7 else "received_late" if delayed else "received",
+                "source_ref": f"erp-po:MRO-{sequence:04d}",
+            })
+            sequence += 1
+    # Current open orders for the canonical showcase parts keep procurement
+    # lineage directly answerable for the highest-value Reliability cases.
+    records.extend([
+        {
+            "id": "purchase:CORE-2026-08-SPINDLE-7012",
+            "purchase_order_id": "MRO-202608-CORE-001",
+            "material_id": "material:spindle-bearing-7012",
+            "material_name": "스핀들 베어링 7012 세트",
+            "material_category": "정비 부품",
+            "vendor_id": "vendor:V02",
+            "related_asset_ids": ["CNC-S04-L02-03", "CNC-S01-L04-03"],
+            "ordered_at": "2026-08-15T10:00:00+09:00",
+            "expected_at": "2026-09-12T10:00:00+09:00",
+            "received_at": None,
+            "ordered_quantity": 4,
+            "unit_cost_krw": 1_180_000,
+            "status": "open",
+            "source_ref": "erp-po:MRO-202608-CORE-001",
+        },
+        {
+            "id": "purchase:CORE-2026-08-SERVO-SD7",
+            "purchase_order_id": "MRO-202608-CORE-002",
+            "material_id": "material:servo-drive-module-SD7",
+            "material_name": "서보 드라이브 모듈 SD7",
+            "material_category": "전장 예비품",
+            "vendor_id": "vendor:V05",
+            "related_asset_ids": ["CNC-S04-L02-03"],
+            "ordered_at": "2026-08-20T10:00:00+09:00",
+            "expected_at": "2026-09-24T10:00:00+09:00",
+            "received_at": None,
+            "ordered_quantity": 2,
+            "unit_cost_krw": 4_860_000,
+            "status": "open",
+            "source_ref": "erp-po:MRO-202608-CORE-002",
+        },
+        {
+            "id": "purchase:CORE-2026-08-INSERT-TNMG1604",
+            "purchase_order_id": "MRO-202608-CORE-003",
+            "material_id": "material:carbide-insert-TNMG1604",
+            "material_name": "초경 인서트 TNMG1604",
+            "material_category": "절삭 공구",
+            "vendor_id": "vendor:V03",
+            "related_asset_ids": ["CNC-S04-L04-01", "CNC-S04-L04-02"],
+            "ordered_at": "2026-08-26T10:00:00+09:00",
+            "expected_at": "2026-09-07T10:00:00+09:00",
+            "received_at": None,
+            "ordered_quantity": 120,
+            "unit_cost_krw": 28_700,
+            "status": "open",
+            "source_ref": "erp-po:MRO-202608-CORE-003",
+        },
+        {
+            "id": "purchase:CORE-2026-08-COOLANT",
+            "purchase_order_id": "MRO-202608-CORE-004",
+            "material_id": "material:coolant-premix-20l",
+            "material_name": "가공 냉각수 Premix 20L",
+            "material_category": "소모품",
+            "vendor_id": "vendor:V04",
+            "related_asset_ids": ["CNC-S01-L04-03", "CNC-S03-L01-03"],
+            "ordered_at": "2026-08-28T10:00:00+09:00",
+            "expected_at": "2026-09-02T10:00:00+09:00",
+            "received_at": "2026-09-02T13:20:00+09:00",
+            "ordered_quantity": 20,
+            "unit_cost_krw": 94_000,
+            "status": "received",
+            "source_ref": "erp-po:MRO-202608-CORE-004",
+        },
+    ])
+    return records
+
+
+def _capa_records(quality: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    for index, incident in enumerate(quality[::2], start=1):
+        opened = datetime.fromisoformat(str(incident["occurred_at"])) + timedelta(hours=4)
+        closed = None if index > len(quality[::2]) - 4 else opened + timedelta(days=5 + index % 9)
+        records.append({
+            "id": f"capa:CAPA-{index:04d}",
+            "quality_incident_id": incident["id"],
+            "asset_id": incident["asset_id"],
+            "opened_at": _iso(opened),
+            "closed_at": _iso(closed) if closed else None,
+            "root_cause": f"{incident['suspected_component']} 계통의 반복 편차와 작업 조건 상호작용",
+            "corrective_action": "현장 측정 기준 보강, 정비 이력 대조, 작업 조건 표준화 및 후속 품질 확인",
+            "preventive_action": "동일 계열 설비에 점검 기준을 전파하고 30일 재발 여부를 검토",
+            "status": "open" if closed is None else "closed_verified",
+            "source_ref": f"qms-capa:CAPA-{index:04d}",
+        })
+    return records
+
+
+def _shift_handoffs() -> list[dict[str, Any]]:
+    assets = _asset_ids()
+    records: list[dict[str, Any]] = []
+    sequence = 1
+    for month_index, (year, month) in enumerate(_MONTHS):
+        days = monthrange(year, month)[1]
+        for slot in range(20):
+            occurred = datetime(year, month, 1 + (slot * 4 + month_index) % days, 19, 30, tzinfo=KST)
+            asset_id = assets[(month_index * 17 + slot * 9) % len(assets)]
+            records.append({
+                "id": f"handoff:SHIFT-{sequence:04d}",
+                "occurred_at": _iso(occurred),
+                "asset_id": asset_id,
+                "from_shift": "A" if slot % 2 == 0 else "B",
+                "to_shift": "B" if slot % 2 == 0 else "C",
+                "summary": "이상 징후, 미결 점검, 부품 대기 여부와 다음 교대 확인 항목을 인계했다.",
+                "open_item": "진동/온도 추세 재확인" if slot % 4 == 0 else "정상 운전 지속 관찰",
+                "source_ref": f"shift-log:SHIFT-{sequence:04d}",
+            })
+            sequence += 1
+    return records
+
+
+def _calibration_records() -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    assets = _asset_ids()
+    for index, asset_id in enumerate(assets):
+        for cycle in range(2):
+            base = datetime(2025, 4, 10, 9, 0, tzinfo=KST) + timedelta(days=index * 2 + cycle * 280)
+            records.append({
+                "id": f"calibration:{asset_id}:{cycle + 1}",
+                "asset_id": asset_id,
+                "calibrated_at": _iso(base),
+                "instrument_type": "진동/온도 센서 체인" if index % 2 == 0 else "전류/전력 측정 체인",
+                "result": "within_tolerance" if index % 13 else "adjusted_and_passed",
+                "next_due_at": _iso(base + timedelta(days=365)),
+                "source_ref": f"calibration-log:{asset_id}:{cycle + 1}",
+            })
+    return records
+
+
+def _safety_events() -> list[dict[str, Any]]:
+    assets = _asset_ids()
+    records: list[dict[str, Any]] = []
+    for month_index, (year, month) in enumerate(_MONTHS):
+        for slot in range(2):
+            occurred = datetime(year, month, 8 + slot * 11, 14, 20, tzinfo=KST)
+            asset_id = assets[(month_index * 23 + slot * 31) % len(assets)]
+            records.append({
+                "id": f"safety:SE-{month_index * 2 + slot + 1:03d}",
+                "occurred_at": _iso(occurred),
+                "asset_id": asset_id,
+                "event_type": "near_miss" if slot == 0 else "permit_deviation",
+                "severity": "low",
+                "summary": "정비 전 에너지 격리와 작업허가 확인 과정에서 보완 필요 항목을 발견해 작업 전 시정했다.",
+                "action": "LOTO/작업허가 체크리스트 재확인 및 교대 공유",
+                "source_ref": f"ehs:SE-{month_index * 2 + slot + 1:03d}",
+            })
+    return records
+
+
 def _meetings_and_decisions() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     meetings: list[dict[str, Any]] = []
     decisions: list[dict[str, Any]] = []
@@ -341,6 +577,13 @@ def enterprise_history_context() -> dict[str, list[dict[str, Any]]]:
     maintenance = _maintenance_records(materials)
     finance = _financial_periods()
     kpis = _kpi_snapshots(maintenance)
+    production_orders = _production_orders()
+    quality_incidents = _quality_incidents(production_orders)
+    purchase_orders = _purchase_orders(materials)
+    capa_records = _capa_records(quality_incidents)
+    shift_handoffs = _shift_handoffs()
+    calibration_records = _calibration_records()
+    safety_events = _safety_events()
     meetings, decisions = _meetings_and_decisions()
     documents = _documents(finance)
     return {
@@ -350,6 +593,13 @@ def enterprise_history_context() -> dict[str, list[dict[str, Any]]]:
         "maintenance_records": maintenance,
         "financial_periods": finance,
         "kpi_snapshots": kpis,
+        "production_orders": production_orders,
+        "quality_incidents": quality_incidents,
+        "purchase_orders": purchase_orders,
+        "capa_records": capa_records,
+        "shift_handoffs": shift_handoffs,
+        "calibration_records": calibration_records,
+        "safety_events": safety_events,
         "meeting_minutes": meetings,
         "decisions": decisions,
         "documents": documents,

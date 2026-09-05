@@ -263,6 +263,7 @@ def _packet_evidence(
     project_id: str,
     workspace_id: str,
     question: str = "",
+    roles: list[str] | None = None,
     top_k: int,
 ) -> list[dict[str, Any]]:
     evidence: list[dict[str, Any]] = []
@@ -343,6 +344,7 @@ def _packet_evidence(
                 project_id=project_id,
                 workspace_id=workspace_id,
                 asset_id=asset_id,
+                roles=roles,
                 top_k=remaining,
             ),
             start=1,
@@ -1662,6 +1664,7 @@ def run_agent_query(
         project_id=request.project_id,
         workspace_id=request.workspace_id,
         question=request.question,
+        roles=principal.roles,
         top_k=request.top_k,
     )
     try:

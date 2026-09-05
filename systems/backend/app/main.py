@@ -18,6 +18,7 @@ from app.dependencies import (
     get_governance_service,
     get_identity_service,
     get_maintenance_loop_service,
+    get_knowledge_service,
     get_ontology_planner_service,
     get_ontology_service,
     get_predictive_maintenance_runtime_service,
@@ -49,6 +50,7 @@ from app.diagnosis.runtime_router import (
     router as predictive_maintenance_runtime_router,
 )
 from app.operations.service import EventNotFound
+from app.knowledge.router import create_knowledge_router
 
 
 app = create_app()
@@ -186,6 +188,13 @@ maintenance_router = create_maintenance_router(
     get_maintenance_service=get_maintenance_loop_service,
     require_csrf=require_csrf,
 )
+knowledge_router = create_knowledge_router(
+    get_knowledge_service=get_knowledge_service,
+    require_permission=require_permission,
+    require_csrf=require_csrf,
+    get_rate_limiter=get_rate_limiter,
+    rate_limit_subject=rate_limit_subject,
+)
 
 for router in (
     health_router,
@@ -202,6 +211,7 @@ for router in (
     governance_router,
     planner_router,
     maintenance_router,
+    knowledge_router,
 ):
     app.include_router(router)
 
