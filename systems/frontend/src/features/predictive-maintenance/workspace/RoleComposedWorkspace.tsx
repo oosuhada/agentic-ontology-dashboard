@@ -25,9 +25,10 @@ import {
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import {
   createOperationsAgentReviewSummary,
+  getLayout,
   getOperationsAgentReviewSummary,
 } from "../../../api";
-import type { ReportType, Role } from "../../../types";
+import type { BlockType, ReportType, Role } from "../../../types";
 import { loadOperationsReportVariant } from "../../operations/api/operationsApi";
 import type {
   OperationsAgentReviewSummaryResponse,
@@ -61,8 +62,10 @@ import {
   type ReliabilityBlockId,
 } from "./roleComposition";
 import {
+  applyReliabilityPlannerOrder,
   adaptiveReliabilityRowSpan,
   preferredAdaptiveReliabilitySpan,
+  reliabilityLayoutIntent,
   RELIABILITY_MASONRY_ROW_HEIGHT,
 } from "./adaptiveReliabilityLayout";
 import "./role-composed-workspace.css";
@@ -3217,6 +3220,22 @@ function renderBlock(
 export function RoleComposedWorkspace(props: RoleComposedWorkspaceProps) {
   const { locale } = useI18n();
   const english = locale === "en-US";
+  const plannerIntent = reliabilityLayoutIntent(props.surfaceId);
+  const plannerRole: "manager" | "engineer" =
+    props.experienceKind === "executive" || props.experienceKind === "operations"
+      ? "manager"
+      : "engineer";
+  const plannerKey = [
+    props.selectedEvent?.eventId ?? "none",
+    plannerRole,
+    plannerIntent,
+    locale,
+  ].join(":");
+  const [plannerResult, setPlannerResult] = useState<{
+    key: string;
+    mode: string;
+    blockTypes: BlockType[];
+  } | null>(null);
   const materials = relevantMaterials(
     props.companyContext,
     props.selectedEvent?.assetId,
@@ -3249,12 +3268,40 @@ export function RoleComposedWorkspace(props: RoleComposedWorkspaceProps) {
       exposureValue.revenueExposure >= 10_000_000,
     hasMaintenanceOutcome,
   };
-  const blocks = resolveReliabilityComposition(
+  const baseBlocks = resolveReliabilityComposition(
     props.experienceKind,
     props.view,
     signals,
     props.surfaceId,
   );
+  const blocks = applyReliabilityPlannerOrder(
+    baseBlocks,
+    plannerResult?.key === plannerKey ? plannerResult.blockTypes : null,
+  );
+  useEffect(() => {
+    const eventId = props.selectedEvent?.eventId;
+    if (!eventId || props.detailLoading) return undefined;
+    let cancelled = false;
+    void getLayout(eventId, plannerRole, plannerIntent, true, locale)
+      .then((layout) => {
+        if (cancelled) return;
+        setPlannerResult({
+          key: plannerKey,
+          mode: layout.mode,
+          blockTypes: [...layout.blocks]
+            .sort((left, right) => left.order - right.order)
+            .map((block) => block.type),
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPlannerResult({ key: plannerKey, mode: "semantic-fallback", blockTypes: [] });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [locale, plannerIntent, plannerKey, plannerRole, props.detailLoading, props.selectedEvent?.eventId]);
   const promotionReason = signals.hasDataQualityHold
     ? localized(english, `우선순위 상승 · 데이터 품질 확인 ${formatNumber(props.model.metrics.dataQualityHold, false)}건`, `Priority raised · ${formatNumber(props.model.metrics.dataQualityHold, true)} data-quality item(s) need review`)
     : props.experienceKind === "operations" && signals.hasDecisionBacklog
@@ -3298,6 +3345,13 @@ export function RoleComposedWorkspace(props: RoleComposedWorkspaceProps) {
       data-selected-event-id={props.selectedEvent?.eventId ?? ""}
       data-composition={blocks.join(",")}
       data-layout-engine="semantic-content-masonry"
+      data-layout-planner-mode={
+        !props.selectedEvent
+          ? "semantic-no-event"
+          : plannerResult?.key === plannerKey
+            ? plannerResult.mode
+            : "semantic-pending"
+      }
     >
       {shouldShowPromotionReason && promotionReason ? (
         <div className="rw-composition-reason" role="status">

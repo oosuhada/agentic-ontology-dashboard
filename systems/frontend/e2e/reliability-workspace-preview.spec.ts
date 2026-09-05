@@ -1108,6 +1108,11 @@ test("organizes engineering navigation by work intent instead of duplicated data
     "data-layout-engine",
     "semantic-content-masonry",
   );
+  await expect(diagnosis).not.toHaveAttribute(
+    "data-layout-planner-mode",
+    "semantic-pending",
+    { timeout: 15_000 },
+  );
   await expect(diagnosis).toHaveAttribute(
     "data-composition",
     /^evidence-factors,inspection-targets,sensor-signals,/,

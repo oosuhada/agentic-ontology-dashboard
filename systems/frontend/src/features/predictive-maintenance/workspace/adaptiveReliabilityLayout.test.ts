@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyReliabilityPlannerOrder,
   adaptiveReliabilityRowSpan,
   preferredAdaptiveReliabilitySpan,
+  reliabilityLayoutIntent,
 } from "./adaptiveReliabilityLayout";
 
 describe("adaptive reliability layout", () => {
@@ -65,5 +67,22 @@ describe("adaptive reliability layout", () => {
   it("converts measured content height into stable masonry row spans", () => {
     expect(adaptiveReliabilityRowSpan(180, 10)).toBe(11);
     expect(adaptiveReliabilityRowSpan(0, 10)).toBe(1);
+  });
+
+  it("uses LLM layout types to reprioritize evidence without moving governed actions", () => {
+    expect(applyReliabilityPlannerOrder(
+      ["workflow-actions", "inspection-targets", "feature-trend", "evidence-factors"],
+      ["FactorContribution", "EngineerChecklist"],
+    )).toEqual(["workflow-actions", "evidence-factors", "inspection-targets", "feature-trend"]);
+    expect(applyReliabilityPlannerOrder(
+      ["evidence-factors", "inspection-targets", "sensor-signals", "feature-trend"],
+      ["SensorLineChart", "EngineerChecklist", "FactorContribution"],
+    )).toEqual(["feature-trend", "sensor-signals", "inspection-targets", "evidence-factors"]);
+  });
+
+  it("maps reliability surfaces to bounded legacy layout intents", () => {
+    expect(reliabilityLayoutIntent("assets")).toBe("explain-risk");
+    expect(reliabilityLayoutIntent("inspection")).toBe("recommend-check");
+    expect(reliabilityLayoutIntent("executive-brief")).toBe("summarize-manager");
   });
 });
