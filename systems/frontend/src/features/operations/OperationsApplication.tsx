@@ -529,6 +529,7 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
   if (useReliabilityPreview && user) {
     return (
       <ReliabilityWorkspacePreview
+        model={model}
         context={model.context}
         activeView={selection.view}
         activeSurface={selection.surface}
@@ -536,6 +537,7 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
         selectedEvent={selectedEvent}
         latestEventForSelectedAsset={latestEventForSelectedAsset}
         detail={detail}
+        onSelectEvent={selectEvent}
         onNavigate={openSurface}
         onRefresh={refresh}
         refreshing={loading}
