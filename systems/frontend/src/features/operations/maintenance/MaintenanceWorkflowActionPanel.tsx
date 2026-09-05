@@ -420,8 +420,8 @@ export function MaintenanceWorkflowActionPanel({
         idempotencyKey: commandKey(eventId, "inspection-request", snapshotBasis.artifactId ?? eventId),
       }) : null;
     } else if (state.inspectionWorkOrder.status === "requested") {
-      label = localize(english, "현장 관리자 수락 대기", "Waiting for field acceptance");
-      helper = localize(english, "현장 담당자가 요청을 수락하면 해당 담당자에게 자동 배정됩니다.", "The request is assigned automatically when a field operator accepts it.");
+      label = localize(english, "현장 수락 대기", "Awaiting field acceptance");
+      helper = localize(english, "다음 Owner · 현장 엔지니어. 요청을 수락하면 해당 담당자에게 자동 배정됩니다.", "Next owner · field engineer. The request is assigned automatically when a field operator accepts it.");
     } else if (state.inspectionResult?.outcome === "no_action_required") {
       label = localize(english, "점검 완료 · 정비 불필요", "Inspection complete · no maintenance required");
       helper = localize(english, "현장 점검 결과 추가 정비가 필요하지 않은 것으로 기록됐습니다.", "The field inspection recorded that no additional maintenance is required.");
@@ -476,8 +476,8 @@ export function MaintenanceWorkflowActionPanel({
     }
   } else {
     if (!state.inspectionWorkOrder) {
-      label = localize(english, "운영 관리자 점검 요청 대기", "Waiting for inspection request");
-      helper = localize(english, "현재 Case의 근거는 준비되어 있습니다. 운영 관리자가 점검 작업요청을 생성하면 이 화면에서 수락할 수 있습니다.", "Evidence for this case is ready. You can accept the inspection request here after an operations manager creates it.");
+      label = localize(english, "점검 요청 대기", "Awaiting inspection request");
+      helper = localize(english, "다음 Owner · 운영 관리자. 현재 근거는 준비되어 있으며 점검 작업요청이 생성되면 이 화면에서 수락할 수 있습니다.", "Next owner · operations manager. Evidence is ready; you can accept the inspection request here once it is created.");
     } else if (state.inspectionWorkOrder?.status === "requested") {
       label = localize(english, "요청 수락·내게 배정", "Accept request and assign to me");
       helper = localize(english, "수락과 동시에 이 점검 요청의 담당자로 배정됩니다.", "Accepting the request assigns you as its owner.");
@@ -573,10 +573,45 @@ export function MaintenanceWorkflowActionPanel({
     command = null;
   }
 
+  const hasActionEditor = Boolean(
+    (role === "process_manager"
+      && state.inspectionResult?.outcome === "maintenance_recommended"
+      && state.hasReviewedCostAnalysis
+      && !state.recommendation)
+    || (role === "field_operator"
+      && supportsCncMaintenance
+      && state.inspectionWorkOrder?.status === "in_progress"),
+  );
+  const passiveState = postMaintenancePrediction
+    || state.inspectionResult?.outcome === "no_action_required"
+    ? "complete"
+    : "pending";
+  const actionControl = command ? (
+    <button
+      type="button"
+      className={`operations-button ${enabled ? "primary" : "secondary"}`}
+      disabled={loading || running || !enabled}
+      onClick={() => void run(label, command)}
+    >
+      {running ? localize(english, "처리 중", "Processing") : label}
+    </button>
+  ) : (
+    <div className="operations-workflow-state" data-state={passiveState}>
+      <span aria-hidden="true" />
+      <div>
+        <small>{localize(english, "현재 상태", "Current status")}</small>
+        <strong>{label}</strong>
+      </div>
+    </div>
+  );
+
   return (
     <section className="operations-maintenance-workflow-panel" aria-label={localize(english, "Closed-loop 작업 실행", "Closed-loop workflow actions")} data-event-id={eventId}>
       <header><div><span>Closed-loop</span><strong>{role === "process_manager" ? localize(english, "운영 관리자 작업", "Operations manager actions") : localize(english, "현장 점검 작업", "Field inspection actions")}</strong></div><button type="button" className="operations-icon-button" onClick={() => void refresh()} aria-label={localize(english, "작업 상태 새로고침", "Refresh workflow status")}>↻</button></header>
-      <p>{loading ? localize(english, "작업 상태를 확인하고 있습니다.", "Checking workflow status.") : helper}</p>
+      <div className="operations-workflow-summary">
+        <p>{loading ? localize(english, "작업 상태를 확인하고 있습니다.", "Checking workflow status.") : helper}</p>
+        {!hasActionEditor ? actionControl : null}
+      </div>
       {role === "process_manager"
         && state.inspectionResult?.outcome === "maintenance_recommended"
         && state.hasReviewedCostAnalysis
@@ -677,24 +712,7 @@ export function MaintenanceWorkflowActionPanel({
           <small>{localize(english, "현장에서는 사실만 기록합니다. 정비 Action 후보는 Backend가 체크리스트와 측정값에서 산출합니다.", "Record field facts only. The backend derives maintenance action candidates from checklist results and measurements.")}</small>
         </fieldset>
       ) : null}
-      {command ? (
-        <button
-          type="button"
-          className={`operations-button ${enabled ? "primary" : "secondary"}`}
-          disabled={loading || running || !enabled}
-          onClick={() => void run(label, command)}
-        >
-          {running ? localize(english, "처리 중", "Processing") : label}
-        </button>
-      ) : (
-        <div className="operations-workflow-state" data-state={postMaintenancePrediction ? "complete" : "pending"}>
-          <span aria-hidden="true" />
-          <div>
-            <small>{localize(english, "현재 상태", "Current status")}</small>
-            <strong>{label}</strong>
-          </div>
-        </div>
-      )}
+      {hasActionEditor ? actionControl : null}
       {message ? <small className={message.tone === "error" ? "operations-cost-error" : "operations-workflow-success"}>{message.text}</small> : null}
       {pollingError ? <small className="operations-cost-error">{pollingError}</small> : null}
     </section>

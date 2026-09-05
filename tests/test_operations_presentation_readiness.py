@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
@@ -166,6 +167,8 @@ def test_exact_runtime_event_connects_sop_inspection_target_and_assistant_eviden
     assert packet["sop_retrieval"]["returned_count"] >= 1
     assert len(packet["inspection_targets"]) >= 1
     assert len(detail["inspection_targets"]) >= 1
+    assert "현재 운영 데이터의 최신 Product Result" in packet["review_draft"]["summary"]
+    assert "Team DB" not in json.dumps(packet, ensure_ascii=False)
     assert any(item["store"] == "project3_rag" for item in evidence)
     assert any(
         item["reference"].endswith("#SOP-DEMO-CNC-ROTATING-ASSEMBLY-001")

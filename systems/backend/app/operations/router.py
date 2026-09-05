@@ -774,11 +774,11 @@ def _runtime_agent_review_packet(
             {
                 "section_id": "runtime-risk",
                 "owner_domain": "diagnosis",
-                "source": "PostgreSQL Product Result runtime",
+                "source": "Governed Product Result runtime",
                 "packet_paths": ["risk_summary", "review_priority", "model_expression_context"],
                 "mutation_allowed": False,
                 "materialization": "runtime_packet_section",
-                "notes": ["Derived from the currently selected Team DB result artifact."],
+                "notes": ["Derived from the currently selected workspace Product Result artifact."],
             },
             {
                 "section_id": "runtime-operations-context",
@@ -812,7 +812,7 @@ def _runtime_agent_review_packet(
         "review_draft": {
             "title": f"{result.asset_id} 운영 위험 검토",
             "summary": (
-                f"Team DB의 최신 Product Result는 {result.asset_id}의 {result.prediction_horizon_hours}시간 이내 "
+                f"현재 운영 데이터의 최신 Product Result는 {result.asset_id}의 {result.prediction_horizon_hours}시간 이내 "
                 f"고장 위험을 {risk_percent}%로 산출했습니다. 권고 판단은 {recommendation}이며, "
                 "읽기 전용 검토 문맥으로만 사용됩니다."
             ),
@@ -898,7 +898,7 @@ def _runtime_agent_review_packet(
             "note": "Runtime Agent Review context is read-only and cannot execute or approve actions.",
         },
         "limitations": [
-            "This packet is derived from Team DB runtime Product Result context and connected operational records.",
+            "This packet is derived from the selected workspace Product Result context and connected operational records.",
             "Production planning impact is an estimate derived from the current capacity model and must be validated against financial settlement data before accounting use.",
             "The assistant may explain priority and evidence but cannot approve, execute, or mutate workflow state.",
         ],

@@ -1144,22 +1144,35 @@ test("organizes engineering navigation by work intent instead of duplicated data
   await expect(inspection).toBeVisible();
   await expect(inspection).toHaveAttribute(
     "data-composition",
-    /^workflow-actions,inspection-targets,workflow-lifecycle/,
+    /^workflow-actions,inspection-targets,/,
   );
+  await expect(inspection).not.toHaveAttribute("data-composition", /workflow-lifecycle/);
+  await expect(shell.locator(".rw-preview-operational-focus")).toHaveCount(0);
   const inspectionBlocks = inspection.locator(".rw-composed-block");
   await expect(inspectionBlocks.first()).toHaveClass(/is-action-hero/);
+  const selectedCaseBar = shell.locator(".rw-preview-selection-anchor");
+  if (await selectedCaseBar.count()) {
+    const selectedCaseHeight = await selectedCaseBar.evaluate((element) => element.getBoundingClientRect().height);
+    expect(selectedCaseHeight).toBeLessThan(64);
+  }
+  const lifecycleFooter = shell.locator(".rw-preview-bottom .lifecycle-instrument.is-compact");
+  await expect(lifecycleFooter).toBeVisible();
+  const lifecycleHeight = await lifecycleFooter.evaluate((element) => element.getBoundingClientRect().height);
+  expect(lifecycleHeight).toBeLessThan(60);
   await expect(
     inspection
-      .getByText(/운영 관리자 점검 요청 대기|점검 시작|점검 결과 기록·완료/)
+      .getByText(/점검 요청 대기|점검 시작|점검 결과 기록·완료/)
       .first(),
   ).toBeVisible();
   const pendingState = inspection.locator(".operations-workflow-state");
   if (await pendingState.count()) {
     await expect(pendingState).toBeVisible();
     await expect(pendingState).toContainText("현재 상태");
+    await expect(inspection.locator(".operations-workflow-summary")).toContainText("다음 Owner");
     await expect(
-      inspection.getByRole("button", { name: "운영 관리자 점검 요청 대기", exact: true }),
+      inspection.getByRole("button", { name: "점검 요청 대기", exact: true }),
     ).toHaveCount(0);
+    await expect(pendingState).toContainText(/다음 Owner|현재 상태/);
   }
   const compactEmpty = inspection.locator(".rw-composed-block.is-compact-empty");
   if (await compactEmpty.count()) {

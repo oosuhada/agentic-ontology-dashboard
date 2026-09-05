@@ -598,3 +598,37 @@
 :root[data-density="comfortable"] .rw-preview-shell .rw-preview-left .rw-preview-scope small {
   font-size: 11px!important;
 }
+
+/* Keep the selected Case as a single-line context anchor rather than another
+   content card. Detail belongs in the work surface; this strip only preserves
+   identity, freshness, risk and the context-switch action. */
+@media (min-width: 861px) {
+  .rw-preview-shell .rw-preview-selection-anchor {
+    min-height: 40px;
+    gap: 9px;
+    margin-bottom: 8px;
+    padding: 4px 8px;
+    border-radius: 7px;
+  }
+  .rw-preview-shell .rw-preview-selection-anchor__path {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .rw-preview-shell .rw-preview-selection-anchor__path>span { flex: 0 0 auto; }
+  .rw-preview-shell .rw-preview-selection-anchor__facts { gap: 6px; }
+  :root[data-density="compact"] .rw-preview-shell .rw-preview-selection-anchor>button,
+  :root[data-density="standard"] .rw-preview-shell .rw-preview-selection-anchor>button,
+  :root[data-density="comfortable"] .rw-preview-shell .rw-preview-selection-anchor>button {
+    min-height: 30px!important;
+    padding-inline: 8px;
+  }
+}
+
+/* The footer is navigation chrome, not a second workflow card. Its collapsed
+   form stays slim and expands only when lifecycle history is requested. */
+:root[data-density="compact"] .rw-preview-shell .rw-preview-bottom,
+:root[data-density="standard"] .rw-preview-shell .rw-preview-bottom,
+:root[data-density="comfortable"] .rw-preview-shell .rw-preview-bottom {
+  padding: 2px 4px 3px;
+}

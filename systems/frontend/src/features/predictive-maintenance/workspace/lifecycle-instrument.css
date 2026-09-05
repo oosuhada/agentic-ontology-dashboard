@@ -65,13 +65,22 @@
 }
 
 .lifecycle-instrument.is-compact .lifecycle-instrument-bar {
-  min-height: 50px;
-  grid-template-columns: minmax(112px, .34fr) minmax(0, 1.8fr) auto;
+  min-height: 42px;
+  grid-template-columns: minmax(104px, .3fr) minmax(0, 1.8fr) auto;
 }
 
 .lifecycle-instrument.is-compact .lifecycle-stage {
-  padding-block: 6px;
+  grid-template-columns: 18px minmax(0,1fr);
+  gap: 6px;
+  padding: 4px 9px;
 }
+.lifecycle-instrument.is-compact .lifecycle-instrument-title { gap:1px; padding:5px 10px; }
+.lifecycle-instrument.is-compact .lifecycle-instrument-title span { display:none; }
+.lifecycle-instrument.is-compact .lifecycle-instrument-title strong { font-size:10px; }
+.lifecycle-instrument.is-compact .lifecycle-stage span { font-size:7px; }
+.lifecycle-instrument.is-compact .lifecycle-stage strong { font-size:9px; }
+.lifecycle-instrument.is-compact .lifecycle-stage small { display:none; }
+.lifecycle-instrument.is-compact .lifecycle-instrument-toggle { min-width:78px; padding-inline:8px; }
 
 .lifecycle-instrument.is-idle {
   border-radius: 8px;

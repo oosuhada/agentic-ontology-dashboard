@@ -1281,7 +1281,7 @@ function BusinessKpisBlock({
       eyebrow="BUSINESS CONTEXT"
       icon={<BriefcaseBusiness size={15} />}
       guidance={localized(english, "현장의 조기 발견·판단·정비가 회사 KPI와 어떤 가치 기여로 이어지는지 연결하기 위한 기준 문맥입니다.", "Company KPI context used to connect early detection, decisions, and maintenance to measurable business value.")}
-      className="span-6"
+      className={`span-6 ${context?.business_metrics.length ? "" : "is-empty-block"}`}
     >
       {context?.business_metrics.length ? (
         <div className="rw-composed-list">
@@ -1579,7 +1579,7 @@ function AssetBriefBlock({
       eyebrow="ASSET CONTEXT"
       icon={<Boxes size={15} />}
       guidance={localized(english, "현재 선택한 설비의 위치·중요도·담당·위험·예상 정지를 Case 문맥으로 요약합니다.", "Summarizes the selected asset's location, criticality, owner, risk, and expected downtime as case context.")}
-      className="span-6"
+      className={`span-6 ${asset ? "" : "is-empty-block"}`}
     >
       {asset ? (
         <div className="rw-composed-kv">
@@ -1640,7 +1640,7 @@ function ProductionExposureBlock({
       eyebrow="VALUE AT RISK"
       icon={<CircleDollarSign size={15} />}
       guidance={localized(english, "조기 발견과 대응이 어떤 생산 손실·매출·공헌이익 노출을 보호하려는 활동인지 보여줍니다. 노출액은 실제 절감 실적과 구분합니다.", "Shows which production, revenue, and contribution-margin exposure the early response is intended to protect. Exposure is distinct from realized savings.")}
-      className="span-6"
+      className={`span-6 ${detail?.operationContext ? "" : "is-empty-block"}`}
     >
       {detail?.operationContext ? (
         <>
@@ -2120,7 +2120,7 @@ function SensorSignalsBlock({
       eyebrow="OBSERVED SIGNALS"
       icon={<RadioTower size={15} />}
       guidance={localized(english, "판단 시점에 연결된 센서 관측값과 품질 상태를 보여주며 원본 설비·센서 이름은 번역하지 않습니다.", "Shows sensor observations and quality status connected to the decision timestamp. Raw asset and sensor names remain unchanged.")}
-      className="span-6"
+      className={`span-6 ${detail?.sensors.length ? "" : "is-empty-block"}`}
     >
       {detail?.sensors.length ? (
         <div className="rw-composed-list static">
@@ -2160,7 +2160,7 @@ function EvidenceFactorsBlock({
       eyebrow="MODEL EVIDENCE"
       icon={<ChartNoAxesCombined size={15} />}
       guidance={localized(english, "모델이 현재 위험도를 높이거나 낮춘 주요 피쳐와 기여 방향만 요약합니다.", "Summarizes the main features that increased or decreased the current risk score and their contribution direction.")}
-      className="span-6"
+      className={`span-6 ${detail?.topFactors.length ? "" : "is-empty-block"}`}
     >
       {detail?.topFactors.length ? (
         <div
@@ -2204,7 +2204,7 @@ function InspectionTargetsBlock({
       eyebrow="INSPECTION PLAN"
       icon={<ClipboardCheck size={15} />}
       guidance={localized(english, "센서·모델·SOP 근거에서 실제 현장 확인 대상으로 좁혀진 부품과 위치, 점검 방법을 보여줍니다.", "Shows components, locations, and inspection methods narrowed down from sensor, model, and SOP evidence for field verification.")}
-      className={detail?.inspectionTargets.length ? "span-6" : "span-12 is-compact-empty"}
+      className={detail?.inspectionTargets.length ? "span-6" : "span-12 is-compact-empty is-empty-block"}
     >
       {detail?.inspectionTargets.length ? (
         <div className="rw-composed-cards">
@@ -2247,7 +2247,7 @@ function MaintenanceHistoryBlock({
       eyebrow="MAINTENANCE HISTORY"
       icon={<History size={15} />}
       guidance={localized(english, "선택 설비에 연결된 과거 정비 기록과 runtime 이력을 함께 보여주되 원문 기록 내용은 그대로 유지합니다.", "Shows historical maintenance records and runtime history connected to the selected asset while preserving source record text as-is.")}
-      className="span-6"
+      className={`span-6 ${records.length || runtime.length ? "" : "is-empty-block"}`}
     >
       {records.length || runtime.length ? (
         <div className="rw-composed-timeline">
@@ -2470,7 +2470,7 @@ function MaterialContextBlock({
       eyebrow="MATERIAL CONTEXT"
       icon={<PackageSearch size={15} />}
       guidance={localized(english, "선택 설비에 연결된 자재 재고와 재주문 기준, 리드타임을 함께 보여 정비 실행 제약을 확인합니다.", "Shows inventory, reorder points, and lead time for materials linked to the selected asset to surface maintenance execution constraints.")}
-      className="span-6"
+      className={`span-6 ${materials.length ? "" : "is-empty-block"}`}
     >
       {materials.length ? (
         <div className="rw-composed-list static">
@@ -2525,7 +2525,7 @@ function DecisionHistoryBlock({
       eyebrow="DECISION LINEAGE"
       icon={<FileClock size={15} />}
       guidance={localized(english, "선택 설비와 연결된 과거 판단과 현재 Case 활동을 시간순 근거로 확인합니다.", "Reviews prior decisions linked to the selected asset together with current case activity as chronological evidence.")}
-      className="span-6"
+      className={`span-6 ${decisions.length || detail?.activity.length ? "" : "is-empty-block"}`}
     >
       {decisions.length || detail?.activity.length ? (
         <div className="rw-composed-timeline">
@@ -2851,8 +2851,8 @@ function ContextEvidenceBlock({
                 }
               >
                 {context.context_storage?.mode === "team_db_overlay"
-                  ? `Team DB · ${context.context_storage.persisted_record_count} records`
-                  : "Reference bootstrap"}
+                  ? localized(english, `운영 데이터 · ${context.context_storage.persisted_record_count}건`, `Operational data · ${context.context_storage.persisted_record_count} records`)
+                  : localized(english, "참조 운영 문맥", "Reference operational context")}
               </span>
             </div>
             <p>{context.company.operating_principle}</p>

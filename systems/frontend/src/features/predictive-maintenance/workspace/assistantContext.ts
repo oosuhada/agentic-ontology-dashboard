@@ -316,8 +316,8 @@ export function groundedReliabilityAssistantAnswer(
 
   if (hasText(context?.aiSummary)) {
     const source = context?.aiSummaryMode === "llm"
-      ? (english ? `LLM grounded summary (${context?.aiProvider ?? "configured provider"})` : `LLM 근거 요약 (${context?.aiProvider ?? "configured provider"})`)
-      : (english ? "validated deterministic fallback" : "검증된 deterministic fallback");
+      ? (english ? "grounded operational evidence summary" : "운영 근거 기반 요약")
+      : (english ? "validated operational evidence summary" : "검증된 운영 근거 요약");
     return english
       ? `${context.aiSummary} Source: ${source}.`
       : `${context.aiSummary} · 출처: ${source}.`;

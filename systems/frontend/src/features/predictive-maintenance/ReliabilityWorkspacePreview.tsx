@@ -154,7 +154,6 @@ function assistantMessagesFromRun(run: AgentRunResponse, english: boolean): Reli
 const OPERATIONAL_FOCUS_SURFACES = new Set([
   "decision-case",
   "maintenance-approval",
-  "inspection",
   "my-work",
   "work-targets",
   "factory-status",
