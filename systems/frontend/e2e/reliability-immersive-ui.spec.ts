@@ -134,6 +134,8 @@ test("integrates monitoring risk, section minimap, and assistant execution activ
     ".rw-context-assistant__message.is-assistant:not(.is-loading)",
   );
   await expect(completedMessage).toHaveCount(1, { timeout: 15_000 });
+  await expect(completedMessage).not.toContainText("Team DB");
+  await expect(completedMessage).not.toContainText("deterministic fallback");
   const activity = completedMessage.locator(".rw-assistant-trace");
   await expect(activity).toBeVisible();
   await expect(activity).toContainText("작업 기록");
