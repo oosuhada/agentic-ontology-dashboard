@@ -22,7 +22,7 @@ import {
   TrendingDown,
   Wrench,
 } from "lucide-react";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import {
   createOperationsAgentReviewSummary,
   getOperationsAgentReviewSummary,
@@ -60,6 +60,11 @@ import {
   resolveReliabilityComposition,
   type ReliabilityBlockId,
 } from "./roleComposition";
+import {
+  adaptiveReliabilityRowSpan,
+  preferredAdaptiveReliabilitySpan,
+  RELIABILITY_MASONRY_ROW_HEIGHT,
+} from "./adaptiveReliabilityLayout";
 import "./role-composed-workspace.css";
 
 const WorkspaceEnglishContext = createContext(false);
@@ -70,6 +75,111 @@ function useWorkspaceEnglish() {
 
 function localized(english: boolean, ko: string, en: string) {
   return english ? en : ko;
+}
+
+function adaptiveCardSignals(card: HTMLElement) {
+  const body = card.querySelector<HTMLElement>(".rw-composed-block__body");
+  const textLength = (body?.innerText ?? card.innerText ?? "").trim().length;
+  const controlCount = card.querySelectorAll("button,input,select,textarea,[role='button']").length;
+  const hasWideVisualization = Boolean(card.querySelector(
+    "svg,canvas,table,.rw-feature-trends,.rw-composed-bars,.rw-factory-map,.rw-bottleneck-table",
+  ));
+  return {
+    declaredSpan: card.classList.contains("span-12") ? 12 as const : 6 as const,
+    empty: card.classList.contains("is-empty-block") || Boolean(card.querySelector(".rw-composed-empty")),
+    actionHero: card.classList.contains("is-action-hero"),
+    textLength,
+    controlCount,
+    hasWideVisualization,
+  };
+}
+
+function useAdaptiveReliabilityPacking(layoutKey: string) {
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (!grid || typeof ResizeObserver === "undefined") return undefined;
+
+    let frame = 0;
+    const pack = () => {
+      frame = 0;
+      const desktop = window.matchMedia("(min-width: 761px)").matches;
+      const cards = Array.from(grid.children).filter(
+        (node): node is HTMLElement => node instanceof HTMLElement,
+      );
+      if (!desktop) {
+        grid.classList.remove("is-adaptive-packed");
+        cards.forEach((card) => {
+          card.style.removeProperty("grid-column");
+          card.style.removeProperty("grid-row-end");
+        });
+        return;
+      }
+
+      grid.classList.add("is-adaptive-packed");
+      const rowGap = Number.parseFloat(window.getComputedStyle(grid).rowGap) || 10;
+
+      for (const card of cards) {
+        if (card.classList.contains("rw-composition-reason")) {
+          card.style.gridColumn = "1 / -1";
+          continue;
+        }
+        if (!card.classList.contains("rw-composed-block")) continue;
+        const span = preferredAdaptiveReliabilitySpan(adaptiveCardSignals(card));
+        card.style.gridColumn = `span ${span}`;
+        card.dataset.adaptiveColumnSpan = String(span);
+      }
+
+      // Reading after column assignment intentionally forces one layout pass;
+      // row spans then reflect the card's real rendered content height.
+      for (const card of cards) {
+        const contentHeight = card.getBoundingClientRect().height;
+        const span = adaptiveReliabilityRowSpan(
+          contentHeight,
+          rowGap,
+          RELIABILITY_MASONRY_ROW_HEIGHT,
+        );
+        card.style.gridRowEnd = `span ${span}`;
+        card.dataset.adaptiveRowSpan = String(span);
+      }
+    };
+    const schedulePack = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(pack);
+    };
+
+    const resizeObserver = new ResizeObserver(schedulePack);
+    resizeObserver.observe(grid);
+    const observeCards = () => {
+      Array.from(grid.children).forEach((node) => {
+        if (node instanceof HTMLElement) resizeObserver.observe(node);
+      });
+    };
+    observeCards();
+    const mutationObserver = new MutationObserver(() => {
+      observeCards();
+      schedulePack();
+    });
+    mutationObserver.observe(grid, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["class", "open", "aria-expanded"],
+    });
+    window.addEventListener("resize", schedulePack);
+    schedulePack();
+
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      window.removeEventListener("resize", schedulePack);
+    };
+  }, [layoutKey]);
+
+  return gridRef;
 }
 
 function formatNumber(value: number, english: boolean, options?: Intl.NumberFormatOptions) {
@@ -3168,15 +3278,26 @@ export function RoleComposedWorkspace(props: RoleComposedWorkspaceProps) {
   const shouldShowPromotionReason =
     props.view === "overview" &&
     (!props.surfaceId || promotionReasonSurfaces.has(props.surfaceId));
+  const adaptiveLayoutKey = [
+    props.experienceKind,
+    props.view,
+    props.surfaceId ?? "default",
+    props.selectedEvent?.eventId ?? "none",
+    props.detailLoading ? "loading" : "ready",
+    blocks.join("|"),
+  ].join(":");
+  const gridRef = useAdaptiveReliabilityPacking(adaptiveLayoutKey);
 
   return (
     <WorkspaceEnglishContext.Provider value={english}>
       <div
+      ref={gridRef}
       className={`rw-composed-grid composition-${props.experienceKind}`}
       data-testid={`role-composed-${props.experienceKind}`}
       data-surface={props.surfaceId ?? "default"}
       data-selected-event-id={props.selectedEvent?.eventId ?? ""}
       data-composition={blocks.join(",")}
+      data-layout-engine="semantic-content-masonry"
     >
       {shouldShowPromotionReason && promotionReason ? (
         <div className="rw-composition-reason" role="status">

@@ -1,4 +1,13 @@
 .rw-composed-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 10px; align-items: start; }
+.rw-composed-grid.is-adaptive-packed {
+  grid-auto-flow: dense;
+  grid-auto-rows: 8px;
+  align-items: start;
+}
+.rw-composed-grid.is-adaptive-packed > .rw-composed-block,
+.rw-composed-grid.is-adaptive-packed > .rw-composition-reason {
+  align-self: start;
+}
 .rw-composition-reason { grid-column: 1 / -1; display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:34px; padding:7px 10px; border:1px solid rgba(96,165,250,.22); border-radius:8px; background:rgba(59,130,246,.055); }
 .rw-composition-reason strong { font-size:10px; }
 .rw-composition-reason span { color:var(--rw-muted,#8ea0b3); font-size:9px; }

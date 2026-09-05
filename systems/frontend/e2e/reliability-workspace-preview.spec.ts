@@ -1105,9 +1105,48 @@ test("organizes engineering navigation by work intent instead of duplicated data
   await rail.locator("nav button").filter({ hasText: "원인 분석" }).click();
   const diagnosis = shell.locator('[data-surface="assets"]');
   await expect(diagnosis).toHaveAttribute(
+    "data-layout-engine",
+    "semantic-content-masonry",
+  );
+  await expect(diagnosis).toHaveAttribute(
     "data-composition",
     /^evidence-factors,inspection-targets,sensor-signals,/,
   );
+  await expect
+    .poll(() => diagnosis.locator(".rw-composed-block[data-adaptive-row-span]").count())
+    .toBeGreaterThanOrEqual(3);
+  const diagnosisLayout = await diagnosis.evaluate((element) => {
+    const style = window.getComputedStyle(element);
+    return { flow: style.gridAutoFlow, rows: style.gridAutoRows };
+  });
+  expect(diagnosisLayout.flow).toContain("dense");
+  expect(diagnosisLayout.rows).toBe("8px");
+  const diagnosisEmpty = diagnosis.locator(".rw-composed-block.is-empty-block").first();
+  if (await diagnosisEmpty.count()) {
+    await expect(diagnosisEmpty).toHaveAttribute("data-adaptive-column-span", "6");
+    const cards = diagnosis.locator(".rw-composed-block");
+    if (await cards.count() >= 3) {
+      const firstBox = await cards.nth(0).boundingBox();
+      const emptyBox = await diagnosisEmpty.boundingBox();
+      const thirdBox = await cards.nth(2).boundingBox();
+      if (firstBox && emptyBox && thirdBox && emptyBox.height + 20 < firstBox.height) {
+        expect(thirdBox.y).toBeLessThan(firstBox.y + firstBox.height);
+      }
+    }
+  }
+  const main = shell.locator(".rw-preview-main");
+  const sectionIndex = main.locator(".rw-section-index");
+  if (await sectionIndex.count()) {
+    const geometry = await main.evaluate((element) => ({
+      paddingLeft: Number.parseFloat(window.getComputedStyle(element).paddingLeft),
+    }));
+    expect(geometry.paddingLeft).toBeGreaterThanOrEqual(40);
+    const railBox = await sectionIndex.boundingBox();
+    const contentBox = await diagnosis.boundingBox();
+    expect(railBox).not.toBeNull();
+    expect(contentBox).not.toBeNull();
+    expect((railBox?.x ?? 0) + (railBox?.width ?? 0)).toBeLessThanOrEqual((contentBox?.x ?? 0) + 1);
+  }
   expect(
     (await diagnosis.getAttribute("data-composition"))?.indexOf(
       "feature-trend",
@@ -1177,12 +1216,14 @@ test("organizes engineering navigation by work intent instead of duplicated data
   const compactEmpty = inspection.locator(".rw-composed-block.is-compact-empty");
   if (await compactEmpty.count()) {
     await expect(compactEmpty).toContainText("현재 근거에서 특정된 점검 대상이 없습니다.");
+    await expect(compactEmpty).toHaveAttribute("data-adaptive-column-span", "6");
     const widthRatio = await compactEmpty.evaluate((element) => {
       const grid = element.parentElement;
       if (!grid) return 0;
       return element.getBoundingClientRect().width / grid.getBoundingClientRect().width;
     });
-    expect(widthRatio).toBeGreaterThan(0.9);
+    expect(widthRatio).toBeGreaterThan(0.42);
+    expect(widthRatio).toBeLessThan(0.62);
   }
 });
 
