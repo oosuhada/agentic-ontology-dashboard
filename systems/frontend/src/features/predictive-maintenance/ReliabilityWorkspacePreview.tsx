@@ -13,14 +13,16 @@ import {
   UserRound,
 } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
 import {
   createOperationsAgentReviewSummary,
+  getAgentRun,
   getOperationsAgentReviewPacket,
   getOperationsAgentReviewSummary,
+  listAgentRuns,
   runAgentQuery,
 } from "../../api";
 import type { AuthUser } from "../../types";
+import type { AgentRunResponse } from "../agent/types";
 import { displayPreset, useDisplayPreferences } from "../../ui/foundry/displayPreferences";
 import { useI18n } from "../../ui/i18n/I18nProvider";
 import { HanbitLogo } from "../../ui/foundry/HanbitLogo";
@@ -40,6 +42,7 @@ import { ContextAssistantDrawer } from "./workspace/ContextAssistantDrawer";
 import { ReliabilityCommandPalette, type ReliabilitySearchEntity } from "./workspace/ReliabilityCommandPalette";
 import { LifecycleInstrument } from "./workspace/LifecycleInstrument";
 import { OperationalFocus } from "./workspace/OperationalFocus";
+import { SectionIndexRail, type ReliabilitySectionIndexItem } from "./workspace/SectionIndexRail";
 import {
   groundedReliabilityAssistantAnswer,
   type ReliabilityAssistantContext,
@@ -107,6 +110,47 @@ function assistantActivityStoreLabel(store: string | null | undefined) {
   return labels[store] ?? store;
 }
 
+function assistantActivityFromRun(run: AgentRunResponse, english: boolean) {
+  return {
+    runId: run.state.run_id,
+    route: run.state.route,
+    status: run.state.status === "succeeded" ? "succeeded" as const : "failed" as const,
+    persistence: run.state.activity_persistence ?? null,
+    evidenceCount: run.state.evidence.length,
+    claimCount: run.state.claims.length,
+    checkpointSequence: run.state.checkpoint_sequence,
+    durationMs: run.state.duration_ms ?? run.state.steps.reduce((total, step) => total + (step.latency_ms ?? 0), 0),
+    steps: run.state.steps.map((step, index) => ({
+      id: `${run.state.run_id}:${index}:${step.name}`,
+      label: assistantActivityStepLabel(step.name, english),
+      detail: step.detail || null,
+      store: assistantActivityStoreLabel(step.store),
+      status: step.status,
+      latencyMs: step.latency_ms,
+    })),
+  };
+}
+
+function assistantMessagesFromRun(run: AgentRunResponse, english: boolean): ReliabilityAssistantMessage[] {
+  return [
+    {
+      id: `${run.state.run_id}:user`,
+      role: "user",
+      text: run.state.question,
+    },
+    {
+      id: `${run.state.run_id}:assistant`,
+      role: "assistant",
+      text: run.state.answer,
+      contextHint: [
+        run.state.route,
+        english ? `${run.state.evidence.length} evidence` : `근거 ${run.state.evidence.length}건`,
+      ].join(" · "),
+      activityTrace: assistantActivityFromRun(run, english),
+    },
+  ];
+}
+
 const OPERATIONAL_FOCUS_SURFACES = new Set([
   "decision-case",
   "maintenance-approval",
@@ -117,12 +161,8 @@ const OPERATIONAL_FOCUS_SURFACES = new Set([
 ]);
 
 const IMMERSIVE_RISK_SURFACES = new Set([
-  "factory-status",
   "monitoring",
   "operational-risk",
-  "operations-overview",
-  "assets",
-  "production-impact",
 ]);
 
 function shouldShowOperationalFocus(surfaceId: string) {
@@ -498,18 +538,10 @@ export function ReliabilityWorkspacePreview({
   const [assistantLoading, setAssistantLoading] = useState(false);
   const [assistantQueryLoading, setAssistantQueryLoading] = useState(false);
   const [assistantError, setAssistantError] = useState<string | null>(null);
-  const [navPreview, setNavPreview] = useState<{
-    id: string;
-    label: string;
-    detail: string;
-    view: OperationsView;
-    top: number;
-    left: number;
-  } | null>(null);
+  const assistantHistoryLoadedRef = useRef<string | null>(null);
 
   useEffect(() => {
     function syncRailForViewport() {
-      setNavPreview(null);
       if (window.innerWidth <= 860) {
         railCollapsedByViewportRef.current = true;
         setLeftOpen(false);
@@ -533,10 +565,42 @@ export function ReliabilityWorkspacePreview({
 
   useEffect(() => {
     setMessages([]);
+    assistantHistoryLoadedRef.current = null;
     setAgentPacket(null);
     setAgentSummaryResponse(null);
     setAssistantError(null);
   }, [selectedEvent?.eventId]);
+
+  useEffect(() => {
+    const assetId = selectedEvent?.assetId;
+    if (!assistantOpen || !assetId) return;
+    const historyKey = `${context.projectId}:${context.workspaceId}:${assetId}:${locale}`;
+    if (assistantHistoryLoadedRef.current === historyKey) return;
+    let cancelled = false;
+    assistantHistoryLoadedRef.current = historyKey;
+
+    void listAgentRuns({
+      project_id: context.projectId,
+      workspace_id: context.workspaceId,
+      object_id: assetId,
+      offset: 0,
+      limit: 8,
+    }).then(async (page) => {
+      const summaries = [...page.items].reverse();
+      const settled = await Promise.allSettled(
+        summaries.map((item) => getAgentRun(context.projectId, context.workspaceId, item.run_id)),
+      );
+      if (cancelled) return;
+      const restored = settled.flatMap((item) => (
+        item.status === "fulfilled" ? assistantMessagesFromRun(item.value, english) : []
+      ));
+      if (restored.length) setMessages((current) => current.length ? current : restored);
+    }).catch(() => {
+      if (!cancelled) assistantHistoryLoadedRef.current = null;
+    });
+
+    return () => { cancelled = true; };
+  }, [assistantOpen, context.projectId, context.workspaceId, english, locale, selectedEvent?.assetId, selectedEvent?.eventId]);
 
   useEffect(() => {
     function handleShortcut(event: KeyboardEvent) {
@@ -603,30 +667,6 @@ export function ReliabilityWorkspacePreview({
 
   function setReliabilityLocale(nextLocale: "ko-KR" | "en-US") {
     setReliabilityLocaleState(nextLocale);
-  }
-
-  function showNavPreview(
-    item: { id: string; label: { ko: string; en: string }; detail: { ko: string; en: string }; view: OperationsView },
-    target: HTMLElement,
-  ) {
-    if (window.innerWidth <= 680) return;
-    const rect = target.getBoundingClientRect();
-    const panelWidth = 292;
-    const panelHeight = 178;
-    const gap = 10;
-    const rightSide = rect.right + gap;
-    const left = rightSide + panelWidth <= window.innerWidth - 10
-      ? rightSide
-      : Math.max(10, rect.left - panelWidth - gap);
-    const top = Math.max(56, Math.min(rect.top - 8, window.innerHeight - panelHeight - 12));
-    setNavPreview({
-      id: item.id,
-      label: english ? item.label.en : item.label.ko,
-      detail: english ? item.detail.en : item.detail.ko,
-      view: item.view,
-      top,
-      left,
-    });
   }
 
   const workOrderCount = detail?.closedLoop?.workOrders.length ?? 0;
@@ -793,6 +833,35 @@ export function ReliabilityWorkspacePreview({
   });
   const showOperationalFocus = shouldShowOperationalFocus(activeNav.id);
   const showImmersiveRiskWorkbench = IMMERSIVE_RISK_SURFACES.has(activeNav.id);
+  const sectionIndexItems: ReliabilitySectionIndexItem[] = [
+    {
+      id: "page-overview",
+      label: english ? "Overview" : "화면 개요",
+      summary: detailCopy,
+    },
+    ...(selectedEvent ? [{
+      id: "selected-case",
+      label: english ? "Selected case" : "선택 Case",
+      summary: `${english ? (selectedEvent.assetName || selectedEvent.assetId) : displayAssetName({ assetId: selectedEvent.assetId, displayName: selectedEvent.assetName })} · ${riskStatusLabel(selectedEvent.status, english)} · ${probability(selectedEvent.failureProbability)}`,
+    }] : []),
+    ...(showImmersiveRiskWorkbench ? [{
+      id: "risk-workbench",
+      label: english ? "Live risk" : "실시간 위험",
+      summary: english
+        ? `${model.metrics.critical} critical assets · ${model.metrics.pendingDecisions} pending decisions`
+        : `고위험 ${model.metrics.critical}대 · 판단 대기 ${model.metrics.pendingDecisions}건`,
+    }] : []),
+    ...(showOperationalFocus ? [{
+      id: "operational-focus",
+      label: english ? "Decision focus" : "판단 포커스",
+      summary: `${focusCopy.headline} · ${focusCopy.detail}`,
+    }] : []),
+    {
+      id: "workspace-content",
+      label: english ? activeNav.label.en : activeNav.label.ko,
+      summary: english ? activeNav.detail.en : activeNav.detail.ko,
+    },
+  ];
   const lifecycleMode = activeNav.id === "decision-case" ? "full" : selectedEvent ? "compact" : "idle";
   const selectionTarget = experience.kind === "operations"
     ? { id: "decision-case", view: "operations" as const, label: english ? "Open Decision Case" : "Decision Case 열기" }
@@ -855,13 +924,7 @@ export function ReliabilityWorkspacePreview({
         text: answer,
         contextHint: hintParts.join(" · "),
         activityTrace: {
-          runId: run.state.run_id,
-          route: run.state.route,
-          status: run.state.status === "succeeded" ? "succeeded" : "failed",
-          evidenceCount: run.state.evidence.length,
-          claimCount: run.state.claims.length,
-          checkpointSequence: run.state.checkpoint_sequence,
-          durationMs: null,
+          ...assistantActivityFromRun(run, english),
           steps: activitySteps,
         },
       }]);
@@ -947,11 +1010,7 @@ export function ReliabilityWorkspacePreview({
                       className={activeNav.id === item.id ? "is-active" : ""}
                       aria-label={english ? item.label.en : item.label.ko}
                       aria-current={activeNav.id === item.id ? "page" : undefined}
-                      onPointerEnter={(event) => showNavPreview(item, event.currentTarget)}
-                      onPointerLeave={() => setNavPreview(null)}
-                      onFocus={(event) => showNavPreview(item, event.currentTarget)}
-                      onBlur={() => setNavPreview(null)}
-                      onClick={() => { setNavPreview(null); setSettingsOpen(false); if (window.innerWidth <= 860) setLeftOpen(false); onNavigate(item.id, item.view); }}
+                      onClick={() => { setSettingsOpen(false); if (window.innerWidth <= 860) setLeftOpen(false); onNavigate(item.id, item.view); }}
                       title={!leftOpen ? (english ? item.label.en : item.label.ko) : undefined}
                     >
                       <span aria-hidden="true">•</span>
@@ -980,9 +1039,10 @@ export function ReliabilityWorkspacePreview({
         </aside>
 
         <section className="rw-preview-main" ref={mainRef}>
+          <SectionIndexRail containerRef={mainRef} sections={sectionIndexItems} english={english} />
           {context.warnings.length ? <details className="rw-preview-warning"><summary>{english ? `${context.warnings.length} data notice(s)` : `데이터 참고사항 ${context.warnings.length}건`}</summary><ul>{context.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></details> : null}
-          <header className="rw-preview-page-heading"><span>{eyebrow}</span><h1>{title}</h1><p>{detailCopy}</p></header>
-          {selectedEvent ? <section className={`rw-preview-selection-anchor tone-${riskTone(selectedEvent.status)}`} aria-label={english ? "Selected case context" : "현재 선택 Case 문맥"}>
+          <header className="rw-preview-page-heading" data-section-index-id="page-overview"><span>{eyebrow}</span><h1>{title}</h1><p>{detailCopy}</p></header>
+          {selectedEvent ? <section className={`rw-preview-selection-anchor tone-${riskTone(selectedEvent.status)}`} data-section-index-id="selected-case" aria-label={english ? "Selected case context" : "현재 선택 Case 문맥"}>
             <div className="rw-preview-selection-anchor__path">
               <span>{english ? "SELECTED CASE" : "선택 Case"}</span>
               <strong>{english ? selectedEvent.line : displayLineLabel(selectedEvent.line)} <i>›</i> {english ? (selectedEvent.assetName || selectedEvent.assetId) : displayAssetName({ assetId: selectedEvent.assetId, displayName: selectedEvent.assetName })}</strong>
@@ -1001,19 +1061,22 @@ export function ReliabilityWorkspacePreview({
             <button type="button" onClick={onFollowLatestEvent}>{english ? "Open latest Event" : "최신 Event 열기"}</button>
           </section> : null}
           {showImmersiveRiskWorkbench ? (
-            <Suspense
-              fallback={<div className="rw-preview-immersive-loading" aria-busy="true">{english ? "Preparing live risk workbench" : "실시간 위험 워크벤치 준비 중"}</div>}
-            >
-              <ImmersiveRiskWorkbench
-                model={model}
-                detail={detail}
-                selectedEvent={selectedEvent}
-                onSelectEvent={onSelectEvent}
-                english={english}
-              />
-            </Suspense>
+            <div data-section-index-id="risk-workbench">
+              <Suspense
+                fallback={<div className="rw-preview-immersive-loading" aria-busy="true">{english ? "Preparing live risk workbench" : "실시간 위험 워크벤치 준비 중"}</div>}
+              >
+                <ImmersiveRiskWorkbench
+                  model={model}
+                  detail={detail}
+                  selectedEvent={selectedEvent}
+                  onSelectEvent={onSelectEvent}
+                  onRefresh={onRefresh}
+                  english={english}
+                />
+              </Suspense>
+            </div>
           ) : null}
-          {showOperationalFocus ? <div className="rw-preview-operational-focus">
+          {showOperationalFocus ? <div className="rw-preview-operational-focus" data-section-index-id="operational-focus">
             <OperationalFocus
               asset={{
                 id: selectedEvent?.assetId ?? context.workspaceId,
@@ -1057,7 +1120,7 @@ export function ReliabilityWorkspacePreview({
                   : (english ? "Start next task" : "지금 할 일")}
             />
           </div> : null}
-          <div className="rw-preview-content">{children}</div>
+          <div className="rw-preview-content" data-section-index-id="workspace-content">{children}</div>
         </section>
       </div>
 
@@ -1070,31 +1133,6 @@ export function ReliabilityWorkspacePreview({
         onSelectEntity={(entity) => onSearchSelect?.(entity)}
         english={english}
       />
-
-      {navPreview && typeof document !== "undefined" ? createPortal(
-        <aside
-          className="rw-nav-context-popover"
-          style={{ top: navPreview.top, left: navPreview.left }}
-          role="status"
-          aria-label={english ? `${navPreview.label} context preview` : `${navPreview.label} 문맥 미리보기`}
-        >
-          <header>
-            <span>{navPreview.view.toUpperCase()}</span>
-            <strong>{navPreview.label}</strong>
-          </header>
-          <p>{navPreview.detail}</p>
-          <dl>
-            <div><dt>{english ? "Selected" : "선택 Case"}</dt><dd>{selectedEvent ? (english ? (selectedEvent.assetName || selectedEvent.assetId) : displayAssetName({ assetId: selectedEvent.assetId, displayName: selectedEvent.assetName })) : (english ? "No case" : "미선택")}</dd></div>
-            <div><dt>{english ? "Risk" : "위험"}</dt><dd>{probability(selectedEvent?.failureProbability ?? null)}</dd></div>
-            <div><dt>{english ? "Source" : "데이터"}</dt><dd>{context.sourceStatus}</dd></div>
-          </dl>
-          <footer>
-            <span>{activeNav.id === navPreview.id ? (english ? "Current view" : "현재 화면") : (english ? "Click to open" : "클릭하여 열기")}</span>
-            {selectedEvent?.eventId ? <small className="rw-technical-metadata">{selectedEvent.eventId}</small> : null}
-          </footer>
-        </aside>,
-        document.body,
-      ) : null}
 
       <ContextAssistantDrawer
         open={assistantOpen}

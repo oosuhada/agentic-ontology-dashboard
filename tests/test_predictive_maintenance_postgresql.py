@@ -17,6 +17,7 @@ import pytest
 from app.dataset.bundle_contract import DatasetBundleManifestV2, compute_bundle_checksum
 from app.dataset.ingestion.bundle_file_adapter import BundleFileAdapter
 from app.diagnosis.runtime_service import PredictiveMaintenanceRuntimeService
+from app.infra.db.agent_run_repository import AgentRunRepository
 from app.infra.db.diagnosis_runtime_repository import (
     PredictiveMaintenanceRuntimeRepository,
 )
@@ -675,6 +676,141 @@ def test_postgresql_prediction_inbox_tables_are_rls_scoped(
         with psycopg.connect(postgresql_database, autocommit=True) as admin:
             admin.execute(sql.SQL("DROP OWNED BY {}").format(sql.Identifier(role)))
             admin.execute(sql.SQL("DROP ROLE IF EXISTS {}").format(sql.Identifier(role)))
+
+
+def test_postgresql_agent_execution_activity_round_trips(
+    postgresql_database: str,
+) -> None:
+    repository = AgentRunRepository(postgresql_database)
+    run_id = f"agent-test-{uuid.uuid4().hex[:12]}"
+    state = {
+        "run_id": run_id,
+        "organization_id": "org-test",
+        "project_id": "project-test",
+        "workspace_id": "workspace-test",
+        "user_id": "runtime-user",
+        "question": "Why is this asset high risk?",
+        "route": "hybrid",
+        "status": "succeeded",
+        "object_type": "equipment",
+        "object_id": "CNC-001",
+        "event_id": "RESULT#CNC-001#1",
+        "evidence": [{"evidence_id": "evidence-1"}],
+        "claims": [{"claim_id": "claim-1"}],
+        "steps": [
+            {
+                "name": "evidence_retrieval",
+                "store": "pgvector",
+                "status": "succeeded",
+                "latency_ms": 18,
+                "detail": "Retrieved governed evidence.",
+            }
+        ],
+        "answer": "Grounded answer",
+        "caveats": [],
+        "error": None,
+        "checkpoint_sequence": 1,
+        "duration_ms": 24,
+        "activity_persistence": "persisted",
+    }
+    traces = [
+        {
+            "id": f"trace-{run_id}",
+            "run_id": run_id,
+            "step_name": "evidence_retrieval",
+            "store_kind": "pgvector",
+            "status": "succeeded",
+            "input": {},
+            "output": {"detail": "Retrieved governed evidence."},
+            "latency_ms": 18,
+            "created_at": datetime.now(timezone.utc),
+        }
+    ]
+
+    repository.save_run(state=state, traces=traces)
+    page = repository.list_runs(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        user_id="runtime-user",
+        offset=0,
+        limit=10,
+        status=None,
+        route=None,
+        search=None,
+        object_id="CNC-001",
+    )
+    assert page["total"] == 1
+    assert page["items"][0]["run_id"] == run_id
+    restored = repository.get_run(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        user_id="runtime-user",
+        run_id=run_id,
+    )
+    assert restored is not None
+    assert restored["state"]["answer"] == "Grounded answer"
+    assert restored["state"]["activity_persistence"] == "persisted"
+    assert restored["traces"][0]["store_kind"] == "pgvector"
+    assert restored["traces"][0]["latency_ms"] == 18
+
+
+def test_postgresql_risk_index_buckets_are_chart_ready_and_asset_balanced(
+    tmp_path: Path,
+    postgresql_database: str,
+) -> None:
+    import psycopg
+    from psycopg.rows import dict_row
+
+    package_root = create_small_package(tmp_path)
+    manifest = build_manifest(package_root)
+    validation = BundleFileAdapter(allowed_roots=[package_root]).validate(manifest)
+    ingestion = PostgreSQLPredictiveMaintenanceBundleIngestor(
+        postgresql_database
+    ).ingest_validated_bundle(manifest=manifest, validation=validation)
+
+    with psycopg.connect(postgresql_database, row_factory=dict_row) as connection:
+        connection.execute("SELECT set_config('app.organization_id','org-test',true)")
+        connection.execute("SELECT set_config('app.project_id','project-test',true)")
+        bounds = connection.execute(
+            """
+            SELECT MIN(observed_at) AS start,MAX(observed_at) AS end
+            FROM pm_prediction_timeline
+            WHERE dataset_version_id=%s
+            """,
+            (ingestion.dataset_version_id,),
+        ).fetchone()
+    assert bounds is not None
+    assert bounds["start"] is not None and bounds["end"] is not None
+
+    repository = PredictiveMaintenanceRuntimeRepository(postgresql_database)
+    plant = repository.risk_index_rows(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        dataset_version_id=ingestion.dataset_version_id,
+        start=bounds["start"],
+        end=bounds["end"],
+        bucket_interval="1 hour",
+        asset_id=None,
+    )
+    asset = repository.risk_index_rows(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        dataset_version_id=ingestion.dataset_version_id,
+        start=bounds["start"],
+        end=bounds["end"],
+        bucket_interval="1 hour",
+        asset_id="CNC-001",
+    )
+
+    assert plant
+    assert asset
+    assert all(0.0 <= float(row["risk_value"]) <= 1.0 for row in plant)
+    assert all(int(row["sample_count"]) >= int(row["asset_count"]) >= 1 for row in plant)
+    assert all(int(row["asset_count"]) == 1 for row in asset)
 
 
 def _changed_schema_manifest(manifest: DatasetBundleManifestV2) -> DatasetBundleManifestV2:

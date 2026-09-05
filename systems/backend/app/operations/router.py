@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 import uuid
 
 from dataclasses import asdict
@@ -22,6 +23,7 @@ from .agent_review_summary import compose_deterministic_agent_review_summary, va
 from .asset_detail_view_model import AssetDetailViewModelService, compose_asset_detail_view_model
 from app.dependencies import (
     MANUFACTURING_WORKSPACE,
+    get_agent_run_repository,
     get_identity_service,
     get_ontology_service,
     get_operational_decision_support_service,
@@ -36,6 +38,7 @@ from app.dependencies import (
 )
 from app.diagnosis.runtime_service import PredictiveMaintenanceRuntimeService
 from app.identity import AuthError, IdentityService, Principal
+from app.infra.db.agent_run_repository import AgentRunRepository
 from app.ontology.ontology_domain import ActionInvocation
 from app.ontology.projection import inspection_object_id, risk_event_object_id
 from app.ontology.ontology_service import OntologyService
@@ -56,6 +59,27 @@ register_equipment_routes(
     service_dependency=get_service,
     authorization_dependency=require_manufacturing_scope,
 )
+
+
+def _persist_agent_activity(
+    repository: AgentRunRepository,
+    *,
+    state: dict[str, Any],
+    traces: list[dict[str, Any]],
+) -> None:
+    """Persist public execution activity without making reads depend on audit I/O.
+
+    A grounded assistant answer is a read path. If an audit store is temporarily
+    unavailable (or a test principal does not exist in the persistence fixture),
+    the answer must remain available while explicitly reporting that its activity
+    history could not be persisted.
+    """
+
+    try:
+        state["activity_persistence"] = "persisted"
+        repository.save_run(state=state, traces=traces)
+    except Exception:
+        state["activity_persistence"] = "unavailable"
 
 
 def _utc_now() -> str:
@@ -1571,6 +1595,7 @@ def run_agent_query(
     principal: Principal = Depends(require_permission("events.read")),
     _: None = Depends(require_csrf),
     service: ManufacturingPredictiveMaintenanceService = Depends(get_service),
+    agent_runs: AgentRunRepository = Depends(get_agent_run_repository),
 ):
     """Read-only grounded Operations assistant query."""
 
@@ -1582,6 +1607,7 @@ def run_agent_query(
         raise AuthError(403, "workspace_scope_denied", "허용된 Workspace 범위를 벗어난 Agent Query입니다.")
 
     now = _utc_now()
+    query_started = time.perf_counter()
     run_id = f"agent-{uuid.uuid4()}"
     route = "hybrid" if request.route == "auto" else request.route
 
@@ -1597,6 +1623,7 @@ def run_agent_query(
             "status": "failed",
             "object_type": request.object_type,
             "object_id": None,
+            "event_id": request.event_id,
             "evidence": [],
             "claims": [],
             "steps": [{
@@ -1610,8 +1637,9 @@ def run_agent_query(
             "caveats": ["No object was selected."],
             "error": "object_id_required",
             "checkpoint_sequence": 1,
+            "duration_ms": 0,
         }
-        return {"state": state, "traces": [{
+        traces = [{
             "id": f"trace-{uuid.uuid4()}",
             "run_id": run_id,
             "step_name": "select_object",
@@ -1621,8 +1649,11 @@ def run_agent_query(
             "output": {"error": "object_id_required"},
             "latency_ms": None,
             "created_at": now,
-        }]}
+        }]
+        _persist_agent_activity(agent_runs, state=state, traces=traces)
+        return {"state": state, "traces": traces}
 
+    packet_started = time.perf_counter()
     packet = None
     packet_source = "fixture-agent-review"
     if request.event_id:
@@ -1638,6 +1669,10 @@ def run_agent_query(
             )
             packet_source = "runtime-product-result"
         except EventNotFound:
+            packet = None
+        except HTTPException as exc:
+            if exc.status_code != 503:
+                raise
             packet = None
     if packet is None:
         try:
@@ -1658,6 +1693,9 @@ def run_agent_query(
                 runtime_service=get_predictive_maintenance_runtime_service(),
             )
             packet_source = "runtime-product-result"
+    packet_latency_ms = int((time.perf_counter() - packet_started) * 1000)
+
+    evidence_started = time.perf_counter()
     evidence = _packet_evidence(
         packet,
         service=service,
@@ -1667,11 +1705,24 @@ def run_agent_query(
         roles=principal.roles,
         top_k=request.top_k,
     )
+    evidence_latency_ms = int((time.perf_counter() - evidence_started) * 1000)
+    evidence_stores = [str(item.get("store") or "") for item in evidence]
+    retrieval_store = (
+        "pgvector"
+        if "pgvector" in evidence_stores
+        else "project3_rag"
+        if "project3_rag" in evidence_stores
+        else "postgresql"
+    )
+
+    tool_started = time.perf_counter()
     try:
         tool_result = run_read_only_tool_pipeline(packet)
     except Exception as exc:  # pragma: no cover - defensive runtime guard
         tool_result = {"terminal_status": "failed", "error": f"{type(exc).__name__}: {exc}", "steps": []}
+    tool_latency_ms = int((time.perf_counter() - tool_started) * 1000)
 
+    summary_started = time.perf_counter()
     summary: dict[str, Any] | None = None
     summary_trace: dict[str, Any] = {}
     if principal.is_admin or "agent.review.materialize" in principal.permissions:
@@ -1693,7 +1744,9 @@ def run_agent_query(
                 "error_type": type(exc).__name__,
                 "error_message": str(exc),
             }
+    summary_latency_ms = int((time.perf_counter() - summary_started) * 1000)
 
+    answer_started = time.perf_counter()
     baseline_answer = _answer_from_packet(request.question, packet, evidence, summary, request.audience)
     answer = baseline_answer
     answer_citations: list[str] = []
@@ -1712,34 +1765,42 @@ def run_agent_query(
             baseline_answer=baseline_answer,
             summary=summary,
         )
+    answer_latency_ms = int((time.perf_counter() - answer_started) * 1000)
     claim_ids = answer_citations or [item["evidence_id"] for item in evidence[:4]]
     steps = [
         {
             "name": "agent_review_packet",
             "store": "postgresql",
             "status": "succeeded",
-            "latency_ms": None,
+            "latency_ms": packet_latency_ms,
             "detail": f"Composed live Agent Review Packet for the selected Operations object via {packet_source}.",
+        },
+        {
+            "name": "evidence_retrieval",
+            "store": retrieval_store,
+            "status": "succeeded" if evidence else "skipped",
+            "latency_ms": evidence_latency_ms,
+            "detail": f"Retrieved {len(evidence)} grounded evidence item(s) from governed company and runtime sources.",
         },
         {
             "name": "read_only_tool_pipeline",
             "store": "postgresql",
             "status": "succeeded" if not (tool_result.get("validation_errors") or tool_result.get("error")) else "failed",
-            "latency_ms": None,
+            "latency_ms": tool_latency_ms,
             "detail": str(tool_result.get("terminal_status") or "completed"),
         },
         {
             "name": "agent_review_summary",
             "store": "postgresql",
             "status": "succeeded" if summary else "skipped",
-            "latency_ms": None,
+            "latency_ms": summary_latency_ms,
             "detail": str((summary_trace.get("materialization") or {}).get("status") or summary_trace.get("fallback") or "packet answer"),
         },
         {
             "name": "grounded_answer",
             "store": "company_context+postgresql",
             "status": "succeeded",
-            "latency_ms": None,
+            "latency_ms": answer_latency_ms,
             "detail": f"{answer_trace.get('mode')} via {answer_trace.get('provider')}",
         },
     ]
@@ -1754,6 +1815,7 @@ def run_agent_query(
         "status": "succeeded",
         "object_type": request.object_type or "asset",
         "object_id": request.object_id,
+        "event_id": request.event_id,
         "evidence": evidence,
         "claims": [{
             "claim_id": "claim-grounded-answer",
@@ -1770,6 +1832,7 @@ def run_agent_query(
         ],
         "error": None,
         "checkpoint_sequence": 1,
+        "duration_ms": int((time.perf_counter() - query_started) * 1000),
     }
     traces = [
         {
@@ -1785,7 +1848,67 @@ def run_agent_query(
         }
         for step in steps
     ]
+    _persist_agent_activity(agent_runs, state=state, traces=traces)
     return {"state": state, "traces": traces}
+
+
+@router.get("/agent/runs")
+def list_agent_runs(
+    project_id: str,
+    workspace_id: str,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=25, ge=1, le=100),
+    status: Literal["running", "succeeded", "failed", "awaiting_approval"] | None = Query(default=None),
+    route: Literal["relational", "graph", "vector", "hybrid"] | None = Query(default=None),
+    search: str | None = Query(default=None, max_length=240),
+    object_id: str | None = Query(default=None, max_length=160),
+    principal: Principal = Depends(require_permission("events.read")),
+    agent_runs: AgentRunRepository = Depends(get_agent_run_repository),
+):
+    if not principal.is_admin and project_id not in principal.project_scopes:
+        raise AuthError(403, "project_scope_denied", "허용된 Project 범위를 벗어난 Agent Run입니다.")
+    if principal.active_project_id != project_id:
+        raise AuthError(409, "active_project_mismatch", "먼저 Project를 활성화해야 합니다.")
+    if not principal.is_admin and workspace_id not in principal.workspace_scopes:
+        raise AuthError(403, "workspace_scope_denied", "허용된 Workspace 범위를 벗어난 Agent Run입니다.")
+    return agent_runs.list_runs(
+        organization_id=principal.organization_id,
+        project_id=project_id,
+        workspace_id=workspace_id,
+        user_id=principal.user_id,
+        offset=offset,
+        limit=limit,
+        status=status,
+        route=route,
+        search=search,
+        object_id=object_id,
+    )
+
+
+@router.get("/agent/runs/{run_id}")
+def get_agent_run(
+    run_id: str,
+    project_id: str,
+    workspace_id: str,
+    principal: Principal = Depends(require_permission("events.read")),
+    agent_runs: AgentRunRepository = Depends(get_agent_run_repository),
+):
+    if not principal.is_admin and project_id not in principal.project_scopes:
+        raise AuthError(403, "project_scope_denied", "허용된 Project 범위를 벗어난 Agent Run입니다.")
+    if principal.active_project_id != project_id:
+        raise AuthError(409, "active_project_mismatch", "먼저 Project를 활성화해야 합니다.")
+    if not principal.is_admin and workspace_id not in principal.workspace_scopes:
+        raise AuthError(403, "workspace_scope_denied", "허용된 Workspace 범위를 벗어난 Agent Run입니다.")
+    payload = agent_runs.get_run(
+        organization_id=principal.organization_id,
+        project_id=project_id,
+        workspace_id=workspace_id,
+        user_id=principal.user_id,
+        run_id=run_id,
+    )
+    if payload is None:
+        raise HTTPException(status_code=404, detail="agent run not found")
+    return payload
 
 
 @router.get("/events/{event_id}/evidence")

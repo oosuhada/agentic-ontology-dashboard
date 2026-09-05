@@ -475,6 +475,41 @@ def prediction_timeline(
     )
 
 
+@router.get("/risk-index")
+def risk_index(
+    project_id: str,
+    workspace_id: str,
+    source_mode: Literal["live", "workspace"] = Query(default="live"),
+    dataset_version_id: str | None = Query(default=None, max_length=160),
+    asset_id: str | None = Query(default=None, max_length=160),
+    window: Literal["1h", "6h", "24h", "7d", "30d"] = Query(default="24h"),
+    principal: Principal = Depends(require_permission("events.read")),
+    identity: IdentityService = Depends(get_identity_service),
+    service: PredictiveMaintenanceRuntimeService = Depends(
+        get_predictive_maintenance_runtime_service
+    ),
+):
+    require_scope(
+        principal=principal,
+        identity=identity,
+        project_id=project_id,
+        workspace_id=workspace_id,
+    )
+    try:
+        return service.risk_index(
+            organization_id=principal.organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            user_id=principal.user_id,
+            source_mode=source_mode,
+            workspace_dataset_version_id=dataset_version_id,
+            asset_id=asset_id,
+            window=window,
+        )
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail=str(error.args[0])) from error
+
+
 @router.get("/observations")
 def observation_window(
     project_id: str,

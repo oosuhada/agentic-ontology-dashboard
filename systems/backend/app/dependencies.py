@@ -49,6 +49,7 @@ from app.governance import GovernanceService
 from app.identity import CSRF_COOKIE, SESSION_COOKIE, AuthError, IdentityService, Principal
 from app.infra.db.dashboard_repository import DashboardRepository
 from app.infra.db.company_context_repository import CompanyContextRepository
+from app.infra.db.agent_run_repository import AgentRunRepository
 from app.knowledge import KnowledgeService
 from app.knowledge.embedding import configured_embedding_provider
 from app.knowledge.repository import KnowledgeRepository
@@ -520,6 +521,13 @@ def get_governance_service(
     workflows: RoleWorkflowService = Depends(get_role_workflow_service),
 ) -> GovernanceService:
     return GovernanceService(datasets=get_dataset_catalog_service().repository, approvals=workflows.repository)
+
+
+@lru_cache(maxsize=1)
+def get_agent_run_repository() -> AgentRunRepository:
+    target = database_target()
+    migrate(target)
+    return AgentRunRepository(target)
 
 
 @lru_cache(maxsize=1)

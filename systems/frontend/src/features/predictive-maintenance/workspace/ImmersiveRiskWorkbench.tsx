@@ -10,30 +10,29 @@ import {
 import { animate, createScope, stagger } from "animejs";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { getPredictiveMaintenanceRiskIndex, selectPredictiveMaintenanceVersion } from "../../../api";
 import type {
   OperationsBootstrapModel,
   OperationsEvent,
   OperationsEventDetailModel,
 } from "../../operations/api/operationsContracts";
 import { displayAssetName, displayLineLabel } from "../../operations/displayLabels";
+import type {
+  PredictiveMaintenanceRiskIndexResponse,
+  PredictiveMaintenanceRiskSourceMode,
+  PredictiveMaintenanceRiskWindow,
+} from "../types";
 import { BklitLiveRiskChart, type BklitLiveRiskPoint } from "./BklitLiveRiskChart";
 import "./immersive-risk-workbench.css";
-
-type RangeId = "1h" | "6h" | "24h" | "all";
 
 interface ImmersiveRiskWorkbenchProps {
   model: OperationsBootstrapModel;
   detail: OperationsEventDetailModel | null;
   selectedEvent: OperationsEvent | null;
   onSelectEvent: (event: OperationsEvent) => void;
+  onRefresh: () => void;
   english: boolean;
 }
-
-const RANGE_SECONDS: Record<Exclude<RangeId, "all">, number> = {
-  "1h": 60 * 60,
-  "6h": 6 * 60 * 60,
-  "24h": 24 * 60 * 60,
-};
 
 function percent(value: number | null | undefined, digits = 1) {
   return typeof value === "number" && Number.isFinite(value)
@@ -70,19 +69,71 @@ function statusLabel(status: OperationsEvent["status"], english: boolean) {
   return labels[status][english ? 1 : 0];
 }
 
+function ageLabel(seconds: number | null | undefined, english: boolean) {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds)) return "—";
+  if (seconds < 90) return english ? "just now" : "방금 전";
+  if (seconds < 3600) return english ? `${Math.round(seconds / 60)}m ago` : `${Math.round(seconds / 60)}분 전`;
+  if (seconds < 86400) return english ? `${Math.round(seconds / 3600)}h ago` : `${Math.round(seconds / 3600)}시간 전`;
+  return english ? `${Math.round(seconds / 86400)}d ago` : `${Math.round(seconds / 86400)}일 전`;
+}
+
 export function ImmersiveRiskWorkbench({
   model,
   detail,
   selectedEvent,
   onSelectEvent,
+  onRefresh,
   english,
 }: ImmersiveRiskWorkbenchProps) {
   const rootRef = useRef<HTMLElement>(null);
   const animationScopeRef = useRef<ReturnType<typeof createScope> | null>(null);
   const reducedMotion = useReducedMotion();
-  const [range, setRange] = useState<RangeId>("24h");
+  const [range, setRange] = useState<PredictiveMaintenanceRiskWindow>("24h");
+  const [sourceMode, setSourceMode] = useState<PredictiveMaintenanceRiskSourceMode>("live");
+  const [riskIndex, setRiskIndex] = useState<PredictiveMaintenanceRiskIndexResponse | null>(null);
+  const [riskLoading, setRiskLoading] = useState(true);
+  const [riskError, setRiskError] = useState<string | null>(null);
+  const [followLivePending, setFollowLivePending] = useState(false);
   const [hoveredPoint, setHoveredPoint] = useState<BklitLiveRiskPoint | null>(null);
-  const fullSeries = useMemo<BklitLiveRiskPoint[]>(() => (
+  const assetId = selectedEvent?.assetId ?? null;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setRiskLoading(true);
+    setRiskError(null);
+    void getPredictiveMaintenanceRiskIndex(
+      model.context.projectId,
+      model.context.workspaceId,
+      {
+        source_mode: sourceMode,
+        dataset_version_id: model.context.datasetVersionId,
+        asset_id: assetId,
+        window: range,
+      },
+      controller.signal,
+    ).then((payload) => {
+      setRiskIndex(payload);
+      setHoveredPoint(null);
+    }).catch((reason: unknown) => {
+      if (controller.signal.aborted) return;
+      setRiskError(reason instanceof Error ? reason.message : "risk_index_unavailable");
+    }).finally(() => {
+      if (!controller.signal.aborted) setRiskLoading(false);
+    });
+    return () => controller.abort();
+  }, [assetId, model.context.datasetVersionId, model.context.projectId, model.context.refreshedAt, model.context.workspaceId, range, sourceMode]);
+
+  const queriedSeries = useMemo<BklitLiveRiskPoint[]>(() => (
+    (riskIndex?.points ?? [])
+      .map((point) => ({
+        time: Date.parse(point.observed_at) / 1000,
+        value: point.value,
+        status: point.status,
+      }))
+      .filter((point) => Number.isFinite(point.time) && Number.isFinite(point.value))
+      .sort((left, right) => left.time - right.time)
+  ), [riskIndex?.points]);
+  const detailFallbackSeries = useMemo<BklitLiveRiskPoint[]>(() => (
     (detail?.riskSeries ?? [])
       .map((point) => ({
         time: Date.parse(point.observedAt) / 1000,
@@ -92,16 +143,15 @@ export function ImmersiveRiskWorkbench({
       .filter((point) => Number.isFinite(point.time) && Number.isFinite(point.value))
       .sort((left, right) => left.time - right.time)
   ), [detail?.riskSeries]);
-  const visibleSeries = useMemo(() => {
-    if (range === "all" || !fullSeries.length) return fullSeries;
-    const end = fullSeries.at(-1)?.time ?? 0;
-    const start = end - RANGE_SECONDS[range];
-    const filtered = fullSeries.filter((point) => point.time >= start);
-    return filtered.length >= 2 ? filtered : fullSeries;
-  }, [fullSeries, range]);
+  const usingDetailFallback = Boolean(riskError && assetId && detailFallbackSeries.length);
+  const visibleSeries = queriedSeries.length
+    ? queriedSeries
+    : usingDetailFallback
+      ? detailFallbackSeries
+      : [];
   const currentRisk = hoveredPoint?.value
-    ?? selectedEvent?.failureProbability
     ?? visibleSeries.at(-1)?.value
+    ?? selectedEvent?.failureProbability
     ?? null;
   const currentTime = hoveredPoint?.time
     ?? visibleSeries.at(-1)?.time
@@ -118,7 +168,41 @@ export function ImmersiveRiskWorkbench({
     ? (english
       ? (selectedEvent.assetName || selectedEvent.assetId)
       : displayAssetName({ assetId: selectedEvent.assetId, displayName: selectedEvent.assetName }))
-    : (english ? "Plant risk index" : "공장 위험 지수");
+    : (english ? "Plant risk P95" : "공장 위험 P95");
+  const sourceCanSwitch = Boolean(riskIndex?.workspace_is_pinned);
+  const sourceBadge = usingDetailFallback
+    ? (english ? "CASE DETAIL FALLBACK" : "CASE DETAIL FALLBACK")
+    : sourceMode === "live"
+    ? (english ? "LIVE GENERATOR" : "LIVE GENERATOR")
+    : (english ? "WORKSPACE DATASET" : "WORKSPACE DATASET");
+  const emptyTitle = riskLoading
+    ? (english ? "Loading governed risk history" : "정본 위험 이력 불러오는 중")
+    : riskError && !usingDetailFallback
+      ? (english ? "Risk history query failed" : "위험 이력 조회 실패")
+      : (english ? "No predictions in this range" : "선택 범위에 위험 관측 없음");
+  const emptyDetail = riskLoading
+    ? (english ? "Reading the selected live or workspace Dataset Version." : "선택한 live/workspace Dataset Version을 조회하고 있습니다.")
+    : riskError && !usingDetailFallback
+      ? riskError
+      : (english ? "Try a wider time range or verify the selected data source." : "기간을 넓히거나 데이터 소스를 확인하세요.");
+
+  async function followLiveDataset() {
+    setFollowLivePending(true);
+    setRiskError(null);
+    try {
+      await selectPredictiveMaintenanceVersion(
+        model.context.projectId,
+        model.context.workspaceId,
+        null,
+      );
+      setSourceMode("live");
+      onRefresh();
+    } catch (reason) {
+      setRiskError(reason instanceof Error ? reason.message : "follow_live_dataset_failed");
+    } finally {
+      setFollowLivePending(false);
+    }
+  }
 
   useEffect(() => {
     animationScopeRef.current?.revert();
@@ -174,18 +258,18 @@ export function ImmersiveRiskWorkbench({
                 </em>
               ) : null}
             </div>
-            <small>{hoveredPoint ? (english ? "Hovered observation" : "선택 관측") : (english ? "Latest observation" : "최신 관측")} · {timeLabel(currentTime, english)}</small>
+            <small>{hoveredPoint ? (english ? "Hovered observation" : "선택 관측") : (english ? "Latest observation" : "최신 관측")} · {timeLabel(currentTime, english)} · {sourceBadge}</small>
           </div>
           <div className="rw-market-workbench__metrics">
             <article className="rw-market-workbench__metric"><span>{english ? "Start" : "시작"}</span><strong>{percent(firstRisk)}</strong></article>
             <article className="rw-market-workbench__metric"><span>{english ? "Low" : "최저"}</span><strong>{percent(min)}</strong></article>
             <article className="rw-market-workbench__metric"><span>{english ? "High" : "최고"}</span><strong>{percent(max)}</strong></article>
-            <article className="rw-market-workbench__metric"><span>{english ? "Threshold" : "판단 기준"}</span><strong>{percent(detail?.threshold)}</strong></article>
+            <article className="rw-market-workbench__metric"><span>{english ? "Critical boundary" : "고위험 경계"}</span><strong>{percent(riskIndex?.threshold ?? detail?.threshold)}</strong></article>
           </div>
         </header>
 
         <div className="rw-market-workbench__range" role="group" aria-label={english ? "Risk history range" : "위험 이력 범위"}>
-          {(["1h", "6h", "24h", "all"] as const).map((item) => (
+          {(["1h", "6h", "24h", "7d", "30d"] as const).map((item) => (
             <motion.button
               type="button"
               key={item}
@@ -194,25 +278,55 @@ export function ImmersiveRiskWorkbench({
               whileTap={reducedMotion ? undefined : { scale: 0.96 }}
             >
               {range === item ? <motion.span className="rw-market-workbench__range-indicator" layoutId="rw-risk-range" /> : null}
-              <b>{item === "all" ? (english ? "ALL" : "전체") : item.toUpperCase()}</b>
+              <b>{item.toUpperCase()}</b>
             </motion.button>
           ))}
-          <span className="rw-market-workbench__live"><i className="rw-market-live-pulse" />{english ? "Observed data" : "관측 데이터"}</span>
+          <span className="rw-market-workbench__live"><i className="rw-market-live-pulse" />{sourceMode === "live" ? (english ? "Live generator" : "Live generator") : (english ? "Pinned workspace" : "고정 workspace")}</span>
+          {sourceCanSwitch ? (
+            <div className="rw-market-workbench__source-switch" role="group" aria-label={english ? "Risk data source" : "위험 데이터 소스"}>
+              <button type="button" className={sourceMode === "live" ? "is-active" : ""} onClick={() => setSourceMode("live")}>LIVE</button>
+              <button type="button" className={sourceMode === "workspace" ? "is-active" : ""} onClick={() => setSourceMode("workspace")}>{english ? "PINNED" : "고정"}</button>
+            </div>
+          ) : null}
         </div>
+
+        {riskIndex ? (
+          <div className={`rw-market-workbench__provenance ${riskIndex.workspace_is_pinned ? "is-pinned" : ""}`}>
+            <span>{riskIndex.aggregation === "plant_failure_probability_p95" ? (english ? "Plant P95 · auditable aggregate" : "공장 P95 · 감사 가능한 집계") : (english ? "Selected asset · bucket mean" : "선택 설비 · 구간 평균")}</span>
+            <span>{english ? "Latest" : "최신"} {ageLabel(riskIndex.data_age_seconds, english)}</span>
+            <span className="rw-technical-metadata">{riskIndex.dataset_version_id}</span>
+            {riskIndex.workspace_is_pinned ? <strong>{english ? "Workspace is pinned to an older Dataset Version" : "Workspace가 과거 Dataset Version에 고정됨"}</strong> : null}
+            {riskIndex.workspace_is_pinned && sourceMode === "live" ? (
+              <button type="button" disabled={followLivePending} onClick={() => void followLiveDataset()}>
+                {followLivePending
+                  ? (english ? "Following live…" : "전환 중…")
+                  : (english ? "Use live dataset for workspace" : "Workspace도 live 데이터로 전환")}
+              </button>
+            ) : null}
+          </div>
+        ) : usingDetailFallback ? (
+          <div className="rw-market-workbench__provenance is-fallback">
+            <span>{english ? "Selected case detail · canonical fallback" : "선택 Case 상세 · canonical fallback"}</span>
+            <span>{english ? "Plant aggregate unavailable in this runtime" : "이 runtime에서는 공장 집계 미지원"}</span>
+          </div>
+        ) : null}
 
         <div className="rw-market-workbench__chart">
           <BklitLiveRiskChart
             data={visibleSeries}
-            value={selectedEvent?.failureProbability ?? null}
-            threshold={detail?.threshold ?? null}
+            value={currentRisk}
+            threshold={riskIndex?.threshold ?? detail?.threshold ?? null}
             locale={english ? "en-US" : "ko-KR"}
             height={365}
             onHoverPoint={setHoveredPoint}
+            emptyTitle={emptyTitle}
+            emptyDetail={emptyDetail}
           />
         </div>
         <footer className="rw-market-workbench__chart-foot">
           <span><CircleDot size={11} /> Bklit UI · VisX</span>
-          <span>{english ? `${visibleSeries.length} observed points` : `관측 ${visibleSeries.length}개`}</span>
+          <span>{english ? `${visibleSeries.length} queried points` : `조회 ${visibleSeries.length}개`}</span>
+          <span>{riskIndex ? `${riskIndex.window} · ${riskIndex.bucket_interval}` : usingDetailFallback ? (english ? "case detail fallback" : "Case 상세 fallback") : range}</span>
           <span>{selectedEvent?.eventId ?? (english ? "No case selected" : "Case 미선택")}</span>
         </footer>
       </div>

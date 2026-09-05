@@ -77,6 +77,27 @@ from .presentation_dictionary import (
 AppLocale = Literal["ko-KR", "en-US"]
 
 
+@lru_cache(maxsize=1)
+def _operational_risk_thresholds() -> dict[str, float]:
+    policy_path = project_root() / "systems" / "backend" / "app" / "diagnosis" / "threshold_policy.json"
+    payload = json.loads(policy_path.read_text(encoding="utf-8"))
+    rules = payload.get("severity_rules") or {}
+    return {
+        "attention": float(rules.get("attention", 0.2)),
+        "warning": float(rules.get("warning", 0.45)),
+        "critical": float(rules.get("critical", 0.75)),
+    }
+
+
+_RISK_INDEX_WINDOWS: dict[str, tuple[timedelta, str]] = {
+    "1h": (timedelta(hours=1), "2 minutes"),
+    "6h": (timedelta(hours=6), "10 minutes"),
+    "24h": (timedelta(hours=24), "30 minutes"),
+    "7d": (timedelta(days=7), "2 hours"),
+    "30d": (timedelta(days=30), "6 hours"),
+}
+
+
 def _normalize_prediction_result_checksum_value(value: Any) -> Any:
     if isinstance(value, datetime):
         return value.isoformat().replace("+00:00", "Z")
@@ -2264,6 +2285,152 @@ class PredictiveMaintenanceRuntimeService:
             "limit": limit,
             "source": "precomputed_prediction_timeline",
             "model_retrained": False,
+        }
+
+    def risk_index(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        user_id: str,
+        source_mode: Literal["live", "workspace"],
+        workspace_dataset_version_id: str | None,
+        asset_id: str | None,
+        window: Literal["1h", "6h", "24h", "7d", "30d"],
+    ) -> dict[str, Any]:
+        """Return a monitoring-grade risk time series with explicit provenance.
+
+        ``live`` follows the freshest generator-backed wall-clock Dataset Version.
+        ``workspace`` follows the Dataset Version currently selected by the
+        workspace UI. Keeping both modes explicit prevents a historical pin from
+        masquerading as a live monitoring stream.
+        """
+
+        delta, bucket_interval = _RISK_INDEX_WINDOWS[window]
+        workspace_options = self.versions(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            user_id=user_id,
+        )
+        selected_id = workspace_dataset_version_id or workspace_options.default_dataset_version_id
+        live_row = self.repository.latest_wall_clock_live_version(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+        )
+
+        if source_mode == "live":
+            row = live_row
+        else:
+            if selected_id is None:
+                raise KeyError("workspace predictive-maintenance Dataset Version")
+            row = self.repository.resolve_version(
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                dataset_version_id=selected_id,
+            )
+
+        dataset_version_id = str(row["id"])
+        raw_latest = row.get("latest_result_observed_at")
+        if not isinstance(raw_latest, datetime):
+            context = self.context(
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                dataset_version_id=dataset_version_id,
+            )
+            latest_items = self.timeline(
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                dataset_version_id=context.dataset_version_id,
+                asset_id=asset_id,
+                start=None,
+                end=None,
+                offset=0,
+                limit=1,
+            )["items"]
+            raw_latest = (
+                datetime.fromisoformat(str(latest_items[-1]["observed_at"]))
+                if latest_items
+                else self.repository.clock_now()
+            )
+        end = raw_latest
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+        start = end - delta
+        rows = self.repository.risk_index_rows(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            dataset_version_id=dataset_version_id,
+            start=start,
+            end=end,
+            bucket_interval=bucket_interval,
+            asset_id=asset_id,
+        )
+        thresholds = _operational_risk_thresholds()
+
+        def status_for(value: float) -> str:
+            if value >= thresholds["critical"]:
+                return "critical"
+            if value >= thresholds["warning"]:
+                return "warning"
+            if value >= thresholds["attention"]:
+                return "attention"
+            return "normal"
+
+        points = [
+            {
+                "observed_at": row_["observed_at"].isoformat(),
+                "value": float(row_["risk_value"]),
+                "mean_risk": float(row_["mean_risk"]),
+                "max_risk": float(row_["max_risk"]),
+                "sample_count": int(row_["sample_count"]),
+                "asset_count": int(row_["asset_count"]),
+                "critical_count": int(row_["critical_count"]),
+                "status": status_for(float(row_["risk_value"])),
+            }
+            for row_ in rows
+        ]
+        now = self.repository.clock_now()
+        age_seconds = max(0.0, (now - end).total_seconds())
+        live_dataset_version_id = str(live_row["id"])
+        is_live_dataset = dataset_version_id == live_dataset_version_id
+        workspace_pinned = (
+            workspace_options.selection_mode == "explicit"
+            and selected_id is not None
+            and selected_id != live_dataset_version_id
+        )
+        return {
+            "project_id": project_id,
+            "workspace_id": workspace_id,
+            "asset_id": asset_id,
+            "scope": "asset" if asset_id else "plant",
+            "aggregation": "asset_bucket_mean" if asset_id else "plant_failure_probability_p95",
+            "window": window,
+            "bucket_interval": bucket_interval,
+            "source_mode": source_mode,
+            "dataset_id": str(row["dataset_id"]),
+            "dataset_version_id": dataset_version_id,
+            "dataset_name": str(row.get("dataset_name") or row["dataset_id"]),
+            "source_version": str(row.get("source_version") or ""),
+            "is_live_dataset": is_live_dataset,
+            "live_dataset_version_id": live_dataset_version_id,
+            "workspace_dataset_version_id": selected_id,
+            "workspace_selection_mode": workspace_options.selection_mode,
+            "workspace_selection_reason": workspace_options.selection_reason,
+            "workspace_is_pinned": workspace_pinned,
+            "latest_observed_at": end.isoformat(),
+            "data_age_seconds": age_seconds,
+            "threshold": thresholds["critical"],
+            "threshold_kind": "operational_critical_boundary",
+            "points": points,
+            "point_count": len(points),
+            "empty_reason": None if points else "no_governed_predictions_in_window",
         }
 
     @staticmethod

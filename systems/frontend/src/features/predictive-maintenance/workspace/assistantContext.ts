@@ -54,6 +54,7 @@ export interface ReliabilityAssistantActivityTrace {
   runId?: string | null;
   route?: string | null;
   status: "succeeded" | "failed" | "fallback";
+  persistence?: "persisted" | "unavailable" | null;
   evidenceCount: number;
   claimCount: number;
   checkpointSequence?: number | null;

@@ -103,6 +103,168 @@ class PredictiveMaintenanceRuntimeRepository:
             raise KeyError(dataset_version_id or "latest predictive-maintenance Dataset Version")
         return dict(row)
 
+    def latest_wall_clock_live_version(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+    ) -> dict[str, Any]:
+        """Return the freshest wall-clock live Dataset Version for Operations.
+
+        Explicit user Dataset selections remain useful for replay and analysis,
+        but a live monitoring surface needs a stable way to follow the newest
+        generator-backed runtime Dataset Version without silently inheriting an
+        old pinned selection.
+        """
+
+        cutoff = self._now() + timedelta(minutes=5)
+        query = """
+            SELECT v.*,d.display_name AS dataset_name,d.source_type,
+                   (SELECT MAX(r.observed_at) FROM pm_result_artifacts r
+                    WHERE r.organization_id=v.organization_id
+                      AND r.project_id=v.project_id
+                      AND r.workspace_id=v.workspace_id
+                      AND r.dataset_version_id=v.id
+                      AND r.model_version<>'presentation-live-v1') AS latest_result_observed_at,
+                   (SELECT COUNT(*) FROM pm_result_artifacts r
+                    WHERE r.organization_id=v.organization_id
+                      AND r.project_id=v.project_id
+                      AND r.workspace_id=v.workspace_id
+                      AND r.dataset_version_id=v.id
+                      AND r.model_version<>'presentation-live-v1') AS result_artifact_count
+            FROM dataset_versions v
+            JOIN datasets d ON d.id=v.dataset_id
+            WHERE v.organization_id=%s
+              AND v.project_id=%s
+              AND v.workspace_id=%s
+              AND v.status='published'
+              AND v.source_version='gen-data-wall-clock-live-v2'
+              AND EXISTS (
+                SELECT 1 FROM pm_assets a
+                WHERE a.organization_id=v.organization_id
+                  AND a.project_id=v.project_id
+                  AND a.workspace_id=v.workspace_id
+                  AND a.dataset_version_id=v.id
+              )
+              AND EXISTS (
+                SELECT 1 FROM pm_result_artifacts r
+                WHERE r.organization_id=v.organization_id
+                  AND r.project_id=v.project_id
+                  AND r.workspace_id=v.workspace_id
+                  AND r.dataset_version_id=v.id
+                  AND r.model_version<>'presentation-live-v1'
+              )
+              AND (
+                SELECT MAX(r.observed_at) FROM pm_result_artifacts r
+                WHERE r.organization_id=v.organization_id
+                  AND r.project_id=v.project_id
+                  AND r.workspace_id=v.workspace_id
+                  AND r.dataset_version_id=v.id
+                  AND r.model_version<>'presentation-live-v1'
+              ) <= %s
+            ORDER BY latest_result_observed_at DESC NULLS LAST,
+                     v.created_at DESC,
+                     v.version_number DESC
+            LIMIT 1
+        """
+        with self._connection(organization_id, project_id) as connection:
+            row = connection.execute(
+                query,
+                (organization_id, project_id, workspace_id, cutoff),
+            ).fetchone()
+        if row is None:
+            raise KeyError("latest wall-clock live predictive-maintenance Dataset Version")
+        return dict(row)
+
+    def risk_index_rows(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        dataset_version_id: str,
+        start: datetime,
+        end: datetime,
+        bucket_interval: str,
+        asset_id: str | None,
+    ) -> list[dict[str, Any]]:
+        """Return bounded, chart-ready risk buckets from governed runtime data.
+
+        Asset mode averages repeated model outputs within a bucket. Plant mode
+        intentionally exposes a transparent P95 risk statistic rather than an
+        opaque synthetic score. This makes the "plant risk index" auditable.
+        """
+
+        filters = [
+            "organization_id=%s",
+            "project_id=%s",
+            "workspace_id=%s",
+            "dataset_version_id=%s",
+            "model_version<>'presentation-live-v1'",
+            "observed_at>=%s",
+            "observed_at<=%s",
+        ]
+        parameters: list[Any] = [
+            organization_id,
+            project_id,
+            workspace_id,
+            dataset_version_id,
+            start,
+            end,
+        ]
+        if asset_id:
+            filters.append("asset_id=%s")
+            parameters.append(asset_id)
+        where = " AND ".join(filters)
+        origin = "2000-01-01T00:00:00+00"
+        with self._connection(organization_id, project_id) as connection:
+            if asset_id:
+                rows = connection.execute(
+                    f"""
+                    SELECT date_bin(%s::interval, observed_at, %s::timestamptz) AS observed_at,
+                           AVG(failure_probability)::double precision AS risk_value,
+                           AVG(failure_probability)::double precision AS mean_risk,
+                           MAX(failure_probability)::double precision AS max_risk,
+                           COUNT(*)::integer AS sample_count,
+                           COUNT(*) FILTER (WHERE status='critical')::integer AS critical_count,
+                           COUNT(DISTINCT asset_id)::integer AS asset_count
+                    FROM pm_prediction_timeline
+                    WHERE {where}
+                    GROUP BY 1
+                    ORDER BY 1
+                    """,
+                    (bucket_interval, origin, *parameters),
+                ).fetchall()
+            else:
+                rows = connection.execute(
+                    f"""
+                    WITH asset_bucket AS (
+                        SELECT date_bin(%s::interval, observed_at, %s::timestamptz) AS observed_at,
+                               asset_id,
+                               AVG(failure_probability)::double precision AS asset_risk,
+                               MAX(failure_probability)::double precision AS asset_max_risk,
+                               COUNT(*)::integer AS sample_count,
+                               BOOL_OR(status='critical') AS has_critical
+                        FROM pm_prediction_timeline
+                        WHERE {where}
+                        GROUP BY 1,asset_id
+                    )
+                    SELECT observed_at,
+                           percentile_cont(0.95) WITHIN GROUP (ORDER BY asset_risk)::double precision AS risk_value,
+                           AVG(asset_risk)::double precision AS mean_risk,
+                           MAX(asset_max_risk)::double precision AS max_risk,
+                           SUM(sample_count)::integer AS sample_count,
+                           COUNT(*) FILTER (WHERE has_critical)::integer AS critical_count,
+                           COUNT(*)::integer AS asset_count
+                    FROM asset_bucket
+                    GROUP BY observed_at
+                    ORDER BY observed_at
+                    """,
+                    (bucket_interval, origin, *parameters),
+                ).fetchall()
+        return [dict(row) for row in rows]
+
     def list_versions(
         self,
         *,

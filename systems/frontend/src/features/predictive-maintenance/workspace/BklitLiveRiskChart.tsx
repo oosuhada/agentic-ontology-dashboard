@@ -26,6 +26,8 @@ interface BklitLiveRiskChartProps {
   height?: number;
   locale?: "ko-KR" | "en-US";
   onHoverPoint?: (point: BklitLiveRiskPoint | null) => void;
+  emptyTitle?: string;
+  emptyDetail?: string;
 }
 
 const bisectTime = bisector<BklitLiveRiskPoint, number>((point) => point.time).left;
@@ -57,6 +59,8 @@ function RiskChartInner({
   threshold,
   locale,
   onHoverPoint,
+  emptyTitle,
+  emptyDetail,
 }: BklitLiveRiskChartProps & { width: number; height: number }) {
   const reducedMotion = useReducedMotion();
   const clipId = `bklit-risk-${useId().replace(/:/g, "")}`;
@@ -108,8 +112,8 @@ function RiskChartInner({
   if (!data.length) {
     return (
       <div className="rw-bklit-risk-chart__empty">
-        <strong>{locale === "en-US" ? "No time-series risk data" : "시계열 위험 데이터 없음"}</strong>
-        <span>{locale === "en-US" ? "The chart appears when historical risk points are connected." : "과거 위험 관측이 연결되면 그래프를 표시합니다."}</span>
+        <strong>{emptyTitle ?? (locale === "en-US" ? "No time-series risk data" : "시계열 위험 데이터 없음")}</strong>
+        <span>{emptyDetail ?? (locale === "en-US" ? "No governed predictions exist in the selected range." : "선택 범위에 정본 위험 관측이 없습니다.")}</span>
       </div>
     );
   }

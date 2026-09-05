@@ -83,6 +83,7 @@ function AssistantActivityTrace({
       <footer>
         <span>{english ? `${trace.evidenceCount} evidence · ${trace.claimCount} grounded claims` : `근거 ${trace.evidenceCount}건 · 검증 주장 ${trace.claimCount}건`}</span>
         {trace.route ? <span>{english ? "route" : "경로"} · {trace.route}</span> : null}
+        {trace.persistence ? <span>{trace.persistence === "persisted" ? (english ? "history saved" : "기록 저장됨") : (english ? "history not saved" : "기록 저장 안 됨")}</span> : null}
         <small>{english ? "Shows retrieval and validation activity, not the model's private chain of thought." : "검색·검증 실행 기록만 표시하며 모델 내부 사고 과정은 포함하지 않습니다."}</small>
       </footer>
     </details>
