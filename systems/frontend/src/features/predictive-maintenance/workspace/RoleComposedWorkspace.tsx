@@ -1280,7 +1280,7 @@ function BusinessKpisBlock({
       title={localized(english, "경영 KPI 기준", "Business KPI basis")}
       eyebrow="BUSINESS CONTEXT"
       icon={<BriefcaseBusiness size={15} />}
-      guidance={localized(english, "현재 운영 판단을 경영 지표와 연결하기 위한 회사 기준 KPI 문맥입니다.", "Company KPI context used to connect the current operational decision to business impact.")}
+      guidance={localized(english, "현장의 조기 발견·판단·정비가 회사 KPI와 어떤 가치 기여로 이어지는지 연결하기 위한 기준 문맥입니다.", "Company KPI context used to connect early detection, decisions, and maintenance to measurable business value.")}
       className="span-6"
     >
       {context?.business_metrics.length ? (
@@ -1414,7 +1414,7 @@ function OperationalKpisBlock({
         ? `${formatNumber(value.lostUnits, english)}${english ? " units" : "개"}`
         : "—",
     ],
-    [localized(english, "공헌이익 노출", "Contribution-margin exposure"), compactMoney(value.contributionExposure, english)],
+    [localized(english, "보호 대상 공헌이익 노출", "Contribution margin at risk"), compactMoney(value.contributionExposure, english)],
     [localized(english, "동일 설비 과거 정비", "Prior maintenance on asset"), `${formatNumber(repeatedMaintenance, english)}${english ? " records" : "건"}`],
   ];
   const missingEvidence = [
@@ -1424,14 +1424,14 @@ function OperationalKpisBlock({
       : null,
     maintenanceLeadTime === null ? localized(english, "승인→정비 착수(정비 승인 후 계산)", "Approval → maintenance start (available after approval)") : null,
     value.lostUnits === null ? localized(english, "생산 손실", "Production loss") : null,
-    value.contributionExposure === null ? localized(english, "공헌이익 노출", "Contribution-margin exposure") : null,
+    value.contributionExposure === null ? localized(english, "보호 대상 공헌이익 노출", "Contribution margin at risk") : null,
   ].filter((item): item is string => Boolean(item));
   return (
     <Block
-      title={localized(english, "운영 의사결정 KPI", "Operational decision KPIs")}
+      title={localized(english, "운영 가치 · 의사결정 KPI", "Operational value & decision KPIs")}
       eyebrow="CASE OPERATING KPI"
       icon={<TimerReset size={15} />}
-      guidance={localized(english, "선택 Case의 판단·점검·정비 흐름에서 실제로 계산 가능한 리드타임과 손실 노출만 표시합니다.", "Shows only lead times and loss exposure that can be calculated from the selected case's decision, inspection, and maintenance evidence.")}
+      guidance={localized(english, "선택 Case의 판단·점검·정비가 의사결정 속도, 생산 연속성, 보호 대상 가치에 어떻게 연결되는지 실제 계산 가능한 근거만 표시합니다.", "Shows only evidence-backed links from the selected case to decision speed, production continuity, and value at risk.")}
       className="span-12"
     >
       <div className="rw-operational-kpis">
@@ -1636,10 +1636,10 @@ function ProductionExposureBlock({
   const value = exposure({ detail, companyContext });
   return (
     <Block
-      title={localized(english, "생산 · 재무 영향", "Production & financial impact")}
-      eyebrow="PRODUCTION EXPOSURE"
+      title={localized(english, "생산 · 재무 가치", "Production & financial value")}
+      eyebrow="VALUE AT RISK"
       icon={<CircleDollarSign size={15} />}
-      guidance={localized(english, "현재 Case의 생산 손실 수량과 제품 단가·공헌이익 근거를 연결해 노출 규모를 보여줍니다.", "Connects production-loss units with product price and contribution-margin evidence to show the selected case's exposure.")}
+      guidance={localized(english, "조기 발견과 대응이 어떤 생산 손실·매출·공헌이익 노출을 보호하려는 활동인지 보여줍니다. 노출액은 실제 절감 실적과 구분합니다.", "Shows which production, revenue, and contribution-margin exposure the early response is intended to protect. Exposure is distinct from realized savings.")}
       className="span-6"
     >
       {detail?.operationContext ? (
@@ -1676,14 +1676,24 @@ function ProductionExposureBlock({
               </strong>
             </div>
             <div>
-              <span>{localized(english, "매출 노출액", "Revenue exposure")}</span>
+              <span>{localized(english, "보호 대상 매출 노출", "Revenue at risk")}</span>
               <strong>{compactMoney(value.revenueExposure, english)}</strong>
             </div>
             <div>
-              <span>{localized(english, "공헌이익 노출액", "Contribution-margin exposure")}</span>
+              <span>{localized(english, "보호 대상 공헌이익", "Contribution margin at risk")}</span>
               <strong>{compactMoney(value.contributionExposure, english)}</strong>
             </div>
           </div>
+          {value.lostUnits !== null || value.contributionExposure !== null ? (
+            <p className="rw-value-realization-callout">
+              <strong>VALUE STORY</strong>{" "}
+              {localized(
+                english,
+                `이 Case는 위험을 조기에 포착해${value.lostUnits !== null ? ` 약 ${formatNumber(value.lostUnits, false)}개의 계획 생산 손실` : " 생산 손실"}${value.contributionExposure !== null ? `과 ${compactMoney(value.contributionExposure, false)}의 공헌이익 노출` : ""}을 실제 손실로 확정되기 전에 관리하는 가치 보호 활동입니다. 현재 수치는 보호 대상 노출이며 정비 후 관측·재무 actual 전에는 절감 실적으로 확정하지 않습니다.`,
+                `This case turns early risk detection into value protection by managing${value.lostUnits !== null ? ` about ${formatNumber(value.lostUnits, true)} units of planned production exposure` : " production exposure"}${value.contributionExposure !== null ? ` and ${compactMoney(value.contributionExposure, true)} of contribution margin at risk` : ""} before it becomes realized loss. These figures are value at risk, not booked savings, until post-maintenance observations and financial actuals confirm the outcome.`,
+              )}
+            </p>
+          ) : null}
           {detail.operationContext.eventImpact?.basis.formula ? (
             <details className="rw-technical-details">
               <summary>{localized(english, "산정 근거 상세", "Calculation basis")}</summary>
@@ -2345,10 +2355,10 @@ function MaintenanceEffectBlock({
     : null;
   return (
     <Block
-      title={localized(english, "정비 효과 Before / After", "Maintenance effect Before / After")}
-      eyebrow="MAINTENANCE OUTCOME"
+      title={localized(english, "정비 효과 · 가치 실현", "Maintenance effect & value realization")}
+      eyebrow="VALUE REALIZATION"
       icon={<TrendingDown size={15} />}
-      guidance={localized(english, "정비 완료 시점을 기준으로 전후 위험도·알림·센서 관측을 비교하며, 후속 관측이 없으면 효과를 확정하지 않습니다.", "Compares risk, alerts, and sensor observations before and after maintenance completion. No effect is confirmed until follow-up observations exist.")}
+      guidance={localized(english, "정비 전후 위험·알림·센서 변화를 통해 현장 작업이 생산 연속성 보호라는 운영 가치로 이어졌는지 검증합니다. 재무 절감액은 별도 actual 근거가 있어야 확정합니다.", "Uses before/after risk, alert, and sensor evidence to verify whether field work translated into operational value through protected production continuity. Financial savings require separate actual evidence.")}
       className="span-12"
     >
       {completedAt ? (
@@ -2389,6 +2399,16 @@ function MaintenanceEffectBlock({
               <small>{localized(english, "비정상 관측 수", "Abnormal observations")}</small>
             </article>
           </div>
+          {riskDelta !== null && riskDelta < 0 && afterRisk.length ? (
+            <p className="rw-value-realization-callout is-realizing">
+              <strong>VALUE REALIZATION</strong>{" "}
+              {localized(
+                english,
+                `정비 후 평균 위험도가 ${Math.abs(Math.round(riskDelta * 100))}%p 낮아져 운영 안정화 효과가 관측되고 있습니다${afterAlerts < beforeAlerts ? ` · 비정상 알림도 ${beforeAlerts}건에서 ${afterAlerts}건으로 감소했습니다` : ""}. 이 결과는 생산 연속성 KPI에 긍정적으로 연결될 수 있지만, 실제 비용 절감과 KPI 기여 실적은 후속 운영·재무 actual이 연결된 뒤 확정합니다.`,
+                `Average risk is ${Math.abs(Math.round(riskDelta * 100))} percentage points lower after maintenance, providing observed evidence of operational stabilization${afterAlerts < beforeAlerts ? `; abnormal alerts also declined from ${beforeAlerts} to ${afterAlerts}` : ""}. This can support production-continuity KPIs, while realized savings and KPI contribution remain unconfirmed until operational and financial actuals are linked.`,
+              )}
+            </p>
+          ) : null}
           {sensorEffects.length ? (
             <div className="rw-maintenance-sensor-effect">
               {sensorEffects.map((item) => (

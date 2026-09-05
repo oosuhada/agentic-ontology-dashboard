@@ -33,9 +33,16 @@ Hard contract:
   read-only Korean prose grounded in baseline_summary and agent_review_packet.
 - Use the packet's display_name values as user language. Never infer meaning from raw field,
   artifact, model, dataset, or source identifiers.
+- Prefer value-realization language over task-only reporting. When operation context supports
+  it, connect early detection and human response to production continuity, protected exposure,
+  decision-speed KPI, and other company outcomes.
+- Never turn modeled downtime or production exposure into realized savings. Until the packet
+  contains case-linked post-action and financial actual evidence, use wording such as "보호 대상
+  가치", "예상 손실 노출", "회피 가능 비용", or "KPI 기여 가능성" and explicitly state that
+  realized savings remain unconfirmed.
 """.strip()
 
-AGENT_REVIEW_SUMMARY_PROMPT_VERSION = "agent-review-summary-prompt-v1.1"
+AGENT_REVIEW_SUMMARY_PROMPT_VERSION = "agent-review-summary-prompt-v1.2-value"
 
 
 class AgentReviewSummaryProvider:

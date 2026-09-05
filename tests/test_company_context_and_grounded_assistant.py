@@ -148,6 +148,18 @@ def test_company_rag_can_answer_asset_economics_finance_kpi_and_sop_questions():
     assert any(item["document_type"] == "site_sop" for item in sop_results)
 
 
+def test_company_rag_value_language_retrieves_product_and_kpi_evidence():
+    results = retrieve_company_documents(
+        "이 선제 대응이 어떤 value를 만들고 비용 절감과 KPI 성과에 어떻게 기여하나?",
+        roles=["executive_viewer"],
+        top_k=10,
+    )
+
+    kinds = {item["document_type"] for item in results}
+    assert "product_economics" in kinds
+    assert kinds & {"business_metric", "kpi_actual"}
+
+
 def test_company_context_is_projected_as_ontology_objects_and_links():
     snapshot = ManufacturingOntologyAdapter(_ContextOnlyProjectionSource()).snapshot()
     object_types = {item.object_type for item in snapshot.objects}
@@ -223,3 +235,33 @@ def test_grounded_answer_provider_fails_closed_on_unknown_citation():
     assert answer == "근거가 확인된 범위에서만 답변합니다."
     assert citations == []
     assert trace["mode"] == "deterministic_fallback"
+
+
+def test_grounded_answer_provider_rejects_unproven_realized_savings_claim():
+    provider = GroundedAgentAnswerProvider(_AnswerProvider({
+        "answer": "선제 정비로 비용을 절감했습니다.",
+        "evidence_ids": ["company-context-1"],
+        "caveats": [],
+    }))
+
+    answer, citations, _caveats, trace = provider.generate(
+        question="비용 절감 효과는?",
+        audience="executive",
+        packet={
+            "asset_id": "CNC-S04-L02-03",
+            "operation_context_summary": {"estimated_lost_units": 20},
+        },
+        evidence=[{
+            "evidence_id": "company-context-1",
+            "title": "HX-M",
+            "content": "unit contribution margin 132000 KRW",
+            "metadata": {"document_type": "product_economics"},
+        }],
+        baseline_answer="현재 값은 보호 대상 노출이며 실제 절감 실적은 아직 확정되지 않았습니다.",
+        summary=None,
+    )
+
+    assert answer == "현재 값은 보호 대상 노출이며 실제 절감 실적은 아직 확정되지 않았습니다."
+    assert citations == []
+    assert trace["mode"] == "deterministic_fallback"
+    assert trace["reason"] == "ValueError"

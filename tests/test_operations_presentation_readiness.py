@@ -210,7 +210,50 @@ def test_executive_agent_answer_adds_business_impact_context():
     assert "생산 영향 medium" in answer
     assert "예상 정지 120분" in answer
     assert "계획 영향 약 25개" in answer
+    assert "생산 연속성과 손실 노출을 선제적으로 보호" in answer
+    assert "실제 비용 절감 실적으로 확정하지 않습니다" in answer
     assert "SOP 점검 근거" in answer
+
+
+def test_agent_answer_frames_modeled_exposure_as_value_not_realized_savings():
+    packet = {
+        "asset_id": "CNC-S01-L04-03",
+        "asset_label": "CNC-S01-L04-03",
+        "risk_summary": {"status_grade": "warning", "failure_probability": 0.7},
+        "review_priority": {"reasons": ["warning"]},
+        "operation_context_summary": {
+            "production_impact": "high",
+            "estimated_downtime_minutes": 120,
+            "estimated_lost_units": 25,
+            "product_variant": "HX-M",
+        },
+    }
+    evidence = [
+        {
+            "content": "Decision Lead Time target 90 min",
+            "title": "Decision Lead Time",
+            "metadata": {"document_type": "business_metric"},
+        },
+        {
+            "content": "HX-M unit contribution margin 132000 KRW",
+            "title": "HX-M",
+            "metadata": {"document_type": "product_economics"},
+        },
+    ]
+
+    answer = _answer_from_packet(
+        "이 조치의 비용 절감과 KPI 가치는?",
+        packet,
+        evidence,
+        None,
+        "executive",
+    )
+
+    assert "가치 관점" in answer
+    assert "계획 손실 노출 약 25개" in answer
+    assert "KPI 연결 근거는 Decision Lead Time" in answer
+    assert "재무·제품 경제성 근거로 HX-M" in answer
+    assert "실제 비용 절감 실적으로 확정하지 않습니다" in answer
 
 
 def test_agent_query_contract_accepts_role_audience():

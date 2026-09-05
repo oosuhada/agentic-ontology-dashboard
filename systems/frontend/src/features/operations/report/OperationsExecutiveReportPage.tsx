@@ -279,15 +279,15 @@ export function OperationsExecutiveReportPage({
   const storedAgentSummary = reportAgentSummary;
   const visibleSections = report.sections.filter((section) => !/release|출처|provenance/i.test(section.title));
   const factorSummary = reportDetail.topFactors.slice(0, 3).map((factor) => fieldFactorItem(factor)).join(", ");
-  const automaticSummary = reportEvent.status === "data_quality_hold"
-    ? "현재 데이터 품질 확인이 먼저 필요합니다. 원천 관측값을 확인한 뒤 설비 위험과 운영 영향을 다시 판단해야 합니다."
-    : `${formatProbability(reportEvent.failureProbability)}의 예측 위험이 관측되었습니다.${factorSummary ? ` 주요 확인 항목은 ${factorSummary}입니다.` : ""} ${DECISION_LABEL[reportEvent.recommendedDecision]}이 현재 권고 조치이며, 최종 판단은 담당자가 연결 근거를 확인한 뒤 확정합니다.`;
   const userFacingGaps = [...new Set(reportDetail.evidenceGaps.map((gap) => evidenceGapMessage(gap.field)).filter((item): item is string => Boolean(item)))];
   const eventImpact = reportDetail.operationContext?.eventImpact ?? null;
   const plannedUnits = reportDetail.operationContext?.productionPlan?.plannedUnits ?? null;
   const estimatedLostUnits = eventImpact?.estimatedLostUnits ?? null;
   const estimatedDowntime = eventImpact?.basis.estimatedDowntimeMinutes ?? reportEvent.estimatedDowntimeMinutes;
   const productionContextUsesCapacityModel = reportDetail.operationContext?.sourceType === "capacity_model";
+  const automaticSummary = reportEvent.status === "data_quality_hold"
+    ? "현재는 원천 데이터 품질 확인이 먼저 필요합니다. 신뢰 가능한 관측이 확보되기 전에는 위험·생산 영향·비용 절감·KPI 기여를 확정하지 않습니다."
+    : `${formatProbability(reportEvent.failureProbability)}의 예측 위험을 조기에 포착했습니다.${factorSummary ? ` 주요 확인 항목은 ${factorSummary}입니다.` : ""} 이 Case의 가치는 위험 알림 자체가 아니라 ${formatMinutes(estimatedDowntime)}의 예상 정지 노출${estimatedLostUnits !== null ? `과 약 ${estimatedLostUnits.toLocaleString()}개의 계획 생산 손실 노출` : ""}을 실제 손실로 확정되기 전에 관리해 생산 연속성을 보호하는 데 있습니다. ${DECISION_LABEL[reportEvent.recommendedDecision]}이 현재 권고 조치이며, 절감 실적과 KPI 기여는 정비 후 관측·운영 actual·재무 actual을 연결한 뒤 확정합니다.`;
   const asOf = snapshot?.asOf ?? report.asOf ?? reportEvent.observedAt ?? report.generatedAt;
   const generatedAt = snapshot?.generatedAt ?? report.generatedAt;
   const snapshotId = snapshot?.snapshotId ?? report.snapshotId ?? `event:${reportEvent.eventId}`;
@@ -314,7 +314,7 @@ export function OperationsExecutiveReportPage({
       <article className="operations-report-document">
         <header className="operations-report-cover">
           <div className="operations-report-cover-brand"><span>RELIABILITY OPERATIONS</span><strong>Executive Brief</strong></div>
-          <div className="operations-report-cover-title"><span>운영 리스크 · 생산 영향 · 의사결정</span><h1>{storedAgentSummary?.title ?? `${displayEventAssetName(reportEvent)} · 운영 판단 브리핑`}</h1><p>{storedAgentSummary?.summary ?? automaticSummary}</p></div>
+          <div className="operations-report-cover-title"><span>위험 조기 감지 · 가치 보호 · KPI 기여</span><h1>{storedAgentSummary?.title ?? `${displayEventAssetName(reportEvent)} · 가치 실현 브리핑`}</h1><p>{storedAgentSummary?.summary ?? automaticSummary}</p></div>
           <dl className="operations-report-document-meta">
             <div><dt>Snapshot ID</dt><dd title={snapshotId}>{shortRef(snapshotId)}</dd></div>
             <div><dt>Artifact ID</dt><dd title={artifactId}>{shortRef(artifactId)}</dd></div>
@@ -326,13 +326,13 @@ export function OperationsExecutiveReportPage({
         </header>
 
         <section className="operations-report-executive-summary">
-          <div><span>경영 판단 요약</span><h2>{selectedDecisionHeadline(reportEvent)}</h2><p>{reportEvent.status === "data_quality_hold" ? "원천 데이터 확인 전에는 고장 위험과 생산 영향을 확정하지 않습니다." : `현재 예측 위험은 ${formatProbability(reportEvent.failureProbability)}입니다. 예상 정지 영향은 ${formatMinutes(estimatedDowntime)}${estimatedLostUnits !== null ? `, 계획 영향은 약 ${estimatedLostUnits.toLocaleString()}개` : ""}${plannedUnits !== null ? ` (일일 계획 ${plannedUnits.toLocaleString()}개 기준)` : ""}입니다.`}</p>{productionContextUsesCapacityModel ? <small>생산 영향은 현재 capacity model 기반 추정치이며 결산 시 실제 실적과 재검증합니다.</small> : null}</div>
+          <div><span>가치 기반 경영 판단</span><h2>{selectedDecisionHeadline(reportEvent)}</h2><p>{reportEvent.status === "data_quality_hold" ? "원천 데이터 확인 전에는 고장 위험·보호 대상 가치·KPI 기여를 확정하지 않습니다." : `현재 예측 위험 ${formatProbability(reportEvent.failureProbability)}를 조기에 포착해 ${formatMinutes(estimatedDowntime)}의 정지 노출${estimatedLostUnits !== null ? `과 약 ${estimatedLostUnits.toLocaleString()}개의 계획 손실 노출` : ""}${plannedUnits !== null ? ` (일일 계획 ${plannedUnits.toLocaleString()}개 기준)` : ""}을 선제적으로 관리하는 Case입니다. 현장 조치의 목적은 단순 수리가 아니라 생산 연속성과 회사 성과를 보호하는 것입니다.`}</p>{productionContextUsesCapacityModel ? <small>현재 수치는 capacity model 기반 보호 대상 노출입니다. 실제 비용 절감과 KPI 기여 실적은 정비 후 관측 및 결산 actual과 재검증합니다.</small> : null}</div>
           <aside><OperationsStatusBadge status={reportEvent.status} /><strong>{DECISION_LABEL[reportEvent.recommendedDecision]}</strong><small>최근 사람 결정: {latestDecision?.decision ? DECISION_LABEL[latestDecision.decision] : "아직 기록 없음"}</small><small>판단 기록은 Operations에서 관리</small></aside>
         </section>
 
         <section className="operations-report-agent-summary">
-          <header><Bot size={17} /><span>{storedAgentSummary?.mode === "llm" ? "AI 경영 요약" : "자동 경영 요약"}</span><strong>{storedAgentSummary?.mode === "llm" ? "snapshot 근거 연결" : reportAgentSummaryStatusLabel(agentSummary)}</strong></header>
-          {agentSummaryLoading && !storedAgentSummary ? <p>현재 snapshot의 기술·운영 근거를 경영진용 문장으로 정리하고 있습니다.</p> : null}
+          <header><Bot size={17} /><span>{storedAgentSummary?.mode === "llm" ? "AI 가치 요약" : "자동 가치 요약"}</span><strong>{storedAgentSummary?.mode === "llm" ? "snapshot 근거 연결" : reportAgentSummaryStatusLabel(agentSummary)}</strong></header>
+          {agentSummaryLoading && !storedAgentSummary ? <p>현재 snapshot의 기술·운영 근거를 생산·재무 가치와 KPI 기여 관점의 경영 문장으로 정리하고 있습니다.</p> : null}
           {!agentSummaryLoading && agentSummaryError ? <p>자동 요약을 불러오지 못해 현재 운영 데이터 기준 요약을 표시합니다.</p> : null}
           {!agentSummaryLoading && storedAgentSummary ? (
             <>

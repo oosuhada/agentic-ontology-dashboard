@@ -62,17 +62,17 @@ export const RELIABILITY_ROLE_EXPERIENCES: Record<ReliabilityExperienceKind, Rel
     defaultView: "reports",
     primarySurface: "executive_brief",
     primaryQuestion: copy(
-      "현재 전체 운영 위험과 생산 영향은 무엇인가?",
-      "What are the current operational risks and production impacts?",
+      "현재 어떤 운영 가치를 보호하고 있고 KPI에 어떤 영향을 주는가?",
+      "What operational value are we protecting and how does it affect KPIs?",
     ),
     focusIntent: "continuity",
     firstScreenIntent: copy(
-      "전체 위험, 생산 연속성, 중요한 미결 판단을 먼저 요약합니다.",
-      "Lead with portfolio risk, production continuity, and important open decisions.",
+      "전체 위험을 생산 연속성·보호 대상 가치·KPI 기여와 연결해 먼저 요약합니다.",
+      "Lead by connecting portfolio risk to production continuity, value at risk, and KPI contribution.",
     ),
     operationalFocusHint: copy(
-      "설비별 원시 지표보다 전체 위험과 생산 영향, 미결 판단을 우선하고 필요할 때만 상세 근거로 내려갑니다.",
-      "Prioritize portfolio risk, production impact, and open decisions before drilling into asset-level evidence.",
+      "설비별 원시 지표보다 어떤 손실을 선제적으로 피하고 어떤 회사 KPI를 보호하려는지 우선하고 필요할 때만 상세 근거로 내려갑니다.",
+      "Prioritize which losses are being proactively avoided and which company KPIs are being protected before drilling into asset-level evidence.",
     ),
     navigation: [
       {
@@ -84,8 +84,8 @@ export const RELIABILITY_ROLE_EXPERIENCES: Record<ReliabilityExperienceKind, Rel
           "BRIEFING",
           "생산 안정성과 의사결정",
           "Production continuity and decisions",
-          "설비 수치보다 전체 운영 영향과 경영진이 판단해야 할 요청을 우선합니다.",
-          "Prioritize business impact and executive decision requests over raw equipment metrics.",
+          "설비 수치보다 생산 연속성, 보호 대상 가치, KPI 기여와 경영진 판단 요청을 우선합니다.",
+          "Prioritize continuity, value at risk, KPI contribution, and executive decision requests over raw equipment metrics.",
         ),
       },
       {
@@ -110,8 +110,8 @@ export const RELIABILITY_ROLE_EXPERIENCES: Record<ReliabilityExperienceKind, Rel
           "REPORTS",
           "경영 상황 보고",
           "Executive situation report",
-          "핵심 결론과 생산 영향을 먼저 보고 필요한 근거만 확인합니다.",
-          "Start with conclusions and production impact, then drill into evidence only when needed.",
+          "핵심 결론을 비용·생산 가치와 KPI 기여 언어로 먼저 보고 필요한 근거만 확인합니다.",
+          "Start with conclusions in production, financial-value, and KPI language, then drill into evidence only when needed.",
         ),
       },
       {
@@ -135,13 +135,13 @@ export const RELIABILITY_ROLE_EXPERIENCES: Record<ReliabilityExperienceKind, Rel
     defaultView: "operations",
     primarySurface: "decision_workspace",
     primaryQuestion: copy(
-      "지금 내가 판단하거나 승인해야 하는 건 무엇인가?",
-      "What do I need to decide or approve now?",
+      "지금 어떤 판단이 가장 큰 생산·비용 가치를 보호하는가?",
+      "Which decision protects the most production and cost value right now?",
     ),
     focusIntent: "decision",
     firstScreenIntent: copy(
-      "생산 영향, 대기 중인 판단, 업무 단계와 다음 행동을 연결합니다.",
-      "Connect production impact, pending decisions, workflow stage, and the next action.",
+      "생산·비용 노출, 대기 중인 판단, 업무 단계와 다음 행동을 가치 보호 관점으로 연결합니다.",
+      "Connect production and cost exposure, pending decisions, workflow stage, and the next action through a value-protection lens.",
     ),
     operationalFocusHint: copy(
       "생산 영향이 큰 항목부터 대기 중인 판단, 점검·정비 진행 상태와 다음 행동을 함께 보여줍니다.",

@@ -476,10 +476,23 @@ test("keeps grounded report surfaces light and derives assistant copy from live 
   ).toBeVisible();
   await expect(
     assistant.getByRole("button", {
-      name: "생산 영향은 어느 정도인가요?",
+      name: "이 조치로 어떤 생산·비용 가치를 보호할 수 있나요?",
       exact: true,
     }),
   ).toBeVisible();
+  await assistant
+    .getByRole("button", {
+      name: "이 조치로 어떤 생산·비용 가치를 보호할 수 있나요?",
+      exact: true,
+    })
+    .click();
+  const valueAnswer = assistant.locator(
+    ".rw-context-assistant__message.is-assistant:not(.is-loading)",
+  ).last();
+  await expect(valueAnswer).toBeVisible({ timeout: 15_000 });
+  await expect(valueAnswer).toContainText(/보호|생산 연속성/);
+  await expect(valueAnswer).toContainText(/실제.*절감|절감.*확정|보호 대상/);
+  await expect(valueAnswer).not.toContainText("비용을 절감했습니다");
   await expect(
     assistant.getByRole("button", {
       name: "경영진 보고 초안을 만들어줘",
@@ -698,7 +711,7 @@ test("connects search, settings dismissal, locale, theme, presets, and assistant
   const assistant = page.getByRole("dialog", { name: "Reliability Assistant" });
   await expect(assistant).toBeVisible();
   await assistant
-    .getByRole("button", { name: "생산 영향은 어느 정도인가요?", exact: true })
+    .getByRole("button", { name: "이 조치로 어떤 생산·비용 가치를 보호할 수 있나요?", exact: true })
     .click();
   await expect(
     assistant.locator(".rw-context-assistant__message.is-user"),
@@ -1024,7 +1037,7 @@ test("separates executive primary decisions from evidence and detail", async ({
   );
   for (const heading of [
     "전체 운영 리스크",
-    "생산 · 재무 영향",
+    "생산 · 재무 가치",
     "의사결정 병목",
     "보고 준비 상태",
   ]) {

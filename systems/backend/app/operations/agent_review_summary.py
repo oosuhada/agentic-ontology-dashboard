@@ -68,6 +68,12 @@ FORBIDDEN_PROSE_CLAIMS = (
     "납기 보장",
     "현재 교대 내 교체 가능",
     "실제 생산 실적 기준",
+    "비용을 절감했다",
+    "비용을 절감했습니다",
+    "비용이 절감되었습니다",
+    "비용이 절감됐습니다",
+    "가치를 창출했다",
+    "가치를 창출했습니다",
     "repair success",
     "execute approval",
     "auto approval",
@@ -229,18 +235,31 @@ def _summary_text(
             f"{_asset_label(packet)}는 데이터 품질 보류 상태라 위험 등급과 "
             "예측 위험도를 확정하지 않습니다."
         )
+    operation_context = packet.get("operation_context_summary") or {}
+    downtime = operation_context.get("estimated_downtime_minutes")
+    lost_units = operation_context.get("estimated_lost_units")
+    value_parts = []
+    if isinstance(downtime, (int, float)) and not isinstance(downtime, bool) and downtime > 0:
+        value_parts.append(f"예상 정지 노출 {int(downtime)}분")
+    if isinstance(lost_units, (int, float)) and not isinstance(lost_units, bool) and lost_units > 0:
+        value_parts.append(f"계획 생산 손실 노출 약 {int(lost_units):,}개")
+    value_clause = (
+        f" 이 Case의 운영 가치는 {' · '.join(value_parts)}을 실제 손실로 확정되기 전에 선제적으로 관리해 생산 연속성을 보호하는 데 있습니다. 현재 수치는 보호 대상 노출이며 실제 비용 절감 실적은 아닙니다."
+        if value_parts
+        else ""
+    )
 
     if targets:
         labels = ", ".join(
             str(target.get("component_label") or target.get("component_id") or "의심 부품")
             for target in targets[:3]
         )
-        return f"{base} {labels} 중심으로 이력, 현장 위치, 관측 근거를 함께 확인해야 합니다."
+        return f"{base} {labels} 중심으로 이력, 현장 위치, 관측 근거를 함께 확인해야 합니다.{value_clause}"
 
     if packet.get("evidence_gaps"):
-        return f"{base} 근거 공백이 있어 확정 판단보다 데이터 보강과 이력 조회가 우선입니다."
+        return f"{base} 근거 공백이 있어 확정 판단보다 데이터 보강과 이력 조회가 우선입니다.{value_clause}"
 
-    return str(draft.get("summary") or base)
+    return f"{str(draft.get('summary') or base)}{value_clause}"
 
 
 def _role_summaries(
@@ -273,13 +292,15 @@ def _role_summaries(
         "field_operator": (
             f"{asset_label}은 {status} 알림이며 {component_text}{_object_particle(component_text)} "
             f"{location_text}에서 먼저 확인할 대상으로 잡습니다. "
-            f"근거 지표는 {factor_text}이고, {work_request_text} {part_text}"
+            f"근거 지표는 {factor_text}이고, {work_request_text} {part_text} "
+            f"이 조기 확인은 단순 점검을 넘어 {downtime_text}의 정지 노출이 실제 생산 손실로 이어지기 전에 생산 연속성을 보호하는 현장 기여입니다."
         ),
         "process_manager": (
             f"{asset_label} 위험 감지 건은 현재 생산 영향이 {production_impact}이며, "
-            f"{downtime_text} 기준 {lost_units_text} 손실 가능성이 있습니다. "
+            f"{downtime_text} 기준 {lost_units_text}의 계획 손실 노출을 실제 손실로 확정되기 전에 관리하는 가치 보호 Case입니다. "
             f"모델 근거는 {factor_text}이고 {work_request_text} "
-            f"{similar_event_text} 점검 승인 여부와 셀 작업 순서 조정을 함께 봐야 합니다."
+            f"{similar_event_text} 점검 승인 여부와 셀 작업 순서 조정을 함께 봐야 합니다. "
+            f"현재 수치는 보호 대상 노출이며 비용 절감·KPI 기여 실적은 후속 actual로 확인합니다."
         ),
     }
     return [

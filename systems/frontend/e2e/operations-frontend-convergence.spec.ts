@@ -134,7 +134,7 @@ test("role-aware entry keeps manager, engineer, and executive experiences distin
   await managerNav.nth(3).click();
   await expect(page).toHaveURL(/\/operations\/production-impact/);
   await expect(page).toHaveURL(/view=objects/);
-  await expect(page.getByText("생산 · 재무 영향", { exact: true })).toBeVisible();
+  await expect(page.getByText("생산 · 재무 가치", { exact: true })).toBeVisible();
 
   await switchAccount();
   await signIn(...ACCOUNTS.executive);

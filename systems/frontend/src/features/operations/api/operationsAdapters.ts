@@ -967,15 +967,15 @@ export function buildTemplateReport(
     asOf: event.observedAt,
     revision: 0,
     mode: "template-fallback",
-    headline: `${event.assetName} 설비 위험 대응 보고`,
-    summary: `${event.line}의 ${event.assetName}을 우선 검토 중입니다. 권장 판단은 ${event.recommendedDecision}이며 예상 생산 영향은 ${impact}입니다.`,
+    headline: `${event.assetName} 생산 가치 보호 보고`,
+    summary: `${event.line}의 ${event.assetName} 위험을 조기에 포착해 예상 정지 노출 ${impact}을 실제 생산 손실로 확정되기 전에 관리하는 Case입니다. 권장 판단은 ${event.recommendedDecision}이며, 현재 영향은 보호 대상 노출이지 확정된 비용 절감 실적이 아닙니다.`,
     sections: [
       {
         id: "executive-summary",
-        title: "임원 의사결정 요약",
+        title: "가치 기반 의사결정 요약",
         body: metrics
-          ? `현재 ${metrics.totalAssets}개 설비 중 위험 ${metrics.critical}개, 경고 ${metrics.warning}개가 확인됐습니다. ${event.assetName}을 우선 대응 대상으로 관리합니다.`
-          : `${event.assetName}을 우선 대응 대상으로 관리합니다.`,
+          ? `현재 ${metrics.totalAssets}개 설비 중 위험 ${metrics.critical}개, 경고 ${metrics.warning}개가 확인됐습니다. ${event.assetName}은 조기 대응을 통해 생산 연속성과 손실 노출을 보호해야 할 우선 Case입니다.`
+          : `${event.assetName}은 조기 대응을 통해 생산 연속성과 손실 노출을 보호해야 할 우선 Case입니다.`,
         evidenceFieldIds: [
           "status",
           "failure_probability",
@@ -984,8 +984,8 @@ export function buildTemplateReport(
       },
       {
         id: "risk-and-impact",
-        title: "위험과 생산 영향",
-        body: qualityText,
+        title: "위험 · 보호 대상 가치",
+        body: `${qualityText} 현재 생산 영향 ${impact}은 선제 대응이 보호하려는 운영 가치의 기준이며 실제 절감액은 후속 actual로 확정합니다.`,
         evidenceFieldIds: [
           "failure_probability",
           "confidence",
@@ -1006,6 +1006,7 @@ export function buildTemplateReport(
     limitations: [
       "모델 확률은 실제 고장 발생을 확정하지 않습니다.",
       "미탐·오탐 비용 가정에 따라 운영 임계값은 달라질 수 있습니다.",
+      "예상 정지·생산 노출은 보호 대상 가치이며 실제 비용 절감·KPI 기여 실적은 후속 운영 및 재무 actual로 확정합니다.",
     ],
     generatedAt: new Date().toISOString(),
     promptVersion: "operations-template-v1",

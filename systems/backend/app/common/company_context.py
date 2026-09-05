@@ -310,7 +310,10 @@ def retrieve_company_documents(
         overlap = len(query_tokens & _tokens(text))
         metadata_score = 8 if asset_id and asset_id in related_assets else 0
         query_lower = query.lower()
-        broad_business_score = 2 if any(token in query_lower for token in ("매출", "비용", "원가", "자재", "재고", "회의", "의사결정", "정비", "조직", "kpi", "revenue", "cost", "material", "meeting")) else 0
+        broad_business_score = 2 if any(token in query_lower for token in (
+            "매출", "비용", "원가", "절감", "가치", "성과", "자재", "재고", "회의", "의사결정", "정비", "조직", "kpi",
+            "revenue", "cost", "saving", "savings", "value", "roi", "performance", "material", "meeting",
+        )) else 0
         kind = str(document.get("document_type") or "")
         intent_score = 0
         intent_groups = {
@@ -318,7 +321,9 @@ def retrieve_company_documents(
             "asset_master": ("장비 가격", "설비 가격", "취득", "교체비", "장부가", "asset", "replacement"),
             "financial_actual": ("재무", "손익", "매출", "영업이익", "opex", "capex", "finance", "p&l"),
             "financial_statement": ("재무", "손익", "매출", "영업이익", "opex", "capex", "finance", "p&l"),
-            "kpi_actual": ("kpi", "oee", "mtbf", "mttr", "가동률", "downtime", "lead time"),
+            "product_economics": ("비용", "원가", "마진", "공헌이익", "가치", "절감", "roi", "cost", "margin", "value", "saving"),
+            "business_metric": ("kpi", "성과", "목표", "lead time", "매출", "revenue", "performance", "target", "value"),
+            "kpi_actual": ("kpi", "oee", "mtbf", "mttr", "가동률", "downtime", "lead time", "성과", "value", "performance"),
             "meeting_minutes": ("회의", "회의록", "meeting", "review"),
             "decision_record": ("의사결정", "결정", "승인", "decision"),
             "material_master": ("자재", "부품", "재고", "조달", "lead time", "inventory", "part"),
