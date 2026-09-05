@@ -94,6 +94,48 @@ export interface PredictiveMaintenanceDatasetVersions {
   rollback_supported: boolean;
 }
 
+export type PredictiveMaintenanceRiskWindow = "1h" | "6h" | "24h" | "7d" | "30d";
+export type PredictiveMaintenanceRiskSourceMode = "live" | "workspace";
+
+export interface PredictiveMaintenanceRiskIndexPoint {
+  observed_at: string;
+  value: number;
+  mean_risk: number;
+  max_risk: number;
+  sample_count: number;
+  asset_count: number;
+  critical_count: number;
+  status: "critical" | "warning" | "attention" | "normal";
+}
+
+export interface PredictiveMaintenanceRiskIndexResponse {
+  project_id: string;
+  workspace_id: string;
+  asset_id: string | null;
+  scope: "plant" | "asset";
+  aggregation: "plant_failure_probability_p95" | "asset_bucket_mean";
+  window: PredictiveMaintenanceRiskWindow;
+  bucket_interval: string;
+  source_mode: PredictiveMaintenanceRiskSourceMode;
+  dataset_id: string;
+  dataset_version_id: string;
+  dataset_name: string;
+  source_version: string;
+  is_live_dataset: boolean;
+  live_dataset_version_id: string;
+  workspace_dataset_version_id: string | null;
+  workspace_selection_mode: "automatic" | "explicit";
+  workspace_selection_reason: string;
+  workspace_is_pinned: boolean;
+  latest_observed_at: string;
+  data_age_seconds: number;
+  threshold: number;
+  threshold_kind: "operational_critical_boundary";
+  points: PredictiveMaintenanceRiskIndexPoint[];
+  point_count: number;
+  empty_reason: string | null;
+}
+
 export interface PredictiveMaintenanceDashboardDataSource {
   dataset_id: string;
   dataset_name: string;

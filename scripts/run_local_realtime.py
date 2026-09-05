@@ -242,10 +242,37 @@ def _select_live_dataset_for_project_users(
                 connection.execute("SELECT set_config(%s, %s, true)", (key, value))
             row = connection.execute(
                 """
-                SELECT id FROM dataset_versions
-                WHERE organization_id=%s AND project_id=%s AND workspace_id=%s
-                  AND source_version='gen-data-wall-clock-live-v2'
-                ORDER BY created_at DESC LIMIT 1
+                SELECT v.id
+                FROM dataset_versions v
+                WHERE v.organization_id=%s AND v.project_id=%s AND v.workspace_id=%s
+                  AND v.source_version='gen-data-wall-clock-live-v2'
+                  AND v.status='published'
+                  AND EXISTS (
+                    SELECT 1 FROM pm_result_artifacts r
+                    WHERE r.organization_id=v.organization_id
+                      AND r.project_id=v.project_id
+                      AND r.workspace_id=v.workspace_id
+                      AND r.dataset_version_id=v.id
+                      AND r.model_version<>'presentation-live-v1'
+                  )
+                  AND (
+                    SELECT MAX(r.observed_at) FROM pm_result_artifacts r
+                    WHERE r.organization_id=v.organization_id
+                      AND r.project_id=v.project_id
+                      AND r.workspace_id=v.workspace_id
+                      AND r.dataset_version_id=v.id
+                      AND r.model_version<>'presentation-live-v1'
+                  ) <= now() + interval '5 minutes'
+                ORDER BY (
+                    SELECT MAX(r.observed_at) FROM pm_result_artifacts r
+                    WHERE r.organization_id=v.organization_id
+                      AND r.project_id=v.project_id
+                      AND r.workspace_id=v.workspace_id
+                      AND r.dataset_version_id=v.id
+                      AND r.model_version<>'presentation-live-v1'
+                ) DESC NULLS LAST,
+                v.created_at DESC
+                LIMIT 1
                 """,
                 (
                     "org-ontology-demo",

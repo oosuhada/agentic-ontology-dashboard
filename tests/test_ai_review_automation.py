@@ -120,9 +120,10 @@ DIFF
             repository_root / ".github/workflows/pr-comment-review.yml"
         ).read_text(encoding="utf-8")
 
-        review_section = architecture.split("\n  review:\n", 1)[1]
-        self.assertIn("${{ !cancelled() &&", review_section)
-        self.assertNotIn("${{ always() &&", review_section.split("\n    uses:", 1)[0])
+        self.assertIn("group: architecture-${{ github.ref }}", architecture)
+        self.assertIn("cancel-in-progress: true", architecture)
+        self.assertIn("name: Publish release marker", architecture)
+        self.assertNotIn("\n  review:\n", architecture)
 
         self.assertIn("name: Claim latest-head review slot", full_review)
         self.assertIn("stale review discarded before model spend", full_review)

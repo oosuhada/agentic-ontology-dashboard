@@ -55,6 +55,7 @@ export interface AgentState {
   status: AgentStatus;
   object_type: string | null;
   object_id: string | null;
+  event_id?: string | null;
   evidence: AgentEvidenceItem[];
   claims: GroundedClaim[];
   steps: OrchestrationStep[];
@@ -62,6 +63,8 @@ export interface AgentState {
   caveats: string[];
   error: string | null;
   checkpoint_sequence: number;
+  duration_ms?: number | null;
+  activity_persistence?: "persisted" | "unavailable";
 }
 
 export interface AgentRunSummary {
@@ -71,6 +74,9 @@ export interface AgentRunSummary {
   question: string;
   route: AgentRoute;
   status: AgentStatus;
+  object_type?: string | null;
+  object_id?: string | null;
+  event_id?: string | null;
   evidence_count: number;
   claim_count: number;
   checkpoint_sequence: number;

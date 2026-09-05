@@ -38,6 +38,28 @@ export interface ReliabilityAssistantMessage {
   role: "user" | "assistant";
   text: string;
   contextHint?: string | null;
+  activityTrace?: ReliabilityAssistantActivityTrace | null;
+}
+
+export interface ReliabilityAssistantActivityStep {
+  id: string;
+  label: string;
+  detail?: string | null;
+  store?: string | null;
+  status: "succeeded" | "failed" | "skipped" | "fallback";
+  latencyMs?: number | null;
+}
+
+export interface ReliabilityAssistantActivityTrace {
+  runId?: string | null;
+  route?: string | null;
+  status: "succeeded" | "failed" | "fallback";
+  persistence?: "persisted" | "unavailable" | null;
+  evidenceCount: number;
+  claimCount: number;
+  checkpointSequence?: number | null;
+  durationMs?: number | null;
+  steps: ReliabilityAssistantActivityStep[];
 }
 
 export interface ReliabilityAssistantPrompt {

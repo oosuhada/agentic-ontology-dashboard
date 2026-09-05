@@ -13,7 +13,11 @@ def test_demo_dataset_bootstrap_is_versioned_and_idempotent(tmp_path: Path) -> N
 
     assert len(first) == 2
     assert second == first
-    assert sum(item["records"] for item in first) == 15
+    records_by_dataset = {item["dataset_id"]: int(item["records"]) for item in first}
+    assert records_by_dataset == {
+        "ds-manufacturing-equipment": 8,
+        "ds-manufacturing-risk-events": 8,
+    }
     assert len(list(artifact_root.glob("*.jsonl"))) == 2
 
     repository = DatasetRepository(database)
@@ -25,7 +29,10 @@ def test_demo_dataset_bootstrap_is_versioned_and_idempotent(tmp_path: Path) -> N
         "ds-manufacturing-equipment",
         "ds-manufacturing-risk-events",
     }
-    assert sum(int(item["record_count"]) for item in datasets) == 15
+    assert {item["id"]: int(item["record_count"]) for item in datasets} == {
+        "ds-manufacturing-equipment": 8,
+        "ds-manufacturing-risk-events": 8,
+    }
     assert all(item["projection_health"]["relational"] == "ready" for item in datasets)
     assert all(item["source_type"] == "local_fixture" for item in datasets)
 

@@ -1,4 +1,4 @@
-import { ChevronRight, PanelRightClose, Send, Sparkles } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, CircleAlert, Clock3, Database, PanelRightClose, Send, Sparkles } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   hasReliabilityAssistantSelection,
@@ -6,6 +6,7 @@ import {
   reliabilityAssistantPrompts,
   reliabilityAssistantRiskLabel,
   type ReliabilityAssistantContext,
+  type ReliabilityAssistantActivityTrace,
   type ReliabilityAssistantLocale,
   type ReliabilityAssistantMessage,
   type ReliabilityAssistantPrompt,
@@ -31,6 +32,64 @@ export interface ContextAssistantDrawerProps {
   }>;
 }
 
+function activityStatusLabel(
+  status: ReliabilityAssistantActivityTrace["status"],
+  english: boolean,
+) {
+  if (status === "succeeded") return english ? "Completed" : "완료";
+  if (status === "fallback") return english ? "Fallback" : "fallback";
+  return english ? "Incomplete" : "미완료";
+}
+
+function AssistantActivityTrace({
+  trace,
+  english,
+  open,
+}: {
+  trace: ReliabilityAssistantActivityTrace;
+  english: boolean;
+  open: boolean;
+}) {
+  return (
+    <details className={`rw-assistant-trace is-${trace.status}`} open={open}>
+      <summary>
+        <span>
+          <Sparkles size={11} aria-hidden="true" />
+          {english ? "Execution activity" : "작업 기록"}
+        </span>
+        <div>
+          <small>{activityStatusLabel(trace.status, english)}</small>
+          {trace.durationMs ? <small>{trace.durationMs.toLocaleString()}ms</small> : null}
+          <ChevronDown size={12} aria-hidden="true" />
+        </div>
+      </summary>
+      <ol>
+        {trace.steps.map((step) => (
+          <li key={step.id} className={`is-${step.status}`}>
+            <i aria-hidden="true">
+              {step.status === "succeeded" ? <Check size={10} /> : step.status === "fallback" ? <Database size={10} /> : <CircleAlert size={10} />}
+            </i>
+            <div>
+              <strong>{step.label}</strong>
+              {step.detail ? <p>{step.detail}</p> : null}
+              <small>
+                {step.store ? <span>{step.store}</span> : null}
+                {typeof step.latencyMs === "number" ? <span><Clock3 size={9} />{step.latencyMs.toLocaleString()}ms</span> : null}
+              </small>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <footer>
+        <span>{english ? `${trace.evidenceCount} evidence · ${trace.claimCount} grounded claims` : `근거 ${trace.evidenceCount}건 · 검증 주장 ${trace.claimCount}건`}</span>
+        {trace.route ? <span>{english ? "route" : "경로"} · {trace.route}</span> : null}
+        {trace.persistence ? <span>{trace.persistence === "persisted" ? (english ? "history saved" : "기록 저장됨") : (english ? "history not saved" : "기록 저장 안 됨")}</span> : null}
+        <small>{english ? "Shows retrieval and validation activity, not the model's private chain of thought." : "검색·검증 실행 기록만 표시하며 모델 내부 사고 과정은 포함하지 않습니다."}</small>
+      </footer>
+    </details>
+  );
+}
+
 export function ContextAssistantDrawer({
   open = false,
   onClose,
@@ -54,6 +113,10 @@ export function ContextAssistantDrawer({
   const suggestedPrompts = useMemo(
     () => prompts ?? reliabilityAssistantPrompts(context, locale),
     [context, locale, prompts],
+  );
+  const latestAssistantMessageId = useMemo(
+    () => [...messages].reverse().find((message) => message.role === "assistant")?.id ?? null,
+    [messages],
   );
 
   useEffect(() => {
@@ -177,6 +240,13 @@ export function ContextAssistantDrawer({
             <span>{message.role === "user" ? (english ? "QUESTION" : "질문") : (english ? "CONNECTED DATA" : "연결 데이터 요약")}</span>
             <p>{message.text}</p>
             {message.contextHint ? <small>{message.contextHint}</small> : null}
+            {message.role === "assistant" && message.activityTrace ? (
+              <AssistantActivityTrace
+                trace={message.activityTrace}
+                english={english}
+                open={message.id === latestAssistantMessageId}
+              />
+            ) : null}
           </article>
         )) : (
           <div className="rw-context-assistant__empty-thread">

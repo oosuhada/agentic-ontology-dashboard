@@ -78,7 +78,6 @@ DEFAULT_CONTEXT_ROUTING: dict[str, dict[str, list[str]]] = {
             "docs/closed-loop-domain-contract.md",
             "docs/closed-loop-product-consumption-contract.md",
             "docs/closed-loop-runtime-overlay-contract.md",
-            "docs/closed-loop-implementation-plan.md",
         ],
     },
     "product_result": {
@@ -101,7 +100,7 @@ DEFAULT_CONTEXT_ROUTING: dict[str, dict[str, list[str]]] = {
             "tests/**/*evidence*",
         ],
         "context": [
-            "docs/operations/pdm-evidence-report-ui-integration-plan.md",
+            "docs/architecture-decisions/ADR-004-product-result-evidence-viewmodel-trust-boundary.md",
             "docs/operations/report-specification.md",
         ],
     },
@@ -114,7 +113,7 @@ DEFAULT_CONTEXT_ROUTING: dict[str, dict[str, list[str]]] = {
         ],
         "context": [
             "docs/operations/report-specification.md",
-            "docs/operations/pdm-evidence-report-ui-integration-plan.md",
+            "docs/architecture-decisions/ADR-004-product-result-evidence-viewmodel-trust-boundary.md",
         ],
     },
     "frontend_operations": {

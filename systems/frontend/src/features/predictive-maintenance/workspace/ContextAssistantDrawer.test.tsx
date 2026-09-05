@@ -126,6 +126,44 @@ describe("ContextAssistantDrawer", () => {
     expect(container.textContent).toContain("Agent Review Packet");
   });
 
+  it("renders safe execution activity without exposing private chain-of-thought", async () => {
+    await renderDrawer({
+      messages: [
+        {
+          id: "assistant-run-1",
+          role: "assistant",
+          text: "연결 근거를 기준으로 정비 이력과 SOP를 함께 확인했습니다.",
+          contextHint: "연결 근거 · 4건",
+          activityTrace: {
+            runId: "run-1",
+            route: "hybrid",
+            status: "succeeded",
+            evidenceCount: 4,
+            claimCount: 2,
+            checkpointSequence: 3,
+            durationMs: 128,
+            steps: [
+              {
+                id: "step-1",
+                label: "RAG 문서 검색",
+                detail: "승인된 문서와 정비 이력을 검색했습니다.",
+                store: "pgvector",
+                status: "succeeded",
+                latencyMs: 82,
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(container.textContent).toContain("작업 기록");
+    expect(container.textContent).toContain("RAG 문서 검색");
+    expect(container.textContent).toContain("pgvector");
+    expect(container.textContent).toContain("근거 4건 · 검증 주장 2건");
+    expect(container.textContent).toContain("모델 내부 사고 과정은 포함하지 않습니다");
+    expect(container.textContent).not.toContain("chain-of-thought content");
+  });
+
   it("shows grounded live sources and cannot execute or approve work", async () => {
     await renderDrawer();
     expect(container.textContent).toContain("LLM 근거 요약");

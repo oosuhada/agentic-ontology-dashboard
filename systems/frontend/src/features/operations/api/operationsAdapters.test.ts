@@ -78,7 +78,7 @@ describe("Operations adapter contract", () => {
     expect(assets[0]).toEqual(expect.objectContaining({
       displayName: "CNC 001",
       line: "Line A",
-      eventId: "EVENT-001",
+      eventId: "RESULT#CNC-001",
       confidence: "high",
     }));
     expect(assets[0].topFactors[0].feature).toBe("tool_wear_min");
@@ -120,7 +120,7 @@ describe("Operations adapter contract", () => {
     ]);
   });
 
-  it("keeps an existing operational event instead of replacing it with a runtime result event", () => {
+  it("keeps an existing operational event alongside a distinct runtime result event", () => {
     const operational = adaptEvent(event);
     const result: GovernedProductResultSummary = {
       artifact_id: "RESULT#CNC-001",
@@ -141,7 +141,15 @@ describe("Operations adapter contract", () => {
       provenance: { dataset_id: "dataset-1", dataset_version_id: "dsv-canonical-v3-1", source_version: "Canonical V3.1", bundle_checksum_sha256: "a".repeat(64), model_version: "model-1", schema_version: "result-artifact-v1.0", prediction_task: "binary_failure_within_horizon" },
     };
 
-    expect(promoteRuntimeProductResultsToEvents([result], [operational])).toEqual([operational]);
+    expect(promoteRuntimeProductResultsToEvents([result], [operational])).toEqual([
+      operational,
+      expect.objectContaining({
+        eventId: "RESULT#CNC-001",
+        assetId: "CNC-001",
+        scenarioId: "runtime-product-result",
+        datasetVersionId: "dsv-canonical-v3-1",
+      }),
+    ]);
   });
 
   it("does not synthesize downtime impact when operational context is missing", () => {

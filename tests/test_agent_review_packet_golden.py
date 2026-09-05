@@ -282,7 +282,17 @@ def test_current_service_packets_keep_gold_contract_shape(tmp_path: Path) -> Non
         )
         assert set(gold["history_review_items"]) <= set(current["history_review_items"])
         assert current["evidence_gaps"] == gold["evidence_gaps"]
-        assert set(gold["source_refs"]) <= set(current["source_refs"])
+        current_source_refs = set(current["source_refs"])
+        assert all(
+            target["source_ref"] in current_source_refs
+            and target["location_source_ref"] in current_source_refs
+            for target in current["inspection_targets"]
+        )
+        assert all(
+            guidance["source_ref"] in current_source_refs
+            for guidance in current["sop_guidance"]
+        )
+        assert set(current["maintenance_history_summary"]["source_refs"]) <= current_source_refs
         assert current["closed_loop_boundary"] == gold["closed_loop_boundary"]
         sections = {section["section_id"]: section for section in current["domain_sections"]}
         assert {"risk", "operation", "inspection", "sop", "ontology"}.issubset(

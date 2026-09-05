@@ -63,6 +63,9 @@ import type {
   PredictiveMaintenanceDashboardResponse,
   PredictiveMaintenanceObservationResponse,
   PredictiveMaintenanceReleaseOverview,
+  PredictiveMaintenanceRiskIndexResponse,
+  PredictiveMaintenanceRiskSourceMode,
+  PredictiveMaintenanceRiskWindow,
   PredictiveMaintenanceRuntimeContext,
   GovernedProductResultSummary,
   ProductResultPage,
@@ -854,6 +857,29 @@ export function getPostMaintenanceProductResults(
   );
 }
 
+export function getPredictiveMaintenanceRiskIndex(
+  projectId: string,
+  workspaceId: string,
+  input: {
+    source_mode?: PredictiveMaintenanceRiskSourceMode;
+    dataset_version_id?: string | null;
+    asset_id?: string | null;
+    window?: PredictiveMaintenanceRiskWindow;
+  },
+  signal?: AbortSignal,
+): Promise<PredictiveMaintenanceRiskIndexResponse> {
+  const params = new URLSearchParams({
+    source_mode: input.source_mode ?? "live",
+    window: input.window ?? "24h",
+  });
+  if (input.dataset_version_id) params.set("dataset_version_id", input.dataset_version_id);
+  if (input.asset_id) params.set("asset_id", input.asset_id);
+  return request<PredictiveMaintenanceRiskIndexResponse>(
+    `${predictiveMaintenanceBase(projectId, workspaceId)}/risk-index?${params.toString()}`,
+    { signal },
+  );
+}
+
 export function getPredictiveMaintenanceObservations(
   projectId: string,
   workspaceId: string,
@@ -962,6 +988,7 @@ export function listAgentRuns(input: {
   status?: string;
   route?: string;
   search?: string;
+  object_id?: string;
 }): Promise<AgentRunPage> {
   const params = new URLSearchParams({
     project_id: input.project_id,
@@ -972,6 +999,7 @@ export function listAgentRuns(input: {
   if (input.status) params.set("status", input.status);
   if (input.route) params.set("route", input.route);
   if (input.search) params.set("search", input.search);
+  if (input.object_id) params.set("object_id", input.object_id);
   return request<AgentRunPage>(`/api/agent/runs?${params.toString()}`);
 }
 
