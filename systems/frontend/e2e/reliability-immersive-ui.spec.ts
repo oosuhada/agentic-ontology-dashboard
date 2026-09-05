@@ -101,6 +101,13 @@ test("integrates monitoring risk, section minimap, and assistant execution activ
   await expect(sectionRail.locator("button")).toHaveCount(3);
   await sectionRail.locator("button").nth(1).hover();
   await expect(sectionRail.locator(".rw-section-index__preview")).toContainText("실시간 위험");
+  const thirdSection = sectionRail.locator("button").nth(2);
+  await thirdSection.click();
+  await expect(thirdSection).toHaveClass(/is-active/);
+  await expect(thirdSection).toHaveAttribute("aria-current", "location");
+  await page.waitForTimeout(1_000);
+  await expect(thirdSection).toHaveClass(/is-active/);
+  await expect(sectionRail.locator("button").nth(1)).not.toHaveClass(/is-active/);
 
   await expect(workbench.locator(".rw-market-signal-row")).not.toHaveCount(0);
   await workbench.locator(".rw-market-signal-row").first().click();
