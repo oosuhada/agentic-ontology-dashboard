@@ -76,6 +76,9 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-deterministic}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-}
+      ONTOLOGY_DASHBOARD_RAG_EMBEDDING_PROVIDER: ${ONTOLOGY_DASHBOARD_RAG_EMBEDDING_PROVIDER:-hashing}
+      ONTOLOGY_DASHBOARD_RAG_EMBEDDING_MODEL: ${ONTOLOGY_DASHBOARD_RAG_EMBEDDING_MODEL:-gemini-embedding-001}
+      ONTOLOGY_DASHBOARD_RAG_EMBEDDING_API_KEY: ${ONTOLOGY_DASHBOARD_RAG_EMBEDDING_API_KEY:-}
       MAINTENANCE_CONTEXT_PROVIDER: ${MAINTENANCE_CONTEXT_PROVIDER:-fixture}
       PREDICTION_RESULT_INGEST_TOKEN: ${PREDICTION_RESULT_INGEST_TOKEN:?PREDICTION_RESULT_INGEST_TOKEN is required}
     volumes:
@@ -91,6 +94,35 @@ services:
     networks:
       private:
         aliases: [api]
+
+  knowledge-indexer:
+    image: ontology-dashboard-macmini-backend:latest
+    restart: unless-stopped
+    cpus: 0.75
+    mem_limit: 1g
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      ONTOLOGY_DASHBOARD_DATABASE_URL: ${ONTOLOGY_DASHBOARD_DATABASE_URL}
+      ONTOLOGY_DASHBOARD_DB_POOL_MIN: 1
+      ONTOLOGY_DASHBOARD_DB_POOL_MAX: 1
+      ONTOLOGY_DASHBOARD_DB_POOL_TIMEOUT: ${ONTOLOGY_DASHBOARD_DB_POOL_TIMEOUT:-10}
+      ONTOLOGY_DASHBOARD_RAG_EMBEDDING_PROVIDER: ${ONTOLOGY_DASHBOARD_RAG_EMBEDDING_PROVIDER:-hashing}
+      ONTOLOGY_DASHBOARD_RAG_EMBEDDING_MODEL: ${ONTOLOGY_DASHBOARD_RAG_EMBEDDING_MODEL:-gemini-embedding-001}
+      ONTOLOGY_DASHBOARD_RAG_EMBEDDING_API_KEY: ${ONTOLOGY_DASHBOARD_RAG_EMBEDDING_API_KEY:-}
+      ONTOLOGY_DASHBOARD_KNOWLEDGE_PROJECT_ID: manufacturing-demo-project
+      ONTOLOGY_DASHBOARD_KNOWLEDGE_WORKSPACE_ID: manufacturing-demo
+      ONTOLOGY_DASHBOARD_KNOWLEDGE_INDEX_POLL_SECONDS: ${ONTOLOGY_DASHBOARD_KNOWLEDGE_INDEX_POLL_SECONDS:-5}
+    command: ["python", "-m", "app.knowledge.worker"]
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.knowledge.worker", "--healthcheck"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks: [private]
 
   frontend:
     build:

@@ -360,6 +360,15 @@ class ManufacturingOntologyAdapter:
                     source_refs=[f"company-context:{object_id}"],
                 )
             )
+            links.append(
+                LinkRecord(
+                    id=f"company_sells_product:{object_id}",
+                    link_type="company_sells_product",
+                    source_object_id=company_id,
+                    target_object_id=object_id,
+                    workspace_id=self.workspace_id,
+                )
+            )
 
         vendor_ids: set[str] = set()
         for item in context.get("vendors") or []:
@@ -378,15 +387,6 @@ class ManufacturingOntologyAdapter:
                 LinkRecord(
                     id=f"company_has_vendor:{object_id}",
                     link_type="company_has_vendor",
-                    source_object_id=company_id,
-                    target_object_id=object_id,
-                    workspace_id=self.workspace_id,
-                )
-            )
-            links.append(
-                LinkRecord(
-                    id=f"company_sells_product:{object_id}",
-                    link_type="company_sells_product",
                     source_object_id=company_id,
                     target_object_id=object_id,
                     workspace_id=self.workspace_id,
@@ -448,6 +448,15 @@ class ManufacturingOntologyAdapter:
                     source_refs=[f"company-context:{object_id}"],
                 )
             )
+            links.append(
+                LinkRecord(
+                    id=f"company_has_business_metric:{object_id}",
+                    link_type="company_has_business_metric",
+                    source_object_id=company_id,
+                    target_object_id=object_id,
+                    workspace_id=self.workspace_id,
+                )
+            )
 
         for item in context.get("kpi_snapshots") or []:
             object_id = str(item["id"])
@@ -490,15 +499,176 @@ class ManufacturingOntologyAdapter:
                     workspace_id=self.workspace_id,
                 )
             )
-            links.append(
-                LinkRecord(
-                    id=f"company_has_business_metric:{object_id}",
-                    link_type="company_has_business_metric",
-                    source_object_id=company_id,
-                    target_object_id=object_id,
+
+        product_ids = {str(item.get("id")) for item in context.get("products") or []}
+        production_order_ids: set[str] = set()
+        for item in context.get("production_orders") or []:
+            object_id = str(item["id"])
+            production_order_ids.add(object_id)
+            asset_id = str(item.get("asset_id") or "")
+            product_id = str(item.get("product_id") or "")
+            objects.append(
+                ObjectRecord(
+                    id=object_id,
+                    object_type="production_order",
                     workspace_id=self.workspace_id,
+                    properties={**item, "context_kind": context_kind},
+                    source_refs=[str(item.get("source_ref") or f"company-context:{object_id}")],
                 )
             )
+            if asset_id in seen_equipment:
+                links.append(
+                    LinkRecord(
+                        id=f"equipment_runs_production_order:{asset_id}:{object_id}",
+                        link_type="equipment_runs_production_order",
+                        source_object_id=equipment_object_id(asset_id),
+                        target_object_id=object_id,
+                        workspace_id=self.workspace_id,
+                    )
+                )
+            if product_id in product_ids:
+                links.append(
+                    LinkRecord(
+                        id=f"production_order_builds_product:{object_id}:{product_id}",
+                        link_type="production_order_builds_product",
+                        source_object_id=object_id,
+                        target_object_id=product_id,
+                        workspace_id=self.workspace_id,
+                    )
+                )
+
+        quality_ids: set[str] = set()
+        for item in context.get("quality_incidents") or []:
+            object_id = str(item["id"])
+            quality_ids.add(object_id)
+            asset_id = str(item.get("asset_id") or "")
+            order_id = str(item.get("production_order_id") or "")
+            objects.append(
+                ObjectRecord(
+                    id=object_id,
+                    object_type="quality_incident",
+                    workspace_id=self.workspace_id,
+                    properties={**item, "context_kind": context_kind},
+                    source_refs=[str(item.get("source_ref") or f"company-context:{object_id}")],
+                )
+            )
+            if asset_id in seen_equipment:
+                links.append(
+                    LinkRecord(
+                        id=f"quality_incident_concerns_equipment:{object_id}:{asset_id}",
+                        link_type="quality_incident_concerns_equipment",
+                        source_object_id=object_id,
+                        target_object_id=equipment_object_id(asset_id),
+                        workspace_id=self.workspace_id,
+                    )
+                )
+            if order_id in production_order_ids:
+                links.append(
+                    LinkRecord(
+                        id=f"quality_incident_affects_order:{object_id}:{order_id}",
+                        link_type="quality_incident_affects_order",
+                        source_object_id=object_id,
+                        target_object_id=order_id,
+                        workspace_id=self.workspace_id,
+                    )
+                )
+
+        material_ids = {str(item.get("id")) for item in context.get("materials") or []}
+        for item in context.get("purchase_orders") or []:
+            object_id = str(item["id"])
+            material_id = str(item.get("material_id") or "")
+            vendor_id = str(item.get("vendor_id") or "")
+            objects.append(
+                ObjectRecord(
+                    id=object_id,
+                    object_type="purchase_order",
+                    workspace_id=self.workspace_id,
+                    properties={**item, "context_kind": context_kind},
+                    source_refs=[str(item.get("source_ref") or f"company-context:{object_id}")],
+                )
+            )
+            if material_id in material_ids:
+                links.append(
+                    LinkRecord(
+                        id=f"purchase_order_replenishes_material:{object_id}:{material_id}",
+                        link_type="purchase_order_replenishes_material",
+                        source_object_id=object_id,
+                        target_object_id=material_id,
+                        workspace_id=self.workspace_id,
+                    )
+                )
+            if vendor_id in vendor_ids:
+                links.append(
+                    LinkRecord(
+                        id=f"vendor_fulfills_purchase_order:{vendor_id}:{object_id}",
+                        link_type="vendor_fulfills_purchase_order",
+                        source_object_id=vendor_id,
+                        target_object_id=object_id,
+                        workspace_id=self.workspace_id,
+                    )
+                )
+
+        for item in context.get("capa_records") or []:
+            object_id = str(item["id"])
+            incident_id = str(item.get("quality_incident_id") or "")
+            asset_id = str(item.get("asset_id") or "")
+            objects.append(
+                ObjectRecord(
+                    id=object_id,
+                    object_type="capa_record",
+                    workspace_id=self.workspace_id,
+                    properties={**item, "context_kind": context_kind},
+                    source_refs=[str(item.get("source_ref") or f"company-context:{object_id}")],
+                )
+            )
+            if incident_id in quality_ids:
+                links.append(
+                    LinkRecord(
+                        id=f"capa_addresses_quality_incident:{object_id}:{incident_id}",
+                        link_type="capa_addresses_quality_incident",
+                        source_object_id=object_id,
+                        target_object_id=incident_id,
+                        workspace_id=self.workspace_id,
+                    )
+                )
+            if asset_id in seen_equipment:
+                links.append(
+                    LinkRecord(
+                        id=f"capa_concerns_equipment:{object_id}:{asset_id}",
+                        link_type="capa_concerns_equipment",
+                        source_object_id=object_id,
+                        target_object_id=equipment_object_id(asset_id),
+                        workspace_id=self.workspace_id,
+                    )
+                )
+
+        for record_type, object_type, link_type in (
+            ("shift_handoffs", "shift_handoff", "equipment_has_shift_handoff"),
+            ("calibration_records", "calibration_record", "equipment_has_calibration_record"),
+            ("safety_events", "safety_event", "equipment_has_safety_event"),
+        ):
+            for item in context.get(record_type) or []:
+                object_id = str(item["id"])
+                asset_id = str(item.get("asset_id") or "")
+                objects.append(
+                    ObjectRecord(
+                        id=object_id,
+                        object_type=object_type,
+                        workspace_id=self.workspace_id,
+                        properties={**item, "context_kind": context_kind},
+                        source_refs=[str(item.get("source_ref") or f"company-context:{object_id}")],
+                    )
+                )
+                if asset_id in seen_equipment:
+                    links.append(
+                        LinkRecord(
+                            id=f"{link_type}:{asset_id}:{object_id}",
+                            link_type=link_type,
+                            source_object_id=equipment_object_id(asset_id),
+                            target_object_id=object_id,
+                            workspace_id=self.workspace_id,
+                        )
+                    )
 
         for item in context.get("maintenance_records") or []:
             object_id = str(item["id"])

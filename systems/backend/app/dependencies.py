@@ -18,7 +18,7 @@ from argon2 import PasswordHasher
 from fastapi import Depends, HTTPException, Request, Response, status
 
 from app.common.rate_limit import RateLimiter
-from app.common.company_context import load_company_context
+from app.common.company_context import company_documents, load_company_context
 from app.common.runtime_settings import app_environment, project_root, trust_proxy_headers, trusted_proxy_networks
 from app.dashboard import DashboardService
 from app.dashboard.dashboard_schema import DashboardBoard, DashboardTab, DashboardTemplatePublishRequest
@@ -49,6 +49,9 @@ from app.governance import GovernanceService
 from app.identity import CSRF_COOKIE, SESSION_COOKIE, AuthError, IdentityService, Principal
 from app.infra.db.dashboard_repository import DashboardRepository
 from app.infra.db.company_context_repository import CompanyContextRepository
+from app.knowledge import KnowledgeService
+from app.knowledge.embedding import configured_embedding_provider
+from app.knowledge.repository import KnowledgeRepository
 from app.infra.db.dataset_ingestion_repository import DatasetIngestionRepository
 from app.infra.db.dataset_repository import DatasetRepository
 from app.infra.db.diagnosis_runtime_repository import PredictiveMaintenanceRuntimeRepository
@@ -121,6 +124,36 @@ ROOT = project_root()
 MANUFACTURING_WORKSPACE = "manufacturing-demo"
 _MIGRATION_LOCK = Lock()
 _SERVICE_BUILD_LOCK = Lock()
+_KNOWLEDGE_BUILD_LOCK = Lock()
+
+
+@lru_cache(maxsize=1)
+def _cached_knowledge_service(target: str) -> KnowledgeService:
+    migrate(target)
+    service = KnowledgeService(KnowledgeRepository(target), configured_embedding_provider())
+    try:
+        repository = service.repository
+        organization_id = repository.resolve_organization(
+            project_id="manufacturing-demo-project",
+            workspace_id=MANUFACTURING_WORKSPACE,
+        )
+        service.bootstrap(
+            organization_id=organization_id,
+            project_id="manufacturing-demo-project",
+            workspace_id=MANUFACTURING_WORKSPACE,
+            documents=company_documents(load_company_context()),
+        )
+    except Exception:
+        # Knowledge bootstrap/indexing is an enrichment path. Core Operations
+        # remains available while migrations or external embedding providers
+        # are being repaired.
+        pass
+    return service
+
+
+def get_knowledge_service() -> KnowledgeService:
+    with _KNOWLEDGE_BUILD_LOCK:
+        return _cached_knowledge_service(database_target())
 
 
 def database_target() -> str:
@@ -216,6 +249,7 @@ def build_manufacturing_service(
         domain_review_context_adapter=ManufacturingFixtureReviewContextAdapter(root),
         maintenance_lineage_query=maintenance_lineage_query,
         company_context_query=company_context_repository,
+        knowledge_search=_cached_knowledge_service(target),
         workspace_id=MANUFACTURING_WORKSPACE,
     )
 

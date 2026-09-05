@@ -134,7 +134,11 @@ def test_company_rag_can_answer_asset_economics_finance_kpi_and_sop_questions():
         asset_id="CNC-S04-L02-03",
         top_k=8,
     )
-    finance_results = retrieve_company_documents("2026년 재무 손익 매출 OPEX CAPEX", top_k=8)
+    finance_results = retrieve_company_documents(
+        "2026년 재무 손익 매출 OPEX CAPEX",
+        roles=["executive_viewer"],
+        top_k=8,
+    )
     kpi_results = retrieve_company_documents("최근 OEE MTBF MTTR KPI 추세", top_k=8)
     sop_results = retrieve_company_documents("스핀들 베어링 SOP 점검 절차", top_k=8)
 
@@ -158,11 +162,19 @@ def test_company_context_is_projected_as_ontology_objects_and_links():
         "maintenance_history_record",
         "meeting_record",
         "decision_record",
+        "production_order",
+        "quality_incident",
+        "purchase_order",
+        "capa_record",
     } <= object_types
     assert "company_has_organization_unit" in link_types
     assert "company_sells_product" in link_types
     assert "company_has_business_metric" in link_types
     assert "meeting_records_decision" in link_types
+    assert "equipment_runs_production_order" in link_types
+    assert "quality_incident_affects_order" in link_types
+    assert "purchase_order_replenishes_material" in link_types
+    assert "capa_addresses_quality_incident" in link_types
     assert snapshot.source_revision == "operational-and-company-context-v2"
 
 

@@ -27,6 +27,13 @@ CONTEXT_RECORD_TYPES = (
     "meeting_minutes",
     "decisions",
     "documents",
+    "production_orders",
+    "quality_incidents",
+    "purchase_orders",
+    "capa_records",
+    "shift_handoffs",
+    "calibration_records",
+    "safety_events",
 )
 
 

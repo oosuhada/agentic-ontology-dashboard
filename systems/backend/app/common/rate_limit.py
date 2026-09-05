@@ -18,6 +18,8 @@ LOGIN_RATE = RateLimitRule(limit=12, window_seconds=60)
 SESSION_RATE = RateLimitRule(limit=20, window_seconds=60)
 PLANNER_RATE = RateLimitRule(limit=30, window_seconds=60)
 EXPORT_RATE = RateLimitRule(limit=20, window_seconds=60)
+KNOWLEDGE_SEARCH_RATE = RateLimitRule(limit=60, window_seconds=60)
+KNOWLEDGE_WRITE_RATE = RateLimitRule(limit=12, window_seconds=60)
 
 
 class RateLimiter:
@@ -38,6 +40,8 @@ class RateLimiter:
 __all__ = [
     "EXPORT_RATE",
     "LOGIN_RATE",
+    "KNOWLEDGE_SEARCH_RATE",
+    "KNOWLEDGE_WRITE_RATE",
     "PLANNER_RATE",
     "RateLimitExceeded",
     "RateLimiter",
