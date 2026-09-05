@@ -476,10 +476,23 @@ test("keeps grounded report surfaces light and derives assistant copy from live 
   ).toBeVisible();
   await expect(
     assistant.getByRole("button", {
-      name: "생산 영향은 어느 정도인가요?",
+      name: "이 조치로 어떤 생산·비용 가치를 보호할 수 있나요?",
       exact: true,
     }),
   ).toBeVisible();
+  await assistant
+    .getByRole("button", {
+      name: "이 조치로 어떤 생산·비용 가치를 보호할 수 있나요?",
+      exact: true,
+    })
+    .click();
+  const valueAnswer = assistant.locator(
+    ".rw-context-assistant__message.is-assistant:not(.is-loading)",
+  ).last();
+  await expect(valueAnswer).toBeVisible({ timeout: 15_000 });
+  await expect(valueAnswer).toContainText(/보호|생산 연속성/);
+  await expect(valueAnswer).toContainText(/실제.*절감|절감.*확정|보호 대상/);
+  await expect(valueAnswer).not.toContainText("비용을 절감했습니다");
   await expect(
     assistant.getByRole("button", {
       name: "경영진 보고 초안을 만들어줘",
@@ -698,7 +711,7 @@ test("connects search, settings dismissal, locale, theme, presets, and assistant
   const assistant = page.getByRole("dialog", { name: "Reliability Assistant" });
   await expect(assistant).toBeVisible();
   await assistant
-    .getByRole("button", { name: "생산 영향은 어느 정도인가요?", exact: true })
+    .getByRole("button", { name: "이 조치로 어떤 생산·비용 가치를 보호할 수 있나요?", exact: true })
     .click();
   await expect(
     assistant.locator(".rw-context-assistant__message.is-user"),
@@ -1024,7 +1037,7 @@ test("separates executive primary decisions from evidence and detail", async ({
   );
   for (const heading of [
     "전체 운영 리스크",
-    "생산 · 재무 영향",
+    "생산 · 재무 가치",
     "의사결정 병목",
     "보고 준비 상태",
   ]) {
@@ -1092,9 +1105,53 @@ test("organizes engineering navigation by work intent instead of duplicated data
   await rail.locator("nav button").filter({ hasText: "원인 분석" }).click();
   const diagnosis = shell.locator('[data-surface="assets"]');
   await expect(diagnosis).toHaveAttribute(
+    "data-layout-engine",
+    "semantic-content-masonry",
+  );
+  await expect(diagnosis).not.toHaveAttribute(
+    "data-layout-planner-mode",
+    "semantic-pending",
+    { timeout: 15_000 },
+  );
+  await expect(diagnosis).toHaveAttribute(
     "data-composition",
     /^evidence-factors,inspection-targets,sensor-signals,/,
   );
+  await expect
+    .poll(() => diagnosis.locator(".rw-composed-block[data-adaptive-row-span]").count())
+    .toBeGreaterThanOrEqual(3);
+  const diagnosisLayout = await diagnosis.evaluate((element) => {
+    const style = window.getComputedStyle(element);
+    return { flow: style.gridAutoFlow, rows: style.gridAutoRows };
+  });
+  expect(diagnosisLayout.flow).toContain("dense");
+  expect(diagnosisLayout.rows).toBe("8px");
+  const diagnosisEmpty = diagnosis.locator(".rw-composed-block.is-empty-block").first();
+  if (await diagnosisEmpty.count()) {
+    await expect(diagnosisEmpty).toHaveAttribute("data-adaptive-column-span", "6");
+    const cards = diagnosis.locator(".rw-composed-block");
+    if (await cards.count() >= 3) {
+      const firstBox = await cards.nth(0).boundingBox();
+      const emptyBox = await diagnosisEmpty.boundingBox();
+      const thirdBox = await cards.nth(2).boundingBox();
+      if (firstBox && emptyBox && thirdBox && emptyBox.height + 20 < firstBox.height) {
+        expect(thirdBox.y).toBeLessThan(firstBox.y + firstBox.height);
+      }
+    }
+  }
+  const main = shell.locator(".rw-preview-main");
+  const sectionIndex = main.locator(".rw-section-index");
+  if (await sectionIndex.count()) {
+    const geometry = await main.evaluate((element) => ({
+      paddingLeft: Number.parseFloat(window.getComputedStyle(element).paddingLeft),
+    }));
+    expect(geometry.paddingLeft).toBeGreaterThanOrEqual(40);
+    const railBox = await sectionIndex.boundingBox();
+    const contentBox = await diagnosis.boundingBox();
+    expect(railBox).not.toBeNull();
+    expect(contentBox).not.toBeNull();
+    expect((railBox?.x ?? 0) + (railBox?.width ?? 0)).toBeLessThanOrEqual((contentBox?.x ?? 0) + 1);
+  }
   expect(
     (await diagnosis.getAttribute("data-composition"))?.indexOf(
       "feature-trend",
@@ -1131,13 +1188,48 @@ test("organizes engineering navigation by work intent instead of duplicated data
   await expect(inspection).toBeVisible();
   await expect(inspection).toHaveAttribute(
     "data-composition",
-    /^inspection-targets,workflow-actions,workflow-lifecycle/,
+    /^workflow-actions,inspection-targets,/,
   );
+  await expect(inspection).not.toHaveAttribute("data-composition", /workflow-lifecycle/);
+  await expect(shell.locator(".rw-preview-operational-focus")).toHaveCount(0);
+  const inspectionBlocks = inspection.locator(".rw-composed-block");
+  await expect(inspectionBlocks.first()).toHaveClass(/is-action-hero/);
+  const selectedCaseBar = shell.locator(".rw-preview-selection-anchor");
+  if (await selectedCaseBar.count()) {
+    const selectedCaseHeight = await selectedCaseBar.evaluate((element) => element.getBoundingClientRect().height);
+    expect(selectedCaseHeight).toBeLessThan(64);
+  }
+  const lifecycleFooter = shell.locator(".rw-preview-bottom .lifecycle-instrument.is-compact");
+  await expect(lifecycleFooter).toBeVisible();
+  const lifecycleHeight = await lifecycleFooter.evaluate((element) => element.getBoundingClientRect().height);
+  expect(lifecycleHeight).toBeLessThan(60);
   await expect(
     inspection
-      .getByText(/운영 관리자 점검 요청 대기|점검 시작|점검 결과 기록·완료/)
+      .getByText(/점검 요청 대기|점검 시작|점검 결과 기록·완료/)
       .first(),
   ).toBeVisible();
+  const pendingState = inspection.locator(".operations-workflow-state");
+  if (await pendingState.count()) {
+    await expect(pendingState).toBeVisible();
+    await expect(pendingState).toContainText("현재 상태");
+    await expect(inspection.locator(".operations-workflow-summary")).toContainText("다음 Owner");
+    await expect(
+      inspection.getByRole("button", { name: "점검 요청 대기", exact: true }),
+    ).toHaveCount(0);
+    await expect(pendingState).toContainText(/다음 Owner|현재 상태/);
+  }
+  const compactEmpty = inspection.locator(".rw-composed-block.is-compact-empty");
+  if (await compactEmpty.count()) {
+    await expect(compactEmpty).toContainText("현재 근거에서 특정된 점검 대상이 없습니다.");
+    await expect(compactEmpty).toHaveAttribute("data-adaptive-column-span", "6");
+    const widthRatio = await compactEmpty.evaluate((element) => {
+      const grid = element.parentElement;
+      if (!grid) return 0;
+      return element.getBoundingClientRect().width / grid.getBoundingClientRect().width;
+    });
+    expect(widthRatio).toBeGreaterThan(0.42);
+    expect(widthRatio).toBeLessThan(0.62);
+  }
 });
 
 test("changes executive report artifacts when the report type changes", async ({

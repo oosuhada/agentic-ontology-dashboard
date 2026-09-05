@@ -154,7 +154,6 @@ function assistantMessagesFromRun(run: AgentRunResponse, english: boolean): Reli
 const OPERATIONAL_FOCUS_SURFACES = new Set([
   "decision-case",
   "maintenance-approval",
-  "inspection",
   "my-work",
   "work-targets",
   "factory-status",
@@ -769,6 +768,14 @@ export function ReliabilityWorkspacePreview({
     statusLabel: riskStatusLabel(selectedEvent?.status, english),
     lineLabel: selectedEvent?.line ?? null,
     operationalImpact: operationalImpactLabel(detail, english),
+    estimatedDowntimeMinutes:
+      detail?.operationContext?.eventImpact?.basis.estimatedDowntimeMinutes
+      ?? selectedEvent?.estimatedDowntimeMinutes
+      ?? null,
+    estimatedLostUnits:
+      detail?.operationContext?.eventImpact?.estimatedLostUnits ?? null,
+    productVariant:
+      detail?.operationContext?.eventImpact?.productVariant ?? null,
     recommendedDecisionLabel: recommendedDecisionLabel(selectedEvent?.recommendedDecision, english),
     predictedFailureType: selectedEvent?.predictedFailureType ?? null,
     assignedEngineer: selectedEvent?.assignedEngineer ?? null,

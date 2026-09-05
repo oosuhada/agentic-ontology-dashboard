@@ -7,7 +7,7 @@ from typing import Any
 from app.operations.ports import AgentReviewLLMPort
 
 
-AGENT_ANSWER_PROMPT_VERSION = "operations-grounded-answer-v1.0"
+AGENT_ANSWER_PROMPT_VERSION = "operations-grounded-answer-v2.0"
 
 AGENT_ANSWER_SYSTEM_PROMPT = """
 You are the read-only operations assistant for Hanbit Tech.
@@ -28,6 +28,25 @@ Grounding contract:
 - If evidence is insufficient, say what is missing.
 - Keep the answer concise enough for an operational workspace, but include the
   most decision-relevant business or maintenance context when it is available.
+
+Value communication contract:
+- Prefer outcome language over task-only language. Connect the sequence
+  "early signal -> human response -> protected/created business value -> KPI
+  relevance" whenever the supplied evidence supports it.
+- Do not stop at "a risk was detected" or "maintenance was performed" when
+  production exposure, product economics, KPI, or financial evidence is
+  available. Explain why the work matters to production continuity, avoided
+  exposure, decision speed, quality, or other company KPIs.
+- Never convert modeled exposure into realized savings. Use expressions such
+  as "보호 대상 가치", "예상 손실 노출", "회피 가능 비용", or "절감 효과
+  추정" until post-action observations and case-linked financial actuals prove
+  a realized result.
+- Use categorical language such as "비용을 절감했다" or "가치를 창출했다"
+  only when the supplied evidence explicitly proves that realized outcome.
+- For engineering and maintenance audiences, keep the technical action clear
+  but add one concise sentence connecting the work to operational value.
+- For executive audiences, lead with business value and KPI relevance, then
+  state the operational evidence and any estimation caveat.
 
 Return JSON only with: answer, evidence_ids, caveats.
 """.strip()
@@ -79,6 +98,22 @@ class GroundedAgentAnswerProvider:
             "evidence_gaps": packet.get("evidence_gaps") or [],
             "limitations": packet.get("limitations") or [],
         }
+        business_evidence = [
+            {
+                "evidence_id": item.get("evidence_id"),
+                "title": item.get("title"),
+                "document_type": (item.get("metadata") or {}).get("document_type"),
+            }
+            for item in evidence
+            if (item.get("metadata") or {}).get("document_type")
+            in {
+                "product_economics",
+                "business_metric",
+                "kpi_actual",
+                "financial_actual",
+                "financial_statement",
+            }
+        ]
         try:
             candidate = self.provider.generate_json(
                 AGENT_ANSWER_SYSTEM_PROMPT,
@@ -89,6 +124,10 @@ class GroundedAgentAnswerProvider:
                     "role_summary": summary,
                     "evidence": evidence,
                     "baseline_answer": baseline_answer,
+                    "value_communication": {
+                        "business_evidence": business_evidence,
+                        "modeled_exposure_is_not_realized_savings": True,
+                    },
                 },
                 response_schema=AGENT_ANSWER_SCHEMA,
                 response_schema_name="operations_grounded_answer",
@@ -109,6 +148,27 @@ class GroundedAgentAnswerProvider:
             )
             if any(text in answer for text in forbidden):
                 raise ValueError("forbidden_operational_claim")
+            realized_value_patterns = (
+                "비용을 절감했다",
+                "비용을 절감했습니다",
+                "비용이 절감되었습니다",
+                "비용이 절감됐습니다",
+                "절감 실적을 창출",
+                "가치를 창출했다",
+                "가치를 창출했습니다",
+                "realized savings of",
+                "has saved",
+                "created value of",
+            )
+            realized_value_proven = any(
+                (item.get("metadata") or {}).get("context_kind")
+                in {"realized_value", "financial_settlement", "actual_savings"}
+                for item in evidence
+            )
+            if not realized_value_proven and any(
+                pattern.lower() in answer.lower() for pattern in realized_value_patterns
+            ):
+                raise ValueError("unsupported_realized_value_claim")
             caveats = [str(item) for item in candidate.get("caveats") or [] if str(item).strip()]
             return answer, cited_ids, caveats, {
                 "mode": "llm",

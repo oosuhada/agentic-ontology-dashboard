@@ -22,12 +22,13 @@ import {
   TrendingDown,
   Wrench,
 } from "lucide-react";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import {
   createOperationsAgentReviewSummary,
+  getLayout,
   getOperationsAgentReviewSummary,
 } from "../../../api";
-import type { ReportType, Role } from "../../../types";
+import type { BlockType, ReportType, Role } from "../../../types";
 import { loadOperationsReportVariant } from "../../operations/api/operationsApi";
 import type {
   OperationsAgentReviewSummaryResponse,
@@ -60,6 +61,13 @@ import {
   resolveReliabilityComposition,
   type ReliabilityBlockId,
 } from "./roleComposition";
+import {
+  applyReliabilityPlannerOrder,
+  adaptiveReliabilityRowSpan,
+  preferredAdaptiveReliabilitySpan,
+  reliabilityLayoutIntent,
+  RELIABILITY_MASONRY_ROW_HEIGHT,
+} from "./adaptiveReliabilityLayout";
 import "./role-composed-workspace.css";
 
 const WorkspaceEnglishContext = createContext(false);
@@ -70,6 +78,111 @@ function useWorkspaceEnglish() {
 
 function localized(english: boolean, ko: string, en: string) {
   return english ? en : ko;
+}
+
+function adaptiveCardSignals(card: HTMLElement) {
+  const body = card.querySelector<HTMLElement>(".rw-composed-block__body");
+  const textLength = (body?.innerText ?? card.innerText ?? "").trim().length;
+  const controlCount = card.querySelectorAll("button,input,select,textarea,[role='button']").length;
+  const hasWideVisualization = Boolean(card.querySelector(
+    "svg,canvas,table,.rw-feature-trends,.rw-composed-bars,.rw-factory-map,.rw-bottleneck-table",
+  ));
+  return {
+    declaredSpan: card.classList.contains("span-12") ? 12 as const : 6 as const,
+    empty: card.classList.contains("is-empty-block") || Boolean(card.querySelector(".rw-composed-empty")),
+    actionHero: card.classList.contains("is-action-hero"),
+    textLength,
+    controlCount,
+    hasWideVisualization,
+  };
+}
+
+function useAdaptiveReliabilityPacking(layoutKey: string) {
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (!grid || typeof ResizeObserver === "undefined") return undefined;
+
+    let frame = 0;
+    const pack = () => {
+      frame = 0;
+      const desktop = window.matchMedia("(min-width: 761px)").matches;
+      const cards = Array.from(grid.children).filter(
+        (node): node is HTMLElement => node instanceof HTMLElement,
+      );
+      if (!desktop) {
+        grid.classList.remove("is-adaptive-packed");
+        cards.forEach((card) => {
+          card.style.removeProperty("grid-column");
+          card.style.removeProperty("grid-row-end");
+        });
+        return;
+      }
+
+      grid.classList.add("is-adaptive-packed");
+      const rowGap = Number.parseFloat(window.getComputedStyle(grid).rowGap) || 10;
+
+      for (const card of cards) {
+        if (card.classList.contains("rw-composition-reason")) {
+          card.style.gridColumn = "1 / -1";
+          continue;
+        }
+        if (!card.classList.contains("rw-composed-block")) continue;
+        const span = preferredAdaptiveReliabilitySpan(adaptiveCardSignals(card));
+        card.style.gridColumn = `span ${span}`;
+        card.dataset.adaptiveColumnSpan = String(span);
+      }
+
+      // Reading after column assignment intentionally forces one layout pass;
+      // row spans then reflect the card's real rendered content height.
+      for (const card of cards) {
+        const contentHeight = card.getBoundingClientRect().height;
+        const span = adaptiveReliabilityRowSpan(
+          contentHeight,
+          rowGap,
+          RELIABILITY_MASONRY_ROW_HEIGHT,
+        );
+        card.style.gridRowEnd = `span ${span}`;
+        card.dataset.adaptiveRowSpan = String(span);
+      }
+    };
+    const schedulePack = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(pack);
+    };
+
+    const resizeObserver = new ResizeObserver(schedulePack);
+    resizeObserver.observe(grid);
+    const observeCards = () => {
+      Array.from(grid.children).forEach((node) => {
+        if (node instanceof HTMLElement) resizeObserver.observe(node);
+      });
+    };
+    observeCards();
+    const mutationObserver = new MutationObserver(() => {
+      observeCards();
+      schedulePack();
+    });
+    mutationObserver.observe(grid, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["class", "open", "aria-expanded"],
+    });
+    window.addEventListener("resize", schedulePack);
+    schedulePack();
+
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      window.removeEventListener("resize", schedulePack);
+    };
+  }, [layoutKey]);
+
+  return gridRef;
 }
 
 function formatNumber(value: number, english: boolean, options?: Intl.NumberFormatOptions) {
@@ -1280,8 +1393,8 @@ function BusinessKpisBlock({
       title={localized(english, "경영 KPI 기준", "Business KPI basis")}
       eyebrow="BUSINESS CONTEXT"
       icon={<BriefcaseBusiness size={15} />}
-      guidance={localized(english, "현재 운영 판단을 경영 지표와 연결하기 위한 회사 기준 KPI 문맥입니다.", "Company KPI context used to connect the current operational decision to business impact.")}
-      className="span-6"
+      guidance={localized(english, "현장의 조기 발견·판단·정비가 회사 KPI와 어떤 가치 기여로 이어지는지 연결하기 위한 기준 문맥입니다.", "Company KPI context used to connect early detection, decisions, and maintenance to measurable business value.")}
+      className={`span-6 ${context?.business_metrics.length ? "" : "is-empty-block"}`}
     >
       {context?.business_metrics.length ? (
         <div className="rw-composed-list">
@@ -1414,7 +1527,7 @@ function OperationalKpisBlock({
         ? `${formatNumber(value.lostUnits, english)}${english ? " units" : "개"}`
         : "—",
     ],
-    [localized(english, "공헌이익 노출", "Contribution-margin exposure"), compactMoney(value.contributionExposure, english)],
+    [localized(english, "보호 대상 공헌이익 노출", "Contribution margin at risk"), compactMoney(value.contributionExposure, english)],
     [localized(english, "동일 설비 과거 정비", "Prior maintenance on asset"), `${formatNumber(repeatedMaintenance, english)}${english ? " records" : "건"}`],
   ];
   const missingEvidence = [
@@ -1424,14 +1537,14 @@ function OperationalKpisBlock({
       : null,
     maintenanceLeadTime === null ? localized(english, "승인→정비 착수(정비 승인 후 계산)", "Approval → maintenance start (available after approval)") : null,
     value.lostUnits === null ? localized(english, "생산 손실", "Production loss") : null,
-    value.contributionExposure === null ? localized(english, "공헌이익 노출", "Contribution-margin exposure") : null,
+    value.contributionExposure === null ? localized(english, "보호 대상 공헌이익 노출", "Contribution margin at risk") : null,
   ].filter((item): item is string => Boolean(item));
   return (
     <Block
-      title={localized(english, "운영 의사결정 KPI", "Operational decision KPIs")}
+      title={localized(english, "운영 가치 · 의사결정 KPI", "Operational value & decision KPIs")}
       eyebrow="CASE OPERATING KPI"
       icon={<TimerReset size={15} />}
-      guidance={localized(english, "선택 Case의 판단·점검·정비 흐름에서 실제로 계산 가능한 리드타임과 손실 노출만 표시합니다.", "Shows only lead times and loss exposure that can be calculated from the selected case's decision, inspection, and maintenance evidence.")}
+      guidance={localized(english, "선택 Case의 판단·점검·정비가 의사결정 속도, 생산 연속성, 보호 대상 가치에 어떻게 연결되는지 실제 계산 가능한 근거만 표시합니다.", "Shows only evidence-backed links from the selected case to decision speed, production continuity, and value at risk.")}
       className="span-12"
     >
       <div className="rw-operational-kpis">
@@ -1579,7 +1692,7 @@ function AssetBriefBlock({
       eyebrow="ASSET CONTEXT"
       icon={<Boxes size={15} />}
       guidance={localized(english, "현재 선택한 설비의 위치·중요도·담당·위험·예상 정지를 Case 문맥으로 요약합니다.", "Summarizes the selected asset's location, criticality, owner, risk, and expected downtime as case context.")}
-      className="span-6"
+      className={`span-6 ${asset ? "" : "is-empty-block"}`}
     >
       {asset ? (
         <div className="rw-composed-kv">
@@ -1636,11 +1749,11 @@ function ProductionExposureBlock({
   const value = exposure({ detail, companyContext });
   return (
     <Block
-      title={localized(english, "생산 · 재무 영향", "Production & financial impact")}
-      eyebrow="PRODUCTION EXPOSURE"
+      title={localized(english, "생산 · 재무 가치", "Production & financial value")}
+      eyebrow="VALUE AT RISK"
       icon={<CircleDollarSign size={15} />}
-      guidance={localized(english, "현재 Case의 생산 손실 수량과 제품 단가·공헌이익 근거를 연결해 노출 규모를 보여줍니다.", "Connects production-loss units with product price and contribution-margin evidence to show the selected case's exposure.")}
-      className="span-6"
+      guidance={localized(english, "조기 발견과 대응이 어떤 생산 손실·매출·공헌이익 노출을 보호하려는 활동인지 보여줍니다. 노출액은 실제 절감 실적과 구분합니다.", "Shows which production, revenue, and contribution-margin exposure the early response is intended to protect. Exposure is distinct from realized savings.")}
+      className={`span-6 ${detail?.operationContext ? "" : "is-empty-block"}`}
     >
       {detail?.operationContext ? (
         <>
@@ -1676,14 +1789,24 @@ function ProductionExposureBlock({
               </strong>
             </div>
             <div>
-              <span>{localized(english, "매출 노출액", "Revenue exposure")}</span>
+              <span>{localized(english, "보호 대상 매출 노출", "Revenue at risk")}</span>
               <strong>{compactMoney(value.revenueExposure, english)}</strong>
             </div>
             <div>
-              <span>{localized(english, "공헌이익 노출액", "Contribution-margin exposure")}</span>
+              <span>{localized(english, "보호 대상 공헌이익", "Contribution margin at risk")}</span>
               <strong>{compactMoney(value.contributionExposure, english)}</strong>
             </div>
           </div>
+          {value.lostUnits !== null || value.contributionExposure !== null ? (
+            <p className="rw-value-realization-callout">
+              <strong>VALUE STORY</strong>{" "}
+              {localized(
+                english,
+                `이 Case는 위험을 조기에 포착해${value.lostUnits !== null ? ` 약 ${formatNumber(value.lostUnits, false)}개의 계획 생산 손실` : " 생산 손실"}${value.contributionExposure !== null ? `과 ${compactMoney(value.contributionExposure, false)}의 공헌이익 노출` : ""}을 실제 손실로 확정되기 전에 관리하는 가치 보호 활동입니다. 현재 수치는 보호 대상 노출이며 정비 후 관측·재무 actual 전에는 절감 실적으로 확정하지 않습니다.`,
+                `This case turns early risk detection into value protection by managing${value.lostUnits !== null ? ` about ${formatNumber(value.lostUnits, true)} units of planned production exposure` : " production exposure"}${value.contributionExposure !== null ? ` and ${compactMoney(value.contributionExposure, true)} of contribution margin at risk` : ""} before it becomes realized loss. These figures are value at risk, not booked savings, until post-maintenance observations and financial actuals confirm the outcome.`,
+              )}
+            </p>
+          ) : null}
           {detail.operationContext.eventImpact?.basis.formula ? (
             <details className="rw-technical-details">
               <summary>{localized(english, "산정 근거 상세", "Calculation basis")}</summary>
@@ -2057,7 +2180,7 @@ function WorkflowActionsBlock({
       eyebrow="GOVERNED ACTION"
       icon={<Wrench size={15} />}
       guidance={localized(english, "선택 Case의 승인 가능한 작업만 실행할 수 있으며 근거 snapshot과 작업 이력이 함께 남습니다.", "Only governed actions for the selected case can be executed, with the evidence snapshot and action history preserved.")}
-      className="span-12"
+      className={props.surfaceId === "inspection" ? "span-12 is-action-hero" : "span-12"}
     >
       <MaintenanceWorkflowActionPanel
         projectId={props.model.context.projectId}
@@ -2110,7 +2233,7 @@ function SensorSignalsBlock({
       eyebrow="OBSERVED SIGNALS"
       icon={<RadioTower size={15} />}
       guidance={localized(english, "판단 시점에 연결된 센서 관측값과 품질 상태를 보여주며 원본 설비·센서 이름은 번역하지 않습니다.", "Shows sensor observations and quality status connected to the decision timestamp. Raw asset and sensor names remain unchanged.")}
-      className="span-6"
+      className={`span-6 ${detail?.sensors.length ? "" : "is-empty-block"}`}
     >
       {detail?.sensors.length ? (
         <div className="rw-composed-list static">
@@ -2150,7 +2273,7 @@ function EvidenceFactorsBlock({
       eyebrow="MODEL EVIDENCE"
       icon={<ChartNoAxesCombined size={15} />}
       guidance={localized(english, "모델이 현재 위험도를 높이거나 낮춘 주요 피쳐와 기여 방향만 요약합니다.", "Summarizes the main features that increased or decreased the current risk score and their contribution direction.")}
-      className="span-6"
+      className={`span-6 ${detail?.topFactors.length ? "" : "is-empty-block"}`}
     >
       {detail?.topFactors.length ? (
         <div
@@ -2194,7 +2317,7 @@ function InspectionTargetsBlock({
       eyebrow="INSPECTION PLAN"
       icon={<ClipboardCheck size={15} />}
       guidance={localized(english, "센서·모델·SOP 근거에서 실제 현장 확인 대상으로 좁혀진 부품과 위치, 점검 방법을 보여줍니다.", "Shows components, locations, and inspection methods narrowed down from sensor, model, and SOP evidence for field verification.")}
-      className="span-6"
+      className={detail?.inspectionTargets.length ? "span-6" : "span-12 is-compact-empty is-empty-block"}
     >
       {detail?.inspectionTargets.length ? (
         <div className="rw-composed-cards">
@@ -2237,7 +2360,7 @@ function MaintenanceHistoryBlock({
       eyebrow="MAINTENANCE HISTORY"
       icon={<History size={15} />}
       guidance={localized(english, "선택 설비에 연결된 과거 정비 기록과 runtime 이력을 함께 보여주되 원문 기록 내용은 그대로 유지합니다.", "Shows historical maintenance records and runtime history connected to the selected asset while preserving source record text as-is.")}
-      className="span-6"
+      className={`span-6 ${records.length || runtime.length ? "" : "is-empty-block"}`}
     >
       {records.length || runtime.length ? (
         <div className="rw-composed-timeline">
@@ -2345,10 +2468,10 @@ function MaintenanceEffectBlock({
     : null;
   return (
     <Block
-      title={localized(english, "정비 효과 Before / After", "Maintenance effect Before / After")}
-      eyebrow="MAINTENANCE OUTCOME"
+      title={localized(english, "정비 효과 · 가치 실현", "Maintenance effect & value realization")}
+      eyebrow="VALUE REALIZATION"
       icon={<TrendingDown size={15} />}
-      guidance={localized(english, "정비 완료 시점을 기준으로 전후 위험도·알림·센서 관측을 비교하며, 후속 관측이 없으면 효과를 확정하지 않습니다.", "Compares risk, alerts, and sensor observations before and after maintenance completion. No effect is confirmed until follow-up observations exist.")}
+      guidance={localized(english, "정비 전후 위험·알림·센서 변화를 통해 현장 작업이 생산 연속성 보호라는 운영 가치로 이어졌는지 검증합니다. 재무 절감액은 별도 actual 근거가 있어야 확정합니다.", "Uses before/after risk, alert, and sensor evidence to verify whether field work translated into operational value through protected production continuity. Financial savings require separate actual evidence.")}
       className="span-12"
     >
       {completedAt ? (
@@ -2389,6 +2512,16 @@ function MaintenanceEffectBlock({
               <small>{localized(english, "비정상 관측 수", "Abnormal observations")}</small>
             </article>
           </div>
+          {riskDelta !== null && riskDelta < 0 && afterRisk.length ? (
+            <p className="rw-value-realization-callout is-realizing">
+              <strong>VALUE REALIZATION</strong>{" "}
+              {localized(
+                english,
+                `정비 후 평균 위험도가 ${Math.abs(Math.round(riskDelta * 100))}%p 낮아져 운영 안정화 효과가 관측되고 있습니다${afterAlerts < beforeAlerts ? ` · 비정상 알림도 ${beforeAlerts}건에서 ${afterAlerts}건으로 감소했습니다` : ""}. 이 결과는 생산 연속성 KPI에 긍정적으로 연결될 수 있지만, 실제 비용 절감과 KPI 기여 실적은 후속 운영·재무 actual이 연결된 뒤 확정합니다.`,
+                `Average risk is ${Math.abs(Math.round(riskDelta * 100))} percentage points lower after maintenance, providing observed evidence of operational stabilization${afterAlerts < beforeAlerts ? `; abnormal alerts also declined from ${beforeAlerts} to ${afterAlerts}` : ""}. This can support production-continuity KPIs, while realized savings and KPI contribution remain unconfirmed until operational and financial actuals are linked.`,
+              )}
+            </p>
+          ) : null}
           {sensorEffects.length ? (
             <div className="rw-maintenance-sensor-effect">
               {sensorEffects.map((item) => (
@@ -2450,7 +2583,7 @@ function MaterialContextBlock({
       eyebrow="MATERIAL CONTEXT"
       icon={<PackageSearch size={15} />}
       guidance={localized(english, "선택 설비에 연결된 자재 재고와 재주문 기준, 리드타임을 함께 보여 정비 실행 제약을 확인합니다.", "Shows inventory, reorder points, and lead time for materials linked to the selected asset to surface maintenance execution constraints.")}
-      className="span-6"
+      className={`span-6 ${materials.length ? "" : "is-empty-block"}`}
     >
       {materials.length ? (
         <div className="rw-composed-list static">
@@ -2505,7 +2638,7 @@ function DecisionHistoryBlock({
       eyebrow="DECISION LINEAGE"
       icon={<FileClock size={15} />}
       guidance={localized(english, "선택 설비와 연결된 과거 판단과 현재 Case 활동을 시간순 근거로 확인합니다.", "Reviews prior decisions linked to the selected asset together with current case activity as chronological evidence.")}
-      className="span-6"
+      className={`span-6 ${decisions.length || detail?.activity.length ? "" : "is-empty-block"}`}
     >
       {decisions.length || detail?.activity.length ? (
         <div className="rw-composed-timeline">
@@ -2831,8 +2964,8 @@ function ContextEvidenceBlock({
                 }
               >
                 {context.context_storage?.mode === "team_db_overlay"
-                  ? `Team DB · ${context.context_storage.persisted_record_count} records`
-                  : "Reference bootstrap"}
+                  ? localized(english, `운영 데이터 · ${context.context_storage.persisted_record_count}건`, `Operational data · ${context.context_storage.persisted_record_count} records`)
+                  : localized(english, "참조 운영 문맥", "Reference operational context")}
               </span>
             </div>
             <p>{context.company.operating_principle}</p>
@@ -3087,6 +3220,22 @@ function renderBlock(
 export function RoleComposedWorkspace(props: RoleComposedWorkspaceProps) {
   const { locale } = useI18n();
   const english = locale === "en-US";
+  const plannerIntent = reliabilityLayoutIntent(props.surfaceId);
+  const plannerRole: "manager" | "engineer" =
+    props.experienceKind === "executive" || props.experienceKind === "operations"
+      ? "manager"
+      : "engineer";
+  const plannerKey = [
+    props.selectedEvent?.eventId ?? "none",
+    plannerRole,
+    plannerIntent,
+    locale,
+  ].join(":");
+  const [plannerResult, setPlannerResult] = useState<{
+    key: string;
+    mode: string;
+    blockTypes: BlockType[];
+  } | null>(null);
   const materials = relevantMaterials(
     props.companyContext,
     props.selectedEvent?.assetId,
@@ -3119,12 +3268,40 @@ export function RoleComposedWorkspace(props: RoleComposedWorkspaceProps) {
       exposureValue.revenueExposure >= 10_000_000,
     hasMaintenanceOutcome,
   };
-  const blocks = resolveReliabilityComposition(
+  const baseBlocks = resolveReliabilityComposition(
     props.experienceKind,
     props.view,
     signals,
     props.surfaceId,
   );
+  const blocks = applyReliabilityPlannerOrder(
+    baseBlocks,
+    plannerResult?.key === plannerKey ? plannerResult.blockTypes : null,
+  );
+  useEffect(() => {
+    const eventId = props.selectedEvent?.eventId;
+    if (!eventId || props.detailLoading) return undefined;
+    let cancelled = false;
+    void getLayout(eventId, plannerRole, plannerIntent, true, locale)
+      .then((layout) => {
+        if (cancelled) return;
+        setPlannerResult({
+          key: plannerKey,
+          mode: layout.mode,
+          blockTypes: [...layout.blocks]
+            .sort((left, right) => left.order - right.order)
+            .map((block) => block.type),
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPlannerResult({ key: plannerKey, mode: "semantic-fallback", blockTypes: [] });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [locale, plannerIntent, plannerKey, plannerRole, props.detailLoading, props.selectedEvent?.eventId]);
   const promotionReason = signals.hasDataQualityHold
     ? localized(english, `우선순위 상승 · 데이터 품질 확인 ${formatNumber(props.model.metrics.dataQualityHold, false)}건`, `Priority raised · ${formatNumber(props.model.metrics.dataQualityHold, true)} data-quality item(s) need review`)
     : props.experienceKind === "operations" && signals.hasDecisionBacklog
@@ -3148,15 +3325,33 @@ export function RoleComposedWorkspace(props: RoleComposedWorkspaceProps) {
   const shouldShowPromotionReason =
     props.view === "overview" &&
     (!props.surfaceId || promotionReasonSurfaces.has(props.surfaceId));
+  const adaptiveLayoutKey = [
+    props.experienceKind,
+    props.view,
+    props.surfaceId ?? "default",
+    props.selectedEvent?.eventId ?? "none",
+    props.detailLoading ? "loading" : "ready",
+    blocks.join("|"),
+  ].join(":");
+  const gridRef = useAdaptiveReliabilityPacking(adaptiveLayoutKey);
 
   return (
     <WorkspaceEnglishContext.Provider value={english}>
       <div
+      ref={gridRef}
       className={`rw-composed-grid composition-${props.experienceKind}`}
       data-testid={`role-composed-${props.experienceKind}`}
       data-surface={props.surfaceId ?? "default"}
       data-selected-event-id={props.selectedEvent?.eventId ?? ""}
       data-composition={blocks.join(",")}
+      data-layout-engine="semantic-content-masonry"
+      data-layout-planner-mode={
+        !props.selectedEvent
+          ? "semantic-no-event"
+          : plannerResult?.key === plannerKey
+            ? plannerResult.mode
+            : "semantic-pending"
+      }
     >
       {shouldShowPromotionReason && promotionReason ? (
         <div className="rw-composition-reason" role="status">

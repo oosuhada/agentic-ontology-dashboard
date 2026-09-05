@@ -212,10 +212,10 @@
   cursor: pointer;
 }
 .operations-button.primary { background: #2f73c9; border-color: #4c90f0; color: #fff; }
-.operations-button.secondary { background: var(--operations-surface-2); }
+.operations-button.secondary { color: var(--operations-text); background: transparent; border-color: var(--operations-border-strong); }
 .operations-button.ghost { background: transparent; border-color: transparent; color: var(--operations-muted); }
 .operations-button:hover:not(:disabled) { filter: brightness(1.1); }
-.operations-button:disabled { opacity: .45; cursor: not-allowed; }
+.operations-button:disabled { opacity: 1; color: var(--operations-dim); border-color: var(--operations-border); background: color-mix(in srgb,var(--operations-surface-2) 64%,transparent); cursor: not-allowed; }
 .operations-action-row { display: flex; flex-wrap: wrap; gap: 7px; }
 .operations-button:focus-visible,
 .operations-icon-button:focus-visible,
@@ -1075,7 +1075,7 @@
 .operations-maintenance-cost-panel > header { display: flex; align-items: center; gap: 7px; }
 .operations-maintenance-cost-panel > header strong { font-size: 12px; }
 .operations-maintenance-cost-panel > header button { margin-left: auto; }
-.operations-maintenance-cost-panel .operations-button:not(.ghost) { color: #fff; background: #2f73c9; border-color: #4c90f0; }
+.operations-maintenance-cost-panel .operations-button.primary { color: #fff; background: #2f73c9; border-color: #4c90f0; }
 .operations-maintenance-cost-panel > p,
 .operations-cost-inputs > p,
 .operations-cost-result > p { margin: 0; color: var(--operations-dim); font-size: 10px; line-height: 1.45; }
@@ -1089,6 +1089,17 @@
 .operations-maintenance-workflow-panel > header strong { font-size: 12px; }
 .operations-maintenance-workflow-panel > p { margin: 0; color: var(--operations-dim); font-size: 10px; line-height: 1.45; }
 .operations-maintenance-workflow-panel > .operations-button { justify-content: center; width: 100%; }
+.operations-workflow-summary { display:grid; grid-template-columns:minmax(0,1fr) minmax(190px,auto); align-items:center; gap:12px; }
+.operations-workflow-summary > p { margin:0; color:var(--operations-dim); font-size:10px; line-height:1.5; }
+.operations-workflow-summary > .operations-button { min-width:190px; }
+.operations-workflow-summary > .operations-workflow-state { min-width:220px; }
+.operations-workflow-state { min-height: 42px; display: flex; align-items: center; gap: 9px; padding: 7px 10px; border: 1px solid rgba(181,196,214,.16); border-radius: 7px; background: rgba(181,196,214,.055); }
+.operations-workflow-state > span { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: #d7aa68; box-shadow: 0 0 0 4px rgba(215,170,104,.12); }
+.operations-workflow-state > div { min-width: 0; display: grid; gap: 1px; }
+.operations-workflow-state small { color: var(--operations-dim); font-size: 9px; }
+.operations-workflow-state strong { color: var(--operations-text); font-size: 11px; }
+.operations-workflow-state[data-state="complete"] > span { background: #72bf95; box-shadow: 0 0 0 4px rgba(114,191,149,.12); }
+@media(max-width:760px){.operations-workflow-summary{grid-template-columns:1fr}.operations-workflow-summary>.operations-button,.operations-workflow-summary>.operations-workflow-state{width:100%;min-width:0}}
 .operations-workflow-success { color: #83d9a5; }
 .operations-cost-action-candidates { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
 .operations-cost-action-candidates > strong { width: 100%; color: var(--operations-muted); font-size: 10px; }
@@ -2713,6 +2724,13 @@
   background-image: none !important;
   box-shadow: 0 8px 22px rgba(44, 63, 81, 0.05) !important;
 }
+
+:root[data-theme="light"] .rw-preview-shell .operations-workflow-state {
+  color: #17212c;
+  border-color: #d8e0e7;
+  background: #f5f7f9;
+}
+:root[data-theme="light"] .rw-preview-shell .operations-workflow-state strong { color: #17212c; }
 
 :root[data-theme="light"] .rw-preview-shell .operations-app,
 :root[data-theme="light"] .rw-preview-shell .operations-page {

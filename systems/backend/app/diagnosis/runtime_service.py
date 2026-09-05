@@ -1921,24 +1921,24 @@ class PredictiveMaintenanceRuntimeService:
                 "low": "낮음" if locale == "ko-KR" else "low",
             }.get(equipment.criticality, "확인 필요" if locale == "ko-KR" else "not provided")
             if resolved_report_type == "operations-decision":
-                report["headline"] = f"{asset_label} · 경영 의사결정 요청"
-                report["summary"] = f"현재 위험도 {risk_text}, 상태 {status_label}입니다. 현재 요청된 판단은 '{action_label}'이며 자동 실행되지 않습니다."
+                report["headline"] = f"{asset_label} · 생산 연속성 보호 의사결정"
+                report["summary"] = f"현재 위험도 {risk_text}, 상태 {status_label}를 조기에 포착했습니다. 이 Case의 경영 가치는 예상 정지 노출 {equipment.estimated_downtime_minutes}분을 실제 생산 손실로 확정되기 전에 관리하는 데 있으며, 현재 요청된 판단은 '{action_label}'입니다. 이는 보호 대상 노출이며 절감 실적은 정비 후 관측과 재무 actual 확인 전에는 확정하지 않습니다."
                 report["sections"] = [
-                    {"section_id": "decision-request", "title": "의사결정 요청", "body": action_label, "evidence_field_ids": ["recommended_decision"]},
-                    {"section_id": "operational-exposure", "title": "운영 노출", "body": f"설비 중요도 {criticality_label} · 예상 정지 노출 {equipment.estimated_downtime_minutes}분", "evidence_field_ids": ["equipment.criticality", "equipment.estimated_downtime_minutes"]},
+                    {"section_id": "decision-request", "title": "가치 보호를 위한 의사결정", "body": action_label, "evidence_field_ids": ["recommended_decision"]},
+                    {"section_id": "operational-exposure", "title": "보호 대상 운영 가치", "body": f"설비 중요도 {criticality_label} · 예상 정지 노출 {equipment.estimated_downtime_minutes}분 · 현재는 절감 실적이 아닌 보호 대상 노출", "evidence_field_ids": ["equipment.criticality", "equipment.estimated_downtime_minutes"]},
                 ]
             elif resolved_report_type == "inspection-summary":
-                report["headline"] = f"{asset_label} · 현장 확인 필요"
-                report["summary"] = f"현재 위험도 {risk_text}입니다. 예측 결과는 고장 확정이 아니며 '{action_label}'을 통해 현장 확인이 필요합니다."
+                report["headline"] = f"{asset_label} · 조기 확인으로 생산 가치 보호"
+                report["summary"] = f"현재 위험도 {risk_text}를 조기에 포착했습니다. 예측 결과는 고장 확정이 아니며 '{action_label}'을 통해 실제 고장·정지로 전이되기 전에 현장 확인을 수행하는 것이 이 Case의 운영 가치입니다."
                 report["sections"] = [
                     {"section_id": "inspection-request", "title": "확인 요청", "body": action_label, "evidence_field_ids": ["recommended_decision"]},
-                    {"section_id": "inspection-limit", "title": "판단 경계", "body": "현장 점검 전에는 원인과 정비 필요성을 확정하지 않습니다.", "evidence_field_ids": ["status"]},
+                    {"section_id": "inspection-limit", "title": "가치 실현 경계", "body": "현장 점검 전에는 원인·정비 필요성·비용 회피 효과를 확정하지 않습니다.", "evidence_field_ids": ["status"]},
                 ]
             elif resolved_report_type == "maintenance-effect":
-                report["headline"] = f"{asset_label} · 정비 효과 확인 대기"
-                report["summary"] = "이 Event에 직접 연결된 Maintenance Event와 정비 후 관측이 확인되기 전에는 정비 효과를 현재 Case의 Outcome으로 표시하지 않습니다."
+                report["headline"] = f"{asset_label} · 정비 가치 실현 확인 대기"
+                report["summary"] = "정비를 수행했다는 사실만으로 비용 절감이나 KPI 기여를 확정하지 않습니다. 이 Event에 직접 연결된 Maintenance Event와 정비 후 위험·센서 관측이 확인되면 운영 안정화 효과를 먼저 검증하고, 재무 actual이 연결된 뒤 실제 절감 실적을 확정합니다."
                 report["sections"] = [
-                    {"section_id": "maintenance-state", "title": "현재 상태", "body": "정비 완료와 후속 관측의 인과 연결을 확인해야 합니다.", "evidence_field_ids": ["status"]},
+                    {"section_id": "maintenance-state", "title": "가치 실현 검증", "body": "정비 완료 → 후속 관측 → KPI 변화 → 재무 actual의 인과 연결을 확인해야 합니다.", "evidence_field_ids": ["status"]},
                 ]
             elif resolved_report_type == "weekly-risk":
                 report["headline"] = f"주간 리스크 참고 · {asset_label}"
@@ -1947,11 +1947,11 @@ class PredictiveMaintenanceRuntimeService:
                     {"section_id": "case-risk", "title": "선택 Case", "body": report["summary"], "evidence_field_ids": ["status", "failure_probability"]},
                 ]
             else:
-                report["headline"] = f"경영진 운영 브리프 · {asset_label}"
-                report["summary"] = f"현재 위험도 {risk_text}, 상태 {status_label}입니다. 고장 유형은 현장 확인 전 가설이며 현재 경영 판단 요청은 '{action_label}'입니다."
+                report["headline"] = f"경영진 가치 브리프 · {asset_label}"
+                report["summary"] = f"현재 위험도 {risk_text}, 상태 {status_label}를 조기에 포착했습니다. 이 Case는 예상 정지 노출 {equipment.estimated_downtime_minutes}분을 선제적으로 관리해 생산 연속성을 보호하는 의사결정이며, 현재 요청은 '{action_label}'입니다. 고장 유형은 현장 확인 전 가설이고 실제 비용 절감·KPI 기여는 후속 actual 근거가 연결될 때 확정합니다."
                 report["sections"] = [
-                    {"section_id": "executive-status", "title": "경영 판단 요약", "body": report["summary"], "evidence_field_ids": ["status", "failure_probability", "recommended_decision"]},
-                    {"section_id": "executive-exposure", "title": "운영 노출", "body": f"예상 정지 노출 {equipment.estimated_downtime_minutes}분 · 설비 중요도 {criticality_label}", "evidence_field_ids": ["equipment.estimated_downtime_minutes", "equipment.criticality"]},
+                    {"section_id": "executive-status", "title": "가치 기반 경영 판단", "body": report["summary"], "evidence_field_ids": ["status", "failure_probability", "recommended_decision"]},
+                    {"section_id": "executive-exposure", "title": "보호 대상 가치", "body": f"예상 정지 노출 {equipment.estimated_downtime_minutes}분 · 설비 중요도 {criticality_label} · 절감 실적 확정 전", "evidence_field_ids": ["equipment.estimated_downtime_minutes", "equipment.criticality"]},
                 ]
             # Raw feature identifiers and release provenance remain available
             # through Evidence details, not the normal executive narrative.

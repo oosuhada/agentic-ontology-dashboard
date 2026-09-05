@@ -126,8 +126,8 @@ describe("RELIABILITY_ROLE_EXPERIENCES", () => {
   });
 
   it("defines the primary work question for every role experience", () => {
-    expect(RELIABILITY_ROLE_EXPERIENCES.executive.primaryQuestion.ko).toBe("현재 전체 운영 위험과 생산 영향은 무엇인가?");
-    expect(RELIABILITY_ROLE_EXPERIENCES.operations.primaryQuestion.ko).toBe("지금 내가 판단하거나 승인해야 하는 건 무엇인가?");
+    expect(RELIABILITY_ROLE_EXPERIENCES.executive.primaryQuestion.ko).toBe("현재 어떤 운영 가치를 보호하고 있고 KPI에 어떤 영향을 주는가?");
+    expect(RELIABILITY_ROLE_EXPERIENCES.operations.primaryQuestion.ko).toBe("지금 어떤 판단이 가장 큰 생산·비용 가치를 보호하는가?");
     expect(RELIABILITY_ROLE_EXPERIENCES.engineering.primaryQuestion.ko).toBe("어떤 설비를 조사해야 하고 근거는 무엇인가?");
     expect(RELIABILITY_ROLE_EXPERIENCES.maintenance.primaryQuestion.ko).toBe("지금 수행해야 할 승인된 작업은 무엇인가?");
   });

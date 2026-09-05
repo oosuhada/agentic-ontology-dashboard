@@ -14,6 +14,9 @@ const selectedContext: ReliabilityAssistantContext = {
   assetName: "CNC-03 spindle",
   eventId: "event-84",
   failureProbability: 0.84,
+  estimatedDowntimeMinutes: 120,
+  estimatedLostUnits: 25,
+  productVariant: "HX-M",
   currentLifecycleLabel: "점검 완료",
   nextLifecycleLabel: "정비안 검토",
   primaryActionLabel: "정비안 검토",
@@ -187,5 +190,17 @@ describe("ContextAssistantDrawer", () => {
     expect(groundedReliabilityAssistantAnswer(selectedContext, "현재 핵심 근거 요약")).toContain("진동 RMS 6.2 mm/s");
     expect(groundedReliabilityAssistantAnswer(selectedContext, "현재 핵심 근거 요약")).toContain("검증된 SOP 안내 2건");
     expect(groundedReliabilityAssistantAnswer(selectedContext, "현재 핵심 근거 요약")).not.toContain("local_sop_metadata_retriever");
+  });
+
+  it("frames cost and KPI questions as value protection without claiming booked savings", () => {
+    const answer = groundedReliabilityAssistantAnswer(
+      selectedContext,
+      "이 조치의 비용 절감과 KPI 가치는?",
+    );
+    expect(answer).toContain("생산 연속성을 보호");
+    expect(answer).toContain("예상 정지 노출 120분");
+    expect(answer).toContain("계획 손실 노출 약 25개");
+    expect(answer).toContain("실제 절감 실적은 아닙니다");
+    expect(answer).not.toContain("비용을 절감했습니다");
   });
 });

@@ -33,7 +33,7 @@ describe("role composed reliability workspace", () => {
     expect(new Set(result).size).toBe(result.length);
   });
 
-  it("keeps inspection targets and action ahead of charts on the inspection surface", () => {
+  it("keeps the governed action first without duplicating lifecycle chrome on inspection", () => {
     const result = resolveReliabilityComposition("engineering", "objects", {
       hasCriticalRisk: true,
       hasDataQualityHold: true,
@@ -43,8 +43,9 @@ describe("role composed reliability workspace", () => {
       hasHighProductionExposure: false,
       hasMaintenanceOutcome: false,
     }, "inspection");
-    expect(result.slice(0, 3)).toEqual(["inspection-targets", "workflow-actions", "workflow-lifecycle"]);
-    expect(result.indexOf("feature-trend")).toBeGreaterThanOrEqual(3);
+    expect(result.slice(0, 2)).toEqual(["workflow-actions", "inspection-targets"]);
+    expect(result).not.toContain("workflow-lifecycle");
+    expect(result.indexOf("feature-trend")).toBeGreaterThanOrEqual(2);
   });
 
   it("keeps the bottleneck table first on the executive bottleneck surface", () => {

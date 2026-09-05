@@ -231,7 +231,7 @@ def build_manufacturing_service(
         )
     except Exception:
         # Context persistence is an enrichment path. Core Operations must remain
-        # available while an older DB is being migrated or a read-only Team DB
+        # available while an older DB is being migrated or a read-only shared DB
         # connection is intentionally used.
         pass
     equipment_service = EquipmentService(
@@ -265,7 +265,7 @@ def get_service() -> ManufacturingPredictiveMaintenanceService:
     # serialize concurrent first misses. The public preview opens several
     # Operations reads in parallel after login; without this lock, each cold
     # request can run migrations and create its own PostgreSQL pool before the
-    # first service is cached, exhausting low-limit Team DB roles.
+    # first service is cached, exhausting low-limit shared DB roles.
     with _SERVICE_BUILD_LOCK:
         return _cached_manufacturing_service(database_target())
 

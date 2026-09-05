@@ -427,6 +427,102 @@ def _summary_text(summary: dict[str, Any] | None, audience: str | None = None) -
     return None
 
 
+def _production_impact_label(value: Any) -> str | None:
+    return {
+        "none": "현재 생산 영향 없음",
+        "low": "낮은 생산 영향",
+        "medium": "중간 생산 영향",
+        "high": "높은 생산 영향",
+    }.get(str(value)) if value is not None else None
+
+
+def _value_realization_context(
+    packet: dict[str, Any],
+    evidence: list[dict[str, Any]],
+) -> dict[str, Any]:
+    operation_context = packet.get("operation_context_summary") or {}
+    business_types = {
+        "product_economics",
+        "business_metric",
+        "kpi_actual",
+        "financial_actual",
+        "financial_statement",
+    }
+    business_evidence = [
+        item
+        for item in evidence
+        if (item.get("metadata") or {}).get("document_type") in business_types
+    ]
+    kpi_titles = [
+        str(item.get("title"))
+        for item in business_evidence
+        if (item.get("metadata") or {}).get("document_type")
+        in {"business_metric", "kpi_actual"}
+        and item.get("title")
+    ][:2]
+    financial_titles = [
+        str(item.get("title"))
+        for item in business_evidence
+        if (item.get("metadata") or {}).get("document_type")
+        in {"product_economics", "financial_actual", "financial_statement"}
+        and item.get("title")
+    ][:2]
+    return {
+        "production_impact": _production_impact_label(operation_context.get("production_impact")),
+        "estimated_downtime_minutes": operation_context.get("estimated_downtime_minutes"),
+        "estimated_lost_units": operation_context.get("estimated_lost_units"),
+        "product_variant": operation_context.get("product_variant"),
+        "kpi_titles": kpi_titles,
+        "financial_titles": financial_titles,
+    }
+
+
+def _value_realization_text(
+    packet: dict[str, Any],
+    evidence: list[dict[str, Any]],
+    audience: str | None,
+) -> str | None:
+    context = _value_realization_context(packet, evidence)
+    downtime = context["estimated_downtime_minutes"]
+    lost_units = context["estimated_lost_units"]
+    production_impact = context["production_impact"]
+    product_variant = context["product_variant"]
+    value_parts: list[str] = []
+    if production_impact:
+        value_parts.append(production_impact)
+    if isinstance(downtime, (int, float)) and downtime > 0:
+        value_parts.append(f"예상 정지 {int(downtime)}분")
+    if isinstance(lost_units, (int, float)) and lost_units > 0:
+        value_parts.append(f"계획 손실 노출 약 {int(lost_units):,}개")
+    if product_variant:
+        value_parts.append(f"제품 {product_variant}")
+    if not value_parts and not context["kpi_titles"] and not context["financial_titles"]:
+        return None
+
+    if audience == "executive":
+        prefix = "가치 관점에서 이 Case는 고장 탐지 자체보다 생산 연속성과 손실 노출을 선제적으로 보호하는 활동입니다."
+    elif audience == "operations":
+        prefix = "운영 가치 관점에서는 조기 발견을 실제 생산 손실 노출을 줄이기 위한 판단과 조치로 연결하는 Case입니다."
+    elif audience in {"engineering", "maintenance"}:
+        prefix = "현장 조기 확인과 정비 대응은 설비 복구 자체를 넘어 생산 연속성을 보호하는 업무로 연결됩니다."
+    else:
+        prefix = "이 Case의 가치는 위험 감지 자체보다 후속 조치를 통해 운영 손실 노출을 선제적으로 관리하는 데 있습니다."
+
+    detail = f" 현재 연결된 가치 노출은 {' · '.join(value_parts)}입니다." if value_parts else ""
+    kpi = (
+        f" KPI 연결 근거는 {' · '.join(context['kpi_titles'])}입니다."
+        if context["kpi_titles"]
+        else ""
+    )
+    finance = (
+        f" 재무·제품 경제성 근거로 {' · '.join(context['financial_titles'])}이 연결되어 있습니다."
+        if context["financial_titles"]
+        else ""
+    )
+    caveat = " 현재 수치는 보호 대상 또는 예상 손실 노출이며, 정비 후 관측과 Case에 연결된 재무 actual이 확인되기 전에는 실제 비용 절감 실적으로 확정하지 않습니다."
+    return f"{prefix}{detail}{kpi}{finance}{caveat}"
+
+
 def _answer_from_packet(
     question: str,
     packet: dict[str, Any],
@@ -444,6 +540,23 @@ def _answer_from_packet(
     summary_text = _summary_text(summary, audience)
     evidence_text = " · ".join(item["content"] for item in evidence[:4])
     lower = question.lower()
+    value_text = _value_realization_text(packet, evidence, audience)
+    asks_value = any(
+        token in lower
+        for token in (
+            "비용",
+            "절감",
+            "가치",
+            "kpi",
+            "성과",
+            "impact",
+            "value",
+            "saving",
+            "roi",
+        )
+    )
+    if asks_value and value_text:
+        return f"{title}: {value_text} 근거: {evidence_text or reason_text or '현재 연결된 정본 근거 없음'}"
     if summary_text:
         if audience == "executive":
             operation_context = packet.get("operation_context_summary") or {}
@@ -458,15 +571,20 @@ def _answer_from_packet(
             impact_text = " · ".join(item for item in impact_parts if item)
             return (
                 f"{title}: {summary_text}"
-                f"{f' 경영 영향: {impact_text}.' if impact_text else ''} "
+                f"{f' 경영 영향: {impact_text}.' if impact_text else ''}"
+                f"{f' {value_text}' if value_text else ''} "
                 f"근거: {evidence_text or reason_text or '근거 미제공'}"
             )
-        return f"{title}: {summary_text} 연결 근거: {evidence_text or reason_text or '근거 미제공'}"
+        return (
+            f"{title}: {summary_text}"
+            f"{f' {value_text}' if value_text else ''} "
+            f"연결 근거: {evidence_text or reason_text or '근거 미제공'}"
+        )
     if any(token in lower for token in ("우선", "priority", "prioritized", "why")):
-        return f"{title}는 현재 {status or '상태 미제공'} / {risk}로 검토 우선순위에 올라 있습니다. 핵심 근거는 {reason_text or evidence_text or '현재 연결된 정본 근거 없음'}입니다. 이는 고장 확정이 아니라 운영 검토 우선순위입니다."
+        return f"{title}는 현재 {status or '상태 미제공'} / {risk}로 검토 우선순위에 올라 있습니다. 핵심 근거는 {reason_text or evidence_text or '현재 연결된 정본 근거 없음'}입니다. 이는 고장 확정이 아니라 운영 검토 우선순위입니다.{f' {value_text}' if value_text else ''}"
     if any(token in lower for token in ("근거", "evidence", "factor", "요인")):
         return f"{title}의 현재 연결 근거는 {evidence_text or reason_text or '제공되지 않았습니다'}입니다."
-    return f"{title}에 대한 답변입니다. 현재 상태는 {status or '미제공'}, 위험도는 {risk}이며, 연결 근거는 {evidence_text or reason_text or '제공되지 않았습니다'}입니다."
+    return f"{title}에 대한 답변입니다. 현재 상태는 {status or '미제공'}, 위험도는 {risk}이며, 연결 근거는 {evidence_text or reason_text or '제공되지 않았습니다'}입니다.{f' {value_text}' if value_text else ''}"
 
 
 def _runtime_event_id(result: Any) -> str:
@@ -656,11 +774,11 @@ def _runtime_agent_review_packet(
             {
                 "section_id": "runtime-risk",
                 "owner_domain": "diagnosis",
-                "source": "PostgreSQL Product Result runtime",
+                "source": "Governed Product Result runtime",
                 "packet_paths": ["risk_summary", "review_priority", "model_expression_context"],
                 "mutation_allowed": False,
                 "materialization": "runtime_packet_section",
-                "notes": ["Derived from the currently selected Team DB result artifact."],
+                "notes": ["Derived from the currently selected workspace Product Result artifact."],
             },
             {
                 "section_id": "runtime-operations-context",
@@ -694,7 +812,7 @@ def _runtime_agent_review_packet(
         "review_draft": {
             "title": f"{result.asset_id} 운영 위험 검토",
             "summary": (
-                f"Team DB의 최신 Product Result는 {result.asset_id}의 {result.prediction_horizon_hours}시간 이내 "
+                f"현재 운영 데이터의 최신 Product Result는 {result.asset_id}의 {result.prediction_horizon_hours}시간 이내 "
                 f"고장 위험을 {risk_percent}%로 산출했습니다. 권고 판단은 {recommendation}이며, "
                 "읽기 전용 검토 문맥으로만 사용됩니다."
             ),
@@ -780,7 +898,7 @@ def _runtime_agent_review_packet(
             "note": "Runtime Agent Review context is read-only and cannot execute or approve actions.",
         },
         "limitations": [
-            "This packet is derived from Team DB runtime Product Result context and connected operational records.",
+            "This packet is derived from the selected workspace Product Result context and connected operational records.",
             "Production planning impact is an estimate derived from the current capacity model and must be validated against financial settlement data before accounting use.",
             "The assistant may explain priority and evidence but cannot approve, execute, or mutate workflow state.",
         ],
