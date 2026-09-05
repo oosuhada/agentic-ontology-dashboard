@@ -33,8 +33,7 @@
       "context": [
         "docs/closed-loop-domain-contract.md",
         "docs/closed-loop-product-consumption-contract.md",
-        "docs/closed-loop-runtime-overlay-contract.md",
-        "docs/closed-loop-implementation-plan.md"
+        "docs/closed-loop-runtime-overlay-contract.md"
       ]
     },
     "product_result": {
@@ -48,7 +47,7 @@
     "evidence": {
       "paths": ["systems/backend/**/evidence*", "systems/frontend/**/*evidence*", "tests/**/*evidence*"],
       "context": [
-        "docs/operations/pdm-evidence-report-ui-integration-plan.md",
+        "docs/architecture-decisions/ADR-004-product-result-evidence-viewmodel-trust-boundary.md",
         "docs/operations/report-specification.md"
       ]
     },
@@ -56,7 +55,7 @@
       "paths": ["systems/backend/app/report/**", "systems/backend/**/reports.py", "systems/frontend/**/*report*", "contracts/schemas/report.schema.json"],
       "context": [
         "docs/operations/report-specification.md",
-        "docs/operations/pdm-evidence-report-ui-integration-plan.md"
+        "docs/architecture-decisions/ADR-004-product-result-evidence-viewmodel-trust-boundary.md"
       ]
     },
     "frontend_operations": {

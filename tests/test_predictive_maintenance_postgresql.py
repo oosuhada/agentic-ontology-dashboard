@@ -580,7 +580,7 @@ def test_postgresql_prediction_batch_promotion_materializes_product_result(
     assert artifact is not None
     assert artifact["batch_promotion_result_id"] == artifact["prediction_result_id"]
     assert artifact["item_promotion_result_id"] == artifact["prediction_result_id"]
-    assert artifact["status_grade"] == "warning"
+    assert artifact["status_grade"] == "critical"
     assert float(artifact["failure_probability"]) == 0.82
     gap_ids = {
         gap["gap_id"]

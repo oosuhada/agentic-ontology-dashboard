@@ -4,7 +4,7 @@ import sqlite3
 from pathlib import Path
 
 from app.identity import IdentityService
-from app.infra.db.migrations import migrate
+from app.infra.db.migrations import MIGRATION_ROOT, migrate
 from app.infra.db.ontology_action_repository import OntologyActionRepository
 from app.infra.db.ontology_instance_repository import OntologyInstanceRepository
 from app.infra.db.project_repository import SQLiteProjectContextResolver
@@ -21,43 +21,8 @@ def test_migrations_are_idempotent_and_create_outbox(tmp_path: Path) -> None:
     database = tmp_path / "migration.db"
     first = migrate(str(database))
     second = migrate(str(database))
-    assert first == [
-        "0001_platform_core",
-        "0002_project_layer",
-        "0003_project_scoped_operations",
-        "0004_prediction_results",
-        "0005_project_memberships",
-        "0006_outbox_worker",
-        "0007_analysis_engine",
-        "0008_dataset_projection_pipeline",
-            "0009_agent_orchestration",
-            "0010_analysis_run_lifecycle",
-            "0011_adaptive_modeling_foundation",
-            "0012_adaptive_model_registry",
-            "0019_tenant_transaction_convergence",
-            "0020_enterprise_identity_access",
-            "0021_distributed_execution_runtime",
-            "0022_object_storage_artifact_governance",
-            "0023_production_connectors_ingestion",
-            "0024_ontology_interfaces_actions_functions",
-            "0025_global_branching_lineage_markings",
-            "0026_object_views_search_application_runtime",
-            "0027_scalable_pipeline_analysis",
-            "0028_continuous_mlops_runtime",
-            "0029_governed_event_automation",
-            "0030_closed_loop_operations",
-            "0031_recommendation_materialization_strategy",
-            "0032_operations_manual_recommendation",
-            "0033_inspection_results",
-            "0034_prediction_result_inbox",
-            "0035_maintenance_cost_analyses",
-            "0036_cost_option_recommendation_lineage",
-            "0037_agent_review_summary_runtime",
-            "0038_agent_review_summary_materialization",
-            "0039_cooling_system_restore_cost_analysis",
-            "0040_cooling_system_restore_execution",
-            "0041_cost_analysis_reference_lineage",
-        ]
+    expected = [path.stem for path in sorted((MIGRATION_ROOT / "sqlite").glob("*.sql"))]
+    assert first == expected
     assert second == []
 
     with sqlite3.connect(database) as connection:
@@ -81,6 +46,13 @@ def test_migrations_are_idempotent_and_create_outbox(tmp_path: Path) -> None:
         "closed_loop_idempotency_records",
         "closed_loop_inspection_results",
         "closed_loop_maintenance_cost_analyses",
+    } <= tables
+    assert {
+        "knowledge_documents",
+        "knowledge_document_versions",
+        "knowledge_index_state",
+        "knowledge_retrieval_audit",
+        "vector_document_chunks",
     } <= tables
     assert {
         "pm_prediction_result_inbox_batches",
