@@ -57,6 +57,9 @@
 .rw-preview-shell .operations-detail-drawer .operations-assignment-popover{inset:48px 0 70px auto;height:auto}
 .rw-preview-bottom{padding:5px 6px 6px}
 .rw-preview-bottom .lifecycle-instrument{border-color:var(--rw-line-strong);background:color-mix(in srgb,var(--rw-panel) 97%,transparent);box-shadow:0 -14px 38px rgba(0,0,0,.16)}
+.rw-preview-bottom .lifecycle-instrument.is-compact .lifecycle-instrument-bar{min-height:44px}
+.rw-preview-bottom .lifecycle-instrument.is-compact .lifecycle-instrument-title{padding:6px 10px}
+.rw-preview-bottom .lifecycle-instrument.is-compact .lifecycle-stage{padding-block:4px}
 @media(max-width:1040px){.rw-preview-body,.rw-preview-shell.assistant-open .rw-preview-body,.rw-preview-shell.assistant-closed .rw-preview-body{grid-template-columns:224px minmax(0,1fr)}.rw-preview-shell.left-collapsed .rw-preview-body,.rw-preview-shell.left-collapsed.assistant-open .rw-preview-body,.rw-preview-shell.left-collapsed.assistant-closed .rw-preview-body{grid-template-columns:56px minmax(0,1fr)}}
 @media(max-width:860px){.rw-preview-body,.rw-preview-shell.left-collapsed .rw-preview-body,.rw-preview-shell.assistant-open .rw-preview-body,.rw-preview-shell.assistant-closed .rw-preview-body{grid-template-columns:minmax(0,1fr)}.rw-preview-left{bottom:70px}.rw-preview-main:before,.rw-preview-main:after{inset:48px 0 70px 0}.rw-preview-operational-focus{padding-inline:12px}.rw-preview-bottom{padding-inline:4px}}
 @media(max-width:980px){.rw-section-index{display:none}}

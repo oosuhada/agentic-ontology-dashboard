@@ -1144,13 +1144,33 @@ test("organizes engineering navigation by work intent instead of duplicated data
   await expect(inspection).toBeVisible();
   await expect(inspection).toHaveAttribute(
     "data-composition",
-    /^inspection-targets,workflow-actions,workflow-lifecycle/,
+    /^workflow-actions,inspection-targets,workflow-lifecycle/,
   );
+  const inspectionBlocks = inspection.locator(".rw-composed-block");
+  await expect(inspectionBlocks.first()).toHaveClass(/is-action-hero/);
   await expect(
     inspection
       .getByText(/운영 관리자 점검 요청 대기|점검 시작|점검 결과 기록·완료/)
       .first(),
   ).toBeVisible();
+  const pendingState = inspection.locator(".operations-workflow-state");
+  if (await pendingState.count()) {
+    await expect(pendingState).toBeVisible();
+    await expect(pendingState).toContainText("현재 상태");
+    await expect(
+      inspection.getByRole("button", { name: "운영 관리자 점검 요청 대기", exact: true }),
+    ).toHaveCount(0);
+  }
+  const compactEmpty = inspection.locator(".rw-composed-block.is-compact-empty");
+  if (await compactEmpty.count()) {
+    await expect(compactEmpty).toContainText("현재 근거에서 특정된 점검 대상이 없습니다.");
+    const widthRatio = await compactEmpty.evaluate((element) => {
+      const grid = element.parentElement;
+      if (!grid) return 0;
+      return element.getBoundingClientRect().width / grid.getBoundingClientRect().width;
+    });
+    expect(widthRatio).toBeGreaterThan(0.9);
+  }
 });
 
 test("changes executive report artifacts when the report type changes", async ({

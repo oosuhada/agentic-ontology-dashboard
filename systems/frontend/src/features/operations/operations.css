@@ -1089,6 +1089,12 @@
 .operations-maintenance-workflow-panel > header strong { font-size: 12px; }
 .operations-maintenance-workflow-panel > p { margin: 0; color: var(--operations-dim); font-size: 10px; line-height: 1.45; }
 .operations-maintenance-workflow-panel > .operations-button { justify-content: center; width: 100%; }
+.operations-workflow-state { min-height: 42px; display: flex; align-items: center; gap: 9px; padding: 7px 10px; border: 1px solid rgba(181,196,214,.16); border-radius: 7px; background: rgba(181,196,214,.055); }
+.operations-workflow-state > span { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: #d7aa68; box-shadow: 0 0 0 4px rgba(215,170,104,.12); }
+.operations-workflow-state > div { min-width: 0; display: grid; gap: 1px; }
+.operations-workflow-state small { color: var(--operations-dim); font-size: 9px; }
+.operations-workflow-state strong { color: var(--operations-text); font-size: 11px; }
+.operations-workflow-state[data-state="complete"] > span { background: #72bf95; box-shadow: 0 0 0 4px rgba(114,191,149,.12); }
 .operations-workflow-success { color: #83d9a5; }
 .operations-cost-action-candidates { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
 .operations-cost-action-candidates > strong { width: 100%; color: var(--operations-muted); font-size: 10px; }
@@ -2713,6 +2719,13 @@
   background-image: none !important;
   box-shadow: 0 8px 22px rgba(44, 63, 81, 0.05) !important;
 }
+
+:root[data-theme="light"] .rw-preview-shell .operations-workflow-state {
+  color: #17212c;
+  border-color: #d8e0e7;
+  background: #f5f7f9;
+}
+:root[data-theme="light"] .rw-preview-shell .operations-workflow-state strong { color: #17212c; }
 
 :root[data-theme="light"] .rw-preview-shell .operations-app,
 :root[data-theme="light"] .rw-preview-shell .operations-page {

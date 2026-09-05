@@ -2067,7 +2067,7 @@ function WorkflowActionsBlock({
       eyebrow="GOVERNED ACTION"
       icon={<Wrench size={15} />}
       guidance={localized(english, "선택 Case의 승인 가능한 작업만 실행할 수 있으며 근거 snapshot과 작업 이력이 함께 남습니다.", "Only governed actions for the selected case can be executed, with the evidence snapshot and action history preserved.")}
-      className="span-12"
+      className={props.surfaceId === "inspection" ? "span-12 is-action-hero" : "span-12"}
     >
       <MaintenanceWorkflowActionPanel
         projectId={props.model.context.projectId}
@@ -2204,7 +2204,7 @@ function InspectionTargetsBlock({
       eyebrow="INSPECTION PLAN"
       icon={<ClipboardCheck size={15} />}
       guidance={localized(english, "센서·모델·SOP 근거에서 실제 현장 확인 대상으로 좁혀진 부품과 위치, 점검 방법을 보여줍니다.", "Shows components, locations, and inspection methods narrowed down from sensor, model, and SOP evidence for field verification.")}
-      className="span-6"
+      className={detail?.inspectionTargets.length ? "span-6" : "span-12 is-compact-empty"}
     >
       {detail?.inspectionTargets.length ? (
         <div className="rw-composed-cards">

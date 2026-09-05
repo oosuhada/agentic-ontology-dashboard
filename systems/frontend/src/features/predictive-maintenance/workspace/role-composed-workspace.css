@@ -498,3 +498,57 @@
 .rw-composed-block .mvp-decision-support__section.is-warning {
   color: #fecaca;
 }
+
+/* Inspection/workflow surfaces are action-first. Keep the outer governed
+   section as the visual container and avoid stacking full cards inside cards. */
+.rw-composed-block.is-action-hero .rw-composed-block__body {
+  padding: 8px 11px 10px;
+}
+.rw-composed-block.is-action-hero .operations-maintenance-workflow-panel {
+  margin-top: 0;
+  padding: 4px 0 10px;
+  border: 0;
+  border-bottom: 1px solid var(--rw-border, rgba(148,163,184,.18));
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.rw-composed-block.is-action-hero .operations-maintenance-cost-panel {
+  margin-top: 10px;
+}
+.rw-composed-block.is-action-hero .mvp-decision-support {
+  margin-top: 10px;
+  border-radius: 9px;
+  box-shadow: none;
+}
+.rw-composed-block.is-compact-empty {
+  display: grid;
+  grid-template-columns: minmax(190px,.34fr) minmax(0,1fr);
+  align-items: stretch;
+}
+.rw-composed-block.is-compact-empty > header {
+  min-height: 42px;
+  padding-block: 5px;
+  border-right: 1px solid var(--rw-border, rgba(148,163,184,.16));
+  border-bottom: 0;
+}
+.rw-composed-block.is-compact-empty .rw-composed-block__body {
+  display: grid;
+  align-items: center;
+  padding-block: 4px;
+}
+.rw-composed-block.is-compact-empty .rw-composed-empty {
+  min-height: 30px;
+  place-items: center start;
+  padding-inline: 2px;
+  text-align: left;
+}
+:root[data-theme="light"] .rw-preview-shell .rw-composed-block.is-action-hero .operations-maintenance-workflow-panel {
+  border-color: #dce3e9 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+@media (max-width: 760px) {
+  .rw-composed-block.is-compact-empty { display:block; }
+  .rw-composed-block.is-compact-empty > header { border-right:0; border-bottom:1px solid var(--rw-border, rgba(148,163,184,.16)); }
+}

@@ -677,14 +677,24 @@ export function MaintenanceWorkflowActionPanel({
           <small>{localize(english, "현장에서는 사실만 기록합니다. 정비 Action 후보는 Backend가 체크리스트와 측정값에서 산출합니다.", "Record field facts only. The backend derives maintenance action candidates from checklist results and measurements.")}</small>
         </fieldset>
       ) : null}
-      <button
-        type="button"
-        className="operations-button primary"
-        disabled={loading || running || !enabled || !command}
-        onClick={() => command && void run(label, command)}
-      >
-        {running ? localize(english, "처리 중", "Processing") : label}
-      </button>
+      {command ? (
+        <button
+          type="button"
+          className={`operations-button ${enabled ? "primary" : "secondary"}`}
+          disabled={loading || running || !enabled}
+          onClick={() => void run(label, command)}
+        >
+          {running ? localize(english, "처리 중", "Processing") : label}
+        </button>
+      ) : (
+        <div className="operations-workflow-state" data-state={postMaintenancePrediction ? "complete" : "pending"}>
+          <span aria-hidden="true" />
+          <div>
+            <small>{localize(english, "현재 상태", "Current status")}</small>
+            <strong>{label}</strong>
+          </div>
+        </div>
+      )}
       {message ? <small className={message.tone === "error" ? "operations-cost-error" : "operations-workflow-success"}>{message.text}</small> : null}
       {pollingError ? <small className="operations-cost-error">{pollingError}</small> : null}
     </section>

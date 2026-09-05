@@ -86,7 +86,7 @@ const SURFACE_COMPOSITIONS: Partial<Record<ReliabilitySurfaceId, ReliabilityBloc
   monitoring: ["risk-queue", "feature-trend", "sensor-signals", "evidence-factors", "case-lineage"],
   assets: ["evidence-factors", "inspection-targets", "sensor-signals", "feature-trend", "case-lineage"],
   "sensor-features": ["feature-trend", "sensor-signals", "evidence-factors", "maintenance-history"],
-  inspection: ["inspection-targets", "workflow-actions", "workflow-lifecycle", "feature-trend", "evidence-factors", "case-lineage"],
+  inspection: ["workflow-actions", "inspection-targets", "workflow-lifecycle", "feature-trend", "evidence-factors", "case-lineage"],
   "maintenance-history": ["maintenance-history", "maintenance-effect", "decision-history", "evidence-factors"],
   "field-notes": ["decision-history", "inspection-targets", "report-summary"],
 
