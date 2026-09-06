@@ -207,7 +207,7 @@ export function ContextAssistantDrawer({
               <strong className={`mode-${context.aiSummaryMode}`}>
                 {context.aiSummaryMode === "llm"
                   ? (english ? "LLM grounded" : "LLM 근거 요약")
-                  : (english ? "Validated fallback" : "검증 fallback")}
+                  : (english ? "Validated baseline" : "검증된 기본 요약")}
               </strong>
             ) : null}
             {context?.retrievalCount !== null && context?.retrievalCount !== undefined ? (
@@ -237,7 +237,7 @@ export function ContextAssistantDrawer({
       <section className="rw-context-assistant__thread" aria-label={english ? "Context summary thread" : "문맥 요약 대화"}>
         {messages.length ? messages.map((message) => (
           <article key={message.id} className={`rw-context-assistant__message is-${message.role}`}>
-            <span>{message.role === "user" ? (english ? "QUESTION" : "질문") : (english ? "CONNECTED DATA" : "연결 데이터 요약")}</span>
+            <span>{message.role === "user" ? (english ? "QUESTION" : "질문") : (english ? "OPERATIONAL INTERPRETATION" : "운영 해석")}</span>
             <p>{message.text}</p>
             {message.contextHint ? <small>{message.contextHint}</small> : null}
             {message.role === "assistant" && message.activityTrace ? (
@@ -252,13 +252,13 @@ export function ContextAssistantDrawer({
           <div className="rw-context-assistant__empty-thread">
             <span>{english ? "NO QUESTIONS YET" : "아직 질문 없음"}</span>
             <p>{english
-              ? "Questions are answered from the selected live event, Agent Review Packet, stored grounded AI summary, and linked retrieval metadata when available."
-              : "선택된 실시간 이벤트, Agent Review Packet, 저장된 근거 기반 AI 요약과 연결 retrieval metadata를 사용해 답합니다."}</p>
+              ? "Answers use the selected operational event and validated company evidence, then translate them into action and business-value language."
+              : "선택된 운영 이벤트와 검증된 회사 근거를 바탕으로, 현장 행동과 회사 가치가 연결되도록 설명합니다."}</p>
           </div>
         )}
         {submitting ? <article className="rw-context-assistant__message is-assistant is-loading" aria-live="polite">
-          <span>{english ? "CONNECTED DATA" : "연결 데이터 요약"}</span>
-          <p>{english ? "Checking linked evidence and the current case context…" : "연결 근거와 현재 Case 문맥을 확인하고 있습니다…"}</p>
+          <span>{english ? "OPERATIONAL INTERPRETATION" : "운영 해석"}</span>
+          <p>{english ? "Checking the evidence and translating it into operational impact…" : "근거를 확인하고 운영 영향과 가치 관점으로 답변을 구성하고 있습니다…"}</p>
         </article> : null}
       </section>
 

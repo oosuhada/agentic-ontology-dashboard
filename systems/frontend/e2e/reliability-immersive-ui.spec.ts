@@ -134,8 +134,14 @@ test("integrates monitoring risk, section minimap, and assistant execution activ
     ".rw-context-assistant__message.is-assistant:not(.is-loading)",
   );
   await expect(completedMessage).toHaveCount(1, { timeout: 15_000 });
+  await expect(completedMessage.locator(":scope > span")).toHaveText("운영 해석");
   await expect(completedMessage).not.toContainText("Team DB");
   await expect(completedMessage).not.toContainText("deterministic fallback");
+  await expect(completedMessage).not.toContainText("generator failure score");
+  await expect(completedMessage).not.toContainText("model selected threshold");
+  await expect(completedMessage).not.toContainText("model unit");
+  await expect(completedMessage.locator(":scope > p")).not.toContainText(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/i);
+  await expect(completedMessage.locator(":scope > p")).not.toContainText(/\b\d+\.\d{5,}\b/);
   const activity = completedMessage.locator(".rw-assistant-trace");
   await expect(activity).toBeVisible();
   await expect(activity).toContainText("작업 기록");

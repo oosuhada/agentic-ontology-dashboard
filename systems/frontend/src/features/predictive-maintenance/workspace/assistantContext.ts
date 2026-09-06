@@ -205,6 +205,82 @@ function includesAny(value: string, needles: string[]) {
   return needles.some((needle) => value.includes(needle));
 }
 
+function isMonitoringOnlyContext(context: ReliabilityAssistantContext | null | undefined) {
+  const decision = context?.recommendedDecisionLabel?.toLowerCase() ?? "";
+  const status = context?.statusLabel?.toLowerCase() ?? "";
+  return decision.includes("모니터링")
+    || decision.includes("monitor")
+    || status.includes("정상")
+    || status === "normal"
+    || (typeof context?.failureProbability === "number" && context.failureProbability < 0.2);
+}
+
+function conciseEvidenceItems(
+  context: ReliabilityAssistantContext | null | undefined,
+  limit = 2,
+) {
+  return (context?.evidenceItems ?? [])
+    .filter((item) => item.trim())
+    .filter((item) => !/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/i.test(item))
+    .filter((item) => !/model unit|source[_ ]?ref|artifact manifest|deterministic/i.test(item))
+    .slice(0, limit);
+}
+
+function valueProtectionFrame(
+  context: ReliabilityAssistantContext | null | undefined,
+  english: boolean,
+  monitoringOnly = isMonitoringOnlyContext(context),
+) {
+  const downtime = typeof context?.estimatedDowntimeMinutes === "number" && context.estimatedDowntimeMinutes > 0
+    ? context.estimatedDowntimeMinutes
+    : null;
+  const lostUnits = typeof context?.estimatedLostUnits === "number" && context.estimatedLostUnits > 0
+    ? context.estimatedLostUnits
+    : null;
+
+  if (!downtime && !lostUnits && !context?.productVariant) return null;
+
+  const exposure = [
+    downtime
+      ? (english ? `up to ${downtime} minutes of potential downtime` : `최대 ${downtime}분의 잠재 비가동`)
+      : null,
+    lostUnits
+      ? (english
+          ? `about ${lostUnits.toLocaleString("en-US")} planned units at risk`
+          : `계획 생산 약 ${lostUnits.toLocaleString("ko-KR")}개의 손실 가능성`)
+      : null,
+  ].filter((value): value is string => Boolean(value));
+
+  if (english) {
+    const scope = exposure.join(" and ") || `the ${context?.productVariant ?? "current"} production plan`;
+    return monitoringOnly
+      ? `From a business-value perspective, the current benefit is to keep watching the early signal without triggering unnecessary maintenance, while managing ${scope} before it becomes an actual disruption. This is protected exposure, not booked savings.`
+      : `From a business-value perspective, the key opportunity is to act early enough to keep ${scope} from becoming an actual production loss. This is protected exposure, not booked savings.`;
+  }
+
+  const scope = exposure.join("과 ") || `${context?.productVariant ?? "현재"} 생산 계획`;
+  return monitoringOnly
+    ? `회사 관점에서는 지금 불필요한 정비를 서두르지 않으면서 조기 징후를 계속 관찰하고, ${scope}이 실제 생산 차질로 이어지기 전에 관리해 생산 연속성을 보호하는 것이 핵심 가치입니다. 이 수치는 실제 절감액이 아니라 보호 대상 노출입니다.`
+    : `회사 관점에서는 조기에 확인하고 대응해 ${scope}이 실제 생산 손실로 이어지는 것을 줄이고 생산 연속성을 보호할 기회를 확보하는 것이 핵심 가치입니다. 이 수치는 실제 절감액이 아니라 보호 대상 노출입니다.`;
+}
+
+export function isUserFacingReliabilityAssistantAnswer(answer: string) {
+  const normalized = answer.trim();
+  if (!normalized) return false;
+  const forbiddenTechnicalPatterns = [
+    /\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/i,
+    /model unit/i,
+    /generator failure score/i,
+    /model selected threshold/i,
+    /asset criticality adjustment/i,
+    /source[_ ]?ref/i,
+    /deterministic fallback/i,
+    /team db/i,
+    /\b\d+\.\d{5,}\b/,
+  ];
+  return !forbiddenTechnicalPatterns.some((pattern) => pattern.test(normalized));
+}
+
 export function groundedReliabilityAssistantAnswer(
   context: ReliabilityAssistantContext | null | undefined,
   question: string,
@@ -218,22 +294,8 @@ export function groundedReliabilityAssistantAnswer(
   const normalized = question.trim().toLowerCase();
   const asset = reliabilityAssistantAssetLabel(context, locale);
   const risk = reliabilityAssistantRiskLabel(context?.failureProbability);
-  const valueParts = [
-    typeof context?.estimatedDowntimeMinutes === "number" && context.estimatedDowntimeMinutes > 0
-      ? (english ? `up to ${context.estimatedDowntimeMinutes} min of modeled downtime exposure` : `예상 정지 노출 ${context.estimatedDowntimeMinutes}분`)
-      : null,
-    typeof context?.estimatedLostUnits === "number" && context.estimatedLostUnits > 0
-      ? (english ? `about ${context.estimatedLostUnits.toLocaleString("en-US")} units of planned production exposure` : `계획 손실 노출 약 ${context.estimatedLostUnits.toLocaleString("ko-KR")}개`)
-      : null,
-    hasText(context?.productVariant)
-      ? (english ? `product ${context.productVariant}` : `제품 ${context.productVariant}`)
-      : null,
-  ].filter((value): value is string => Boolean(value));
-  const valueFrame = valueParts.length
-    ? (english
-        ? `The value of this case is not the alert itself; it is the opportunity to protect production continuity by managing ${valueParts.join(" and ")} before loss is realized. These are modeled exposures, not booked savings.`
-        : `이 Case의 가치는 이상 알림 자체가 아니라 ${valueParts.join(" · ")}을(를) 실제 손실로 확정되기 전에 선제적으로 관리해 생산 연속성을 보호하는 데 있습니다. 현재 값은 보호 대상·예상 노출이며 실제 절감 실적은 아닙니다.`)
-    : null;
+  const monitoringOnly = isMonitoringOnlyContext(context);
+  const valueFrame = valueProtectionFrame(context, english, monitoringOnly);
 
   if (includesAny(normalized, ["보고", "brief", "executive", "한 문단", "report draft", "kpi", "운영 리스크", "비용", "절감", "가치", "value", "saving", "roi"])) {
     const summary = context?.aiSummary?.trim();
@@ -259,40 +321,31 @@ export function groundedReliabilityAssistantAnswer(
   }
 
   if (includesAny(normalized, ["우선", "priority", "prioritized", "왜 이 설비"])) {
-    const reasons = context?.priorityReasons?.filter(Boolean) ?? [];
-    const canonicalReasons = [
-      hasText(context?.statusLabel) ? (english ? `status ${context.statusLabel}` : `상태 ${context.statusLabel}`) : null,
-      hasText(context?.operationalImpact) ? context.operationalImpact : null,
-      hasText(context?.recommendedDecisionLabel)
-        ? (english ? `recommended decision ${context.recommendedDecisionLabel}` : `권고 판단 ${context.recommendedDecisionLabel}`)
-        : null,
-      hasText(context?.predictedFailureType)
-        ? (english ? `predicted issue ${context.predictedFailureType}` : `예측 이상 ${context.predictedFailureType}`)
-        : null,
-      hasText(context?.currentLifecycleLabel)
-        ? (english ? `current step ${context.currentLifecycleLabel}` : `현재 단계 ${context.currentLifecycleLabel}`)
-        : null,
-      hasText(context?.primaryActionLabel)
-        ? (english ? `next action ${context.primaryActionLabel}` : `다음 행동 ${context.primaryActionLabel}`)
-        : null,
-      context?.evidenceSummary ?? null,
-    ].filter((value): value is string => Boolean(value));
-    const reasonText = reasons.length
-      ? reasons.slice(0, 4).join(english ? "; " : " · ")
-      : canonicalReasons.slice(0, 5).join(english ? "; " : " · ");
-    if (reasonText) {
+    const evidenceItems = conciseEvidenceItems(context);
+    const decision = context?.recommendedDecisionLabel?.trim();
+    const evidenceSentence = evidenceItems.length
+      ? (english
+          ? `The clearest connected evidence is ${evidenceItems.join(" and ")}.`
+          : `현재 사람이 확인할 핵심 근거는 ${evidenceItems.join(" · ")}입니다.`)
+      : "";
+
+    if (monitoringOnly) {
       return english
-        ? `${asset}${risk ? ` is currently at ${risk} risk` : ""}${context?.lineLabel ? ` on ${context.lineLabel}` : ""}. The connected review-priority basis is: ${reasonText}. This is prioritization evidence, not a failure confirmation.`
-        : `${asset}${risk ? `의 현재 위험도는 ${risk}` : ""}${context?.lineLabel ? `이며 위치는 ${context.lineLabel}` : ""}입니다. 연결된 우선순위 근거는 ${reasonText}입니다. 이는 점검·검토 우선순위 근거이며 고장 확정이 아닙니다.${valueFrame ? ` ${valueFrame}` : ""}`;
+        ? `The current evidence does not confirm ${asset} as a failed or abnormal asset. ${risk ? `The current risk is ${risk}` : "Risk remains low"}${decision ? ` and the recommended action is “${decision}”` : ""}. The practical decision is to keep watching the early signal rather than trigger unnecessary maintenance. ${evidenceSentence}${valueFrame ? ` ${valueFrame}` : ""}`
+        : `현재 근거만 보면 ${asset}를 고장 이상으로 확정한 상태는 아닙니다. ${risk ? `현재 위험도는 ${risk}` : "현재 위험도는 낮은 편"}${decision ? `이고 권고 조치는 “${decision}”` : ""}입니다. 즉 지금은 즉시 수리보다 조기 징후를 계속 관찰하면서 불필요한 정비를 피하는 단계입니다.${evidenceSentence ? ` ${evidenceSentence}` : ""}${valueFrame ? ` ${valueFrame}` : ""}`;
     }
+
+    return english
+      ? `${asset}${risk ? ` is at ${risk} risk` : ""}${decision ? `, with “${decision}” as the current recommended action` : ""}. That makes it a priority for human review, not a confirmed failure. ${evidenceSentence}${valueFrame ? ` ${valueFrame}` : ""}`
+      : `${asset}${risk ? `의 현재 위험도는 ${risk}` : ""}${decision ? `이며 현재 권고 조치는 “${decision}”` : ""}입니다. 그래서 우선 확인 대상이지만 아직 고장 확정은 아닙니다.${evidenceSentence ? ` ${evidenceSentence}` : ""}${valueFrame ? ` ${valueFrame}` : ""}`;
   }
 
   if (includesAny(normalized, ["근거", "evidence", "요인", "factor"])) {
-    const items = context?.evidenceItems?.filter(Boolean) ?? [];
+    const items = conciseEvidenceItems(context, 4);
     if (items.length) {
       return english
-        ? `${asset}: the current connected evidence is ${items.slice(0, 4).join("; ")}. ${context?.retrievalCount ? `${context.retrievalCount} governed SOP guidance result(s) are also linked.` : ""}`
-        : `${asset}의 현재 연결 근거는 ${items.slice(0, 4).join(" · ")}입니다.${context?.retrievalCount ? ` 또한 검증된 SOP 안내 ${context.retrievalCount}건이 연결되어 있습니다.` : ""}`;
+        ? `The main evidence for ${asset} is ${items.join("; ")}. These are decision-support signals, not a confirmed physical root cause.${context?.retrievalCount ? ` ${context.retrievalCount} governed SOP guidance result(s) are also linked.` : ""}`
+        : `${asset}에서 지금 확인할 핵심 근거는 ${items.join(" · ")}입니다. 이 값들은 판단을 돕는 근거이지 물리적 고장 원인이 확정됐다는 뜻은 아닙니다.${context?.retrievalCount ? ` 검증된 SOP 안내 ${context.retrievalCount}건도 함께 연결되어 있습니다.` : ""}`;
     }
   }
 

@@ -37,6 +37,7 @@ from app.dependencies import (
     require_permission,
 )
 from app.diagnosis.runtime_service import PredictiveMaintenanceRuntimeService
+from app.diagnosis.presentation_dictionary import presentation_field
 from app.identity import AuthError, IdentityService, Principal
 from app.infra.db.agent_run_repository import AgentRunRepository
 from app.ontology.ontology_domain import ActionInvocation
@@ -535,12 +536,85 @@ def _answer_from_packet(
     probability = risk_summary.get("failure_probability") or risk_summary.get("probability")
     status = risk_summary.get("status_grade") or risk_summary.get("status")
     risk = f"{round(float(probability) * 100)}%" if isinstance(probability, (int, float)) else "위험도 미제공"
-    reasons = (packet.get("review_priority") or {}).get("reasons") or []
-    reason_text = " · ".join(str(item) for item in reasons[:4] if item)
     summary_text = _summary_text(summary, audience)
-    evidence_text = " · ".join(item["content"] for item in evidence[:4])
     lower = question.lower()
     value_text = _value_realization_text(packet, evidence, audience)
+    review_draft = packet.get("review_draft") or {}
+    recommendation = str(review_draft.get("recommended_next_step") or "").strip()
+    recommendation_labels = {
+        "continue_monitoring": "계속 모니터링",
+        "request_inspection": "현장 점검 요청",
+        "schedule_maintenance": "정비 계획 검토",
+        "request_maintenance": "정비 요청",
+    }
+    recommendation_label = recommendation_labels.get(recommendation, recommendation)
+
+    model_context = packet.get("model_expression_context") or {}
+    top_factors = model_context.get("top_factors") or []
+    physical_factors: list[str] = []
+    decision_basis: list[str] = []
+    for factor in top_factors:
+        if not isinstance(factor, dict):
+            continue
+        feature = str(factor.get("feature") or "")
+        projected = presentation_field(feature, "ko-KR")
+        value = _coerce_float(factor.get("value"))
+        unit = str(factor.get("unit") or "").strip()
+        formatted_value = ""
+        if value is not None:
+            formatted_value = f" {value:,.2f}".rstrip("0").rstrip(".")
+            if unit and unit != "model unit":
+                formatted_value += f" {unit}"
+        label = f"{projected['label']}{formatted_value}"
+        if projected["kind"] in {"sensor", "derived"}:
+            physical_factors.append(label)
+        elif projected["kind"] in {"model_output", "policy"}:
+            decision_basis.append(label)
+
+    safe_evidence_snippets: list[str] = []
+    for item in evidence:
+        content = str(item.get("content") or "").strip()
+        lowered = content.lower()
+        if not content:
+            continue
+        if any(
+            marker in lowered
+            for marker in (
+                "generator_failure_score",
+                "model_selected_threshold",
+                "asset_criticality_adjustment",
+                "model unit",
+                "source_ref",
+                "deterministic fallback",
+                "team db",
+            )
+        ):
+            continue
+        safe_evidence_snippets.append(content[:180])
+        if len(safe_evidence_snippets) >= 2:
+            break
+
+    if physical_factors:
+        evidence_text = " · ".join(physical_factors[:2])
+        evidence_sentence = f"현재 사람이 확인할 핵심 신호는 {evidence_text}입니다."
+    elif decision_basis:
+        evidence_text = " · ".join(decision_basis[:2])
+        evidence_sentence = (
+            f"현재 연결된 근거는 {evidence_text} 같은 모델 판단 근거 중심이며, "
+            "현장 센서 원인은 아직 확정되지 않았습니다."
+        )
+    elif safe_evidence_snippets:
+        evidence_text = " · ".join(safe_evidence_snippets)
+        evidence_sentence = f"추가로 연결된 검증 근거는 {evidence_text}입니다."
+    else:
+        evidence_text = ""
+        evidence_sentence = "현장 원인을 설명할 센서·점검 근거는 아직 충분하지 않습니다."
+
+    is_monitoring_only = (
+        str(status or "").lower() == "normal"
+        or recommendation == "continue_monitoring"
+        or (isinstance(probability, (int, float)) and float(probability) < 0.2)
+    )
     asks_value = any(
         token in lower
         for token in (
@@ -556,7 +630,7 @@ def _answer_from_packet(
         )
     )
     if asks_value and value_text:
-        return f"{title}: {value_text} 근거: {evidence_text or reason_text or '현재 연결된 정본 근거 없음'}"
+        return f"{title}: {value_text} {evidence_sentence}"
     if summary_text:
         if audience == "executive":
             operation_context = packet.get("operation_context_summary") or {}
@@ -573,18 +647,36 @@ def _answer_from_packet(
                 f"{title}: {summary_text}"
                 f"{f' 경영 영향: {impact_text}.' if impact_text else ''}"
                 f"{f' {value_text}' if value_text else ''} "
-                f"근거: {evidence_text or reason_text or '근거 미제공'}"
+                f"{evidence_sentence}"
             )
         return (
             f"{title}: {summary_text}"
             f"{f' {value_text}' if value_text else ''} "
-            f"연결 근거: {evidence_text or reason_text or '근거 미제공'}"
+            f"{evidence_sentence}"
         )
-    if any(token in lower for token in ("우선", "priority", "prioritized", "why")):
-        return f"{title}는 현재 {status or '상태 미제공'} / {risk}로 검토 우선순위에 올라 있습니다. 핵심 근거는 {reason_text or evidence_text or '현재 연결된 정본 근거 없음'}입니다. 이는 고장 확정이 아니라 운영 검토 우선순위입니다.{f' {value_text}' if value_text else ''}"
+    if any(token in lower for token in ("우선", "priority", "prioritized", "why", "왜 이 설비", "이상")):
+        if is_monitoring_only:
+            action = f" 현재 권고는 ‘{recommendation_label}’입니다." if recommendation_label else ""
+            return (
+                f"현재 근거만 보면 {title}를 고장 이상으로 확정한 상태는 아닙니다. "
+                f"현재 위험도는 {risk}입니다.{action} "
+                "즉 지금은 즉시 수리보다 조기 징후를 계속 관찰하면서 불필요한 정비를 피하는 단계입니다. "
+                f"{evidence_sentence}"
+                f"{f' {value_text}' if value_text else ''}"
+            )
+        action = f" 현재 권고 조치는 ‘{recommendation_label}’입니다." if recommendation_label else ""
+        return (
+            f"{title}의 현재 위험도는 {risk}입니다.{action} 그래서 우선 확인 대상이지만 아직 고장 확정은 아닙니다. "
+            f"{evidence_sentence}"
+            f"{f' {value_text}' if value_text else ''}"
+        )
     if any(token in lower for token in ("근거", "evidence", "factor", "요인")):
-        return f"{title}의 현재 연결 근거는 {evidence_text or reason_text or '제공되지 않았습니다'}입니다."
-    return f"{title}에 대한 답변입니다. 현재 상태는 {status or '미제공'}, 위험도는 {risk}이며, 연결 근거는 {evidence_text or reason_text or '제공되지 않았습니다'}입니다.{f' {value_text}' if value_text else ''}"
+        return f"{title}: {evidence_sentence} 이 근거는 판단을 돕기 위한 것이며 물리적 고장 원인을 확정한 것은 아닙니다."
+    return (
+        f"{title}의 현재 위험도는 {risk}입니다. "
+        f"{evidence_sentence}"
+        f"{f' {value_text}' if value_text else ''}"
+    )
 
 
 def _runtime_event_id(result: Any) -> str:

@@ -45,6 +45,7 @@ import { OperationalFocus } from "./workspace/OperationalFocus";
 import { SectionIndexRail, type ReliabilitySectionIndexItem } from "./workspace/SectionIndexRail";
 import {
   groundedReliabilityAssistantAnswer,
+  isUserFacingReliabilityAssistantAnswer,
   type ReliabilityAssistantContext,
   type ReliabilityAssistantMessage,
 } from "./workspace/assistantContext";
@@ -908,13 +909,19 @@ export function ReliabilityWorkspacePreview({
       ]);
       const evidenceStores = [...new Set(run.state.evidence.map((item) => item.store))];
       const hasGroundedEvidence = run.state.status === "succeeded" && run.state.evidence.length > 0;
-      const answer = hasGroundedEvidence && run.state.answer.trim()
-        ? run.state.answer.trim()
-        : groundedReliabilityAssistantAnswer(assistantContext, trimmed, locale);
+      const groundedFallback = groundedReliabilityAssistantAnswer(assistantContext, trimmed, locale);
+      const candidateAnswer = run.state.answer.trim();
+      const answer = hasGroundedEvidence
+        && candidateAnswer
+        && isUserFacingReliabilityAssistantAnswer(candidateAnswer)
+        ? candidateAnswer
+        : groundedFallback;
       const hintParts = [
         english ? "Connected evidence" : "연결 근거",
         english ? `${run.state.evidence.length} items` : `${run.state.evidence.length}건`,
-        hasGroundedEvidence && evidenceStores.length ? evidenceStores.join(" + ") : null,
+        hasGroundedEvidence && evidenceStores.length
+          ? (english ? "operational + company knowledge" : "운영 데이터 + 회사 지식")
+          : null,
         !hasGroundedEvidence ? (english ? "current asset context used" : "현재 설비 문맥 사용") : null,
       ].filter((value): value is string => Boolean(value));
       const activitySteps = run.state.steps.map((step, index) => ({
