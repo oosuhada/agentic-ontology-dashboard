@@ -155,10 +155,10 @@ test("integrates monitoring risk, section minimap, and assistant execution activ
   const restoredAssistant = page.getByRole("dialog", { name: "Reliability Assistant" });
   await expect(restoredAssistant).toBeVisible();
   await expect(
-    restoredAssistant.locator(".rw-context-assistant__message.is-user").getByText(
-      "왜 이 설비가 이상으로 판단됐나요?",
-      { exact: true },
-    ),
+    restoredAssistant
+      .locator(".rw-context-assistant__message.is-user")
+      .filter({ hasText: "왜 이 설비가 이상으로 판단됐나요?" })
+      .last(),
   ).toBeVisible({ timeout: 15_000 });
-  await expect(restoredAssistant.locator(".rw-assistant-trace")).toContainText("기록 저장됨");
+  await expect(restoredAssistant.locator(".rw-assistant-trace").last()).toContainText("기록 저장됨");
 });
