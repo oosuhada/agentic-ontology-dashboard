@@ -15,7 +15,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   createOperationsAgentReviewSummary,
@@ -1792,8 +1792,6 @@ export function OperationsWorkflowOverviewPage({
   const [factorySlotPreview, setFactorySlotPreview] = useState<FactorySlotPreview | null>(null);
   const [factoryFocusMode, setFactoryFocusMode] = useState<"all" | "exceptions">("exceptions");
   const [postMaintenancePredictions, setPostMaintenancePredictions] = useState<Record<string, PostMaintenancePredictionSummary>>({});
-  const autoOpenedDrawerKeyRef = useRef<string | null>(null);
-  const suppressAutoOpenDrawerRef = useRef(false);
   const handlePostMaintenancePrediction = useCallback((assetId: string, prediction: PostMaintenancePredictionSummary) => {
     setPostMaintenancePredictions((current) => {
       const previous = current[assetId];
@@ -1805,21 +1803,6 @@ export function OperationsWorkflowOverviewPage({
       return { ...current, [assetId]: prediction };
     });
   }, []);
-  useEffect(() => {
-    if (!selectedAsset || detailDrawerOpen) return;
-    if (suppressAutoOpenDrawerRef.current) return;
-    const params = new URLSearchParams(window.location.search);
-    const requestedAssetId = params.get("asset_id");
-    const requestedEventId = params.get("event_id");
-    const selectedEventId = selectedEvent?.eventId ?? selectedAsset.eventId ?? "";
-    if (requestedAssetId !== selectedAsset.assetId && requestedEventId !== selectedEventId) return;
-    const drawerKey = `${selectedAsset.assetId}:${selectedEventId}`;
-    if (autoOpenedDrawerKeyRef.current === drawerKey) return;
-    autoOpenedDrawerKeyRef.current = drawerKey;
-    setFactorySlotPreview(null);
-    setDetailDrawerOpen(true);
-    setDetailDrawerTab("status");
-  }, [detailDrawerOpen, selectedAsset, selectedEvent?.eventId]);
   // The browser only visualizes Product Results received from Generator Runtime.
   const drawerAssetSource = factorySlotPreview?.slot.asset ?? (factorySlotPreview ? null : selectedAsset);
   const drawerPrediction = drawerAssetSource ? postMaintenancePredictions[drawerAssetSource.assetId] : null;
@@ -1912,7 +1895,6 @@ export function OperationsWorkflowOverviewPage({
   const liveResultCardObservedAt = rotatingLiveResult?.observedAt ?? liveDemo.generatedAt;
 
   const closeDetailDrawer = useCallback(() => {
-    suppressAutoOpenDrawerRef.current = true;
     setDetailDrawerOpen(false);
   }, []);
 
@@ -1926,7 +1908,6 @@ export function OperationsWorkflowOverviewPage({
   }, [closeDetailDrawer, detailDrawerOpen]);
 
   const previewInDrawer = (assetId: string, eventId: string | null) => {
-    suppressAutoOpenDrawerRef.current = false;
     setFactorySlotPreview(null);
     onPreviewAsset(assetId, eventId);
     setDetailDrawerOpen(true);
@@ -1934,7 +1915,6 @@ export function OperationsWorkflowOverviewPage({
   };
 
   const previewFactoryAssetSlot = (asset: OperationsAsset, slot: FactoryCellSlot, cell: FactoryCellLayout) => {
-    suppressAutoOpenDrawerRef.current = false;
     setFactorySlotPreview({ slot, cell });
     onPreviewAsset(asset.assetId, asset.eventId);
     setDetailDrawerOpen(true);
