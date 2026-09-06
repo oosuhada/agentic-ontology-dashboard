@@ -632,3 +632,36 @@
 :root[data-density="comfortable"] .rw-preview-shell .rw-preview-bottom {
   padding: 2px 4px 3px;
 }
+
+/* The section index owns a dedicated gutter, but it must not look like a
+   separate sidebar. Let the work-canvas background show through exactly and
+   keep every top-level canvas surface on the same inline alignment token. */
+.rw-section-index__track {
+  background: transparent;
+}
+
+@media (min-width: 981px) {
+  .rw-preview-main {
+    --rw-canvas-inline: clamp(18px,2.4vw,34px);
+  }
+  :root[data-density="compact"] .rw-preview-main {
+    --rw-canvas-inline: 16px;
+  }
+  :root[data-density="comfortable"] .rw-preview-main {
+    --rw-canvas-inline: 38px;
+  }
+  .rw-preview-page-heading {
+    padding-inline: var(--rw-canvas-inline);
+  }
+  .rw-preview-content {
+    padding-inline: var(--rw-canvas-inline);
+  }
+  .rw-preview-selection-anchor,
+  .rw-preview-new-observation,
+  .rw-preview-warning {
+    margin-inline: var(--rw-canvas-inline);
+  }
+  .rw-preview-operational-focus {
+    padding-inline: var(--rw-canvas-inline);
+  }
+}

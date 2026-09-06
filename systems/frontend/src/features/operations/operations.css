@@ -619,11 +619,12 @@
 .operations-detail-drawer-layer { position: fixed; z-index: 90; inset: 0; display: grid; pointer-events: auto; }
 .operations-detail-drawer-scrim { position: fixed; inset: 0; border: 0; background: rgba(5,10,19,.58); cursor: pointer; }
 .operations-detail-drawer { box-sizing: border-box; position: fixed; top: 0; right: 0; width: min(100vw, clamp(720px, 70vw, calc(100vw - 46px))); max-width: 100vw; height: 100vh; overflow-y: auto; padding: 14px; border-left: 1px solid rgba(181,196,214,.18); background: var(--operations-surface); box-shadow: -28px 0 60px rgba(0,0,0,.48); animation: operationsDrawerIn .18s ease-out; }
-.operations-detail-drawer-close { position: fixed; top: 14px; right: 14px; z-index: 100; margin: 0; width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--operations-border); border-radius: 8px; color: var(--operations-muted); background: color-mix(in srgb,var(--operations-surface) 94%,transparent); box-shadow: 0 6px 18px rgba(0,0,0,.14); backdrop-filter: blur(10px); cursor: pointer; pointer-events: auto; }
+.operations-detail-drawer-close { position: fixed; top: 16px; right: 16px; z-index: 100; margin: 0; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--operations-border); border-radius: 8px; color: var(--operations-muted); background: color-mix(in srgb,var(--operations-surface) 94%,transparent); box-shadow: 0 6px 18px rgba(0,0,0,.14); backdrop-filter: blur(10px); cursor: pointer; pointer-events: auto; }
 .operations-detail-drawer-close:hover,.operations-detail-drawer-close:focus-visible { color: var(--operations-text); border-color: rgba(76,144,240,.42); outline: none; }
 .operations-detail-drawer { scrollbar-width: none; -ms-overflow-style: none; }
 .operations-detail-drawer::-webkit-scrollbar { display: none; }
 .operations-detail-drawer .operations-asset-preview-panel { position: static; top: auto; min-height: calc(100vh - 28px); }
+.operations-detail-drawer .operations-asset-preview > header { padding-right: 44px; }
 @keyframes operationsDrawerIn {
   from { transform: translateX(28px); opacity: .82; }
   to { transform: translateX(0); opacity: 1; }

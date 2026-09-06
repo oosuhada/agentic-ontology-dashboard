@@ -621,6 +621,80 @@ test("requires report type review before opening the browser print flow", async 
     .toBe(1);
 });
 
+test("keeps factory detail explicit and aligns detail controls with the section gutter", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.addInitScript(() => {
+    window.localStorage.setItem("ontology-dashboard:reliability-theme", "light");
+    window.localStorage.setItem("ontology-dashboard:reliability-locale", "ko-KR");
+  });
+  await loginAs(
+    page,
+    "engineer@ontology.local",
+    "Engineer!2026",
+    PATH.replace("role=process_manager", "role=field_operator"),
+  );
+
+  const shell = page.locator(".rw-preview-shell:not(.rw-preview-loading-placeholder)");
+  await expect(shell).toBeVisible({ timeout: 15_000 });
+  await openFactoryStatus(shell);
+
+  const factoryMap = shell.locator(".operations-factory-map-panel").first();
+  const assetNode = factoryMap.locator(".operations-factory-asset-node:not(.slot)").first();
+  await expect(assetNode).toBeVisible({ timeout: 15_000 });
+  await assetNode.click();
+
+  const drawer = shell.getByRole("dialog", { name: "선택 설비 상세" });
+  await expect(drawer).toBeVisible();
+  const closeButton = drawer.getByRole("button", { name: "선택 설비 상세 닫기" });
+  const printButton = drawer.getByRole("button", { name: "보고서 출력" });
+  const closeBox = await closeButton.boundingBox();
+  const printBox = await printButton.boundingBox();
+  expect(closeBox).not.toBeNull();
+  expect(printBox).not.toBeNull();
+  expect((printBox?.x ?? 0) + (printBox?.width ?? 0)).toBeLessThanOrEqual((closeBox?.x ?? 0) - 4);
+
+  await closeButton.click();
+  await expect(drawer).toBeHidden();
+
+  const actionButton = shell.locator(".operational-focus-action button").first();
+  await expect(actionButton).toBeVisible();
+  expect(await actionButton.evaluate((element) => getComputedStyle(element).backgroundColor))
+    .toBe("rgba(0, 0, 0, 0)");
+
+  const track = shell.locator(".rw-section-index__track");
+  await expect(track).toBeVisible();
+  expect(await track.evaluate((element) => getComputedStyle(element).backgroundColor))
+    .toBe("rgba(0, 0, 0, 0)");
+
+  const headingX = await shell.locator(".rw-preview-page-heading h1").evaluate((element) => element.getBoundingClientRect().x);
+  const selectionX = await shell.locator(".rw-preview-selection-anchor").evaluate((element) => element.getBoundingClientRect().x);
+  expect(Math.abs(headingX - selectionX)).toBeLessThanOrEqual(1);
+
+  for (const [label, surface] of [
+    ["모니터링", "monitoring"],
+    ["원인 분석", "assets"],
+    ["점검", "inspection"],
+    ["정비 효과", "maintenance-effect"],
+    ["정비 이력", "maintenance-history"],
+  ] as const) {
+    await shell.locator(".rw-preview-left nav button").filter({ hasText: label }).first().click();
+    await expect(shell).toHaveAttribute("data-active-surface", surface);
+    await expect(drawer).toBeHidden();
+    const currentHeadingX = await shell.locator(".rw-preview-page-heading h1").evaluate((element) => element.getBoundingClientRect().x);
+    const contentX = await shell.locator(".rw-preview-content > *").first().evaluate((element) => element.getBoundingClientRect().x);
+    expect(Math.abs(currentHeadingX - contentX)).toBeLessThanOrEqual(1);
+    const newObservation = shell.locator(".rw-preview-new-observation");
+    if (await newObservation.count()) {
+      const newObservationX = await newObservation.evaluate((element) => element.getBoundingClientRect().x);
+      expect(Math.abs(currentHeadingX - newObservationX)).toBeLessThanOrEqual(1);
+    }
+  }
+
+  await shell.locator(".rw-preview-left nav button").filter({ hasText: "설비 현황" }).click();
+  await expect(shell).toHaveAttribute("data-active-surface", "factory-status");
+  await expect(drawer).toBeHidden();
+});
+
 test("connects search, settings dismissal, locale, theme, presets, and assistant prompts", async ({
   page,
 }) => {
