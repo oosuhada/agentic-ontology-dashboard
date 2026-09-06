@@ -84,12 +84,49 @@ describe("ContextAssistantDrawer", () => {
     expect(container.textContent).toContain("근거3");
   });
 
-  it("shows a no-selection context and disables free-form submission", async () => {
-    await renderDrawer({ context: null });
-    expect(container.textContent).toContain("선택 없음");
-    expect(container.textContent).toContain("설비나 이벤트를 선택");
-    expect(container.querySelector("textarea")?.hasAttribute("disabled")).toBe(true);
-    expect(container.querySelector(".rw-context-assistant__prompts")).toBeNull();
+  it("keeps workspace-scope questions available without an asset selection", async () => {
+    await renderDrawer({
+      context: {
+        roleKind: "operations",
+        workspaceName: "Smart Factory A",
+        workspaceMetrics: {
+          totalAssets: 80,
+          normal: 72,
+          attention: 4,
+          warning: 3,
+          critical: 1,
+          dataQualityHold: 2,
+          averageRisk: 0.12,
+          estimatedDowntimeMinutes: 180,
+          pendingDecisions: 5,
+        },
+      },
+    });
+    expect(container.textContent).toContain("Smart Factory A");
+    expect(container.textContent).toContain("전체 80대");
+    expect(container.textContent).toContain("지금 판단 대기 중인 항목은 무엇인가요?");
+    expect(container.textContent).toContain("생산 영향이 큰 Case부터 요약해줘");
+    expect(container.querySelector("textarea")?.hasAttribute("disabled")).toBe(false);
+    expect(container.querySelector(".rw-context-assistant__prompts")).not.toBeNull();
+  });
+
+  it("changes engineering prompts when the selected asset is normal and monitoring-only", () => {
+    const prompts = reliabilityAssistantPrompts({
+      ...selectedContext,
+      roleKind: "engineering",
+      statusCode: "normal",
+      statusLabel: "정상",
+      failureProbability: 0.03,
+      recommendedDecisionCode: "continue_monitoring",
+      recommendedDecisionLabel: "계속 모니터링",
+    });
+    expect(prompts.map((prompt) => prompt.label)).toEqual([
+      "왜 이 설비는 점검보다 모니터링이 우선인가요?",
+      "현재 정상 판단을 뒷받침하는 신호는 무엇인가요?",
+      "어떤 변화가 생기면 점검이 필요해지나요?",
+      "불필요한 정비를 피하는 것이 어떤 운영 가치를 보호하나요?",
+    ]);
+    expect(prompts.some((prompt) => prompt.label.includes("이상으로 판단"))).toBe(false);
   });
 
   it("only exposes suggested prompts backed by available context", () => {
@@ -126,7 +163,8 @@ describe("ContextAssistantDrawer", () => {
   it("renders an explicit empty-message state", async () => {
     await renderDrawer({ messages: [] });
     expect(container.textContent).toContain("아직 질문 없음");
-    expect(container.textContent).toContain("Agent Review Packet");
+    expect(container.textContent).toContain("현장 행동과 회사 가치가 연결되도록 설명합니다");
+    expect(container.textContent).not.toContain("Agent Review Packet");
   });
 
   it("renders safe execution activity without exposing private chain-of-thought", async () => {
@@ -186,10 +224,39 @@ describe("ContextAssistantDrawer", () => {
   });
 
   it("answers priority and evidence questions from Agent Review grounding", () => {
-    expect(groundedReliabilityAssistantAnswer(selectedContext, "왜 이 설비가 우선인가?")).toContain("진동 기여도가 가장 큼");
+    expect(groundedReliabilityAssistantAnswer(selectedContext, "왜 이 설비가 우선인가?")).toContain("진동 RMS 6.2 mm/s");
     expect(groundedReliabilityAssistantAnswer(selectedContext, "현재 핵심 근거 요약")).toContain("진동 RMS 6.2 mm/s");
     expect(groundedReliabilityAssistantAnswer(selectedContext, "현재 핵심 근거 요약")).toContain("검증된 SOP 안내 2건");
     expect(groundedReliabilityAssistantAnswer(selectedContext, "현재 핵심 근거 요약")).not.toContain("local_sop_metadata_retriever");
+  });
+
+  it("corrects a false abnormal premise and keeps internal model fields out of the answer", () => {
+    const answer = groundedReliabilityAssistantAnswer({
+      ...selectedContext,
+      assetId: "CNC-S01-L02-03",
+      assetName: "1구역 · 2셀 · CNC 가공기 3",
+      failureProbability: 0.08,
+      statusLabel: "정상",
+      recommendedDecisionLabel: "계속 모니터링",
+      estimatedDowntimeMinutes: 60,
+      priorityReasons: [
+        "status normal",
+        "generator failure score 0.0106629027662835 model unit",
+        "model selected threshold 0.06999999999999999 model unit",
+        "asset criticality adjustment 0.0 model unit",
+      ],
+      evidenceItems: ["모델 산출 위험 점수 0.011", "위험 판정 기준값 0.07"],
+    }, "왜 이 설비가 이상으로 판단됐나요?");
+
+    expect(answer).toContain("고장이나 이상으로 확정된 상태가 아닙니다");
+    expect(answer).toContain("위험도는 8%");
+    expect(answer).toContain("추세를 계속 관찰하는 것이 적절합니다");
+    expect(answer).toContain("최대 60분의 잠재 비가동");
+    expect(answer).not.toContain("generator failure score");
+    expect(answer).not.toContain("model selected threshold");
+    expect(answer).not.toContain("모델 산출 위험 점수");
+    expect(answer).not.toContain("위험 판정 기준값");
+    expect(answer).not.toContain("0.0106629027662835");
   });
 
   it("frames cost and KPI questions as value protection without claiming booked savings", () => {
@@ -198,9 +265,9 @@ describe("ContextAssistantDrawer", () => {
       "이 조치의 비용 절감과 KPI 가치는?",
     );
     expect(answer).toContain("생산 연속성을 보호");
-    expect(answer).toContain("예상 정지 노출 120분");
-    expect(answer).toContain("계획 손실 노출 약 25개");
-    expect(answer).toContain("실제 절감 실적은 아닙니다");
+    expect(answer).toContain("최대 120분의 잠재 비가동");
+    expect(answer).toContain("계획 생산 약 25개의 손실 가능성");
+    expect(answer).toContain("실제 절감액이 아니라 보호 대상 노출");
     expect(answer).not.toContain("비용을 절감했습니다");
   });
 });

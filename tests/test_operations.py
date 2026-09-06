@@ -643,6 +643,33 @@ def test_asset_detail_route_rejects_out_of_scope_workspace(client: TestClient) -
     assert response.json()["error"]["code"] == "workspace_scope_denied"
 
 
+def test_workspace_scope_agent_query_does_not_require_asset_selection(client: TestClient) -> None:
+    response = client.post(
+        "/api/agent/query",
+        headers=csrf_headers(client),
+        json={
+            "project_id": "manufacturing-demo-project",
+            "workspace_id": "manufacturing-demo",
+            "question": "회사 KPI와 최근 운영 의사결정 문맥을 요약해줘",
+            "route": "auto",
+            "audience": "operations",
+            "object_type": "workspace",
+            "top_k": 8,
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    state = response.json()["state"]
+    assert state["status"] == "succeeded"
+    assert state["object_type"] == "workspace"
+    assert state["object_id"] is None
+    assert state["evidence"]
+    assert state["claims"]
+    assert state["steps"][0]["name"] == "workspace_context"
+    assert "먼저 설비" not in state["answer"]
+    assert "object_id_required" not in str(state)
+
+
 def test_api_contract_and_state_changes(client: TestClient, service: FactorySignalService) -> None:
     assert client.get("/health").json()["status"] == "ok"
     events = client.get("/api/events").json()["items"]

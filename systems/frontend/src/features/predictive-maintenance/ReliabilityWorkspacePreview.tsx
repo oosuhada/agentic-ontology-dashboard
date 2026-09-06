@@ -45,6 +45,7 @@ import { OperationalFocus } from "./workspace/OperationalFocus";
 import { SectionIndexRail, type ReliabilitySectionIndexItem } from "./workspace/SectionIndexRail";
 import {
   groundedReliabilityAssistantAnswer,
+  isUserFacingReliabilityAssistantAnswer,
   type ReliabilityAssistantContext,
   type ReliabilityAssistantMessage,
 } from "./workspace/assistantContext";
@@ -752,15 +753,59 @@ export function ReliabilityWorkspacePreview({
         ? item.role === "field_operator"
         : false
   ));
-  const packetEvidenceItems = agentPacket?.model_expression_context.top_factors.slice(0, 4).map((item) => evidenceItemLabel(item, english)) ?? [];
+  const hiddenAssistantFactorKeys = new Set([
+    "generator_failure_score",
+    "model_selected_threshold",
+    "asset_criticality_adjustment",
+    "generator_model_artifact_manifest",
+  ]);
+  const packetEvidenceItems = agentPacket?.model_expression_context.top_factors
+    .filter((item) => !hiddenAssistantFactorKeys.has(item.feature))
+    .slice(0, 4)
+    .map((item) => evidenceItemLabel(item, english)) ?? [];
   const assistantEvidenceItems = packetEvidenceItems.length
     ? packetEvidenceItems
-    : evidence.map((item) => `${item.label}${item.value ? ` ${item.value}` : ""}`);
+    : evidence
+      .filter((item) => !/모델 산출 위험 점수|위험 판정 기준값|설비 중요도 보정|Model risk score|Risk decision threshold|Asset criticality adjustment/i.test(item.label))
+      .map((item) => `${item.label}${item.value ? ` ${item.value}` : ""}`);
   const assistantHistoryItems = agentSummary?.history_summary.length
     ? agentSummary.history_summary
     : agentPacket?.review_draft.history_summary ?? [];
+  const monitoringOnlySelection = Boolean(
+    selectedEvent
+      && (selectedEvent.status === "normal" || selectedEvent.recommendedDecision === "continue_monitoring"),
+  );
+  const hasActiveCaseWork = Boolean(
+    workOrderCount > 0
+      || detail?.closedLoop?.maintenanceActions.some((action) => action.status !== "completed"),
+  );
+  const assistantCurrentLifecycleLabel = monitoringOnlySelection && !hasActiveCaseWork
+    ? (english ? "Monitoring" : "모니터링 유지")
+    : lifecycleCurrentForDisplay?.label ?? null;
+  const assistantNextLifecycleLabel = monitoringOnlySelection && !hasActiveCaseWork
+    ? (english ? "Re-evaluate if signals change" : "신호 변화 시 재평가")
+    : lifecycleNextForDisplay?.label ?? null;
+  const assistantPrimaryActionLabel = monitoringOnlySelection && !hasActiveCaseWork
+    ? (english ? "Continue trend monitoring" : "위험 추세 계속 관찰")
+    : focusPrimaryAction?.label ?? null;
+  const workspaceTopRisks = [...model.events]
+    .filter((event) => typeof event.failureProbability === "number")
+    .sort((left, right) => (right.failureProbability ?? 0) - (left.failureProbability ?? 0))
+    .slice(0, 3)
+    .map((event) => ({
+      assetLabel: english
+        ? (event.assetName || event.assetId)
+        : displayAssetName({ assetId: event.assetId, displayName: event.assetName }),
+      risk: event.failureProbability,
+      status: event.status,
+    }));
   const assistantContext: ReliabilityAssistantContext = {
     roleKind: experience.kind,
+    workspaceName: context.workspaceName,
+    statusCode: selectedEvent?.status ?? null,
+    recommendedDecisionCode: selectedEvent?.recommendedDecision ?? null,
+    workspaceMetrics: model.metrics,
+    workspaceTopRisks,
     assetId: selectedEvent?.assetId ?? null,
     assetName: selectedEvent?.assetName ?? null,
     eventId: selectedEvent?.eventId ?? null,
@@ -779,15 +824,17 @@ export function ReliabilityWorkspacePreview({
     recommendedDecisionLabel: recommendedDecisionLabel(selectedEvent?.recommendedDecision, english),
     predictedFailureType: selectedEvent?.predictedFailureType ?? null,
     assignedEngineer: selectedEvent?.assignedEngineer ?? null,
-    currentLifecycleLabel: lifecycleCurrentForDisplay?.label ?? null,
-    nextLifecycleLabel: lifecycleNextForDisplay?.label ?? null,
-    primaryActionLabel: focusPrimaryAction?.label ?? null,
-    evidenceCount: evidence.length,
+    currentLifecycleLabel: assistantCurrentLifecycleLabel,
+    nextLifecycleLabel: assistantNextLifecycleLabel,
+    primaryActionLabel: assistantPrimaryActionLabel,
+    evidenceCount: assistantEvidenceItems.length,
     evidenceSummary: assistantEvidenceItems.length
       ? assistantEvidenceItems.join(" · ")
       : null,
     workOrderCount,
-    maintenanceState: lifecycleCurrentForDisplay?.label ?? null,
+    maintenanceState: monitoringOnlySelection && !hasActiveCaseWork
+      ? (english ? "No active maintenance work" : "진행 중 정비 없음")
+      : lifecycleCurrentForDisplay?.label ?? null,
     observedAt: freshnessObservedAt,
     freshnessLabel: freshnessObservedAt ?? null,
     priorityReasons: agentPacket?.review_priority?.reasons ?? [],
@@ -802,11 +849,33 @@ export function ReliabilityWorkspacePreview({
     retrievalProvider: agentPacket?.sop_retrieval.provider ?? null,
     retrievalCount: agentPacket?.sop_retrieval.returned_count ?? null,
   };
-  const assistantActions = experience.kind === "engineering"
+  const assistantActions = !selectedEvent
+    ? experience.kind === "engineering"
+      ? [
+        { id: "monitor", label: english ? "Open monitoring" : "모니터링 열기", detail: english ? "Plant · line · risk alerts" : "공장 · 라인 · 위험 알림", onClick: () => onNavigate("monitoring", "overview") },
+        { id: "analysis", label: english ? "Open root-cause workspace" : "원인 분석 열기", detail: english ? "Select an asset to inspect signals" : "설비 선택 후 센서·기여도 분석", onClick: () => onNavigate("assets", "objects") },
+      ]
+      : experience.kind === "operations"
+        ? [
+          { id: "status", label: english ? "Open operations status" : "운영 현황 열기", detail: english ? "Live KPI · plant status" : "실시간 KPI · 공장 상태", onClick: () => onNavigate("operations-status", "overview") },
+          { id: "pending", label: english ? "Open pending decisions" : "판단 대기 열기", detail: english ? "Priority · SLA · owner" : "우선순위 · SLA · Owner", onClick: () => onNavigate("pending-decisions", "operations") },
+        ]
+        : experience.kind === "executive"
+          ? [
+            { id: "risk", label: english ? "Open operational risk" : "운영 리스크 보기", detail: english ? "Plant · line · exposure" : "공장 · 라인 · 노출", onClick: () => onNavigate("operational-risk", "overview") },
+            { id: "kpi", label: english ? "Open value & KPI" : "가치 · 운영 KPI 보기", detail: english ? "Lead time · backlog · exposure" : "Lead time · Backlog · 보호 가치", onClick: () => onNavigate("executive-kpi", "reports") },
+          ]
+          : [
+            { id: "field", label: english ? "Open field status" : "현장 현황 열기", detail: english ? "Inspection · maintenance progress" : "점검 · 정비 진행", onClick: () => onNavigate("field-status", "overview") },
+            { id: "work", label: english ? "Open my work" : "내 작업 열기", detail: english ? "Approved work · progress" : "승인 작업 · 진행 상태", onClick: () => onNavigate("my-work", "operations") },
+          ]
+    : experience.kind === "engineering"
     ? [
       { id: "evidence", label: english ? "Open asset evidence" : "설비 근거 열기", detail: english ? "Sensors · factors · history" : "센서 · 기여도 · 이력", onClick: () => onNavigate("assets", "objects") },
       { id: "sensor", label: english ? "Analyze root cause" : "원인 분석 열기", detail: english ? "Signals · contribution · anomaly" : "센서 · 기여도 · 이상 구간", onClick: () => onNavigate("assets", "objects") },
-      { id: "inspection", label: english ? "Open inspection case" : "점검 Case 열기", detail: english ? "Targets · workflow" : "점검 대상 · workflow", onClick: () => onNavigate("inspection", "operations") },
+      monitoringOnlySelection
+        ? { id: "monitor", label: english ? "Keep monitoring" : "모니터링 계속 보기", detail: english ? "Trend · escalation boundary" : "추세 · 점검 전환 기준", onClick: () => onNavigate("monitoring", "overview") }
+        : { id: "inspection", label: english ? "Open inspection case" : "점검 Case 열기", detail: english ? "Targets · workflow" : "점검 대상 · workflow", onClick: () => onNavigate("inspection", "operations") },
       { id: "history", label: english ? "Review maintenance history" : "정비 이력 보기", detail: english ? "Past work · before/after" : "과거 조치 · before/after", onClick: () => onNavigate("maintenance-history", "objects") },
     ]
     : experience.kind === "operations"
@@ -899,7 +968,7 @@ export function ReliabilityWorkspacePreview({
         question: trimmed,
         route: "auto",
         audience: experience.kind,
-        object_type: "equipment",
+        object_type: selectedEvent ? "equipment" : "workspace",
         object_id: selectedEvent?.assetId ?? undefined,
         event_id: selectedEvent?.eventId ?? undefined,
         top_k: 8,
@@ -908,14 +977,29 @@ export function ReliabilityWorkspacePreview({
       ]);
       const evidenceStores = [...new Set(run.state.evidence.map((item) => item.store))];
       const hasGroundedEvidence = run.state.status === "succeeded" && run.state.evidence.length > 0;
-      const answer = hasGroundedEvidence && run.state.answer.trim()
-        ? run.state.answer.trim()
-        : groundedReliabilityAssistantAnswer(assistantContext, trimmed, locale);
+      const groundedFallback = groundedReliabilityAssistantAnswer(assistantContext, trimmed, locale);
+      const candidateAnswer = run.state.answer.trim();
+      const workspaceLiveQuestion = !selectedEvent && /지금|현재|오늘|위험|리스크|판단 대기|우선|데이터 품질|now|current|today|risk|pending decision|data quality/i.test(trimmed);
+      const answer = workspaceLiveQuestion
+        ? groundedFallback
+        : hasGroundedEvidence
+        && candidateAnswer
+        && isUserFacingReliabilityAssistantAnswer(candidateAnswer)
+        ? candidateAnswer
+        : groundedFallback;
       const hintParts = [
         english ? "Connected evidence" : "연결 근거",
         english ? `${run.state.evidence.length} items` : `${run.state.evidence.length}건`,
-        hasGroundedEvidence && evidenceStores.length ? evidenceStores.join(" + ") : null,
-        !hasGroundedEvidence ? (english ? "current asset context used" : "현재 설비 문맥 사용") : null,
+        hasGroundedEvidence && evidenceStores.length
+          ? (workspaceLiveQuestion
+              ? (english ? "live workspace + company knowledge" : "실시간 workspace + 회사 지식")
+              : (english ? "operational + company knowledge" : "운영 데이터 + 회사 지식"))
+          : null,
+        !hasGroundedEvidence
+          ? (selectedEvent
+              ? (english ? "current asset context used" : "현재 설비 문맥 사용")
+              : (english ? "current workspace context used" : "현재 workspace 문맥 사용"))
+          : null,
       ].filter((value): value is string => Boolean(value));
       const activitySteps = run.state.steps.map((step, index) => ({
         id: `${run.state.run_id}:${index}:${step.name}`,
@@ -937,8 +1021,12 @@ export function ReliabilityWorkspacePreview({
       }]);
       if (!hasGroundedEvidence) {
         setAssistantError(english
-          ? "No additional review evidence matched this question. The answer uses the currently selected asset context."
-          : "추가 검토 근거가 일치하지 않아 현재 선택 설비의 연결 데이터를 기준으로 답변했습니다.");
+          ? (selectedEvent
+              ? "No additional review evidence matched this question. The answer uses the currently selected asset context."
+              : "No additional company evidence matched this question. The answer uses the current workspace summary.")
+          : (selectedEvent
+              ? "추가 검토 근거가 일치하지 않아 현재 선택 설비의 연결 데이터를 기준으로 답변했습니다."
+              : "추가 회사 근거가 일치하지 않아 현재 workspace 요약을 기준으로 답변했습니다."));
       }
     } catch (reason) {
       const fallback = groundedReliabilityAssistantAnswer(assistantContext, trimmed, locale);
@@ -946,7 +1034,9 @@ export function ReliabilityWorkspacePreview({
         id: `assistant-${timestamp}`,
         role: "assistant",
         text: fallback,
-        contextHint: english ? "Current asset context" : "현재 설비 문맥",
+        contextHint: selectedEvent
+          ? (english ? "Current asset context" : "현재 설비 문맥")
+          : (english ? "Current workspace context" : "현재 workspace 문맥"),
         activityTrace: {
           runId: null,
           route: null,
@@ -968,8 +1058,12 @@ export function ReliabilityWorkspacePreview({
             },
             {
               id: `fallback-${timestamp}-context`,
-              label: english ? "Use current case context" : "현재 Case 문맥 사용",
-              detail: english ? "A deterministic grounded fallback was composed from the selected case." : "선택 Case의 검증된 문맥으로 결정론적 fallback 답변을 구성했습니다.",
+              label: selectedEvent
+                ? (english ? "Use current case context" : "현재 Case 문맥 사용")
+                : (english ? "Use current workspace context" : "현재 workspace 문맥 사용"),
+              detail: selectedEvent
+                ? (english ? "A deterministic grounded fallback was composed from the selected case." : "선택 Case의 검증된 문맥으로 결정론적 fallback 답변을 구성했습니다.")
+                : (english ? "A deterministic fallback was composed from current workspace metrics." : "현재 workspace 운영 지표로 결정론적 답변을 구성했습니다."),
               store: null,
               status: "fallback",
               latencyMs: null,
@@ -979,9 +1073,15 @@ export function ReliabilityWorkspacePreview({
       }]);
       setAssistantError(reason instanceof Error
         ? (reason.message === "assistant_query_timeout"
-          ? (english ? "Grounded evidence lookup exceeded 9 seconds. A deterministic answer from the current case context is shown instead." : "근거 조회가 9초를 넘겨 현재 Case 문맥의 결정론적 답변으로 전환했습니다.")
-          : (english ? "Additional evidence lookup was unavailable, so the current asset context was used." : "추가 근거 조회가 지연되어 현재 선택 설비의 연결 데이터를 기준으로 답변했습니다."))
-        : (english ? "The current asset context was used for this answer." : "현재 선택 설비의 연결 데이터를 기준으로 답변했습니다."));
+          ? (english
+              ? `Grounded evidence lookup exceeded 9 seconds. A deterministic answer from the current ${selectedEvent ? "case" : "workspace"} context is shown instead.`
+              : `근거 조회가 9초를 넘겨 현재 ${selectedEvent ? "Case" : "workspace"} 문맥의 결정론적 답변으로 전환했습니다.`)
+          : (english
+              ? `Additional evidence lookup was unavailable, so the current ${selectedEvent ? "asset" : "workspace"} context was used.`
+              : `추가 근거 조회가 지연되어 현재 ${selectedEvent ? "선택 설비" : "workspace"} 문맥을 기준으로 답변했습니다.`))
+        : (english
+            ? `The current ${selectedEvent ? "asset" : "workspace"} context was used for this answer.`
+            : `현재 ${selectedEvent ? "선택 설비" : "workspace"} 문맥을 기준으로 답변했습니다.`));
     } finally {
       setAssistantQueryLoading(false);
     }

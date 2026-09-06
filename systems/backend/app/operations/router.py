@@ -37,6 +37,7 @@ from app.dependencies import (
     require_permission,
 )
 from app.diagnosis.runtime_service import PredictiveMaintenanceRuntimeService
+from app.diagnosis.presentation_dictionary import presentation_field
 from app.identity import AuthError, IdentityService, Principal
 from app.infra.db.agent_run_repository import AgentRunRepository
 from app.ontology.ontology_domain import ActionInvocation
@@ -535,12 +536,85 @@ def _answer_from_packet(
     probability = risk_summary.get("failure_probability") or risk_summary.get("probability")
     status = risk_summary.get("status_grade") or risk_summary.get("status")
     risk = f"{round(float(probability) * 100)}%" if isinstance(probability, (int, float)) else "위험도 미제공"
-    reasons = (packet.get("review_priority") or {}).get("reasons") or []
-    reason_text = " · ".join(str(item) for item in reasons[:4] if item)
     summary_text = _summary_text(summary, audience)
-    evidence_text = " · ".join(item["content"] for item in evidence[:4])
     lower = question.lower()
     value_text = _value_realization_text(packet, evidence, audience)
+    review_draft = packet.get("review_draft") or {}
+    recommendation = str(review_draft.get("recommended_next_step") or "").strip()
+    recommendation_labels = {
+        "continue_monitoring": "계속 모니터링",
+        "request_inspection": "현장 점검 요청",
+        "schedule_maintenance": "정비 계획 검토",
+        "request_maintenance": "정비 요청",
+    }
+    recommendation_label = recommendation_labels.get(recommendation, recommendation)
+
+    model_context = packet.get("model_expression_context") or {}
+    top_factors = model_context.get("top_factors") or []
+    physical_factors: list[str] = []
+    decision_basis: list[str] = []
+    for factor in top_factors:
+        if not isinstance(factor, dict):
+            continue
+        feature = str(factor.get("feature") or "")
+        projected = presentation_field(feature, "ko-KR")
+        value = _coerce_float(factor.get("value"))
+        unit = str(factor.get("unit") or "").strip()
+        formatted_value = ""
+        if value is not None:
+            formatted_value = f" {value:,.2f}".rstrip("0").rstrip(".")
+            if unit and unit != "model unit":
+                formatted_value += f" {unit}"
+        label = f"{projected['label']}{formatted_value}"
+        if projected["kind"] in {"sensor", "derived"}:
+            physical_factors.append(label)
+        elif projected["kind"] in {"model_output", "policy"}:
+            decision_basis.append(label)
+
+    safe_evidence_snippets: list[str] = []
+    for item in evidence:
+        content = str(item.get("content") or "").strip()
+        lowered = content.lower()
+        if not content:
+            continue
+        if any(
+            marker in lowered
+            for marker in (
+                "generator_failure_score",
+                "model_selected_threshold",
+                "asset_criticality_adjustment",
+                "model unit",
+                "source_ref",
+                "deterministic fallback",
+                "team db",
+            )
+        ):
+            continue
+        safe_evidence_snippets.append(content[:180])
+        if len(safe_evidence_snippets) >= 2:
+            break
+
+    if physical_factors:
+        evidence_text = " · ".join(physical_factors[:2])
+        evidence_sentence = f"현재 사람이 확인할 핵심 신호는 {evidence_text}입니다."
+    elif decision_basis:
+        evidence_text = ""
+        evidence_sentence = (
+            "현재 판단은 모델의 위험 기준과 운영 정책을 함께 적용한 결과이며, "
+            "현장 센서 원인은 아직 확정되지 않았습니다."
+        )
+    elif safe_evidence_snippets:
+        evidence_text = " · ".join(safe_evidence_snippets)
+        evidence_sentence = f"추가로 연결된 검증 근거는 {evidence_text}입니다."
+    else:
+        evidence_text = ""
+        evidence_sentence = "현장 원인을 설명할 센서·점검 근거는 아직 충분하지 않습니다."
+
+    is_monitoring_only = (
+        str(status or "").lower() == "normal"
+        or recommendation == "continue_monitoring"
+        or (isinstance(probability, (int, float)) and float(probability) < 0.2)
+    )
     asks_value = any(
         token in lower
         for token in (
@@ -556,7 +630,7 @@ def _answer_from_packet(
         )
     )
     if asks_value and value_text:
-        return f"{title}: {value_text} 근거: {evidence_text or reason_text or '현재 연결된 정본 근거 없음'}"
+        return f"{title}: {value_text} {evidence_sentence}"
     if summary_text:
         if audience == "executive":
             operation_context = packet.get("operation_context_summary") or {}
@@ -573,18 +647,109 @@ def _answer_from_packet(
                 f"{title}: {summary_text}"
                 f"{f' 경영 영향: {impact_text}.' if impact_text else ''}"
                 f"{f' {value_text}' if value_text else ''} "
-                f"근거: {evidence_text or reason_text or '근거 미제공'}"
+                f"{evidence_sentence}"
             )
         return (
             f"{title}: {summary_text}"
             f"{f' {value_text}' if value_text else ''} "
-            f"연결 근거: {evidence_text or reason_text or '근거 미제공'}"
+            f"{evidence_sentence}"
         )
-    if any(token in lower for token in ("우선", "priority", "prioritized", "why")):
-        return f"{title}는 현재 {status or '상태 미제공'} / {risk}로 검토 우선순위에 올라 있습니다. 핵심 근거는 {reason_text or evidence_text or '현재 연결된 정본 근거 없음'}입니다. 이는 고장 확정이 아니라 운영 검토 우선순위입니다.{f' {value_text}' if value_text else ''}"
+    if any(token in lower for token in ("우선", "priority", "prioritized", "why", "왜 이 설비", "이상")):
+        if is_monitoring_only:
+            action = f" 현재 권고는 ‘{recommendation_label}’입니다." if recommendation_label else ""
+            return (
+                f"현재 근거만 보면 {title}를 고장 이상으로 확정한 상태는 아닙니다. "
+                f"현재 위험도는 {risk}입니다.{action} "
+                "즉 지금은 즉시 수리보다 조기 징후를 계속 관찰하면서 불필요한 정비를 피하는 단계입니다. "
+                f"{evidence_sentence}"
+                f"{f' {value_text}' if value_text else ''}"
+            )
+        action = f" 현재 권고 조치는 ‘{recommendation_label}’입니다." if recommendation_label else ""
+        return (
+            f"{title}의 현재 위험도는 {risk}입니다.{action} 그래서 우선 확인 대상이지만 아직 고장 확정은 아닙니다. "
+            f"{evidence_sentence}"
+            f"{f' {value_text}' if value_text else ''}"
+        )
     if any(token in lower for token in ("근거", "evidence", "factor", "요인")):
-        return f"{title}의 현재 연결 근거는 {evidence_text or reason_text or '제공되지 않았습니다'}입니다."
-    return f"{title}에 대한 답변입니다. 현재 상태는 {status or '미제공'}, 위험도는 {risk}이며, 연결 근거는 {evidence_text or reason_text or '제공되지 않았습니다'}입니다.{f' {value_text}' if value_text else ''}"
+        return f"{title}: {evidence_sentence} 이 근거는 판단을 돕기 위한 것이며 물리적 고장 원인을 확정한 것은 아닙니다."
+    return (
+        f"{title}의 현재 위험도는 {risk}입니다. "
+        f"{evidence_sentence}"
+        f"{f' {value_text}' if value_text else ''}"
+    )
+
+
+def _workspace_company_evidence(
+    *,
+    service: ManufacturingPredictiveMaintenanceService,
+    question: str,
+    project_id: str,
+    workspace_id: str,
+    roles: list[str] | None,
+    top_k: int,
+) -> list[dict[str, Any]]:
+    evidence: list[dict[str, Any]] = []
+    for index, item in enumerate(
+        service.company_context_documents(
+            question,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            asset_id=None,
+            roles=roles,
+            top_k=top_k,
+        ),
+        start=1,
+    ):
+        evidence.append({
+            "evidence_id": f"workspace-context-{index}",
+            "store": "company_context",
+            "reference": str(item.get("source_ref") or item.get("id") or f"workspace-context-{index}"),
+            "project_id": project_id,
+            "workspace_id": workspace_id,
+            "dataset_version_id": None,
+            "object_id": None,
+            "title": str(item.get("title") or "Company context"),
+            "content": str(item.get("content") or item.get("title") or ""),
+            "score": _coerce_float(item.get("retrieval_score")),
+            "metadata": {
+                "document_type": item.get("document_type"),
+                "related_asset_ids": item.get("related_asset_ids") or [],
+                "context_kind": item.get("context_kind"),
+                "source_sha256": item.get("source_sha256"),
+                "source_updated_at": item.get("source_updated_at"),
+            },
+        })
+    return evidence[:top_k]
+
+
+def _workspace_answer_from_evidence(
+    question: str,
+    evidence: list[dict[str, Any]],
+    audience: str | None,
+) -> str:
+    if not evidence:
+        return (
+            "현재 workspace 전체 관점에서 답변할 수 있지만 이 질문과 직접 연결되는 회사 근거는 찾지 못했습니다. "
+            "공장 리스크, 판단 대기, 정비 이력, KPI, 재무, 회의 기록 또는 정책처럼 범위를 조금 더 구체화해 주세요."
+        )
+    titles = [str(item.get("title") or "").strip() for item in evidence if item.get("title")][:3]
+    title_text = " · ".join(dict.fromkeys(titles))
+    lower = question.lower()
+    if any(token in lower for token in ("kpi", "재무", "비용", "가치", "매출", "손익", "finance", "value")):
+        prefix = "회사 가치와 KPI 관점에서"
+    elif any(token in lower for token in ("회의", "결정", "정책", "meeting", "decision", "policy")):
+        prefix = "조직의 의사결정 문맥에서"
+    elif audience == "maintenance":
+        prefix = "정비 운영 관점에서"
+    elif audience == "engineering":
+        prefix = "설비 신뢰성 관점에서"
+    else:
+        prefix = "workspace 전체 운영 관점에서"
+    return (
+        f"{prefix} 질문과 가장 가까운 검증 근거는 {title_text or '연결된 회사 문서'}입니다. "
+        "특정 설비를 선택하지 않은 상태이므로 공장·조직·KPI·정비 이력 같은 전사 문맥만 사용하며, "
+        "센서 원인이나 개별 Case 상태는 추정하지 않습니다."
+    )
 
 
 def _runtime_event_id(result: Any) -> str:
@@ -1730,6 +1895,77 @@ def run_agent_query(
     route = "hybrid" if request.route == "auto" else request.route
 
     if not request.object_id:
+        evidence_started = time.perf_counter()
+        evidence = _workspace_company_evidence(
+            service=service,
+            question=request.question,
+            project_id=request.project_id,
+            workspace_id=request.workspace_id,
+            roles=principal.roles,
+            top_k=request.top_k,
+        )
+        evidence_latency_ms = int((time.perf_counter() - evidence_started) * 1000)
+        baseline_answer = _workspace_answer_from_evidence(request.question, evidence, request.audience)
+        answer = baseline_answer
+        answer_citations: list[str] = []
+        answer_caveats: list[str] = []
+        answer_trace = {
+            "mode": "deterministic_fallback",
+            "provider": "none",
+            "reason": "provider_unavailable",
+        }
+        answer_started = time.perf_counter()
+        if service.agent_answer_provider is not None:
+            answer, answer_citations, answer_caveats, answer_trace = service.agent_answer_provider.generate(
+                question=request.question,
+                audience=request.audience,
+                packet={
+                    "asset_id": None,
+                    "workspace_scope": {
+                        "project_id": request.project_id,
+                        "workspace_id": request.workspace_id,
+                        "selected_asset": False,
+                    },
+                    "risk_summary": {},
+                    "review_priority": {},
+                    "operation_context_summary": {},
+                    "limitations": [
+                        "Workspace-scope answer: do not infer sensor, failure, or workflow state for an unselected asset."
+                    ],
+                },
+                evidence=evidence,
+                baseline_answer=baseline_answer,
+                summary=None,
+            )
+        answer_latency_ms = int((time.perf_counter() - answer_started) * 1000)
+        duration_ms = int((time.perf_counter() - query_started) * 1000)
+        claim_ids = answer_citations or [item["evidence_id"] for item in evidence[:4]]
+        evidence_store = "company_context"
+        if any(item.get("store") == "pgvector" for item in evidence):
+            evidence_store = "pgvector"
+        steps = [
+            {
+                "name": "workspace_context",
+                "store": "postgresql",
+                "status": "succeeded",
+                "latency_ms": 0,
+                "detail": "Using project/workspace scope without requiring a selected asset.",
+            },
+            {
+                "name": "evidence_retrieval",
+                "store": evidence_store,
+                "status": "succeeded" if evidence else "skipped",
+                "latency_ms": evidence_latency_ms,
+                "detail": f"Retrieved {len(evidence)} governed company evidence item(s) for workspace-scope answering.",
+            },
+            {
+                "name": "grounded_answer",
+                "store": "company_context",
+                "status": "succeeded",
+                "latency_ms": answer_latency_ms,
+                "detail": f"{answer_trace.get('mode')} via {answer_trace.get('provider')}",
+            },
+        ]
         state = {
             "run_id": run_id,
             "organization_id": principal.organization_id,
@@ -1737,37 +1973,46 @@ def run_agent_query(
             "workspace_id": request.workspace_id,
             "user_id": principal.user_id,
             "question": request.question,
-            "route": "relational" if request.route == "auto" else request.route,
-            "status": "failed",
-            "object_type": request.object_type,
+            "route": route,
+            "status": "succeeded",
+            "object_type": request.object_type or "workspace",
             "object_id": None,
             "event_id": request.event_id,
-            "evidence": [],
-            "claims": [],
-            "steps": [{
-                "name": "select_object",
-                "store": None,
-                "status": "failed",
-                "latency_ms": None,
-                "detail": "object_id is required for grounded Operations assistant answers",
+            "evidence": evidence,
+            "claims": [{
+                "claim_id": "claim-workspace-grounded-answer",
+                "text": answer,
+                "evidence_ids": claim_ids,
+                "confidence": "high" if claim_ids else "medium",
+                "validated": True,
             }],
-            "answer": "먼저 설비나 이벤트를 선택해야 정본 근거 기반 답변을 만들 수 있습니다.",
-            "caveats": ["No object was selected."],
-            "error": "object_id_required",
-            "checkpoint_sequence": 1,
-            "duration_ms": 0,
+            "steps": steps,
+            "answer": answer,
+            "caveats": [
+                "Workspace-scope read only: no individual asset failure, workflow state, approval, or execution was inferred.",
+                *answer_caveats,
+            ],
+            "error": None,
+            "checkpoint_sequence": len(steps),
+            "duration_ms": duration_ms,
         }
-        traces = [{
-            "id": f"trace-{uuid.uuid4()}",
-            "run_id": run_id,
-            "step_name": "select_object",
-            "store_kind": None,
-            "status": "failed",
-            "input": request.model_dump(mode="json"),
-            "output": {"error": "object_id_required"},
-            "latency_ms": None,
-            "created_at": now,
-        }]
+        traces = [
+            {
+                "id": f"trace-{uuid.uuid4()}",
+                "run_id": run_id,
+                "step_name": step["name"],
+                "store_kind": step["store"],
+                "status": step["status"],
+                "input": request.model_dump(mode="json") if index == 0 else {"question": request.question},
+                "output": {
+                    "evidence_count": len(evidence),
+                    "answer_mode": answer_trace.get("mode"),
+                },
+                "latency_ms": step["latency_ms"],
+                "created_at": now,
+            }
+            for index, step in enumerate(steps)
+        ]
         _persist_agent_activity(agent_runs, state=state, traces=traces)
         return {"state": state, "traces": traces}
 

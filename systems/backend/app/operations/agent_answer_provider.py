@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.operations.ports import AgentReviewLLMPort
 
 
-AGENT_ANSWER_PROMPT_VERSION = "operations-grounded-answer-v2.0"
+AGENT_ANSWER_PROMPT_VERSION = "operations-grounded-answer-v2.2"
 
 AGENT_ANSWER_SYSTEM_PROMPT = """
 You are the read-only operations assistant for Hanbit Tech.
@@ -28,6 +29,10 @@ Grounding contract:
 - If evidence is insufficient, say what is missing.
 - Keep the answer concise enough for an operational workspace, but include the
   most decision-relevant business or maintenance context when it is available.
+- When packet.workspace_scope is present, answer at plant/workspace scope.
+  Do not tell the user to select an asset unless their question specifically
+  requires sensor-, case-, or workflow-level evidence. Use company, KPI,
+  maintenance, meeting, finance, and policy evidence that applies across assets.
 
 Value communication contract:
 - Prefer outcome language over task-only language. Connect the sequence
@@ -47,6 +52,24 @@ Value communication contract:
   but add one concise sentence connecting the work to operational value.
 - For executive audiences, lead with business value and KPI relevance, then
   state the operational evidence and any estimation caveat.
+
+User-language contract:
+- Write for a plant operator, engineer, manager, or executive—not for a model
+  developer. Do not expose snake_case field names, source IDs, storage names,
+  implementation modes, raw floating-point values, or labels such as
+  "generator failure score", "model selected threshold", "model unit",
+  "deterministic fallback", "pgvector", "Team DB", "모델 산출 위험 점수",
+  "고위험 판정 기준값", "위험 판정 기준값", or "설비 중요도 보정" in the
+  answer body.
+- Translate model/policy evidence into plain operational language and round
+  numeric values to a useful human precision.
+- If the current state is normal or the recommendation is to continue
+  monitoring, correct the premise of a question like "why was this abnormal?":
+  state that failure/abnormality is not confirmed and explain the value of
+  continued observation and avoiding unnecessary maintenance.
+- Lead with the decision-relevant conclusion, then one or two human-readable
+  reasons, then the business-value implication. Keep technical detail in
+  evidence citations rather than the narrative body.
 
 Return JSON only with: answer, evidence_ids, caveats.
 """.strip()
@@ -90,6 +113,7 @@ class GroundedAgentAnswerProvider:
         allowed_ids = {str(item.get("evidence_id")) for item in evidence if item.get("evidence_id")}
         compact_packet = {
             "asset_id": packet.get("asset_id"),
+            "workspace_scope": packet.get("workspace_scope") or {},
             "risk_summary": packet.get("risk_summary") or {},
             "review_priority": packet.get("review_priority") or {},
             "maintenance_history_summary": packet.get("maintenance_history_summary") or {},
@@ -148,6 +172,28 @@ class GroundedAgentAnswerProvider:
             )
             if any(text in answer for text in forbidden):
                 raise ValueError("forbidden_operational_claim")
+            technical_answer_patterns = (
+                re.compile(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b", re.IGNORECASE),
+                re.compile(r"\b\d+\.\d{5,}\b"),
+            )
+            technical_answer_terms = (
+                "model unit",
+                "generator failure score",
+                "model selected threshold",
+                "asset criticality adjustment",
+                "source_ref",
+                "deterministic fallback",
+                "team db",
+                "pgvector",
+                "모델 산출 위험 점수",
+                "고위험 판정 기준값",
+                "위험 판정 기준값",
+                "설비 중요도 보정",
+            )
+            if any(pattern.search(answer) for pattern in technical_answer_patterns) or any(
+                term in answer.lower() for term in technical_answer_terms
+            ):
+                raise ValueError("internal_technical_language")
             realized_value_patterns = (
                 "비용을 절감했다",
                 "비용을 절감했습니다",
