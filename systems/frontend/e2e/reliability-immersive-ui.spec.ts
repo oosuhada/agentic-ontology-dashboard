@@ -96,6 +96,20 @@ test("integrates monitoring risk, section minimap, and assistant execution activ
   await expect(bklitChart).toHaveAttribute("data-bklit-source", "live-line-chart");
   await expect(workbench).toContainText("공장 위험 P95");
 
+  await shell.getByRole("button", { name: /Assistant/ }).click();
+  const workspaceAssistant = page.getByRole("dialog", { name: "Reliability Assistant" });
+  await expect(workspaceAssistant).toBeVisible();
+  await expect(workspaceAssistant).toContainText("지금 엔지니어가 먼저 봐야 할 설비는?");
+  await expect(workspaceAssistant.locator("textarea")).toBeEnabled();
+  await expect(workspaceAssistant.locator("textarea")).toHaveAttribute("placeholder", /공장 전체 리스크/);
+  await workspaceAssistant.getByRole("button", { name: "지금 엔지니어가 먼저 봐야 할 설비는?", exact: true }).click();
+  const workspaceAnswer = workspaceAssistant.locator(".rw-context-assistant__message.is-assistant:not(.is-loading)").last();
+  await expect(workspaceAnswer).toBeVisible({ timeout: 15_000 });
+  await expect(workspaceAnswer).toContainText(/전체|고위험|경고|주의|정상/);
+  await expect(workspaceAnswer).not.toContainText("먼저 설비나 이벤트를 선택");
+  await workspaceAssistant.getByRole("button", { name: "Reliability Assistant 닫기" }).click();
+  await expect(workspaceAssistant).toBeHidden();
+
   const sectionRail = shell.locator(".rw-section-index");
   await expect(sectionRail).toBeVisible();
   await expect(sectionRail.locator("button")).toHaveCount(3);
@@ -127,13 +141,16 @@ test("integrates monitoring risk, section minimap, and assistant execution activ
   await shell.getByRole("button", { name: /Assistant/ }).click();
   const assistant = page.getByRole("dialog", { name: "Reliability Assistant" });
   await expect(assistant).toBeVisible();
-  await assistant
-    .getByRole("button", { name: "왜 이 설비가 이상으로 판단됐나요?", exact: true })
-    .click();
+  const statusAwareQuestion = assistant.getByRole("button", {
+    name: /왜 이 설비(를 지금 우선 확인해야 하나요\?|는 점검이 필요한가요\?|는 점검보다 모니터링이 우선인가요\?)/,
+  }).first();
+  const askedQuestion = (await statusAwareQuestion.textContent())?.trim() ?? "";
+  expect(askedQuestion).not.toBe("");
+  await statusAwareQuestion.click();
   const completedMessage = assistant.locator(
     ".rw-context-assistant__message.is-assistant:not(.is-loading)",
-  );
-  await expect(completedMessage).toHaveCount(1, { timeout: 15_000 });
+  ).last();
+  await expect(completedMessage).toBeVisible({ timeout: 15_000 });
   await expect(completedMessage.locator(":scope > span")).toHaveText("운영 해석");
   await expect(completedMessage).not.toContainText("Team DB");
   await expect(completedMessage).not.toContainText("deterministic fallback");
@@ -157,7 +174,7 @@ test("integrates monitoring risk, section minimap, and assistant execution activ
   await expect(
     restoredAssistant
       .locator(".rw-context-assistant__message.is-user")
-      .filter({ hasText: "왜 이 설비가 이상으로 판단됐나요?" })
+      .filter({ hasText: askedQuestion })
       .last(),
   ).toBeVisible({ timeout: 15_000 });
   await expect(restoredAssistant.locator(".rw-assistant-trace").last()).toContainText("기록 저장됨");

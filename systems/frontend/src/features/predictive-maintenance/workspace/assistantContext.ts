@@ -2,6 +2,25 @@ export type ReliabilityAssistantLocale = "ko-KR" | "en-US";
 
 export interface ReliabilityAssistantContext {
   roleKind?: "executive" | "operations" | "engineering" | "maintenance" | null;
+  workspaceName?: string | null;
+  statusCode?: string | null;
+  recommendedDecisionCode?: string | null;
+  workspaceMetrics?: {
+    totalAssets: number;
+    normal: number;
+    attention: number;
+    warning: number;
+    critical: number;
+    dataQualityHold: number;
+    averageRisk: number | null;
+    estimatedDowntimeMinutes: number | null;
+    pendingDecisions: number;
+  } | null;
+  workspaceTopRisks?: Array<{
+    assetLabel: string;
+    risk: number | null;
+    status: string;
+  }>;
   assetId?: string | null;
   assetName?: string | null;
   eventId?: string | null;
@@ -96,21 +115,152 @@ export function reliabilityAssistantPrompts(
   context: ReliabilityAssistantContext | null | undefined,
   locale: ReliabilityAssistantLocale = "ko-KR",
 ): ReliabilityAssistantPrompt[] {
-  if (!hasReliabilityAssistantSelection(context)) return [];
-
   const english = locale === "en-US";
+  if (!hasReliabilityAssistantSelection(context)) {
+    const role = context?.roleKind ?? "engineering";
+    const workspacePrompts: Record<NonNullable<ReliabilityAssistantContext["roleKind"]>, ReliabilityAssistantPrompt[]> = {
+      engineering: english ? [
+        { id: "workspace-risk", label: "Which assets need engineering attention now?" },
+        { id: "workspace-top", label: "Show the highest-risk assets and why they matter" },
+        { id: "workspace-quality", label: "Are there any data-quality issues I should check first?" },
+        { id: "workspace-value", label: "What operational value is the team protecting right now?" },
+      ] : [
+        { id: "workspace-risk", label: "지금 엔지니어가 먼저 봐야 할 설비는?" },
+        { id: "workspace-top", label: "현재 위험도가 높은 설비와 이유를 요약해줘" },
+        { id: "workspace-quality", label: "먼저 확인해야 할 데이터 품질 이슈가 있나요?" },
+        { id: "workspace-value", label: "지금 현장팀이 보호하고 있는 운영 가치는 무엇인가요?" },
+      ],
+      maintenance: english ? [
+        { id: "workspace-work", label: "Which maintenance work needs attention now?" },
+        { id: "workspace-backlog", label: "Summarize the maintenance backlog and constraints" },
+        { id: "workspace-history", label: "What recurring maintenance patterns are visible?" },
+        { id: "workspace-material", label: "Are parts or lead times constraining current work?" },
+      ] : [
+        { id: "workspace-work", label: "지금 정비팀이 먼저 봐야 할 작업은?" },
+        { id: "workspace-backlog", label: "정비 backlog와 제약을 요약해줘" },
+        { id: "workspace-history", label: "반복되는 정비 패턴이나 재발 징후가 있나요?" },
+        { id: "workspace-material", label: "현재 자재나 리드타임이 작업을 막고 있나요?" },
+      ],
+      operations: english ? [
+        { id: "workspace-decisions", label: "Which decisions are waiting for approval now?" },
+        { id: "workspace-impact", label: "Which cases have the largest production exposure?" },
+        { id: "workspace-priority", label: "What should operations prioritize today?" },
+        { id: "workspace-report", label: "Summarize today's operational risk for management" },
+      ] : [
+        { id: "workspace-decisions", label: "지금 판단 대기 중인 항목은 무엇인가요?" },
+        { id: "workspace-impact", label: "생산 영향이 큰 Case부터 요약해줘" },
+        { id: "workspace-priority", label: "오늘 운영에서 무엇을 가장 먼저 판단해야 하나요?" },
+        { id: "workspace-report", label: "오늘 운영 리스크를 경영 보고용으로 요약해줘" },
+      ],
+      executive: english ? [
+        { id: "workspace-exec-risk", label: "Summarize current plant risk in one paragraph" },
+        { id: "workspace-exec-kpi", label: "Which KPIs are most exposed right now?" },
+        { id: "workspace-exec-delay", label: "Where are decisions slowing down value protection?" },
+        { id: "workspace-exec-value", label: "What business value is current reliability work protecting?" },
+      ] : [
+        { id: "workspace-exec-risk", label: "현재 공장 리스크를 한 문단으로 요약해줘" },
+        { id: "workspace-exec-kpi", label: "지금 어떤 KPI가 가장 영향을 받을 수 있나요?" },
+        { id: "workspace-exec-delay", label: "어디에서 판단 지연이 가치 보호를 늦추고 있나요?" },
+        { id: "workspace-exec-value", label: "현재 Reliability 업무가 보호하는 회사 가치는 무엇인가요?" },
+      ],
+    };
+    return workspacePrompts[role];
+  }
+
+  const monitoringOnly = isMonitoringOnlyContext(context);
+  const severe = ["critical", "warning"].includes((context?.statusCode ?? "").toLowerCase());
+  const hasMaintenanceOutcome = hasText(context?.postMaintenanceSummary);
+
   if (context?.roleKind) {
+    if (context.roleKind === "engineering" && hasMaintenanceOutcome) {
+      return english ? [
+        { id: "engineer-after", label: "Did risk and signals improve after maintenance?" },
+        { id: "engineer-recurrence", label: "Is there any sign of recurrence?" },
+        { id: "engineer-after-evidence", label: "Which before/after evidence matters most?" },
+        { id: "engineer-after-value", label: "What operational value has been verified so far?" },
+      ] : [
+        { id: "engineer-after", label: "정비 후 위험도와 신호가 실제로 좋아졌나요?" },
+        { id: "engineer-recurrence", label: "재발 징후가 남아 있나요?" },
+        { id: "engineer-after-evidence", label: "정비 전후 어떤 근거를 가장 중요하게 봐야 하나요?" },
+        { id: "engineer-after-value", label: "현재까지 검증된 운영 가치는 무엇인가요?" },
+      ];
+    }
+    if (context.roleKind === "engineering" && monitoringOnly) {
+      return english ? [
+        { id: "engineer-normal", label: "Why is this asset staying in monitoring instead of inspection?" },
+        { id: "engineer-normal-signals", label: "Which signals support the current normal assessment?" },
+        { id: "engineer-escalation", label: "What would make this asset require inspection?" },
+        { id: "engineer-normal-value", label: "What value does avoiding unnecessary maintenance protect?" },
+      ] : [
+        { id: "engineer-normal", label: "왜 이 설비는 점검보다 모니터링이 우선인가요?" },
+        { id: "engineer-normal-signals", label: "현재 정상 판단을 뒷받침하는 신호는 무엇인가요?" },
+        { id: "engineer-escalation", label: "어떤 변화가 생기면 점검이 필요해지나요?" },
+        { id: "engineer-normal-value", label: "불필요한 정비를 피하는 것이 어떤 운영 가치를 보호하나요?" },
+      ];
+    }
+    if (context.roleKind === "maintenance" && hasMaintenanceOutcome) {
+      return english ? [
+        { id: "maintenance-after", label: "What changed after the completed maintenance?" },
+        { id: "maintenance-recurrence", label: "Is there any sign of recurrence?" },
+        { id: "maintenance-proof", label: "Which before/after evidence proves the effect?" },
+        { id: "maintenance-value", label: "What value has been verified and what is still estimated?" },
+      ] : [
+        { id: "maintenance-after", label: "정비 완료 후 무엇이 실제로 달라졌나요?" },
+        { id: "maintenance-recurrence", label: "재발 징후가 남아 있나요?" },
+        { id: "maintenance-proof", label: "정비 효과를 입증하는 before/after 근거는 무엇인가요?" },
+        { id: "maintenance-value", label: "검증된 가치와 아직 추정인 값은 무엇인가요?" },
+      ];
+    }
+    if (context.roleKind === "maintenance" && monitoringOnly) {
+      return english ? [
+        { id: "maintenance-normal", label: "Why is no maintenance action needed now?" },
+        { id: "maintenance-normal-history", label: "Does recent maintenance history suggest recurrence risk?" },
+        { id: "maintenance-escalation", label: "What change would trigger maintenance work?" },
+        { id: "maintenance-normal-value", label: "What value does avoiding unnecessary work protect?" },
+      ] : [
+        { id: "maintenance-normal", label: "왜 지금은 정비 작업이 필요하지 않나요?" },
+        { id: "maintenance-normal-history", label: "최근 정비 이력에서 재발 위험이 보이나요?" },
+        { id: "maintenance-escalation", label: "어떤 변화가 생기면 정비 작업으로 전환되나요?" },
+        { id: "maintenance-normal-value", label: "불필요한 작업을 피하는 것이 어떤 가치를 보호하나요?" },
+      ];
+    }
+    if (context.roleKind === "operations" && monitoringOnly) {
+      return english ? [
+        { id: "manager-normal", label: "Why is monitoring sufficient instead of approving work?" },
+        { id: "manager-normal-impact", label: "What production exposure is being watched?" },
+        { id: "manager-escalation", label: "What would require an operations decision?" },
+        { id: "manager-normal-value", label: "What value does avoiding premature work protect?" },
+      ] : [
+        { id: "manager-normal", label: "왜 지금은 작업 승인보다 모니터링 유지가 적절한가요?" },
+        { id: "manager-normal-impact", label: "현재 어떤 생산 노출을 지켜보고 있나요?" },
+        { id: "manager-escalation", label: "어떤 변화가 생기면 운영 판단이 필요해지나요?" },
+        { id: "manager-normal-value", label: "성급한 작업을 피하는 것이 어떤 운영 가치를 보호하나요?" },
+      ];
+    }
+    if (context.roleKind === "executive" && monitoringOnly) {
+      return english ? [
+        { id: "executive-normal", label: "What does this normal state mean for business risk?" },
+        { id: "executive-normal-kpi", label: "Which KPI is protected by stable operation?" },
+        { id: "executive-normal-value", label: "What value comes from avoiding unnecessary maintenance?" },
+        { id: "executive-escalation", label: "What would make this case management-relevant?" },
+      ] : [
+        { id: "executive-normal", label: "현재 정상 상태가 회사 리스크 측면에서 어떤 의미인가요?" },
+        { id: "executive-normal-kpi", label: "안정 운전이 어떤 KPI를 보호하고 있나요?" },
+        { id: "executive-normal-value", label: "불필요한 정비를 피하면서 어떤 가치를 지키고 있나요?" },
+        { id: "executive-escalation", label: "어떤 변화가 생기면 경영진이 봐야 하는 Case가 되나요?" },
+      ];
+    }
     const rolePrompts: Record<NonNullable<ReliabilityAssistantContext["roleKind"]>, ReliabilityAssistantPrompt[]> = {
       engineering: english ? [
-        { id: "engineer-why", label: "Why was this asset flagged as abnormal?" },
+        { id: "engineer-why", label: severe ? "Why does this asset need immediate review?" : "Why does this asset need inspection?" },
         { id: "engineer-sensor", label: "Which sensors should I check first?" },
         { id: "engineer-checklist", label: "What should I inspect now?" },
-        { id: "engineer-value", label: "What operational value does early detection protect?" },
+        { id: "engineer-value", label: severe ? "What production exposure can early action protect?" : "What operational value does early detection protect?" },
       ] : [
-        { id: "engineer-why", label: "왜 이 설비가 이상으로 판단됐나요?" },
+        { id: "engineer-why", label: severe ? "왜 이 설비를 지금 우선 확인해야 하나요?" : "왜 이 설비는 점검이 필요한가요?" },
         { id: "engineer-sensor", label: "어떤 센서를 먼저 확인해야 하나요?" },
         { id: "engineer-checklist", label: "점검 항목은 무엇인가요?" },
-        { id: "engineer-value", label: "이 조기 발견이 어떤 운영 가치를 보호하나요?" },
+        { id: "engineer-value", label: severe ? "지금 대응하면 어떤 생산 손실 노출을 보호할 수 있나요?" : "이 조기 발견이 어떤 운영 가치를 보호하나요?" },
       ],
       maintenance: english ? [
         { id: "maintenance-next", label: "What approved work should I perform now?" },
@@ -201,6 +351,75 @@ export function reliabilityAssistantPrompts(
   return prompts;
 }
 
+export function reliabilityAssistantContextSummary(
+  context: ReliabilityAssistantContext | null | undefined,
+  locale: ReliabilityAssistantLocale = "ko-KR",
+) {
+  const english = locale === "en-US";
+  if (!context) return null;
+  if (!hasReliabilityAssistantSelection(context)) {
+    const metrics = context.workspaceMetrics;
+    if (!metrics) return english
+      ? "Ask about plant-wide risk, pending decisions, maintenance history, KPIs, or company knowledge without selecting an asset."
+      : "설비를 선택하지 않아도 공장 전체 리스크, 판단 대기, 정비 이력, KPI와 회사 지식에 대해 질문할 수 있습니다.";
+    return english
+      ? `${metrics.totalAssets} assets · ${metrics.critical} critical · ${metrics.warning} warning · ${metrics.pendingDecisions} pending decisions. Ask at workspace scope or select an asset for case-specific evidence.`
+      : `전체 ${metrics.totalAssets}대 · 고위험 ${metrics.critical}대 · 경고 ${metrics.warning}대 · 판단 대기 ${metrics.pendingDecisions}건입니다. 지금은 공장 전체 관점으로 질문하거나 설비를 선택해 Case 근거까지 좁힐 수 있습니다.`;
+  }
+
+  const risk = reliabilityAssistantRiskLabel(context.failureProbability);
+  const decision = context.recommendedDecisionLabel?.trim();
+  if (isMonitoringOnlyContext(context)) {
+    return english
+      ? `${risk ? `Risk ${risk} · ` : ""}${decision ? `recommendation: ${decision}. ` : ""}The asset is below the current escalation boundary; monitoring is more appropriate than immediate inspection unless the signals change.`
+      : `${risk ? `현재 위험도 ${risk} · ` : ""}${decision ? `권고: ${decision}. ` : ""}현재는 즉시 점검보다 추세 관찰이 우선인 상태입니다. 위험 신호가 바뀌면 점검 우선순위가 다시 올라갑니다.`;
+  }
+  return english
+    ? `${risk ? `Risk ${risk} · ` : ""}${decision ? `recommendation: ${decision}. ` : ""}This is a human-review priority, not a confirmed failure. Use the linked signals and workflow state to decide the next action.`
+    : `${risk ? `현재 위험도 ${risk} · ` : ""}${decision ? `권고: ${decision}. ` : ""}고장 확정이 아니라 사람의 확인이 필요한 우선 검토 상태입니다. 연결된 신호와 현재 workflow를 기준으로 다음 행동을 판단합니다.`;
+}
+
+function workspaceReliabilityAssistantAnswer(
+  context: ReliabilityAssistantContext | null | undefined,
+  question: string,
+  locale: ReliabilityAssistantLocale,
+) {
+  const english = locale === "en-US";
+  const metrics = context?.workspaceMetrics;
+  if (!metrics) {
+    return english
+      ? "No single asset is selected. You can ask about workspace-wide risk, decisions, maintenance history, KPIs, finance, meetings, or company knowledge."
+      : "현재 단일 설비는 선택되지 않았습니다. 공장 전체 리스크, 판단 대기, 정비 이력, KPI, 재무, 회의 기록이나 회사 지식에 대해 질문할 수 있습니다.";
+  }
+  const normalized = question.trim().toLowerCase();
+  const top = context?.workspaceTopRisks?.slice(0, 3) ?? [];
+  const topText = top.length
+    ? top.map((item) => `${item.assetLabel}${typeof item.risk === "number" ? ` ${Math.round(item.risk * 100)}%` : ""}`).join(" · ")
+    : null;
+
+  if (includesAny(normalized, ["판단 대기", "승인", "decision", "approve", "backlog", "우선 판단"])) {
+    return english
+      ? `There are ${metrics.pendingDecisions} pending decisions across the workspace. ${topText ? `The current highest-risk assets are ${topText}. ` : ""}Prioritize cases with the largest production exposure and the clearest next owner rather than treating every alert as maintenance work.`
+      : `현재 workspace에는 판단 대기 ${metrics.pendingDecisions}건이 있습니다. ${topText ? `위험도가 높은 설비는 ${topText}입니다. ` : ""}모든 알림을 정비로 넘기기보다 생산 영향이 크고 다음 Owner가 명확한 Case부터 판단하는 것이 우선입니다.`;
+  }
+  if (includesAny(normalized, ["품질", "quality", "데이터", "hold"])) {
+    return english
+      ? `${metrics.dataQualityHold} data-quality hold item(s) are active. Resolve those before treating affected risk scores as a basis for maintenance or business-impact claims.`
+      : `현재 데이터 품질 보류 항목은 ${metrics.dataQualityHold}건입니다. 해당 항목이 남아 있는 설비는 위험 점수를 정비 판단이나 경영 영향 확정의 근거로 사용하기 전에 먼저 품질 문제를 해소해야 합니다.`;
+  }
+  if (includesAny(normalized, ["kpi", "가치", "value", "비용", "절감", "경영", "생산 연속성"])) {
+    const downtime = typeof metrics.estimatedDowntimeMinutes === "number" && metrics.estimatedDowntimeMinutes > 0
+      ? metrics.estimatedDowntimeMinutes
+      : null;
+    return english
+      ? `Reliability work is currently protecting production continuity by separating ${metrics.critical + metrics.warning + metrics.attention} assets that need closer review from ${metrics.normal} assets that can remain in normal monitoring.${downtime ? ` The modeled workspace exposure includes about ${downtime} minutes of downtime.` : ""} This is protected exposure, not booked savings.`
+      : `현재 Reliability 업무의 가치는 전체 설비 중 추가 확인이 필요한 ${metrics.critical + metrics.warning + metrics.attention}대와 정상 모니터링을 유지할 ${metrics.normal}대를 구분해 불필요한 정비는 줄이고 필요한 대응은 앞당기는 데 있습니다.${downtime ? ` 현재 모델 기준 workspace 정지 노출은 약 ${downtime}분입니다.` : ""} 이 값은 실제 절감 실적이 아니라 보호 대상 노출입니다.`;
+  }
+  return english
+    ? `Across ${metrics.totalAssets} assets, ${metrics.critical} are critical, ${metrics.warning} warning, ${metrics.attention} attention, and ${metrics.normal} normal.${topText ? ` Highest current risk: ${topText}.` : ""} Select an asset when you want sensor-, evidence-, or workflow-level detail.`
+    : `현재 전체 ${metrics.totalAssets}대 중 고위험 ${metrics.critical}대, 경고 ${metrics.warning}대, 주의 ${metrics.attention}대, 정상 ${metrics.normal}대입니다.${topText ? ` 현재 위험 상위 설비는 ${topText}입니다.` : ""} 센서·근거·workflow까지 자세히 보려면 해당 설비를 선택하면 됩니다.`;
+}
+
 function includesAny(value: string, needles: string[]) {
   return needles.some((needle) => value.includes(needle));
 }
@@ -276,6 +495,7 @@ export function isUserFacingReliabilityAssistantAnswer(answer: string) {
     /source[_ ]?ref/i,
     /deterministic fallback/i,
     /team db/i,
+    /모델 산출 위험 점수|고위험 판정 기준값|위험 판정 기준값|설비 중요도 보정/,
     /\b\d+\.\d{5,}\b/,
   ];
   return !forbiddenTechnicalPatterns.some((pattern) => pattern.test(normalized));
@@ -288,7 +508,7 @@ export function groundedReliabilityAssistantAnswer(
 ) {
   const english = locale === "en-US";
   if (!hasReliabilityAssistantSelection(context)) {
-    return deterministicReliabilityAssistantAnswer(context, locale);
+    return workspaceReliabilityAssistantAnswer(context, question, locale);
   }
 
   const normalized = question.trim().toLowerCase();
@@ -297,12 +517,59 @@ export function groundedReliabilityAssistantAnswer(
   const monitoringOnly = isMonitoringOnlyContext(context);
   const valueFrame = valueProtectionFrame(context, english, monitoringOnly);
 
+  if (monitoringOnly && includesAny(normalized, [
+    "왜 지금",
+    "왜 이 설비",
+    "모니터링이 우선",
+    "모니터링 유지",
+    "정비 작업이 필요하지",
+    "작업 승인보다",
+    "staying in monitoring",
+    "monitoring sufficient",
+    "no maintenance action",
+  ])) {
+    const decision = context?.recommendedDecisionLabel?.trim();
+    return english
+      ? `${asset} is not currently confirmed as abnormal or failed. ${risk ? `Risk is ${risk}` : "Risk remains low"}${decision ? ` and the recommendation is “${decision}”` : ""}. That means monitoring the trend is more appropriate than starting inspection or maintenance without stronger evidence.${valueFrame ? ` ${valueFrame}` : ""}`
+      : `${asset}는 현재 고장이나 이상으로 확정된 상태가 아닙니다. ${risk ? `위험도는 ${risk}` : "위험도는 낮은 편"}${decision ? `이고 권고는 “${decision}”` : ""}입니다. 따라서 더 강한 근거가 생기기 전에는 점검이나 정비를 시작하기보다 추세를 계속 관찰하는 것이 적절합니다.${valueFrame ? ` ${valueFrame}` : ""}`;
+  }
+
+  if (monitoringOnly && includesAny(normalized, [
+    "정상 판단",
+    "뒷받침하는 신호",
+    "support the current normal",
+    "support the normal assessment",
+  ])) {
+    const items = conciseEvidenceItems(context, 3);
+    if (items.length) {
+      return english
+        ? `The current normal assessment is supported by ${items.join("; ")}. These signals are being used to justify continued monitoring, not to claim that a physical cause has been proven.`
+        : `현재 정상 판단을 뒷받침하는 사용자-facing 근거는 ${items.join(" · ")}입니다. 이 근거는 계속 모니터링할 수 있다는 판단을 돕는 것이며, 물리적 원인을 확정했다는 뜻은 아닙니다.`;
+    }
+    return english
+      ? `The asset remains below the current escalation boundary, but there is not enough user-facing physical sensor evidence to name a specific cause. Keep monitoring until a signal trend or operating state changes materially.`
+      : `현재 설비는 점검 전환 기준보다 낮은 상태지만, 특정 물리 원인을 설명할 사용자-facing 센서 근거는 아직 충분하지 않습니다. 센서 추세나 운영 상태가 의미 있게 바뀌는지 계속 관찰하는 것이 맞습니다.`;
+  }
+
+  if (monitoringOnly && includesAny(normalized, [
+    "어떤 변화",
+    "필요해지",
+    "전환",
+    "trigger",
+    "escalat",
+    "management-relevant",
+  ])) {
+    return english
+      ? `Escalation becomes appropriate when the risk state leaves normal monitoring, the recommendation changes to inspection or maintenance, or a persistent sensor/operating trend adds new evidence. Until one of those changes occurs, the current decision is to keep observing rather than create work prematurely.`
+      : `점검이나 정비로 전환할 시점은 위험 상태가 정상 모니터링 범위를 벗어나거나, 권고가 점검·정비로 바뀌거나, 지속적인 센서·운영 추세가 새로운 근거로 확인될 때입니다. 그 전까지는 성급하게 작업을 만들기보다 관찰을 유지하는 것이 현재 판단입니다.`;
+  }
+
   if (includesAny(normalized, ["보고", "brief", "executive", "한 문단", "report draft", "kpi", "운영 리스크", "비용", "절감", "가치", "value", "saving", "roi"])) {
     const summary = context?.aiSummary?.trim();
     const impact = hasText(context?.operationalImpact) ? context.operationalImpact : null;
     const decision = hasText(context?.recommendedDecisionLabel) ? context.recommendedDecisionLabel : null;
     const lifecycle = hasText(context?.currentLifecycleLabel) ? context.currentLifecycleLabel : null;
-    const evidence = context?.evidenceItems?.filter(Boolean).slice(0, 2) ?? [];
+    const evidence = conciseEvidenceItems(context, 2);
     const facts = [
       risk ? (english ? `risk ${risk}` : `위험도 ${risk}`) : null,
       impact,
@@ -385,9 +652,7 @@ export function deterministicReliabilityAssistantAnswer(
 ) {
   const english = locale === "en-US";
   if (!hasReliabilityAssistantSelection(context)) {
-    return english
-      ? "Select an asset or event first. This preview only summarizes the operational context currently connected to the workspace."
-      : "먼저 설비나 이벤트를 선택하세요. 이 preview는 workspace에 현재 연결된 운영 문맥만 요약합니다.";
+    return workspaceReliabilityAssistantAnswer(context, "", locale);
   }
 
   const asset = reliabilityAssistantAssetLabel(context, locale);

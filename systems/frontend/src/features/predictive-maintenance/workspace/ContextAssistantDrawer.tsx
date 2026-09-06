@@ -3,6 +3,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   hasReliabilityAssistantSelection,
   reliabilityAssistantAssetLabel,
+  reliabilityAssistantContextSummary,
   reliabilityAssistantPrompts,
   reliabilityAssistantRiskLabel,
   type ReliabilityAssistantContext,
@@ -39,6 +40,19 @@ function activityStatusLabel(
   if (status === "succeeded") return english ? "Completed" : "완료";
   if (status === "fallback") return english ? "Fallback" : "fallback";
   return english ? "Incomplete" : "미완료";
+}
+
+function assistantDateTime(value: string | null | undefined, english: boolean) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString(english ? "en-US" : "ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function AssistantActivityTrace({
@@ -110,6 +124,8 @@ export function ContextAssistantDrawer({
   const selected = hasReliabilityAssistantSelection(context);
   const assetLabel = reliabilityAssistantAssetLabel(context, locale);
   const riskLabel = reliabilityAssistantRiskLabel(context?.failureProbability);
+  const contextSummary = reliabilityAssistantContextSummary(context, locale);
+  const workspaceLabel = context?.workspaceName?.trim() || (english ? "Workspace overview" : "전체 운영 문맥");
   const suggestedPrompts = useMemo(
     () => prompts ?? reliabilityAssistantPrompts(context, locale),
     [context, locale, prompts],
@@ -179,28 +195,33 @@ export function ContextAssistantDrawer({
       <section className="rw-context-assistant__context" aria-labelledby="rw-context-assistant-context-title">
         <div className="rw-context-assistant__section-heading">
           <span id="rw-context-assistant-context-title">{english ? "CURRENT CONTEXT" : "현재 문맥"}</span>
-          <small>{context?.freshnessLabel ?? context?.observedAt ?? ""}</small>
+          <small>{assistantDateTime(context?.freshnessLabel ?? context?.observedAt, english)}</small>
         </div>
-        <strong className="rw-context-assistant__asset">{assetLabel}</strong>
+        <strong className="rw-context-assistant__asset">{selected ? assetLabel : workspaceLabel}</strong>
         {!selected ? (
-          <p className="rw-context-assistant__empty-context">
-            {english ? "Select an asset or event in the workspace to establish context." : "workspace에서 설비나 이벤트를 선택하면 해당 문맥을 기준으로 요약합니다."}
-          </p>
+          <dl className="rw-context-assistant__facts is-workspace-scope">
+            {context?.workspaceMetrics ? <>
+              <div><dt>{english ? "Assets" : "설비"}</dt><dd>{context.workspaceMetrics.totalAssets}</dd></div>
+              <div><dt>{english ? "Critical / warning" : "고위험 / 경고"}</dt><dd>{context.workspaceMetrics.critical} / {context.workspaceMetrics.warning}</dd></div>
+              <div><dt>{english ? "Pending decisions" : "판단 대기"}</dt><dd>{context.workspaceMetrics.pendingDecisions}</dd></div>
+              <div><dt>{english ? "Data holds" : "품질 보류"}</dt><dd>{context.workspaceMetrics.dataQualityHold}</dd></div>
+            </> : null}
+          </dl>
         ) : (
           <dl className="rw-context-assistant__facts">
             {(context?.roleKind === "engineering" || context?.roleKind === "maintenance") && context?.assetId ? <div><dt>{english ? "Asset ID" : "설비 ID"}</dt><dd>{context.assetId}</dd></div> : null}
-            {(context?.roleKind === "engineering" || context?.roleKind === "maintenance") && context?.eventId ? <div><dt>{english ? "Event ID" : "이벤트 ID"}</dt><dd>{context.eventId}</dd></div> : null}
             {riskLabel ? <div><dt>{english ? "Risk" : "위험도"}</dt><dd>{riskLabel}</dd></div> : null}
+            {context?.recommendedDecisionLabel ? <div><dt>{english ? "Recommendation" : "권고"}</dt><dd>{context.recommendedDecisionLabel}</dd></div> : null}
             {context?.currentLifecycleLabel ? <div><dt>{english ? "Current step" : "현재 단계"}</dt><dd>{context.currentLifecycleLabel}</dd></div> : null}
             {context?.nextLifecycleLabel ? <div><dt>{english ? "Next step" : "다음 단계"}</dt><dd>{context.nextLifecycleLabel}</dd></div> : null}
             {context?.primaryActionLabel ? <div className="is-action"><dt>{english ? "Primary action" : "다음 행동"}</dt><dd>{context.primaryActionLabel}</dd></div> : null}
-            {context?.evidenceCount !== null && context?.evidenceCount !== undefined ? <div><dt>{english ? "Evidence" : "근거"}</dt><dd>{context.evidenceCount}</dd></div> : null}
+            {(context?.evidenceCount ?? 0) > 0 ? <div><dt>{english ? "Evidence" : "근거"}</dt><dd>{context?.evidenceCount}</dd></div> : null}
             {context?.workOrderCount !== null && context?.workOrderCount !== undefined ? <div><dt>{english ? "Work items" : "작업 건수"}</dt><dd>{context.workOrderCount}</dd></div> : null}
-            {context?.maintenanceState ? <div><dt>{english ? "Maintenance status" : "정비 상태"}</dt><dd>{context.maintenanceState}</dd></div> : null}
+            {context?.maintenanceState && context.maintenanceState !== context.currentLifecycleLabel ? <div><dt>{english ? "Maintenance status" : "정비 상태"}</dt><dd>{context.maintenanceState}</dd></div> : null}
           </dl>
         )}
-        {context?.evidenceSummary ? <p className="rw-context-assistant__evidence-summary">{context.evidenceSummary}</p> : null}
-        {selected ? (
+        {contextSummary ? <p className="rw-context-assistant__evidence-summary">{contextSummary}</p> : null}
+        {context ? (
           <div className="rw-context-assistant__sources" aria-label={english ? "Assistant grounding sources" : "Assistant 근거 소스"}>
             <span>{loading ? (english ? "Refreshing context…" : "문맥 갱신 중…") : (english ? "Live context" : "실시간 문맥")}</span>
             {context?.aiSummaryMode ? (
@@ -210,13 +231,13 @@ export function ContextAssistantDrawer({
                   : (english ? "Validated baseline" : "검증된 기본 요약")}
               </strong>
             ) : null}
-            {context?.retrievalCount !== null && context?.retrievalCount !== undefined ? (
+            {selected && context?.retrievalCount !== null && context?.retrievalCount !== undefined ? (
               <small>{english ? "Validated SOP guidance" : "검증된 SOP 안내"} · {context.retrievalCount}</small>
             ) : null}
           </div>
         ) : null}
         {error ? <p className="rw-context-assistant__error">{error}</p> : null}
-        {selected && actions.length ? <div className="rw-context-assistant__actions" aria-label={english ? "Connected workspace actions" : "연결된 화면으로 이동"}>{actions.map((action) => <button type="button" key={action.id} onClick={action.onClick}><span><strong>{action.label}</strong>{action.detail ? <small>{action.detail}</small> : null}</span><ChevronRight size={13} /></button>)}</div> : null}
+        {actions.length ? <div className="rw-context-assistant__actions" aria-label={english ? "Connected workspace actions" : "연결된 화면으로 이동"}>{actions.map((action) => <button type="button" key={action.id} onClick={action.onClick}><span><strong>{action.label}</strong>{action.detail ? <small>{action.detail}</small> : null}</span><ChevronRight size={13} /></button>)}</div> : null}
       </section>
 
       {suggestedPrompts.length ? (
@@ -252,8 +273,12 @@ export function ContextAssistantDrawer({
           <div className="rw-context-assistant__empty-thread">
             <span>{english ? "NO QUESTIONS YET" : "아직 질문 없음"}</span>
             <p>{english
-              ? "Answers use the selected operational event and validated company evidence, then translate them into action and business-value language."
-              : "선택된 운영 이벤트와 검증된 회사 근거를 바탕으로, 현장 행동과 회사 가치가 연결되도록 설명합니다."}</p>
+              ? (selected
+                  ? "Answers use the selected operational event and validated company evidence, then translate them into action and business-value language."
+                  : "Ask at workspace scope about plant risk, decisions, maintenance, KPIs, finance, meetings, or company knowledge. Select an asset only when you need case-specific evidence.")
+              : (selected
+                  ? "선택된 운영 이벤트와 검증된 회사 근거를 바탕으로, 현장 행동과 회사 가치가 연결되도록 설명합니다."
+                  : "설비를 선택하지 않아도 공장 전체 리스크, 판단 대기, 정비, KPI, 재무, 회의 기록과 회사 지식에 대해 질문할 수 있습니다. Case 근거가 필요할 때만 설비를 선택하면 됩니다.")}</p>
           </div>
         )}
         {submitting ? <article className="rw-context-assistant__message is-assistant is-loading" aria-live="polite">
@@ -272,13 +297,13 @@ export function ContextAssistantDrawer({
           onChange={(event) => setDraft(event.target.value)}
           placeholder={selected
             ? (english ? "Ask about the selected operational context" : "선택된 운영 문맥에 대해 질문")
-            : (english ? "Select an asset or event first" : "먼저 설비나 이벤트를 선택하세요")}
+            : (english ? "Ask about plant-wide risk, decisions, KPIs, or company knowledge" : "공장 전체 리스크, 판단, KPI 또는 회사 지식에 대해 질문")}
           rows={2}
-          disabled={!selected || !onSubmit || submitting}
+          disabled={!onSubmit || submitting}
         />
         <button
           type="submit"
-          disabled={!selected || !onSubmit || submitting || !draft.trim()}
+          disabled={!onSubmit || submitting || !draft.trim()}
           aria-label={english ? "Submit context question" : "문맥 질문 보내기"}
         >
           <Send size={15} />

@@ -8,7 +8,7 @@ from typing import Any
 from app.operations.ports import AgentReviewLLMPort
 
 
-AGENT_ANSWER_PROMPT_VERSION = "operations-grounded-answer-v2.1"
+AGENT_ANSWER_PROMPT_VERSION = "operations-grounded-answer-v2.2"
 
 AGENT_ANSWER_SYSTEM_PROMPT = """
 You are the read-only operations assistant for Hanbit Tech.
@@ -29,6 +29,10 @@ Grounding contract:
 - If evidence is insufficient, say what is missing.
 - Keep the answer concise enough for an operational workspace, but include the
   most decision-relevant business or maintenance context when it is available.
+- When packet.workspace_scope is present, answer at plant/workspace scope.
+  Do not tell the user to select an asset unless their question specifically
+  requires sensor-, case-, or workflow-level evidence. Use company, KPI,
+  maintenance, meeting, finance, and policy evidence that applies across assets.
 
 Value communication contract:
 - Prefer outcome language over task-only language. Connect the sequence
@@ -54,7 +58,9 @@ User-language contract:
   developer. Do not expose snake_case field names, source IDs, storage names,
   implementation modes, raw floating-point values, or labels such as
   "generator failure score", "model selected threshold", "model unit",
-  "deterministic fallback", "pgvector", or "Team DB" in the answer body.
+  "deterministic fallback", "pgvector", "Team DB", "모델 산출 위험 점수",
+  "고위험 판정 기준값", "위험 판정 기준값", or "설비 중요도 보정" in the
+  answer body.
 - Translate model/policy evidence into plain operational language and round
   numeric values to a useful human precision.
 - If the current state is normal or the recommendation is to continue
@@ -107,6 +113,7 @@ class GroundedAgentAnswerProvider:
         allowed_ids = {str(item.get("evidence_id")) for item in evidence if item.get("evidence_id")}
         compact_packet = {
             "asset_id": packet.get("asset_id"),
+            "workspace_scope": packet.get("workspace_scope") or {},
             "risk_summary": packet.get("risk_summary") or {},
             "review_priority": packet.get("review_priority") or {},
             "maintenance_history_summary": packet.get("maintenance_history_summary") or {},
@@ -178,6 +185,10 @@ class GroundedAgentAnswerProvider:
                 "deterministic fallback",
                 "team db",
                 "pgvector",
+                "모델 산출 위험 점수",
+                "고위험 판정 기준값",
+                "위험 판정 기준값",
+                "설비 중요도 보정",
             )
             if any(pattern.search(answer) for pattern in technical_answer_patterns) or any(
                 term in answer.lower() for term in technical_answer_terms

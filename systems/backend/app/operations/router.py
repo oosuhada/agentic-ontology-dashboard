@@ -598,9 +598,9 @@ def _answer_from_packet(
         evidence_text = " · ".join(physical_factors[:2])
         evidence_sentence = f"현재 사람이 확인할 핵심 신호는 {evidence_text}입니다."
     elif decision_basis:
-        evidence_text = " · ".join(decision_basis[:2])
+        evidence_text = ""
         evidence_sentence = (
-            f"현재 연결된 근거는 {evidence_text} 같은 모델 판단 근거 중심이며, "
+            "현재 판단은 모델의 위험 기준과 운영 정책을 함께 적용한 결과이며, "
             "현장 센서 원인은 아직 확정되지 않았습니다."
         )
     elif safe_evidence_snippets:
@@ -676,6 +676,79 @@ def _answer_from_packet(
         f"{title}의 현재 위험도는 {risk}입니다. "
         f"{evidence_sentence}"
         f"{f' {value_text}' if value_text else ''}"
+    )
+
+
+def _workspace_company_evidence(
+    *,
+    service: ManufacturingPredictiveMaintenanceService,
+    question: str,
+    project_id: str,
+    workspace_id: str,
+    roles: list[str] | None,
+    top_k: int,
+) -> list[dict[str, Any]]:
+    evidence: list[dict[str, Any]] = []
+    for index, item in enumerate(
+        service.company_context_documents(
+            question,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            asset_id=None,
+            roles=roles,
+            top_k=top_k,
+        ),
+        start=1,
+    ):
+        evidence.append({
+            "evidence_id": f"workspace-context-{index}",
+            "store": "company_context",
+            "reference": str(item.get("source_ref") or item.get("id") or f"workspace-context-{index}"),
+            "project_id": project_id,
+            "workspace_id": workspace_id,
+            "dataset_version_id": None,
+            "object_id": None,
+            "title": str(item.get("title") or "Company context"),
+            "content": str(item.get("content") or item.get("title") or ""),
+            "score": _coerce_float(item.get("retrieval_score")),
+            "metadata": {
+                "document_type": item.get("document_type"),
+                "related_asset_ids": item.get("related_asset_ids") or [],
+                "context_kind": item.get("context_kind"),
+                "source_sha256": item.get("source_sha256"),
+                "source_updated_at": item.get("source_updated_at"),
+            },
+        })
+    return evidence[:top_k]
+
+
+def _workspace_answer_from_evidence(
+    question: str,
+    evidence: list[dict[str, Any]],
+    audience: str | None,
+) -> str:
+    if not evidence:
+        return (
+            "현재 workspace 전체 관점에서 답변할 수 있지만 이 질문과 직접 연결되는 회사 근거는 찾지 못했습니다. "
+            "공장 리스크, 판단 대기, 정비 이력, KPI, 재무, 회의 기록 또는 정책처럼 범위를 조금 더 구체화해 주세요."
+        )
+    titles = [str(item.get("title") or "").strip() for item in evidence if item.get("title")][:3]
+    title_text = " · ".join(dict.fromkeys(titles))
+    lower = question.lower()
+    if any(token in lower for token in ("kpi", "재무", "비용", "가치", "매출", "손익", "finance", "value")):
+        prefix = "회사 가치와 KPI 관점에서"
+    elif any(token in lower for token in ("회의", "결정", "정책", "meeting", "decision", "policy")):
+        prefix = "조직의 의사결정 문맥에서"
+    elif audience == "maintenance":
+        prefix = "정비 운영 관점에서"
+    elif audience == "engineering":
+        prefix = "설비 신뢰성 관점에서"
+    else:
+        prefix = "workspace 전체 운영 관점에서"
+    return (
+        f"{prefix} 질문과 가장 가까운 검증 근거는 {title_text or '연결된 회사 문서'}입니다. "
+        "특정 설비를 선택하지 않은 상태이므로 공장·조직·KPI·정비 이력 같은 전사 문맥만 사용하며, "
+        "센서 원인이나 개별 Case 상태는 추정하지 않습니다."
     )
 
 
@@ -1822,6 +1895,77 @@ def run_agent_query(
     route = "hybrid" if request.route == "auto" else request.route
 
     if not request.object_id:
+        evidence_started = time.perf_counter()
+        evidence = _workspace_company_evidence(
+            service=service,
+            question=request.question,
+            project_id=request.project_id,
+            workspace_id=request.workspace_id,
+            roles=principal.roles,
+            top_k=request.top_k,
+        )
+        evidence_latency_ms = int((time.perf_counter() - evidence_started) * 1000)
+        baseline_answer = _workspace_answer_from_evidence(request.question, evidence, request.audience)
+        answer = baseline_answer
+        answer_citations: list[str] = []
+        answer_caveats: list[str] = []
+        answer_trace = {
+            "mode": "deterministic_fallback",
+            "provider": "none",
+            "reason": "provider_unavailable",
+        }
+        answer_started = time.perf_counter()
+        if service.agent_answer_provider is not None:
+            answer, answer_citations, answer_caveats, answer_trace = service.agent_answer_provider.generate(
+                question=request.question,
+                audience=request.audience,
+                packet={
+                    "asset_id": None,
+                    "workspace_scope": {
+                        "project_id": request.project_id,
+                        "workspace_id": request.workspace_id,
+                        "selected_asset": False,
+                    },
+                    "risk_summary": {},
+                    "review_priority": {},
+                    "operation_context_summary": {},
+                    "limitations": [
+                        "Workspace-scope answer: do not infer sensor, failure, or workflow state for an unselected asset."
+                    ],
+                },
+                evidence=evidence,
+                baseline_answer=baseline_answer,
+                summary=None,
+            )
+        answer_latency_ms = int((time.perf_counter() - answer_started) * 1000)
+        duration_ms = int((time.perf_counter() - query_started) * 1000)
+        claim_ids = answer_citations or [item["evidence_id"] for item in evidence[:4]]
+        evidence_store = "company_context"
+        if any(item.get("store") == "pgvector" for item in evidence):
+            evidence_store = "pgvector"
+        steps = [
+            {
+                "name": "workspace_context",
+                "store": "postgresql",
+                "status": "succeeded",
+                "latency_ms": 0,
+                "detail": "Using project/workspace scope without requiring a selected asset.",
+            },
+            {
+                "name": "evidence_retrieval",
+                "store": evidence_store,
+                "status": "succeeded" if evidence else "skipped",
+                "latency_ms": evidence_latency_ms,
+                "detail": f"Retrieved {len(evidence)} governed company evidence item(s) for workspace-scope answering.",
+            },
+            {
+                "name": "grounded_answer",
+                "store": "company_context",
+                "status": "succeeded",
+                "latency_ms": answer_latency_ms,
+                "detail": f"{answer_trace.get('mode')} via {answer_trace.get('provider')}",
+            },
+        ]
         state = {
             "run_id": run_id,
             "organization_id": principal.organization_id,
@@ -1829,37 +1973,46 @@ def run_agent_query(
             "workspace_id": request.workspace_id,
             "user_id": principal.user_id,
             "question": request.question,
-            "route": "relational" if request.route == "auto" else request.route,
-            "status": "failed",
-            "object_type": request.object_type,
+            "route": route,
+            "status": "succeeded",
+            "object_type": request.object_type or "workspace",
             "object_id": None,
             "event_id": request.event_id,
-            "evidence": [],
-            "claims": [],
-            "steps": [{
-                "name": "select_object",
-                "store": None,
-                "status": "failed",
-                "latency_ms": None,
-                "detail": "object_id is required for grounded Operations assistant answers",
+            "evidence": evidence,
+            "claims": [{
+                "claim_id": "claim-workspace-grounded-answer",
+                "text": answer,
+                "evidence_ids": claim_ids,
+                "confidence": "high" if claim_ids else "medium",
+                "validated": True,
             }],
-            "answer": "먼저 설비나 이벤트를 선택해야 정본 근거 기반 답변을 만들 수 있습니다.",
-            "caveats": ["No object was selected."],
-            "error": "object_id_required",
-            "checkpoint_sequence": 1,
-            "duration_ms": 0,
+            "steps": steps,
+            "answer": answer,
+            "caveats": [
+                "Workspace-scope read only: no individual asset failure, workflow state, approval, or execution was inferred.",
+                *answer_caveats,
+            ],
+            "error": None,
+            "checkpoint_sequence": len(steps),
+            "duration_ms": duration_ms,
         }
-        traces = [{
-            "id": f"trace-{uuid.uuid4()}",
-            "run_id": run_id,
-            "step_name": "select_object",
-            "store_kind": None,
-            "status": "failed",
-            "input": request.model_dump(mode="json"),
-            "output": {"error": "object_id_required"},
-            "latency_ms": None,
-            "created_at": now,
-        }]
+        traces = [
+            {
+                "id": f"trace-{uuid.uuid4()}",
+                "run_id": run_id,
+                "step_name": step["name"],
+                "store_kind": step["store"],
+                "status": step["status"],
+                "input": request.model_dump(mode="json") if index == 0 else {"question": request.question},
+                "output": {
+                    "evidence_count": len(evidence),
+                    "answer_mode": answer_trace.get("mode"),
+                },
+                "latency_ms": step["latency_ms"],
+                "created_at": now,
+            }
+            for index, step in enumerate(steps)
+        ]
         _persist_agent_activity(agent_runs, state=state, traces=traces)
         return {"state": state, "traces": traces}
 

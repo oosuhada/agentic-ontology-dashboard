@@ -290,6 +290,28 @@ def test_grounded_answer_provider_rejects_internal_model_language():
     assert trace["reason"] == "ValueError"
 
 
+def test_grounded_answer_provider_rejects_translated_internal_model_language():
+    provider = GroundedAgentAnswerProvider(_AnswerProvider({
+        "answer": "모델 산출 위험 점수는 0.01이고 고위험 판정 기준값은 0.07입니다.",
+        "evidence_ids": ["packet-factor-1"],
+        "caveats": [],
+    }))
+
+    answer, citations, _caveats, trace = provider.generate(
+        question="현재 정상 판단의 이유는?",
+        audience="engineering",
+        packet={"asset_id": "CNC-S01-L02-03"},
+        evidence=[{"evidence_id": "packet-factor-1", "content": "모델 판단 근거"}],
+        baseline_answer="현재는 점검보다 추세 관찰이 우선입니다.",
+        summary=None,
+    )
+
+    assert answer == "현재는 점검보다 추세 관찰이 우선입니다."
+    assert citations == []
+    assert trace["mode"] == "deterministic_fallback"
+    assert trace["reason"] == "ValueError"
+
+
 def test_deterministic_agent_answer_uses_user_language_for_low_risk_monitoring():
     answer = _answer_from_packet(
         "왜 이 설비가 이상으로 판단됐나요?",
@@ -330,4 +352,6 @@ def test_deterministic_agent_answer_uses_user_language_for_low_risk_monitoring()
     assert "불필요한 정비" in answer
     assert "generator failure score" not in answer
     assert "model selected threshold" not in answer
+    assert "모델 산출 위험 점수" not in answer
+    assert "고위험 판정 기준값" not in answer
     assert "0.0106629027662835" not in answer
