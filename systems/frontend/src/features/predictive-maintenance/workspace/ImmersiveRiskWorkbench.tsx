@@ -10,7 +10,7 @@ import {
 import { animate, createScope, stagger } from "animejs";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getPredictiveMaintenanceRiskIndex, selectPredictiveMaintenanceVersion } from "../../../api";
+import { ApiError, getPredictiveMaintenanceRiskIndex, selectPredictiveMaintenanceVersion } from "../../../api";
 import type {
   OperationsBootstrapModel,
   OperationsEvent,
@@ -93,6 +93,7 @@ export function ImmersiveRiskWorkbench({
   const [riskIndex, setRiskIndex] = useState<PredictiveMaintenanceRiskIndexResponse | null>(null);
   const [riskLoading, setRiskLoading] = useState(true);
   const [riskError, setRiskError] = useState<string | null>(null);
+  const [riskErrorKind, setRiskErrorKind] = useState<"connection" | "query" | null>(null);
   const [followLivePending, setFollowLivePending] = useState(false);
   const [hoveredPoint, setHoveredPoint] = useState<BklitLiveRiskPoint | null>(null);
   const assetId = selectedEvent?.assetId ?? null;
@@ -101,6 +102,7 @@ export function ImmersiveRiskWorkbench({
     const controller = new AbortController();
     setRiskLoading(true);
     setRiskError(null);
+    setRiskErrorKind(null);
     void getPredictiveMaintenanceRiskIndex(
       model.context.projectId,
       model.context.workspaceId,
@@ -117,6 +119,12 @@ export function ImmersiveRiskWorkbench({
     }).catch((reason: unknown) => {
       if (controller.signal.aborted) return;
       setRiskError(reason instanceof Error ? reason.message : "risk_index_unavailable");
+      setRiskErrorKind(
+        reason instanceof TypeError
+        || (reason instanceof ApiError && (reason.status >= 500 || /unavailable|connection|dependency/i.test(reason.code)))
+          ? "connection"
+          : "query",
+      );
     }).finally(() => {
       if (!controller.signal.aborted) setRiskLoading(false);
     });
@@ -177,18 +185,23 @@ export function ImmersiveRiskWorkbench({
     : (english ? "WORKSPACE DATASET" : "WORKSPACE DATASET");
   const emptyTitle = riskLoading
     ? (english ? "Loading governed risk history" : "정본 위험 이력 불러오는 중")
-    : riskError && !usingDetailFallback
-      ? (english ? "Risk history query failed" : "위험 이력 조회 실패")
+    : riskError && !usingDetailFallback && riskErrorKind === "connection"
+      ? (english ? "Risk data connection unavailable" : "위험 데이터 연결을 확인할 수 없음")
+      : riskError && !usingDetailFallback
+        ? (english ? "Risk history query failed" : "위험 이력 조회 실패")
       : (english ? "No predictions in this range" : "선택 범위에 위험 관측 없음");
   const emptyDetail = riskLoading
     ? (english ? "Reading the selected live or workspace Dataset Version." : "선택한 live/workspace Dataset Version을 조회하고 있습니다.")
-    : riskError && !usingDetailFallback
-      ? riskError
+    : riskError && !usingDetailFallback && riskErrorKind === "connection"
+      ? (english ? "The backend or observation store is not reachable. Existing case context remains available." : "backend 또는 관측 저장소에 연결할 수 없습니다. 이미 불러온 Case 문맥은 그대로 유지합니다.")
+      : riskError && !usingDetailFallback
+        ? riskError
       : (english ? "Try a wider time range or verify the selected data source." : "기간을 넓히거나 데이터 소스를 확인하세요.");
 
   async function followLiveDataset() {
     setFollowLivePending(true);
     setRiskError(null);
+    setRiskErrorKind(null);
     try {
       await selectPredictiveMaintenanceVersion(
         model.context.projectId,
@@ -311,7 +324,17 @@ export function ImmersiveRiskWorkbench({
           </div>
         ) : null}
 
-        <div className="rw-market-workbench__chart">
+        {riskError && !usingDetailFallback ? (
+          <div className={`rw-market-workbench__availability is-${riskErrorKind ?? "query"}`} role="status">
+            <div>
+              <strong>{riskErrorKind === "connection" ? (english ? "Connection issue" : "관측 연결 확인 필요") : (english ? "Query issue" : "위험 이력 조회 확인 필요")}</strong>
+              <span>{riskErrorKind === "connection" ? (english ? "This is not an empty-data state." : "관측값이 없는 상태와는 구분됩니다.") : (english ? "The selected range or source could not be read." : "선택 기간 또는 데이터 소스를 읽지 못했습니다.")}</span>
+            </div>
+            <button type="button" onClick={onRefresh}>{english ? "Retry" : "다시 확인"}</button>
+          </div>
+        ) : null}
+
+        <div className="rw-market-workbench__chart" data-risk-state={riskLoading ? "loading" : riskError && !usingDetailFallback ? riskErrorKind ?? "query" : visibleSeries.length ? "ready" : "empty"}>
           <BklitLiveRiskChart
             data={visibleSeries}
             value={currentRisk}

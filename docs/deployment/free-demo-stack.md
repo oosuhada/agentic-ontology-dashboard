@@ -22,6 +22,9 @@ main push
   남긴다. Mac mini CD는 이 성공 marker가 있는 SHA만 소비한다.
 - 저장소가 public이므로 Mac mini를 repository self-hosted runner로 노출하지 않는다.
 - Mac mini의 launchd watcher가 outbound로 `main` 및 GitHub Actions 상태를 확인하고 검증된 SHA만 pull한다.
+- watcher의 기본 release source는 개인 저장소 `oosuhada/agentic-ontology-dashboard`이다.
+  별도 복구/검증 환경에서만 `ONTOLOGY_RELEASE_REPO_SLUG` 또는
+  `ONTOLOGY_RELEASE_REPO_URL`로 정본 remote를 명시적으로 override한다.
 - Frontend 입력(`systems/frontend`, `docs`)이 마지막 평가 SHA 이후 바뀌지 않았다면 배포를 건너뛴다.
 - 배포 실패 시 직전 Frontend image로 rollback하고 workflow를 실패 처리한다.
 

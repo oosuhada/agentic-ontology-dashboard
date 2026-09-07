@@ -92,6 +92,23 @@ async function getEventActivity(eventId: string): Promise<unknown> {
   return payload;
 }
 
+async function ensureObservationConnection(): Promise<void> {
+  const response = await fetch(`${API_BASE}/health/ready`, {
+    credentials: "include",
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const dependency = payload?.dependency ? ` · ${payload.dependency}` : "";
+    throw new ApiError(
+      response.status,
+      "observation_connection_unavailable",
+      `관측 데이터 연결을 확인하지 못했습니다${dependency}. 잠시 후 다시 시도해 주세요.`,
+    );
+  }
+}
+
 async function getAssetDetailViewModel(
   projectId: string,
   workspaceId: string,
@@ -112,15 +129,29 @@ async function getAssetDetailViewModel(
     dataset_version_id: datasetVersionId,
     history_window: backendHistoryWindow,
   });
-  const response = await fetch(
-    `${API_BASE}/api/objects/${encodeURIComponent(assetId)}/detail-view?${params.toString()}`,
-    {
-      credentials: "include",
-      headers: { Accept: "application/json" },
-    },
-  );
+  // Probe readiness in parallel instead of serializing it before the detail
+  // request. A healthy detail response wins immediately; the readiness result
+  // is only consulted when the observation-backed request itself fails.
+  const readinessProbe = ensureObservationConnection()
+    .then(() => null)
+    .catch((reason: unknown) => reason);
+  let response: Response;
+  try {
+    response = await fetch(
+      `${API_BASE}/api/objects/${encodeURIComponent(assetId)}/detail-view?${params.toString()}`,
+      {
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      },
+    );
+  } catch (reason) {
+    const readinessFailure = await readinessProbe;
+    throw readinessFailure ?? reason;
+  }
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
+    const readinessFailure = await readinessProbe;
+    if (readinessFailure) throw readinessFailure;
     throw new ApiError(
       response.status,
       payload?.error?.code ?? "asset_detail_view_model_failed",

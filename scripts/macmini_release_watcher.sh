@@ -3,8 +3,8 @@ set -Eeuo pipefail
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:${PATH}"
 
-REPO_SLUG="Biz-CollabCraft/ontology_dashboard"
-REPO_URL="https://github.com/${REPO_SLUG}.git"
+REPO_SLUG="${ONTOLOGY_RELEASE_REPO_SLUG:-oosuhada/agentic-ontology-dashboard}"
+REPO_URL="${ONTOLOGY_RELEASE_REPO_URL:-https://github.com/${REPO_SLUG}.git}"
 WATCH_ROOT="${ONTOLOGY_MACMINI_WATCH_ROOT:-$HOME/Services/ontology-dashboard-release}"
 SOURCE_ROOT="$WATCH_ROOT/source"
 PROD_ROOT="${ONTOLOGY_MACMINI_PROD_ROOT:-$HOME/Services/ontology-dashboard-prod}"
@@ -76,6 +76,11 @@ fi
 
 if [[ ! -d "$SOURCE_ROOT/.git" ]]; then
   git clone --filter=blob:none --no-checkout "$REPO_URL" "$SOURCE_ROOT"
+else
+  # The release source predates the personal-repository cutover on some Mac
+  # mini installations. Reconcile the existing clone on every run so the
+  # watcher cannot silently keep following the old team repository.
+  git -C "$SOURCE_ROOT" remote set-url origin "$REPO_URL"
 fi
 
 git -C "$SOURCE_ROOT" fetch --prune origin main

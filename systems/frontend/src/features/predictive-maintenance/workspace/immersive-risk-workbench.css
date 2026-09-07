@@ -53,6 +53,12 @@
 .rw-market-workbench__provenance button:hover { background:color-mix(in srgb,var(--rw-cyan,#60a5fa) 13%,transparent); }
 .rw-market-workbench__provenance button:disabled { cursor:wait; opacity:.58; }
 .rw-market-workbench__provenance button:focus-visible { outline:2px solid color-mix(in srgb,var(--rw-cyan,#60a5fa) 55%,transparent); outline-offset:-2px; }
+.rw-market-workbench__availability { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:8px; border:1px solid color-mix(in srgb,var(--rw-amber,#f0b84d) 25%,transparent); border-radius:9px; padding:8px 10px; background:color-mix(in srgb,var(--rw-amber,#f0b84d) 6%,transparent); }
+.rw-market-workbench__availability>div { display:grid; gap:2px; }
+.rw-market-workbench__availability strong { color:var(--rw-text,#f2f5f8); font-size:9px; }
+.rw-market-workbench__availability span { color:var(--rw-muted,#8592a1); font-size:8px; }
+.rw-market-workbench__availability.is-connection { border-color:color-mix(in srgb,var(--rw-red,#ef4444) 28%,transparent); background:color-mix(in srgb,var(--rw-red,#ef4444) 6%,transparent); }
+.rw-market-workbench__availability button { min-height:28px; border:1px solid color-mix(in srgb,var(--rw-cyan,#60a5fa) 28%,transparent); border-radius:7px; padding:0 10px; color:var(--rw-cyan,#60a5fa); background:transparent; font-size:8px; font-weight:850; cursor:pointer; }
 
 .rw-market-workbench__chart { min-width: 0; padding-top: 6px; }
 .rw-bklit-risk-chart { position: relative; width: 100%; min-height: 220px; }
