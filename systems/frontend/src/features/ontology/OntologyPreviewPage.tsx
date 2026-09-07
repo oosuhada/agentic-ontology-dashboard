@@ -6,9 +6,10 @@ import {
   ReactFlow,
   type Edge,
   type Node,
+  type ReactFlowInstance,
 } from "@xyflow/react";
 import { Boxes, Check, GitBranch, Link2, MessageSquare, Network, Search, Table2, Waypoints, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   getOntologyRegistry,
   getProject3Status,
@@ -76,6 +77,14 @@ function graphNodeLabel(row: Record<string, unknown>, fallback: string): string 
   return fallback;
 }
 
+function graphNodeCategory(row: Record<string, unknown>): string {
+  for (const key of ["label", "type", "object_type", "category", "node_type", "kind"]) {
+    const value = row[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "Object";
+}
+
 function relationEndpoint(row: Record<string, unknown>, keys: string[]): string | null {
   for (const key of keys) {
     const value = row[key];
@@ -99,7 +108,12 @@ function flowElements(subgraph: Project3Subgraph | null): { nodes: Node[]; edges
     return {
       id,
       position: { x: 80 + (index % columns) * 190, y: 70 + Math.floor(index / columns) * 120 },
-      data: { label: graphNodeLabel(row, `Object ${index + 1}`), raw: row },
+      data: {
+        label: graphNodeLabel(row, `Object ${index + 1}`),
+        category: graphNodeCategory(row),
+        raw: row,
+        searchText: Object.values(row).filter((value) => typeof value === "string" || typeof value === "number").join(" ").toLowerCase(),
+      },
       className: "ontology-flow-node",
     } satisfies Node;
   });
@@ -132,6 +146,10 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
   const [subgraph, setSubgraph] = useState<Project3Subgraph | Project3DegradedResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [graphLoading, setGraphLoading] = useState(false);
+  const [graphSearch, setGraphSearch] = useState("");
+  const [hiddenGraphCategories, setHiddenGraphCategories] = useState<Set<string>>(new Set());
+  const [focusedGraphNodeId, setFocusedGraphNodeId] = useState<string | null>(null);
+  const flowInstanceRef = useRef<ReactFlowInstance<any, any> | null>(null);
   const [agentQuestion, setAgentQuestion] = useState("");
   const [agentRun, setAgentRun] = useState<AgentRunResponse | null>(null);
   const [agentLoading, setAgentLoading] = useState(false);
@@ -149,6 +167,57 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
   const selectedDefinition = objectTypes.find((item) => item.id === selectedType) ?? null;
   const objectActions = (registry?.action_types ?? []).filter((action) => action.object_type === selectedType);
   const graph = useMemo(() => flowElements(isDegraded(subgraph) ? null : subgraph), [subgraph]);
+  const graphCategories = useMemo(() => {
+    const counts = new Map<string, number>();
+    graph.nodes.forEach((node) => {
+      const category = String(node.data.category ?? "Object");
+      counts.set(category, (counts.get(category) ?? 0) + 1);
+    });
+    return [...counts.entries()].sort((left, right) => right[1] - left[1]);
+  }, [graph.nodes]);
+  const graphSearchMatches = useMemo(() => {
+    const query = graphSearch.trim().toLowerCase();
+    if (!query) return [];
+    return graph.nodes
+      .filter((node) => String(node.data.searchText ?? node.data.label ?? "").includes(query))
+      .slice(0, 6);
+  }, [graph.nodes, graphSearch]);
+  const visibleGraph = useMemo(() => {
+    const focusedNeighbors = new Set<string>();
+    if (focusedGraphNodeId) {
+      graph.edges.forEach((edge) => {
+        if (edge.source === focusedGraphNodeId) focusedNeighbors.add(edge.target);
+        if (edge.target === focusedGraphNodeId) focusedNeighbors.add(edge.source);
+      });
+    }
+    const visibleNodeIds = new Set(
+      graph.nodes
+        .filter((node) => !hiddenGraphCategories.has(String(node.data.category ?? "Object")))
+        .map((node) => node.id),
+    );
+    const searchMatchIds = new Set(graphSearchMatches.map((node) => node.id));
+    const nodes = graph.nodes.map((node) => {
+      const related = !focusedGraphNodeId || node.id === focusedGraphNodeId || focusedNeighbors.has(node.id);
+      return {
+        ...node,
+        hidden: !visibleNodeIds.has(node.id),
+        className: [
+          "ontology-flow-node",
+          focusedGraphNodeId && !related ? "is-dimmed" : "",
+          node.id === focusedGraphNodeId ? "is-focused" : "",
+          searchMatchIds.has(node.id) ? "is-search-match" : "",
+        ].filter(Boolean).join(" "),
+      } satisfies Node;
+    });
+    const edges = graph.edges.map((edge) => ({
+      ...edge,
+      hidden: !visibleNodeIds.has(edge.source) || !visibleNodeIds.has(edge.target),
+      className: focusedGraphNodeId && edge.source !== focusedGraphNodeId && edge.target !== focusedGraphNodeId
+        ? "is-dimmed"
+        : "",
+    } satisfies Edge));
+    return { nodes, edges };
+  }, [focusedGraphNodeId, graph.edges, graph.nodes, graphSearchMatches, hiddenGraphCategories]);
   const permissions = user?.permissions ?? [];
 
   useEffect(() => {
@@ -193,6 +262,12 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
     setDraftSelectionIds(new Set());
     setSelectedObjectIds(new Set());
   }, [selectedType]);
+
+  useEffect(() => {
+    setGraphSearch("");
+    setHiddenGraphCategories(new Set());
+    setFocusedGraphNodeId(null);
+  }, [selectedObject?.id]);
 
   useEffect(() => {
     if (!selectedObject) {
@@ -260,6 +335,23 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
   function chooseObject(object: ObjectRecord) {
     setSelectedObject(object);
     if (isMobile) setInspectorOpen(true);
+  }
+
+  function focusGraphNode(nodeId: string) {
+    setFocusedGraphNodeId(nodeId);
+    const node = graph.nodes.find((item) => item.id === nodeId);
+    if (!node) return;
+    window.requestAnimationFrame(() => {
+      void flowInstanceRef.current?.fitView({ nodes: [node], duration: 320, maxZoom: 1.25, padding: 1.4 });
+    });
+  }
+
+  function toggleGraphCategory(category: string) {
+    setHiddenGraphCategories((current) => {
+      const next = new Set(current);
+      if (next.has(category)) next.delete(category); else next.add(category);
+      return next;
+    });
   }
 
   function toggleDraftSelection(objectId: string, selected: boolean) {
@@ -366,7 +458,36 @@ export function OntologyPreviewPage({ projectId, workspaceId }: OntologyPreviewP
             {view === "graph" ? (
               <div className="ontology-flow-canvas">
                 {graphLoading ? <div className="ontology-graph-overlay"><Spinner size={28} /><span>Graph relationships</span></div> : null}
-                {isDegraded(subgraph) ? <Callout intent="warning" title="Subgraph unavailable">{subgraph.error.message}</Callout> : graph.nodes.length ? <ReactFlow nodes={graph.nodes} edges={graph.edges} fitView minZoom={0.35} maxZoom={1.8} nodesDraggable={false}><Background gap={20} size={1} /><MiniMap pannable zoomable /><Controls /></ReactFlow> : <ErrorState title="Graph preview" detail="Select an object to load its verified Project 3 subgraph." />}
+                {isDegraded(subgraph) ? <Callout intent="warning" title="Subgraph unavailable">{subgraph.error.message}</Callout> : graph.nodes.length ? <>
+                  <div className="ontology-graph-tools">
+                    <label>
+                      <Search size={12} aria-hidden="true" />
+                      <input value={graphSearch} onChange={(event) => setGraphSearch(event.currentTarget.value)} placeholder="Search this subgraph" aria-label="Search graph nodes" />
+                      {graphSearch ? <button type="button" onClick={() => { setGraphSearch(""); setFocusedGraphNodeId(null); }} aria-label="Clear graph search"><X size={11} /></button> : null}
+                    </label>
+                    {graphSearch.trim() ? <div className="ontology-graph-search-results">
+                      {graphSearchMatches.length ? graphSearchMatches.map((node) => <button type="button" key={node.id} onClick={() => focusGraphNode(node.id)}><span>{String(node.data.label ?? node.id)}</span><small>{String(node.data.category ?? "Object")}</small></button>) : <span>No matching nodes</span>}
+                    </div> : null}
+                    <div className="ontology-graph-category-filters" aria-label="Graph node type filters">
+                      {graphCategories.map(([category, count]) => <button type="button" key={category} className={hiddenGraphCategories.has(category) ? "is-hidden" : ""} aria-pressed={!hiddenGraphCategories.has(category)} onClick={() => toggleGraphCategory(category)}><span>{category}</span><small>{hiddenGraphCategories.has(category) ? 0 : count}/{count}</small></button>)}
+                    </div>
+                  </div>
+                  <ReactFlow
+                    nodes={visibleGraph.nodes}
+                    edges={visibleGraph.edges}
+                    fitView
+                    minZoom={0.35}
+                    maxZoom={1.8}
+                    nodesDraggable={false}
+                    onInit={(instance) => { flowInstanceRef.current = instance; }}
+                    onNodeClick={(_event, node) => focusGraphNode(node.id)}
+                    onPaneClick={() => setFocusedGraphNodeId(null)}
+                  >
+                    <Background gap={20} size={1} />
+                    <MiniMap pannable zoomable />
+                    <Controls />
+                  </ReactFlow>
+                </> : <ErrorState title="Graph preview" detail="Select an object to load its verified Project 3 subgraph." />}
               </div>
             ) : null}
           </div>

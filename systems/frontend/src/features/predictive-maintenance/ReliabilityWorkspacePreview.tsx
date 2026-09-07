@@ -46,7 +46,10 @@ import { SectionIndexRail, type ReliabilitySectionIndexItem } from "./workspace/
 import {
   groundedReliabilityAssistantAnswer,
   isUserFacingReliabilityAssistantAnswer,
+  reliabilityAssistantClarificationCandidates,
+  reliabilityAssistantResponseBlocks,
   type ReliabilityAssistantContext,
+  type ReliabilityAssistantEntityCandidate,
   type ReliabilityAssistantMessage,
 } from "./workspace/assistantContext";
 import { resolveReliabilityRoleExperience } from "./workspace/roleExperience";
@@ -538,6 +541,14 @@ export function ReliabilityWorkspacePreview({
   const [assistantLoading, setAssistantLoading] = useState(false);
   const [assistantQueryLoading, setAssistantQueryLoading] = useState(false);
   const [assistantError, setAssistantError] = useState<string | null>(null);
+  const [pendingAssistantClarification, setPendingAssistantClarification] = useState<{
+    question: string;
+    candidates: ReliabilityAssistantEntityCandidate[];
+  } | null>(null);
+  const [queuedAssistantQuestion, setQueuedAssistantQuestion] = useState<{
+    question: string;
+    eventId: string;
+  } | null>(null);
   const assistantHistoryLoadedRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -569,6 +580,7 @@ export function ReliabilityWorkspacePreview({
     setAgentPacket(null);
     setAgentSummaryResponse(null);
     setAssistantError(null);
+    setPendingAssistantClarification(null);
   }, [selectedEvent?.eventId]);
 
   useEffect(() => {
@@ -799,13 +811,28 @@ export function ReliabilityWorkspacePreview({
       risk: event.failureProbability,
       status: event.status,
     }));
+  const workspaceAssets = [...new Map(model.events.map((event) => [event.assetId, event])).values()]
+    .map((event) => ({
+      assetId: event.assetId,
+      assetLabel: english
+        ? (event.assetName || event.assetId)
+        : displayAssetName({ assetId: event.assetId, displayName: event.assetName }),
+      eventId: event.eventId,
+      risk: event.failureProbability,
+      status: event.status,
+      lineLabel: event.line ?? null,
+    }));
   const assistantContext: ReliabilityAssistantContext = {
     roleKind: experience.kind,
     workspaceName: context.workspaceName,
+    surfaceId: activeNav.id,
+    surfaceLabel: english ? activeNav.label.en : activeNav.label.ko,
+    surfaceDetail: english ? activeNav.detail.en : activeNav.detail.ko,
     statusCode: selectedEvent?.status ?? null,
     recommendedDecisionCode: selectedEvent?.recommendedDecision ?? null,
     workspaceMetrics: model.metrics,
     workspaceTopRisks,
+    workspaceAssets,
     assetId: selectedEvent?.assetId ?? null,
     assetName: selectedEvent?.assetName ?? null,
     eventId: selectedEvent?.eventId ?? null,
@@ -952,9 +979,42 @@ export function ReliabilityWorkspacePreview({
       ? { id: "report-draft", view: "reports" as const }
       : { id: "inspection", view: "operations" as const };
 
-  async function ask(question: string) {
+  useEffect(() => {
+    if (!queuedAssistantQuestion || selectedEvent?.eventId !== queuedAssistantQuestion.eventId) return;
+    const queued = queuedAssistantQuestion;
+    setQueuedAssistantQuestion(null);
+    setAssistantOpen(true);
+    void ask(queued.question, { skipClarification: true });
+  }, [queuedAssistantQuestion, selectedEvent?.eventId]);
+
+  function selectAssistantClarificationCandidate(candidate: ReliabilityAssistantEntityCandidate) {
+    const event = model.events.find((item) => item.eventId === candidate.eventId)
+      ?? model.events.find((item) => item.assetId === candidate.assetId);
+    setPendingAssistantClarification(null);
+    if (!event) {
+      void ask(pendingAssistantClarification?.question ?? "", { skipClarification: true });
+      return;
+    }
+    setQueuedAssistantQuestion({
+      question: pendingAssistantClarification?.question ?? "",
+      eventId: event.eventId,
+    });
+    onSelectEvent(event);
+  }
+
+  async function ask(question: string, options?: { skipClarification?: boolean }) {
     const trimmed = question.trim();
     if (!trimmed) return;
+    if (!options?.skipClarification) {
+      const candidates = reliabilityAssistantClarificationCandidates(assistantContext, trimmed);
+      if (candidates.length > 1) {
+        setPendingAssistantClarification({ question: trimmed, candidates });
+        setAssistantOpen(true);
+        setAssistantError(null);
+        return;
+      }
+    }
+    setPendingAssistantClarification(null);
     const timestamp = Date.now();
     setMessages((current) => [...current, { id: `user-${timestamp}`, role: "user", text: trimmed }]);
     setAssistantQueryLoading(true);
@@ -1013,6 +1073,7 @@ export function ReliabilityWorkspacePreview({
         id: `assistant-${timestamp}`,
         role: "assistant",
         text: answer,
+        blocks: reliabilityAssistantResponseBlocks(assistantContext, trimmed, locale),
         contextHint: hintParts.join(" · "),
         activityTrace: {
           ...assistantActivityFromRun(run, english),
@@ -1034,6 +1095,7 @@ export function ReliabilityWorkspacePreview({
         id: `assistant-${timestamp}`,
         role: "assistant",
         text: fallback,
+        blocks: reliabilityAssistantResponseBlocks(assistantContext, trimmed, locale),
         contextHint: selectedEvent
           ? (english ? "Current asset context" : "현재 설비 문맥")
           : (english ? "Current workspace context" : "현재 workspace 문맥"),
@@ -1250,6 +1312,9 @@ export function ReliabilityWorkspacePreview({
         loading={assistantLoading || assistantQueryLoading}
         submitting={assistantQueryLoading}
         error={assistantError}
+        clarification={pendingAssistantClarification}
+        onClarificationSelect={selectAssistantClarificationCandidate}
+        onClarificationContinue={(question) => void ask(question, { skipClarification: true })}
         locale={locale}
         actions={assistantActions}
       />

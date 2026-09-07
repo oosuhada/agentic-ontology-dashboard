@@ -5,7 +5,9 @@ import { ContextAssistantDrawer } from "./ContextAssistantDrawer";
 import {
   deterministicReliabilityAssistantAnswer,
   groundedReliabilityAssistantAnswer,
+  reliabilityAssistantClarificationCandidates,
   reliabilityAssistantPrompts,
+  reliabilityAssistantResponseBlocks,
   type ReliabilityAssistantContext,
 } from "./assistantContext";
 
@@ -269,5 +271,83 @@ describe("ContextAssistantDrawer", () => {
     expect(answer).toContain("계획 생산 약 25개의 손실 가능성");
     expect(answer).toContain("실제 절감액이 아니라 보호 대상 노출");
     expect(answer).not.toContain("비용을 절감했습니다");
+  });
+
+  it("builds deterministic response blocks from validated case and workspace context", () => {
+    const caseBlocks = reliabilityAssistantResponseBlocks(
+      selectedContext,
+      "왜 이 설비가 우선이고 생산 영향은 무엇인가요?",
+    );
+    expect(caseBlocks.map((block) => block.type)).toContain("metric_strip");
+    expect(caseBlocks.map((block) => block.type)).toContain("evidence_list");
+    const metricBlock = caseBlocks.find((block) => block.type === "metric_strip");
+    expect(metricBlock?.type === "metric_strip" ? metricBlock.metrics.map((metric) => metric.value) : []).toEqual(
+      expect.arrayContaining(["84%", "2시간", "25", "1"]),
+    );
+
+    const workspaceBlocks = reliabilityAssistantResponseBlocks({
+      workspaceMetrics: {
+        totalAssets: 12,
+        normal: 8,
+        attention: 1,
+        warning: 2,
+        critical: 1,
+        dataQualityHold: 0,
+        averageRisk: 0.28,
+        estimatedDowntimeMinutes: 180,
+        pendingDecisions: 3,
+      },
+      workspaceTopRisks: [
+        { assetLabel: "CNC-01", risk: 0.91, status: "critical" },
+        { assetLabel: "CNC-02", risk: 0.72, status: "warning" },
+      ],
+    }, "위험도가 높은 설비부터 보여줘");
+    expect(workspaceBlocks.map((block) => block.type)).toEqual(["metric_strip", "ranked_risk"]);
+  });
+
+  it("asks for an asset choice only when a singular workspace question is ambiguous", () => {
+    const context: ReliabilityAssistantContext = {
+      workspaceAssets: [
+        { assetId: "CNC-S04-L04-01", assetLabel: "4구역 · 4셀 · CNC 가공기 1", eventId: "e-1", risk: 0.82, status: "warning" },
+        { assetId: "CNC-S04-L04-02", assetLabel: "4구역 · 4셀 · CNC 가공기 2", eventId: "e-2", risk: 0.61, status: "warning" },
+        { assetId: "COMP-01", assetLabel: "압축기 1", eventId: "e-3", risk: 0.2, status: "normal" },
+      ],
+    };
+    expect(reliabilityAssistantClarificationCandidates(context, "4구역 CNC 상태 보여줘").map((item) => item.assetId)).toEqual([
+      "CNC-S04-L04-01",
+      "CNC-S04-L04-02",
+    ]);
+    expect(reliabilityAssistantClarificationCandidates(context, "CNC 중에서 위험도가 가장 높은 설비는?")).toEqual([]);
+    expect(reliabilityAssistantClarificationCandidates(context, "CNC-S04-L04-01 상태 보여줘")).toEqual([]);
+  });
+
+  it("renders structured answer blocks and clarification candidates without exposing raw query UI", async () => {
+    await renderDrawer({
+      context: {
+        ...selectedContext,
+        surfaceLabel: "생산 영향",
+        surfaceDetail: "수량 · 비용 · 제품 영향",
+      },
+      messages: [{
+        id: "assistant-structured",
+        role: "assistant",
+        text: "현재 Case의 노출 지표를 기준으로 우선순위를 설명합니다.",
+        blocks: reliabilityAssistantResponseBlocks(selectedContext, "생산 영향과 위험도를 요약해줘"),
+      }],
+      clarification: {
+        question: "CNC 상태 보여줘",
+        candidates: [
+          { assetId: "CNC-01", assetLabel: "CNC 가공기 1", eventId: "e-1", risk: 0.8, status: "warning" },
+          { assetId: "CNC-02", assetLabel: "CNC 가공기 2", eventId: "e-2", risk: 0.6, status: "warning" },
+        ],
+      },
+    });
+    expect(container.textContent).toContain("현재 화면생산 영향수량 · 비용 · 제품 영향");
+    expect(container.textContent).toContain("선택 Case 핵심 지표");
+    expect(container.textContent).toContain("대상 확인");
+    expect(container.textContent).toContain("CNC 가공기 1");
+    expect(container.textContent).toContain("전체 범위로 계속");
+    expect(container.textContent).not.toContain("Generated SQL");
+    expect(container.textContent).not.toContain("Cypher");
   });
 });
