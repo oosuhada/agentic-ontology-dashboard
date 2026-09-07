@@ -598,6 +598,8 @@
 .operations-factory-asset-node span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 44px; color: currentColor; font-size: 10px; font-weight: 900; }
 .operations-live-node-risk { position: absolute; left: 3px; right: 3px; bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: currentColor; font-size: 8px; font-weight: 950; letter-spacing: -.02em; opacity: .92; }
 .operations-factory-asset-node.is-live-result-focus span { padding-right: 14px; transform: translateY(-6px); }
+.operations-factory-asset-node.has-alert span { max-width: calc(100% - 24px); }
+.operations-factory-asset-node.is-acknowledged { box-shadow: inset 0 0 0 1px rgba(117,169,236,.08); }
 .operations-asset-alert-badge { position: absolute; top: 2px; right: 2px; min-width: 14px; height: 14px; padding: 0 3px; font-size: 8px; box-shadow: 0 0 0 1px rgba(255,255,255,.9); }
 .operations-live-notification-badge.is-zone-summary { min-width: auto; padding-inline: 7px; white-space: nowrap; }
 .operations-slot-status { display: inline-flex; align-items: center; justify-content: center; min-height: 22px; padding: 0 8px; border: 1px solid rgba(181,196,214,.18); border-radius: 999px; color: var(--operations-muted); background: rgba(255,255,255,.025); font-size: 10px; font-weight: 900; }
@@ -744,6 +746,7 @@
 .operations-mini-feature-row em { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #45b880, #4c90f0); }
 .operations-overview-report-graph,
 .operations-overview-inspection-panel { display: grid; gap: 10px; padding: 11px; border: 1px solid rgba(181,196,214,.11); border-radius: 7px; background: rgba(255,255,255,.025); }
+.operations-inspection-sensor-workbench { display: grid; grid-template-columns: minmax(0,.92fr) minmax(0,1.28fr); gap: 10px; align-items: start; }
 .operations-overview-report-graph > header,
 .operations-overview-inspection-panel > header { display: flex; align-items: center; gap: 7px; color: var(--operations-muted); }
 .operations-overview-report-graph > header strong,
@@ -767,6 +770,19 @@
 .operations-side-map-report .asset-series-heading > div { display: flex; align-items: center; gap: 7px; color: var(--operations-text); }
 .operations-side-map-report .asset-series-heading strong { color: var(--operations-text); font-size: 12px; }
 .operations-side-map-report .asset-series-heading > span { color: var(--operations-dim); font-size: 11px; font-weight: 900; }
+.asset-series-expand { flex: 0 0 auto; display: inline-grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 1px solid var(--operations-border); border-radius: 7px; color: var(--operations-muted); background: rgba(255,255,255,.03); cursor: pointer; }
+.asset-series-expand:hover { color: var(--operations-text); border-color: rgba(76,144,240,.44); background: rgba(76,144,240,.09); }
+.asset-series-chart.is-expandable { cursor: zoom-in; }
+.operations-sensor-detail-layer { position: fixed; z-index: 130; inset: 0; display: grid; place-items: center; padding: 28px; }
+.operations-sensor-detail-scrim { position: absolute; inset: 0; border: 0; background: rgba(5,10,19,.72); backdrop-filter: blur(5px); }
+.operations-sensor-detail-dialog { position: relative; z-index: 1; width: min(1180px, calc(100vw - 56px)); max-height: calc(100vh - 56px); overflow: auto; border: 1px solid rgba(117,169,236,.22); border-radius: 14px; padding: 14px; background: var(--operations-panel); box-shadow: 0 28px 90px rgba(0,0,0,.46); }
+.operations-sensor-detail-dialog > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.operations-sensor-detail-dialog > header > div { display: flex; align-items: center; gap: 8px; }
+.operations-sensor-detail-dialog > header strong { font-size: 14px; }
+.operations-sensor-detail-dialog > header span { color: var(--operations-dim); font-size: 10px; font-weight: 800; }
+.operations-sensor-detail-dialog > header button { display: inline-grid; place-items: center; width: 30px; height: 30px; border: 1px solid var(--operations-border); border-radius: 8px; color: var(--operations-muted); background: transparent; cursor: pointer; }
+.operations-sensor-detail-dialog .asset-series-block { margin: 0; }
+.operations-sensor-detail-dialog .asset-series-chart { min-height: 360px; }
 .operations-side-map-report .asset-baseline-key { display: inline-flex; align-items: center; gap: 6px; }
 .operations-side-map-report .asset-baseline-key i { width: 18px; height: 8px; border: 1px solid currentColor; opacity: .18; }
 .operations-side-map-report .asset-window-control { display: inline-flex; align-items: center; gap: 3px; padding: 2px; border: 1px solid rgba(181,196,214,.12); border-radius: 6px; background: rgba(255,255,255,.024); }
@@ -849,6 +865,12 @@
 .operations-feature-series-collection > header { display: flex; align-items: center; gap: 7px; color: var(--operations-muted); }
 .operations-feature-series-collection > header strong { color: var(--operations-text); font-size: 12px; }
 .operations-feature-series-collection > header span { margin-left: auto; color: var(--operations-dim); font-size: 9px; font-weight: 800; }
+
+@media (max-width: 980px) {
+  .operations-inspection-sensor-workbench { grid-template-columns: 1fr; }
+  .operations-sensor-detail-layer { padding: 14px; }
+  .operations-sensor-detail-dialog { width: calc(100vw - 28px); max-height: calc(100vh - 28px); }
+}
 .operations-overview-factor-bars { display: grid; gap: 8px; }
 .operations-overview-factor-bars > div { min-width: 0; display: grid; grid-template-columns: minmax(0,1fr) 92px; gap: 5px 9px; align-items: center; }
 .operations-overview-factor-bars span,

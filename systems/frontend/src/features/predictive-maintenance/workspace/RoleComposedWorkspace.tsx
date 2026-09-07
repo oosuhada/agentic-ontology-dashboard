@@ -14,6 +14,7 @@ import {
   History,
   Info,
   ListChecks,
+  Maximize2,
   PackageSearch,
   RadioTower,
   RotateCcw,
@@ -21,8 +22,10 @@ import {
   TimerReset,
   TrendingDown,
   Wrench,
+  X,
 } from "lucide-react";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   createOperationsAgentReviewSummary,
   getLayout,
@@ -658,20 +661,65 @@ function RiskMetricsBlock({
   );
 }
 
+const RELIABILITY_FACTORY_ACK_STORAGE_KEY = "ontology-dashboard:reliability-factory-alerts:v1";
+
+function reliabilityFactoryAlertKey(asset: OperationsAsset, event: OperationsEvent | null) {
+  return `${asset.assetId}:${event?.eventId ?? asset.eventId ?? asset.observedAt ?? "current"}`;
+}
+
 function FactoryMapBlock({
   model,
   selectedEvent,
   onSelectEvent,
+  currentUserId,
 }: {
   model: OperationsBootstrapModel;
   selectedEvent: OperationsEvent | null;
   onSelectEvent: (event: OperationsEvent) => void;
+  currentUserId: string;
 }) {
   const english = useWorkspaceEnglish();
   const eventByAsset = new Map(
     model.events.map((event) => [event.assetId, event]),
   );
   const lines = [...new Set(model.assets.map((asset) => asset.line))].sort();
+  const [focusMode, setFocusMode] = useState<"all" | "exceptions">("exceptions");
+  const storageKey = `${RELIABILITY_FACTORY_ACK_STORAGE_KEY}:${currentUserId || "anonymous"}`;
+  const [acknowledgedAlerts, setAcknowledgedAlerts] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(storageKey) ?? "[]");
+      return new Set(Array.isArray(stored) ? stored.filter((item): item is string => typeof item === "string") : []);
+    } catch {
+      return new Set();
+    }
+  });
+  const acknowledge = (asset: OperationsAsset, event: OperationsEvent | null) => {
+    const key = reliabilityFactoryAlertKey(asset, event);
+    setAcknowledgedAlerts((current) => {
+      if (current.has(key)) return current;
+      const next = new Set(current);
+      next.add(key);
+      return new Set([...next].slice(-1000));
+    });
+  };
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify([...acknowledgedAlerts]));
+    } catch {
+      // Keep seen state in memory when persistent storage is unavailable.
+    }
+  }, [acknowledgedAlerts, storageKey]);
+  useEffect(() => {
+    if (!selectedEvent) return;
+    const asset = model.assets.find((item) => item.assetId === selectedEvent.assetId) ?? null;
+    if (asset) acknowledge(asset, selectedEvent);
+  }, [model.assets, selectedEvent?.eventId]);
+  const unseenCount = model.assets.reduce((total, asset) => {
+    const event = eventByAsset.get(asset.assetId) ?? null;
+    if (asset.status === "normal") return total;
+    return total + (acknowledgedAlerts.has(reliabilityFactoryAlertKey(asset, event)) ? 0 : 1);
+  }, 0);
   return (
     <Block
       title={localized(english, "공장 설비 상태맵", "Factory equipment status map")}
@@ -680,7 +728,14 @@ function FactoryMapBlock({
       guidance={localized(english, "라인별 설비의 현재 위험 상태와 고장 확률을 비교하고 클릭해 해당 Case로 전환합니다.", "Compares current risk state and failure probability by line; select an asset to open its case.")}
       className="span-12"
     >
-      <div className="rw-factory-map">
+      <div className="rw-factory-map-toolbar">
+        <div className="rw-factory-map-mode" role="group" aria-label={localized(english, "설비 강조 방식", "Factory emphasis mode")}>
+          <button type="button" className={focusMode === "all" ? "is-active" : ""} onClick={() => setFocusMode("all")}>{localized(english, "전체", "All")}</button>
+          <button type="button" className={focusMode === "exceptions" ? "is-active" : ""} onClick={() => setFocusMode("exceptions")}>{localized(english, "이상 우선", "Exceptions")}</button>
+        </div>
+        <span>{localized(english, `새 알림 ${unseenCount}건`, `${unseenCount} new alert(s)`)}</span>
+      </div>
+      <div className={`rw-factory-map focus-${focusMode}`}>
         {lines.map((line) => {
           const assets = model.assets.filter((asset) => asset.line === line);
           return (
@@ -692,17 +747,23 @@ function FactoryMapBlock({
               <div>
                 {assets.map((asset) => {
                   const event = eventByAsset.get(asset.assetId) ?? null;
+                  const acknowledged = acknowledgedAlerts.has(reliabilityFactoryAlertKey(asset, event));
+                  const isException = asset.status !== "normal";
                   return (
                     <button
                       key={asset.assetId}
                       type="button"
-                      className={`status-${asset.status} ${selectedEvent?.assetId === asset.assetId ? "is-selected" : ""}`}
-                      onClick={() => event && onSelectEvent(event)}
+                      className={`status-${asset.status} ${selectedEvent?.assetId === asset.assetId ? "is-selected" : ""} ${isException && !acknowledged ? "has-unseen-alert" : ""} ${acknowledged ? "is-acknowledged" : ""} ${focusMode === "exceptions" && !isException && selectedEvent?.assetId !== asset.assetId ? "is-deemphasized" : ""}`}
+                      onClick={() => {
+                        if (!event) return;
+                        acknowledge(asset, event);
+                        onSelectEvent(event);
+                      }}
                       title={`${asset.displayName} · ${riskLabel(asset.status, english)} · ${probability(asset.failureProbability)}`}
                     >
                       <span>{asset.displayName}</span>
                       <i>{probability(asset.failureProbability)}</i>
-                      {asset.status !== "normal" ? <b /> : null}
+                      {isException && !acknowledged ? <b aria-label={localized(english, "새 위험 알림", "New risk alert")} /> : null}
                     </button>
                   );
                 })}
@@ -762,8 +823,10 @@ function buildForecastBand(points: Array<{ x: number; upperY: number; lowerY: nu
 
 function CompactRiskTrend({
   detail,
+  onExpand,
 }: {
   detail: OperationsEventDetailModel | null;
+  onExpand?: () => void;
 }) {
   const english = useWorkspaceEnglish();
   const [activeIndex, setActiveIndex] = useState(0);
@@ -869,6 +932,7 @@ function CompactRiskTrend({
           {" · "}
           {probability(detail.event.failureProbability)}
         </span>
+        {onExpand ? <button type="button" className="rw-feature-expand" aria-label={localized(english, "고장 위험 그래프 확대", "Expand failure-risk chart")} onClick={onExpand}><Maximize2 size={14} /></button> : null}
       </header>
       <svg
         className="asset-series-chart"
@@ -1031,8 +1095,10 @@ function CompactRiskTrend({
 
 function SensorTrendChart({
   sensor,
+  onExpand,
 }: {
   sensor: OperationsEventDetailModel["sensors"][number];
+  onExpand?: () => void;
 }) {
   const english = useWorkspaceEnglish();
   const [activeIndex, setActiveIndex] = useState(0);
@@ -1145,6 +1211,7 @@ function SensorTrendChart({
           {String(sensor.value ?? "—")}
           {sensor.unit ? ` ${sensor.unit}` : ""}
         </span>
+        {onExpand ? <button type="button" className="rw-feature-expand" aria-label={localized(english, `${sensor.label} 그래프 확대`, `Expand ${sensor.label} chart`)} onClick={onExpand}><Maximize2 size={14} /></button> : null}
       </header>
       <svg
         className="asset-series-chart"
@@ -1345,7 +1412,7 @@ function FeatureTrendLoadingPlaceholder() {
   );
 }
 
-function FeatureTrendBlock({
+export function FeatureTrendBlock({
   detail,
   loading,
 }: {
@@ -1353,11 +1420,28 @@ function FeatureTrendBlock({
   loading?: boolean;
 }) {
   const english = useWorkspaceEnglish();
+  const [expandedTrend, setExpandedTrend] = useState<string | null>(null);
   const sensors =
     detail?.sensors
       .filter((sensor) => (sensor.historyPoints?.length ?? 0) > 1)
       .slice(0, 4) ?? [];
+  const expandedSensor = expandedTrend && expandedTrend !== "risk"
+    ? sensors.find((sensor) => sensor.id === expandedTrend) ?? null
+    : null;
   const hasChartData = Boolean(detail?.riskSeries.length || sensors.length);
+  useEffect(() => {
+    if (!expandedTrend) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExpandedTrend(null);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [expandedTrend]);
+  useEffect(() => {
+    if (expandedTrend && expandedTrend !== "risk" && !expandedSensor) {
+      setExpandedTrend(null);
+    }
+  }, [expandedSensor, expandedTrend]);
   return (
     <Block
       title={localized(english, "실시간 피쳐 그래프", "Live feature trends")}
@@ -1370,14 +1454,32 @@ function FeatureTrendBlock({
         <FeatureTrendLoadingPlaceholder />
       ) : hasChartData ? (
         <div className="rw-feature-trends operations-side-map-report">
-          <CompactRiskTrend detail={detail} />
+          <CompactRiskTrend detail={detail} onExpand={() => setExpandedTrend("risk")} />
           {sensors.map((sensor) => (
-            <SensorTrendChart key={sensor.id} sensor={sensor} />
+            <SensorTrendChart key={sensor.id} sensor={sensor} onExpand={() => setExpandedTrend(sensor.id)} />
           ))}
         </div>
       ) : (
         <Empty text={localized(english, "선택 설비의 시계열 관측이 준비되면 핵심 피쳐 2~4개를 표시합니다.", "Two to four key features will appear when time-series observations are ready for the selected asset.")} />
       )}
+      {expandedTrend ? createPortal((
+        <div className="rw-feature-detail-layer" role="presentation">
+          <button type="button" className="rw-feature-detail-scrim" aria-label={localized(english, "그래프 상세 닫기", "Close chart detail")} onClick={() => setExpandedTrend(null)} />
+          <section className="rw-feature-detail-dialog" role="dialog" aria-modal="true" aria-label={expandedTrend === "risk" ? localized(english, "고장 위험 상세 그래프", "Failure-risk detail chart") : localized(english, `${expandedSensor?.label ?? "센서"} 상세 그래프`, `${expandedSensor?.label ?? "Sensor"} detail chart`)}>
+            <header>
+              <div><RadioTower size={15} /><strong>{expandedTrend === "risk" ? localized(english, "고장 위험 추세", "Failure-risk trend") : expandedSensor?.label}</strong><span>{localized(english, "선택 Case 관측 상세", "Selected-case observation detail")}</span></div>
+              <button type="button" aria-label={localized(english, "그래프 상세 닫기", "Close chart detail")} onClick={() => setExpandedTrend(null)}><X size={16} /></button>
+            </header>
+            <div className="rw-feature-detail-canvas operations-side-map-report">
+              {expandedTrend === "risk"
+                ? <CompactRiskTrend detail={detail} />
+                : expandedSensor
+                  ? <SensorTrendChart sensor={expandedSensor} />
+                  : null}
+            </div>
+          </section>
+        </div>
+      ), document.body) : null}
     </Block>
   );
 }
@@ -3066,6 +3168,7 @@ function renderBlock(
           model={props.model}
           selectedEvent={props.selectedEvent}
           onSelectEvent={props.onSelectEvent}
+          currentUserId={props.currentUserId}
         />
       );
     case "business-kpis":

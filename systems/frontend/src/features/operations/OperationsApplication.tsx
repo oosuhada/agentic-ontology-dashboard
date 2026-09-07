@@ -50,6 +50,39 @@ import {
 import "./operations.css";
 
 const Operations_REFRESH_INTERVAL_SECONDS = 10;
+const RELIABILITY_DETAIL_CACHE_LIMIT = 32;
+
+const reliabilityEventDetailCache = new Map<string, OperationsEventDetailModel>();
+
+function reliabilityDetailCacheKey(input: {
+  projectId: string;
+  workspaceId: string;
+  datasetVersionId: string;
+  eventId: string;
+  sensorWindow: OperationsSensorWindowId;
+  role: OperationsRoleLens;
+  experienceKind: string;
+}) {
+  return [
+    input.projectId,
+    input.workspaceId,
+    input.datasetVersionId,
+    input.eventId,
+    input.sensorWindow,
+    input.role,
+    input.experienceKind,
+  ].join(":");
+}
+
+function storeReliabilityDetail(key: string, value: OperationsEventDetailModel) {
+  reliabilityEventDetailCache.delete(key);
+  reliabilityEventDetailCache.set(key, value);
+  while (reliabilityEventDetailCache.size > RELIABILITY_DETAIL_CACHE_LIMIT) {
+    const oldest = reliabilityEventDetailCache.keys().next().value;
+    if (!oldest) break;
+    reliabilityEventDetailCache.delete(oldest);
+  }
+}
 
 function defaultRoleLens(roles: string[]): OperationsRoleLens {
   return roles.some((role) => role === "process_engineer" || role === "maintenance_technician")
@@ -99,6 +132,8 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
   const [companyContext, setCompanyContext] = useState<OperationsCompanyContext | null>(null);
   const [companyContextError, setCompanyContextError] = useState<string | null>(null);
   const adaptiveLandingResolvedRef = useRef(false);
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
   const experienceKind = user
     ? resolveReliabilityRoleExperience(user).kind
     : authorizedRole === "field_operator"
@@ -132,8 +167,12 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
   }, [backupMode, experienceKind, selection.surface, selection.view, updateSelection]);
 
   const refresh = useCallback(() => setRefreshVersion((value) => value + 1), []);
-  const retryDetail = useCallback(() => setDetailVersion((value) => value + 1), []);
+  const retryDetail = useCallback(() => {
+    reliabilityEventDetailCache.clear();
+    setDetailVersion((value) => value + 1);
+  }, []);
   const workflowChanged = useCallback(() => {
+    reliabilityEventDetailCache.clear();
     setDetailVersion((value) => value + 1);
     setRefreshVersion((value) => value + 1);
   }, []);
@@ -154,12 +193,7 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
     setLoading(true);
     setError(null);
     loadOperationsBootstrap(projectId, selection.workspaceId, selection.eventId)
-      .then(async (payload) => {
-        if (cancelled) return;
-        const openWorkOrders = await getOpenInspectionWorkOrders(
-          projectId,
-          payload.context.workspaceId,
-        ).catch(() => ({ items: [] }));
+      .then((payload) => {
         if (cancelled) return;
         setModel(payload);
         const selectedEvent = payload.events.find((item) => item.eventId === selection.eventId) ?? null;
@@ -170,35 +204,45 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
         // Never replace it with the asset's newest Event during refresh.
         if (!selection.eventId && selectedAsset?.eventId) patch.eventId = selectedAsset.eventId;
         if (!selection.assetId && selectedEvent) patch.assetId = selectedEvent.assetId;
-        if (!selection.assetId && !selection.eventId && payload.events[0] && (selection.view === "operations" || selection.view === "reports")) {
-          const stepPriority: Record<string, number> = {
-            maintenance_in_progress: 0,
-            inspection_in_progress: 1,
-            inspection_approved: 2,
-            inspection_requested: 3,
-            inspection_completed: 4,
-            recommendation_proposed: 5,
-            maintenance_requested: 6,
-            maintenance_approved: 7,
-            post_maintenance_observation_pending: 8,
-            ready_for_reprediction: 9,
-          };
-          const activeWorkflow = [...openWorkOrders.items]
-            .sort((left, right) => (
-              (stepPriority[left.current_step ?? ""] ?? 99)
-              - (stepPriority[right.current_step ?? ""] ?? 99)
-            ))[0] ?? null;
-          const firstEvent = activeWorkflow
-            ? payload.events.find((event) => event.eventId === activeWorkflow.event_id) ?? payload.events[0]
-            : payload.events[0];
-          // An active workflow is not an item in the latest-Event feed. Keep
-          // following its immutable source Event even after newer predictions
-          // push that Event out of the bootstrap summary. Updating the URL
-          // triggers a second, explicit snapshot load for that Event.
-          patch.eventId = activeWorkflow?.event_id ?? firstEvent.eventId;
-          patch.assetId = activeWorkflow?.asset_id ?? firstEvent.assetId;
-        }
         if (Object.keys(patch).length) updateSelection(patch, { replace: true });
+
+        // The fleet workspace is usable as soon as bootstrap data arrives.
+        // Resolve the most relevant active workflow afterwards so an auxiliary
+        // work-order request never blocks the first render.
+        void getOpenInspectionWorkOrders(projectId, payload.context.workspaceId)
+          .catch(() => ({ items: [] }))
+          .then((openWorkOrders) => {
+            if (cancelled) return;
+            const current = selectionRef.current;
+            if (current.assetId || current.eventId) return;
+            if (current.view !== "operations" && current.view !== "reports") return;
+            const firstEvent = payload.events[0];
+            if (!firstEvent) return;
+            const stepPriority: Record<string, number> = {
+              maintenance_in_progress: 0,
+              inspection_in_progress: 1,
+              inspection_approved: 2,
+              inspection_requested: 3,
+              inspection_completed: 4,
+              recommendation_proposed: 5,
+              maintenance_requested: 6,
+              maintenance_approved: 7,
+              post_maintenance_observation_pending: 8,
+              ready_for_reprediction: 9,
+            };
+            const activeWorkflow = [...openWorkOrders.items]
+              .sort((left, right) => (
+                (stepPriority[left.current_step ?? ""] ?? 99)
+                - (stepPriority[right.current_step ?? ""] ?? 99)
+              ))[0] ?? null;
+            const activeEvent = activeWorkflow
+              ? payload.events.find((event) => event.eventId === activeWorkflow.event_id) ?? null
+              : null;
+            updateSelection({
+              eventId: activeWorkflow?.event_id ?? activeEvent?.eventId ?? firstEvent.eventId,
+              assetId: activeWorkflow?.asset_id ?? activeEvent?.assetId ?? firstEvent.assetId,
+            }, { replace: true });
+          });
       })
       .catch((reason: unknown) => {
         if (cancelled) return;
@@ -218,12 +262,6 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
     && (model.selectionRestoreError || !selectedEvent),
   );
 
-  useEffect(() => {
-    if (!model || selection.eventId || (selection.view !== "operations" && selection.view !== "reports")) return;
-    const firstEvent = model.events[0];
-    if (!firstEvent) return;
-    updateSelection({ eventId: firstEvent.eventId, assetId: firstEvent.assetId }, { replace: true });
-  }, [model, selection.eventId, selection.view, updateSelection]);
   const latestEventForSelectedAsset = useMemo(() => {
     if (!model) return null;
     const assetId = selectedEvent?.assetId ?? selection.assetId;
@@ -272,6 +310,22 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
       return;
     }
     let cancelled = false;
+    const cacheKey = reliabilityDetailCacheKey({
+      projectId,
+      workspaceId: model.context.workspaceId,
+      datasetVersionId: model.context.datasetVersionId,
+      eventId: selectedEvent.eventId,
+      sensorWindow,
+      role: authorizedRole,
+      experienceKind,
+    });
+    const cached = reliabilityEventDetailCache.get(cacheKey);
+    if (cached) {
+      setDetail(cached);
+      setDetailError(null);
+      setDetailLoading(false);
+      return () => { cancelled = true; };
+    }
     setDetailLoading(true);
     setDetailError(null);
     loadOperationsEventDetail({
@@ -285,7 +339,11 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
       historyWindow: sensorWindow,
       metrics: model.metrics,
     })
-      .then((payload) => !cancelled && setDetail(payload))
+      .then((payload) => {
+        if (cancelled) return;
+        storeReliabilityDetail(cacheKey, payload);
+        setDetail(payload);
+      })
       .catch((reason: unknown) => {
         if (cancelled) return;
         setDetail(null);

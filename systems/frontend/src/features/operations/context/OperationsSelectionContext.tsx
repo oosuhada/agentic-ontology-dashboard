@@ -190,6 +190,8 @@ export function OperationsSelectionProvider({
     const currentParams = new URLSearchParams(window.location.search);
     const workspaceShell = currentParams.get("workspace_shell");
     if (workspaceShell) params.set("workspace_shell", workspaceShell);
+    const detailMode = currentParams.get("detail");
+    if (detailMode === "drawer") params.set("detail", detailMode);
     const targetPath = navigationBasePath ?? operationsSurfacePath(projectId, next.surface);
     navigate(`${targetPath}?${params.toString()}`, { replace: options?.replace });
   }, [navigationBasePath, projectId, readSelection, storageKey]);

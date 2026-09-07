@@ -9,13 +9,14 @@ import {
   Gauge,
   Info,
   LineChart,
+  Maximize2,
   Printer,
   RefreshCw,
   RotateCcw,
   Wrench,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   createOperationsAgentReviewSummary,
@@ -532,8 +533,14 @@ function operationsMonitorStatusLabel(status: OperationsRiskStatus, workStatus?:
   return "정상";
 }
 
-function alertBadgeCount(assets: OperationsAsset[]): number {
-  return assets.filter((asset) => mapTone(asset.status) !== "normal").length;
+const ACKNOWLEDGED_ALERTS_STORAGE_KEY = "ontology-dashboard:reliability-acknowledged-alerts:v1";
+
+function assetAlertKey(asset: OperationsAsset): string {
+  return `${asset.assetId}:${asset.eventId ?? asset.observedAt ?? "current"}`;
+}
+
+function alertBadgeCount(assets: OperationsAsset[], acknowledgedAlerts: Set<string>): number {
+  return assets.filter((asset) => mapTone(asset.status) !== "normal" && !acknowledgedAlerts.has(assetAlertKey(asset))).length;
 }
 
 function displayPartLabel(value: boolean | null): string {
@@ -1589,6 +1596,7 @@ function FactoryMonitoringMapPanel({
   postMaintenancePredictions,
   planningBasis,
   liveDemo,
+  acknowledgedAlerts,
   focusMode,
   onFocusModeChange,
   onPreviewAssetSlot,
@@ -1598,6 +1606,7 @@ function FactoryMonitoringMapPanel({
   postMaintenancePredictions: Record<string, PostMaintenancePredictionSummary>;
   planningBasis: { value: string; fallback: boolean };
   liveDemo: RealtimeDemoSnapshot;
+  acknowledgedAlerts: Set<string>;
   focusMode: "all" | "exceptions";
   onFocusModeChange: (mode: "all" | "exceptions") => void;
   onPreviewAssetSlot: (asset: OperationsAsset, slot: FactoryCellSlot, cell: FactoryCellLayout) => void;
@@ -1638,7 +1647,7 @@ function FactoryMonitoringMapPanel({
                     : siteCells.some((cell) => cell.summary?.attention)
                       ? "attention"
                       : "normal";
-              const siteBadgeCount = alertBadgeCount(siteAssets);
+              const siteBadgeCount = alertBadgeCount(siteAssets, acknowledgedAlerts);
               return (
                 <article key={site} className={`operations-factory-line-row tone-${siteTone}`}>
                   <header>
@@ -1664,6 +1673,7 @@ function FactoryMonitoringMapPanel({
                             const liveStatus = isLiveDemoFocus ? liveDemo.status : null;
                             const liveRisk = isLiveDemoFocus ? liveDemo.risk : null;
                             const tone = asset ? mapTone(liveStatus ?? currentPrediction?.statusGrade ?? asset.status) : "slot";
+                            const alertAcknowledged = asset ? acknowledgedAlerts.has(assetAlertKey(asset)) : false;
                             const title = asset
                               ? `${displayFactorySlotName(slot, cell)} · ${operationsMonitorStatusLabel(liveStatus ?? currentPrediction?.statusGrade ?? asset.status)} · ${formatProbability(liveRisk ?? currentPrediction?.failureProbability ?? asset.failureProbability)} · ${displayPartLabel(asset.sparePartAvailable)}${isLiveDemoFocus ? " · 최근 Result 수신" : ""}`
                               : `${cell.label} · ${slot.label} · 설비 미연결`;
@@ -1671,7 +1681,7 @@ function FactoryMonitoringMapPanel({
                               <button
                                 key={slot.id}
                                 type="button"
-                                className={`operations-factory-asset-node ${tone} ${slot.kind} ${selected ? "is-selected" : ""} ${isLiveDemoFocus ? "is-live-result-focus" : ""} ${focusMode === "exceptions" && tone === "normal" && !selected && !isLiveDemoFocus ? "is-deemphasized" : ""}`}
+                                className={`operations-factory-asset-node ${tone} ${slot.kind} ${selected ? "is-selected" : ""} ${isLiveDemoFocus ? "is-live-result-focus" : ""} ${tone !== "normal" && !alertAcknowledged ? "has-alert" : ""} ${alertAcknowledged ? "is-acknowledged" : ""} ${focusMode === "exceptions" && tone === "normal" && !selected && !isLiveDemoFocus ? "is-deemphasized" : ""}`}
                                 aria-pressed={selected}
                                 aria-label={`${displayFactorySlotName(slot, cell)} · ${asset.assetId} · ${operationsMonitorStatusLabel(liveStatus ?? currentPrediction?.statusGrade ?? asset.status)} · 위험 ${formatProbability(liveRisk ?? currentPrediction?.failureProbability ?? asset.failureProbability)}`}
                                 onClick={() => onPreviewAssetSlot(asset, slot, cell)}
@@ -1679,7 +1689,7 @@ function FactoryMonitoringMapPanel({
                               >
                                 <span>{displayAssetShortName(asset)}</span>
                                 {isLiveDemoFocus ? <small className="operations-live-node-risk">{formatProbability(liveRisk)}</small> : null}
-                                {tone !== "normal" ? <b className="operations-asset-alert-badge" aria-label={`${operationsMonitorStatusLabel(liveStatus ?? asset.status)} 알림`}>{tone === "critical" ? "!" : "1"}</b> : null}
+                                {tone !== "normal" && !alertAcknowledged ? <b className="operations-asset-alert-badge" aria-label={`${operationsMonitorStatusLabel(liveStatus ?? asset.status)} 새 알림`}>{tone === "critical" ? "!" : "1"}</b> : null}
                               </button>
                             ) : (
                               <div key={slot.id} className={`operations-factory-asset-node ${tone} ${slot.kind}`} title={title} aria-label={title}>
@@ -1791,7 +1801,19 @@ export function OperationsWorkflowOverviewPage({
   const [detailDrawerTab, setDetailDrawerTab] = useState<DrawerTab>("status");
   const [factorySlotPreview, setFactorySlotPreview] = useState<FactorySlotPreview | null>(null);
   const [factoryFocusMode, setFactoryFocusMode] = useState<"all" | "exceptions">("exceptions");
+  const acknowledgedAlertsStorageKey = `${ACKNOWLEDGED_ALERTS_STORAGE_KEY}:${currentUserId || "anonymous"}`;
+  const [acknowledgedAlerts, setAcknowledgedAlerts] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(`${ACKNOWLEDGED_ALERTS_STORAGE_KEY}:${currentUserId || "anonymous"}`) ?? "[]");
+      return new Set(Array.isArray(stored) ? stored.filter((item): item is string => typeof item === "string") : []);
+    } catch {
+      return new Set();
+    }
+  });
   const [postMaintenancePredictions, setPostMaintenancePredictions] = useState<Record<string, PostMaintenancePredictionSummary>>({});
+  const autoOpenedDrawerKeyRef = useRef<string | null>(null);
+  const suppressAutoOpenDrawerRef = useRef(false);
   const handlePostMaintenancePrediction = useCallback((assetId: string, prediction: PostMaintenancePredictionSummary) => {
     setPostMaintenancePredictions((current) => {
       const previous = current[assetId];
@@ -1803,6 +1825,40 @@ export function OperationsWorkflowOverviewPage({
       return { ...current, [assetId]: prediction };
     });
   }, []);
+  const acknowledgeAlert = useCallback((asset: OperationsAsset) => {
+    const alertKey = assetAlertKey(asset);
+    setAcknowledgedAlerts((current) => {
+      if (current.has(alertKey)) return current;
+      const next = new Set(current);
+      next.add(alertKey);
+      return new Set([...next].slice(-1000));
+    });
+  }, []);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(acknowledgedAlertsStorageKey, JSON.stringify([...acknowledgedAlerts]));
+    } catch {
+      // Keep acknowledgement session-local when persistent browser storage is unavailable.
+    }
+  }, [acknowledgedAlerts, acknowledgedAlertsStorageKey]);
+
+  useEffect(() => {
+    if (!selectedAsset || detailDrawerOpen) return;
+    if (suppressAutoOpenDrawerRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("detail") !== "drawer") return;
+    const requestedAssetId = params.get("asset_id");
+    const requestedEventId = params.get("event_id");
+    const selectedEventId = selectedEvent?.eventId ?? selectedAsset.eventId ?? "";
+    if (requestedAssetId !== selectedAsset.assetId && requestedEventId !== selectedEventId) return;
+    const drawerKey = `${selectedAsset.assetId}:${selectedEventId}`;
+    if (autoOpenedDrawerKeyRef.current === drawerKey) return;
+    autoOpenedDrawerKeyRef.current = drawerKey;
+    acknowledgeAlert(selectedAsset);
+    setFactorySlotPreview(null);
+    setDetailDrawerOpen(true);
+    setDetailDrawerTab("status");
+  }, [acknowledgeAlert, detailDrawerOpen, selectedAsset, selectedEvent?.eventId]);
   // The browser only visualizes Product Results received from Generator Runtime.
   const drawerAssetSource = factorySlotPreview?.slot.asset ?? (factorySlotPreview ? null : selectedAsset);
   const drawerPrediction = drawerAssetSource ? postMaintenancePredictions[drawerAssetSource.assetId] : null;
@@ -1895,6 +1951,7 @@ export function OperationsWorkflowOverviewPage({
   const liveResultCardObservedAt = rotatingLiveResult?.observedAt ?? liveDemo.generatedAt;
 
   const closeDetailDrawer = useCallback(() => {
+    suppressAutoOpenDrawerRef.current = true;
     setDetailDrawerOpen(false);
   }, []);
 
@@ -1908,14 +1965,19 @@ export function OperationsWorkflowOverviewPage({
   }, [closeDetailDrawer, detailDrawerOpen]);
 
   const previewInDrawer = (assetId: string, eventId: string | null) => {
+    suppressAutoOpenDrawerRef.current = false;
     setFactorySlotPreview(null);
+    const asset = model.assets.find((candidate) => candidate.assetId === assetId);
+    if (asset) acknowledgeAlert(asset);
     onPreviewAsset(assetId, eventId);
     setDetailDrawerOpen(true);
     setDetailDrawerTab("status");
   };
 
   const previewFactoryAssetSlot = (asset: OperationsAsset, slot: FactoryCellSlot, cell: FactoryCellLayout) => {
+    suppressAutoOpenDrawerRef.current = false;
     setFactorySlotPreview({ slot, cell });
+    acknowledgeAlert(asset);
     onPreviewAsset(asset.assetId, asset.eventId);
     setDetailDrawerOpen(true);
     setDetailDrawerTab("status");
@@ -1991,6 +2053,7 @@ export function OperationsWorkflowOverviewPage({
         postMaintenancePredictions={postMaintenancePredictions}
         planningBasis={planningBasis}
         liveDemo={liveDemo}
+        acknowledgedAlerts={acknowledgedAlerts}
         focusMode={factoryFocusMode}
         onFocusModeChange={setFactoryFocusMode}
         onPreviewAssetSlot={previewFactoryAssetSlot}
@@ -2222,6 +2285,7 @@ function MapReportFeatureSeries({
   primary,
   liveDemo,
   loading,
+  onExpand,
 }: {
   title: string;
   unit: string | null;
@@ -2235,6 +2299,7 @@ function MapReportFeatureSeries({
   primary?: boolean;
   liveDemo?: RealtimeDemoSnapshot | null;
   loading?: boolean;
+  onExpand?: () => void;
 }) {
   const color = title.includes("진동") || title.includes("토크") ? "#a7630c" : "#285fcb";
   const filteredPoints = filterSeriesPoints(points, currentObservedAt, windowId);
@@ -2247,6 +2312,7 @@ function MapReportFeatureSeries({
       <section className="asset-series-block">
         <header className="asset-series-heading">
           <div><LineChart size={17} /><strong>{title}</strong></div>
+          {onExpand ? <button type="button" className="asset-series-expand" aria-label={`${title} 그래프 확대`} onClick={onExpand}><Maximize2 size={14} /></button> : null}
           <span>{loading ? "관측 이력 로딩 중" : "관측 이력 없음"}</span>
         </header>
         {loading
@@ -2391,8 +2457,9 @@ function MapReportFeatureSeries({
       <header className="asset-series-heading">
         <div><RotateCcw size={17} /><strong>{title}</strong></div>
         <span className="asset-baseline-key"><i style={{ background: color }} />{liveDemo ? "관측 이력 · 최신 관측" : seriesRangeLabel(visiblePoints, windowId, window)}</span>
+        {onExpand ? <button type="button" className="asset-series-expand" aria-label={`${title} 그래프 확대`} onClick={onExpand}><Maximize2 size={14} /></button> : null}
       </header>
-      <svg className="asset-series-chart" viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label={`${title} 관측 흐름`}>
+      <svg className={onExpand ? "asset-series-chart is-expandable" : "asset-series-chart"} viewBox={`0 0 ${chartWidth} ${chartHeight}`} role={onExpand ? "button" : "img"} tabIndex={onExpand ? 0 : undefined} aria-label={onExpand ? `${title} 그래프 확대` : `${title} 관측 흐름`} onClick={onExpand} onKeyDown={onExpand ? (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onExpand(); } } : undefined}>
         <rect className="asset-chart-frame" x={frame.left} y={frame.top} width={width} height={height} />
         {liveDemo ? <rect className="asset-live-sweep" x={frame.left} y={frame.top} width={width} height={height} /> : null}
         {liveDemo ? <rect className="asset-forecast-lane" x={frame.right} y={frame.top} width={forecastRight - frame.right} height={height} /> : null}
@@ -2553,7 +2620,21 @@ function FeatureSeriesCollection({
   liveDemo?: RealtimeDemoSnapshot | null;
   loading?: boolean;
 }) {
-  const visibleSensors = sensors;
+  const [expandedSensorId, setExpandedSensorId] = useState<string | null>(null);
+  useEffect(() => {
+    if (expandedSensorId && !sensors.some((sensor) => sensor.id === expandedSensorId)) {
+      setExpandedSensorId(null);
+    }
+  }, [expandedSensorId, sensors]);
+  useEffect(() => {
+    if (!expandedSensorId) return undefined;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExpandedSensorId(null);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [expandedSensorId]);
+  const expandedSensor = sensors.find((sensor) => sensor.id === expandedSensorId) ?? null;
   const isInitialHistoryLoading = Boolean(
     loading && sensors.some((sensor) => sensor.points.length === 0),
   );
@@ -2581,10 +2662,10 @@ function FeatureSeriesCollection({
         <FeatureSeriesLoadingPlaceholder title={title} />
       ) : sensors.length ? (
         <>
-          {visibleSensors.map((sensor) => (
+          {sensors.map((sensor) => (
             <MapReportFeatureSeries
               key={sensor.id}
-              title={sensor.label}
+              title={displaySensorLabel(sensor.id, sensor.label)}
               unit={sensor.unit}
               points={sensor.points}
               windowId={windowId}
@@ -2595,11 +2676,37 @@ function FeatureSeriesCollection({
               liveDemo={liveDemo}
               loading={loading}
               emptyTitle="관측 이력 없음"
-              emptyDetail={`${sensor.label} 관측 이력이 비어 있어 임의 그래프를 표시하지 않습니다.`}
+              emptyDetail={`${displaySensorLabel(sensor.id, sensor.label)} 관측 이력이 비어 있어 임의 그래프를 표시하지 않습니다.`}
+              onExpand={() => setExpandedSensorId(sensor.id)}
             />
           ))}
         </>
       ) : loading ? <OperationsState kind="loading" title="관측 이력 로딩 중" detail="선택 설비의 센서 그래프를 불러오는 중입니다." /> : <OperationsState kind="empty" title={emptyTitle} detail={emptyDetail} />}
+      {expandedSensor ? createPortal((
+        <div className="operations-sensor-detail-layer" role="presentation">
+          <button type="button" className="operations-sensor-detail-scrim" aria-label="센서 상세 닫기" onClick={() => setExpandedSensorId(null)} />
+          <section className="operations-sensor-detail-dialog" role="dialog" aria-modal="true" aria-label={`${displaySensorLabel(expandedSensor.id, expandedSensor.label)} 상세 그래프`}>
+            <header>
+              <div><LineChart size={16} /><strong>{displaySensorLabel(expandedSensor.id, expandedSensor.label)}</strong><span>선택 Case 관측 상세</span></div>
+              <button type="button" aria-label="센서 상세 닫기" onClick={() => setExpandedSensorId(null)}><X size={16} /></button>
+            </header>
+            <MapReportFeatureSeries
+              title={displaySensorLabel(expandedSensor.id, expandedSensor.label)}
+              unit={expandedSensor.unit}
+              points={expandedSensor.points}
+              windowId={windowId}
+              window={expandedSensor.window}
+              currentValue={expandedSensor.currentValue}
+              currentObservedAt={expandedSensor.currentObservedAt}
+              primary={PRIMARY_FIELD_SENSOR_KEYS.has(expandedSensor.id)}
+              liveDemo={liveDemo}
+              loading={loading}
+              emptyTitle="관측 이력 없음"
+              emptyDetail={`${displaySensorLabel(expandedSensor.id, expandedSensor.label)} 관측 이력이 비어 있습니다.`}
+            />
+          </section>
+        </div>
+      ), document.body) : null}
     </section>
   );
 }
@@ -2746,12 +2853,14 @@ function AssetPreviewPanel({
   const realtimeDirectFeatureSnapshots = withRealtimeCurrentValues(directFeatureSnapshots, selectedLiveSnapshot);
   const realtimeFeatureSnapshots = withRealtimeCurrentValues(featureSnapshots, selectedLiveSnapshot);
   const physicalHistorySnapshots = realtimeDirectFeatureSnapshots.filter(hasNumericHistoryPoints);
+  const inspectionFactorIds = new Set(factors.slice(0, 3).map((factor) => factor.feature));
   const orderedLiveFeatureSnapshots = [
+    ...physicalHistorySnapshots.filter((sensor) => inspectionFactorIds.has(sensor.id)),
     ...LIVE_FEATURE_PRIORITY
       .map((id) => physicalHistorySnapshots.find((sensor) => sensor.id === id))
       .filter((sensor): sensor is ReturnType<typeof sensorSeries>[number] => Boolean(sensor)),
-    ...physicalHistorySnapshots.filter((sensor) => !LIVE_FEATURE_PRIORITY.includes(sensor.id)),
-  ];
+    ...physicalHistorySnapshots,
+  ].filter((sensor, index, items) => items.findIndex((candidate) => candidate.id === sensor.id) === index);
   const liveFeatureSnapshots = orderedLiveFeatureSnapshots
     .slice(0, LIVE_FEATURE_CHART_LIMIT);
   const inspectionTargets: InspectionTargetView[] = detail?.inspectionTargets.length
@@ -3212,6 +3321,7 @@ function AssetPreviewPanel({
                 ) : null}
               </section>
 
+              <div className="operations-inspection-sensor-workbench" aria-label="점검 대상과 센서 근거 연결">
               <section className="operations-overview-inspection-panel operations-side-map-report" aria-label="점검 근거">
                 <header><Wrench size={14} /><strong>점검 근거</strong><span>SOP 참고 안내</span></header>
                 <div className="equipment-sketch" aria-label="설비 참고도">
@@ -3269,8 +3379,8 @@ function AssetPreviewPanel({
                 </div>
               </section>
 
-              <section className="operations-overview-report-graph operations-side-map-report" aria-label="요약 리포트 센서 관측 그래프">
-                <header><LineChart size={14} /><strong>요약 리포트 관측 흐름</strong><span>{detailLoading ? "불러오는 중" : detailError ? "상세 연결 실패" : "동일 관측 기준"}</span></header>
+              <section className="operations-overview-report-graph operations-side-map-report" aria-label="점검 대상 연계 센서 현황">
+                <header><LineChart size={14} /><strong>점검 대상 연계 센서</strong><span>{detailLoading ? "불러오는 중" : detailError ? "관측 연결 확인 필요" : "점검 근거 우선 정렬"}</span></header>
                 <div className="operations-overview-risk-meter">
                   <div><span>위험 예측 확률</span><strong>{riskPercent === null ? "-" : `${riskPercent}%`}</strong></div>
                   <i aria-hidden="true"><b style={{ width: `${riskPercent ?? 0}%` }} /></i>
@@ -3288,6 +3398,7 @@ function AssetPreviewPanel({
                 />
                 <DerivedMetricSlots sensors={realtimeFeatureSnapshots} windowId={sensorWindow} />
               </section>
+              </div>
             </>
           ) : null}
 
