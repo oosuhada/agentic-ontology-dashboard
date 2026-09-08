@@ -84,8 +84,11 @@ BACKEND_IMAGE="$BACKEND_IMAGE" PROJECT3_IMAGE="$PROJECT3_IMAGE" \
 
 for _ in {1..30}; do
   if [[ "$(docker inspect "$PROJECTOR_CONTAINER" --format '{{.State.Running}}' 2>/dev/null || true)" == "true" ]]; then
-    host_port="$(docker inspect "$PROJECT3_CONTAINER" --format '{{with (index .NetworkSettings.Ports "8000/tcp")}}{{(index . 0).HostPort}}{{end}}' 2>/dev/null || true)"
-    readiness="$(curl --fail --silent --show-error --max-time 5 "http://127.0.0.1:${host_port:-8130}/api/v1/projects/manufacturing-demo-project/readiness" 2>/dev/null || true)"
+    readiness="$(
+      docker exec "$PROJECT3_CONTAINER" python -c \
+        "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/api/v1/projects/manufacturing-demo-project/readiness', timeout=5).read().decode())" \
+        2>/dev/null || true
+    )"
     if echo "$readiness" | grep -q '"can_query":true'; then
       docker tag "$PROJECT3_IMAGE" "$PROJECT3_REPO:latest"
       printf '%s\n' "$TARGET_SHA" > "$STATE_FILE"

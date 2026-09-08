@@ -81,8 +81,6 @@ services:
       ONTOLOGY_DASHBOARD_NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
       ONTOLOGY_DASHBOARD_NEO4J_PASSWORD: ${NEO4J_PASSWORD:-}
     command: ["python", "-m", "uvicorn", "app.project3_runtime.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header"]
-    ports:
-      - 127.0.0.1:${PROJECT3_PORT:-8130}:8000
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"]
       interval: 10s
