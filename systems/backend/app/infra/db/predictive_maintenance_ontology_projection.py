@@ -156,6 +156,30 @@ def _reference_fixture(relative_path: str) -> tuple[dict[str, Any], str]:
     return value, hashlib.sha256(payload).hexdigest()
 
 
+def _aggregate_source_sha256(values: list[Any]) -> str:
+    """Return one stable checksum for a version-scoped set of row sources.
+
+    Canonical bundle roles usually provide one file checksum. Runtime Result
+    Artifacts and compatibility snapshots can instead carry one checksum per
+    row. A graph projection still needs one provenance token, so hash the
+    sorted unique row checksums rather than selecting an arbitrary row.
+    """
+    checksums = sorted({str(value).strip().lower() for value in values if value})
+    if not checksums:
+        raise ValueError("projection result sources require at least one SHA-256")
+    invalid = [
+        checksum
+        for checksum in checksums
+        if len(checksum) != 64
+        or any(character not in "0123456789abcdef" for character in checksum)
+    ]
+    if invalid:
+        raise ValueError("projection result sources contain an invalid SHA-256")
+    if len(checksums) == 1:
+        return checksums[0]
+    return hashlib.sha256("\n".join(checksums).encode("ascii")).hexdigest()
+
+
 def _component_reference_contracts() -> dict[str, tuple[dict[str, Any], str]]:
     return {
         "cnc": _reference_fixture(
@@ -213,13 +237,17 @@ class PredictiveMaintenanceOntologyMaterializer:
                 "model_versions": sorted({str(row["model_version"]) for row in result_rows}),
                 "prediction_tasks": sorted({str(row["prediction_task"]) for row in result_rows}),
                 "predicted_failure_type_semantics": "generic_binary_risk_not_ai4i_failure_mode",
-                "source_sha256": role_checksums.get("result_artifact"),
+                "source_sha256": role_checksums.get("result_artifact")
+                or _aggregate_source_sha256(
+                    [row["source_sha256"] for row in result_rows]
+                ),
             }
         else:
             snapshot_rows = connection.execute(
                 """
-                SELECT DISTINCT model_version FROM pm_prediction_snapshots
-                WHERE dataset_version_id=%s ORDER BY model_version
+                SELECT DISTINCT model_version,source_sha256
+                FROM pm_prediction_snapshots
+                WHERE dataset_version_id=%s ORDER BY model_version,source_sha256
                 """,
                 (dataset_version_id,),
             ).fetchall()
@@ -229,7 +257,10 @@ class PredictiveMaintenanceOntologyMaterializer:
                 "model_versions": [str(row["model_version"]) for row in snapshot_rows],
                 "prediction_tasks": ["binary_failure_within_horizon"],
                 "predicted_failure_type_semantics": "generic_binary_risk_not_ai4i_failure_mode",
-                "source_sha256": role_checksums.get("prediction_snapshot"),
+                "source_sha256": role_checksums.get("prediction_snapshot")
+                or _aggregate_source_sha256(
+                    [row["source_sha256"] for row in snapshot_rows]
+                ),
             }
 
         raw_governance_artifacts = version_profile.get("governance_artifacts", [])

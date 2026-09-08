@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import uuid
 from pathlib import Path
@@ -14,6 +15,7 @@ from app.dataset.ingestion import (
 from app.infra.db.postgresql_bundle_ingestion import PostgreSQLPredictiveMaintenanceBundleIngestor
 from app.infra.db.predictive_maintenance_ontology_projection import (
     PredictiveMaintenanceOntologyMaterializer,
+    _aggregate_source_sha256,
 )
 from app.infra.db.postgresql_ontology_repository import (
     PostgreSQLOntologyInstanceRepository,
@@ -36,6 +38,17 @@ def build(root: Path):
         workspace_id="workspace-test",
         manifest_id="pm-versioned-dataset",
     )
+
+
+def test_runtime_result_source_checksums_are_aggregated_deterministically() -> None:
+    first = "1" * 64
+    second = "2" * 64
+    expected = hashlib.sha256(f"{first}\n{second}".encode("ascii")).hexdigest()
+
+    assert _aggregate_source_sha256([second, first, second]) == expected
+    assert _aggregate_source_sha256([first]) == first
+    with pytest.raises(ValueError, match="at least one SHA-256"):
+        _aggregate_source_sha256([])
 
 
 def ingest(database_url: str, root: Path):
