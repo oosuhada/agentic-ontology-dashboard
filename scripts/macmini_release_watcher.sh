@@ -121,3 +121,12 @@ fi
 GITHUB_SHA="$TARGET_SHA" \
 ONTOLOGY_MACMINI_PROD_ROOT="$PROD_ROOT" \
   "$SOURCE_ROOT/scripts/deploy_macmini_frontend.sh"
+
+# Install/update the cadence-based home-server refresh only after Backend,
+# Graph, and Frontend have all converged on the same verified SHA. This avoids
+# waking a new Generator against an older graph projection during deployment.
+if [[ -f "$SOURCE_ROOT/infra/macmini/install-background-refresh.sh" ]]; then
+  ONTOLOGY_MACMINI_WATCH_ROOT="$WATCH_ROOT" \
+  ONTOLOGY_MACMINI_PROD_ROOT="$PROD_ROOT" \
+    /bin/bash "$SOURCE_ROOT/infra/macmini/install-background-refresh.sh"
+fi

@@ -179,7 +179,10 @@ services:
 
   knowledge-indexer:
     image: ${BACKEND_IMAGE:-ontology-dashboard-macmini-backend:latest}
-    restart: unless-stopped
+    # The knowledge index is DB-backed and dirty-state driven. Mac mini
+    # production runs this as a short batch from the background refresh
+    # LaunchAgent instead of keeping a Python daemon resident all day.
+    restart: "no"
     cpus: 0.75
     mem_limit: 1g
     depends_on:
@@ -197,7 +200,7 @@ services:
       ONTOLOGY_DASHBOARD_KNOWLEDGE_PROJECT_ID: manufacturing-demo-project
       ONTOLOGY_DASHBOARD_KNOWLEDGE_WORKSPACE_ID: manufacturing-demo
       ONTOLOGY_DASHBOARD_KNOWLEDGE_INDEX_POLL_SECONDS: ${ONTOLOGY_DASHBOARD_KNOWLEDGE_INDEX_POLL_SECONDS:-5}
-    command: ["python", "-m", "app.knowledge.worker"]
+    command: ["python", "-m", "app.knowledge.worker", "--once"]
     healthcheck:
       test: ["CMD", "python", "-m", "app.knowledge.worker", "--healthcheck"]
       interval: 20s
@@ -239,7 +242,10 @@ services:
       dockerfile: systems/backend/Dockerfile
       args:
         API_EXTRAS: macmini
-    restart: unless-stopped
+    # Live refresh is cadence-based on the Mac mini. A LaunchAgent wakes the
+    # Generator runtime, runs this worker once, waits for prediction delivery,
+    # and tears the expensive runtime back down.
+    restart: "no"
     cpus: 0.75
     mem_limit: 768m
     depends_on:
@@ -256,6 +262,7 @@ services:
       GEN_DATA_RUNTIME_OUTPUT_ROOT: /gen-data-runtime
       ONTOLOGY_DASHBOARD_RUNTIME_PIPELINE_INPUT_ROOT: /runtime-pipeline-input
       ONTOLOGY_DASHBOARD_GENERATOR_RUNTIME_ENQUEUE_URL: ${ONTOLOGY_DASHBOARD_GENERATOR_RUNTIME_ENQUEUE_URL:-http://generator-runtime:8000/internal/runtime-pipeline/enqueue}
+      LIVE_PM_RUN_ONCE: ${LIVE_PM_RUN_ONCE:-1}
       LIVE_PM_POLL_SECONDS: ${LIVE_PM_POLL_SECONDS:-5}
       LOG_LEVEL: ${LIVE_PM_LOG_LEVEL:-INFO}
     command: ["python", "-m", "app.live_predictive_maintenance"]
@@ -266,10 +273,14 @@ services:
     networks: [private]
 
   generator-runtime:
+    image: ${GENERATOR_RUNTIME_IMAGE:-ontology-dashboard-macmini-generator-runtime:latest}
     build:
       context: ../..
       dockerfile: systems/generator/Dockerfile
-    restart: unless-stopped
+    # This runtime loads the full model stack and is intentionally on-demand on
+    # the home-server deployment. Persistent queue/cache state lives on mounted
+    # volumes, so stopping the container does not discard pipeline lineage.
+    restart: "no"
     cpus: 1.5
     mem_limit: 2g
     depends_on:

@@ -12,9 +12,9 @@ STATE_FILE="$PROD_ROOT/backend-deploy-base-sha"
 COMPOSE_FILE="$ROOT/infra/macmini/docker-compose.yml"
 IMAGE_REPO="ontology-dashboard-macmini-backend"
 TARGET_IMAGE="$IMAGE_REPO:$TARGET_SHA"
+GENERATOR_IMAGE_REPO="ontology-dashboard-macmini-generator-runtime"
+TARGET_GENERATOR_IMAGE="$GENERATOR_IMAGE_REPO:$TARGET_SHA"
 CONTAINER_NAME="ontology-dashboard-macmini-backend-1"
-LIVE_INGESTOR_CONTAINER_NAME="ontology-dashboard-macmini-live-ingestor-1"
-KNOWLEDGE_INDEXER_CONTAINER_NAME="ontology-dashboard-macmini-knowledge-indexer-1"
 
 mkdir -p "$PROD_ROOT"
 
@@ -88,7 +88,8 @@ fi
 if [[ -n "$PREVIOUS_BASE_SHA" ]] \
   && git cat-file -e "$PREVIOUS_BASE_SHA^{commit}" 2>/dev/null \
   && git diff --quiet "$PREVIOUS_BASE_SHA" "$TARGET_SHA" -- \
-      systems/backend infra/macmini/docker-compose.yml requirements; then
+      systems/backend systems/generator contracts/schemas \
+      infra/macmini/docker-compose.yml requirements; then
   printf '%s\n' "$TARGET_SHA" > "$STATE_FILE"
   echo "No backend build inputs changed since $PREVIOUS_BASE_SHA; deployment skipped."
   exit 0
@@ -109,14 +110,30 @@ docker build \
   -t "$TARGET_IMAGE" \
   .
 
+if [[ -n "$PREVIOUS_BASE_SHA" ]] \
+  && git cat-file -e "$PREVIOUS_BASE_SHA^{commit}" 2>/dev/null \
+  && git diff --quiet "$PREVIOUS_BASE_SHA" "$TARGET_SHA" -- \
+      systems/generator contracts/schemas infra/macmini/docker-compose.yml \
+  && docker image inspect "$GENERATOR_IMAGE_REPO:latest" >/dev/null 2>&1; then
+  docker tag "$GENERATOR_IMAGE_REPO:latest" "$TARGET_GENERATOR_IMAGE"
+  echo "Generator runtime build inputs unchanged; tagged current image as $TARGET_GENERATOR_IMAGE"
+else
+  echo "Building $TARGET_GENERATOR_IMAGE from $TARGET_SHA"
+  docker build \
+    -f systems/generator/Dockerfile \
+    -t "$TARGET_GENERATOR_IMAGE" \
+    .
+fi
+
 deploy_image() {
   local image="$1"
   BACKEND_IMAGE="$image" \
+  GENERATOR_RUNTIME_IMAGE="$TARGET_GENERATOR_IMAGE" \
     docker compose \
       --env-file "$ENV_FILE" \
       -p ontology-dashboard-macmini \
       -f "$COMPOSE_FILE" \
-      up -d --no-deps --no-build backend live-ingestor knowledge-indexer
+      up -d --no-deps --no-build backend
 }
 
 wait_for_health() {
@@ -126,16 +143,6 @@ wait_for_health() {
   for ((attempt = 1; attempt <= attempts; attempt++)); do
     status="$(docker inspect "$CONTAINER_NAME" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' 2>/dev/null || true)"
     if [[ "$status" == "healthy" ]]; then
-      live_running="$(docker inspect "$LIVE_INGESTOR_CONTAINER_NAME" --format '{{.State.Running}}' 2>/dev/null || true)"
-      if [[ "$live_running" != "true" ]]; then
-        sleep 2
-        continue
-      fi
-      knowledge_status="$(docker inspect "$KNOWLEDGE_INDEXER_CONTAINER_NAME" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' 2>/dev/null || true)"
-      if [[ "$knowledge_status" != "healthy" ]]; then
-        sleep 2
-        continue
-      fi
       host_port="$(
         docker inspect "$CONTAINER_NAME" \
           --format '{{with (index .NetworkSettings.Ports "8000/tcp")}}{{(index . 0).HostPort}}{{end}}' \
@@ -171,5 +178,18 @@ if ! deploy_image "$TARGET_IMAGE" || ! wait_for_health; then
 fi
 
 docker tag "$TARGET_IMAGE" "$IMAGE_REPO:latest"
+docker tag "$TARGET_GENERATOR_IMAGE" "$GENERATOR_IMAGE_REPO:latest"
+
+# Background workers are cadence/on-demand services on the Mac mini. Stop any
+# pre-policy containers left running by an older release before recording the
+# new deployment state. Persistent queues and artifacts live on host mounts.
+BACKEND_IMAGE="$TARGET_IMAGE" \
+GENERATOR_RUNTIME_IMAGE="$TARGET_GENERATOR_IMAGE" \
+  docker compose \
+    --env-file "$ENV_FILE" \
+    -p ontology-dashboard-macmini \
+    -f "$COMPOSE_FILE" \
+    stop -t 20 live-ingestor knowledge-indexer generator-runtime >/dev/null 2>&1 || true
+
 printf '%s\n' "$TARGET_SHA" > "$STATE_FILE"
 echo "Mac mini backend deployment succeeded: $TARGET_SHA"
