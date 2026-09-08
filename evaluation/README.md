@@ -5,7 +5,26 @@ Gold 시나리오와 모델·임계값·Evidence·리포트·UI 평가를 관리
 ## 현재 산출물
 
 - [`gold_scenarios.yml`](./gold_scenarios.yml): Operations가 반드시 통과해야 하는 8개 사용자·안전 시나리오
+- [`agent_workflow_task_set.py`](./agent_workflow_task_set.py): Easy 40 / Medium 40 / Adversarial 40으로 고정한 read-only agent task matrix
+- [`agent_workflow_benchmark.py`](./agent_workflow_benchmark.py): route/tool/evidence/policy/fallback/latency를 packet-only baseline과 비교하는 실행 harness
+- [`results/agent_workflow_benchmark_2026-09-08.json`](./results/agent_workflow_benchmark_2026-09-08.json): 120-task 실제 측정 결과
 - `results/`: 단계별 평가 결과 저장 위치
+
+## Read-only agent workflow benchmark
+
+2026-09-08 측정에서는 기존 `agent_tool_trajectory_gold.jsonl`의 세 operational scenario를 질문 난이도와 4개 audience로 확장해 총 120 task를 고정했습니다.
+
+| Metric | Packet-only baseline | Situation-routed candidate |
+|---|---:|---:|
+| Route accuracy | 0.3000 | **1.0000** |
+| Exact tool selection | 0.0000 | **1.0000** |
+| Evidence correctness | 1.0000 | **1.0000** |
+| Unsupported claim rate | n/a | **0.0000** |
+| Role-policy violation rate | 0.0000 | **0.0000** |
+| Failure-injection fallback success | n/a | **1.0000 (16/16 tasks)** |
+| Candidate p50 local latency | n/a | **1.5557 ms** |
+
+외부 LLM 호출은 routing/tool/evidence boundary를 격리해서 보기 위해 의도적으로 비활성화했습니다. 따라서 이 실험의 external model token usage는 실제 측정값 `0`이지만, production answer-generation cost가 0이라는 뜻은 아닙니다.
 
 ## Gold 평가 범위
 

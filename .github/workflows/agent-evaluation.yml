@@ -1,0 +1,57 @@
+name: agent-evaluation
+
+on:
+  pull_request:
+    paths:
+      - "evaluation/agent_workflow_benchmark.py"
+      - "evaluation/agent_workflow_task_set.py"
+      - "tests/eval/agent_tool_trajectory_gold.jsonl"
+      - "tests/eval/test_agent_tool_pipeline_eval.py"
+      - "tests/eval/test_agent_workflow_benchmark.py"
+      - "systems/backend/app/operations/agent_context_tool_pipeline.py"
+      - "systems/backend/app/operations/agent_response_contract.py"
+      - "systems/backend/app/operations/agent_review_summary.py"
+      - ".github/workflows/agent-evaluation.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "evaluation/agent_workflow_benchmark.py"
+      - "evaluation/agent_workflow_task_set.py"
+      - "tests/eval/agent_tool_trajectory_gold.jsonl"
+      - "tests/eval/test_agent_tool_pipeline_eval.py"
+      - "tests/eval/test_agent_workflow_benchmark.py"
+      - "systems/backend/app/operations/agent_context_tool_pipeline.py"
+      - "systems/backend/app/operations/agent_response_contract.py"
+      - "systems/backend/app/operations/agent_review_summary.py"
+      - ".github/workflows/agent-evaluation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readonly-agent-eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend evaluation dependencies
+        run: python -m pip install --no-cache-dir -e ./ml -e './systems/backend[dev]'
+
+      - name: Run workflow evaluation regressions
+        env:
+          PYTHONPATH: systems/backend:.
+        run: python -m pytest -q tests/eval/test_agent_workflow_benchmark.py tests/eval/test_agent_tool_pipeline_eval.py
+
+      - name: Run strict 120-task benchmark
+        env:
+          PYTHONPATH: systems/backend:.
+        run: python -m evaluation.agent_workflow_benchmark --repeats 1 --strict

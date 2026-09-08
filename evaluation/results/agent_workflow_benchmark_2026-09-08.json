@@ -1,0 +1,112 @@
+{
+  "experiment": "agentic-ontology-readonly-workflow-eval-v1",
+  "question": "Does situation-routed, read-only tool orchestration improve route/tool selection while preserving evidence and action boundaries over a packet-only baseline?",
+  "dataset": {
+    "tasks": 120,
+    "easy": 40,
+    "medium": 40,
+    "adversarial": 40,
+    "audiences": [
+      "engineering",
+      "operations",
+      "executive",
+      "maintenance"
+    ],
+    "gold_tool_plans": "tests/eval/agent_tool_trajectory_gold.jsonl"
+  },
+  "repeats_per_task": 3,
+  "baseline_definition": "packet-only relational baseline: no situation tool planner and no free-form model call",
+  "candidate_definition": "response-contract routing + situation-selected read-only tools + deterministic grounded summary validation",
+  "baseline": {
+    "tasks": 120,
+    "route_accuracy": 0.3,
+    "exact_tool_selection_accuracy": 0.0,
+    "evidence_correctness": 1.0,
+    "unsupported_claim_rate": null,
+    "role_policy_violation_rate": 0.0,
+    "fallback_success_rate": null,
+    "failure_injection_tasks": 0,
+    "external_model_tokens": 0,
+    "latency_ms": {
+      "p50_ms": 0.0018,
+      "p95_ms": 0.0021,
+      "mean_ms": 0.0016,
+      "variance_ms2": 0.0
+    }
+  },
+  "candidate": {
+    "tasks": 120,
+    "route_accuracy": 1.0,
+    "exact_tool_selection_accuracy": 1.0,
+    "evidence_correctness": 1.0,
+    "unsupported_claim_rate": 0.0,
+    "role_policy_violation_rate": 0.0,
+    "fallback_success_rate": 1.0,
+    "failure_injection_tasks": 16,
+    "external_model_tokens": 0,
+    "latency_ms": {
+      "p50_ms": 1.5557,
+      "p95_ms": 1.8123,
+      "mean_ms": 1.6031,
+      "variance_ms2": 0.040269
+    }
+  },
+  "by_difficulty": {
+    "easy": {
+      "baseline": {
+        "route_accuracy": 0.4,
+        "exact_tool_selection_accuracy": 0.0,
+        "evidence_correctness": 1.0,
+        "role_policy_violation_rate": 0.0
+      },
+      "candidate": {
+        "route_accuracy": 1.0,
+        "exact_tool_selection_accuracy": 1.0,
+        "evidence_correctness": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "role_policy_violation_rate": 0.0,
+        "p50_latency_ms": 1.5568
+      }
+    },
+    "medium": {
+      "baseline": {
+        "route_accuracy": 0.3,
+        "exact_tool_selection_accuracy": 0.0,
+        "evidence_correctness": 1.0,
+        "role_policy_violation_rate": 0.0
+      },
+      "candidate": {
+        "route_accuracy": 1.0,
+        "exact_tool_selection_accuracy": 1.0,
+        "evidence_correctness": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "role_policy_violation_rate": 0.0,
+        "p50_latency_ms": 1.577
+      }
+    },
+    "adversarial": {
+      "baseline": {
+        "route_accuracy": 0.2,
+        "exact_tool_selection_accuracy": 0.0,
+        "evidence_correctness": 1.0,
+        "role_policy_violation_rate": 0.0
+      },
+      "candidate": {
+        "route_accuracy": 1.0,
+        "exact_tool_selection_accuracy": 1.0,
+        "evidence_correctness": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "role_policy_violation_rate": 0.0,
+        "fallback_success_rate": 1.0,
+        "failure_injection_tasks": 16,
+        "p50_latency_ms": 1.5461
+      }
+    }
+  },
+  "limitations": [
+    "The 120 tasks expand three previously committed gold operational scenarios across wording, difficulty, and four audiences; they are not 120 independent factory incidents.",
+    "External LLM composition is intentionally disabled to isolate deterministic routing, tool selection, evidence scope, fallback, and policy behavior; measured external model token usage is therefore zero for this experiment.",
+    "Unsupported-claim rate is evaluated on the deterministic grounded summary contract; it is not a substitute for a separate live-provider factuality benchmark.",
+    "Latency is local Python execution over fixture-backed packets, not a production network latency claim."
+  ]
+}
