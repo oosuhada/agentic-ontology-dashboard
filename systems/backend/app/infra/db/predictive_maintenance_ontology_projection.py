@@ -18,6 +18,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.common.runtime_settings import project_root
 from app.ontology.ontology_domain import LinkRecord, ObjectRecord
 
 
@@ -147,7 +148,7 @@ def _source_ref(
 
 
 def _reference_fixture(relative_path: str) -> tuple[dict[str, Any], str]:
-    path = Path(__file__).resolve().parents[5] / relative_path
+    path = project_root() / relative_path
     payload = path.read_bytes()
     value = json.loads(payload.decode("utf-8"))
     if not isinstance(value, dict):
