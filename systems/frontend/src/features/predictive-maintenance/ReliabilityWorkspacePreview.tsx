@@ -82,6 +82,7 @@ function displayDateTime(value: string | null | undefined, english: boolean) {
 function assistantActivityStepLabel(name: string, english: boolean) {
   const normalized = name.trim().toLowerCase();
   const labels: Record<string, [string, string]> = {
+    response_contract: ["필요 근거 계획", "Plan required evidence"],
     route: ["질의 경로 결정", "Resolve query route"],
     routing: ["질의 경로 결정", "Resolve query route"],
     relational: ["운영 데이터 조회", "Query operational data"],

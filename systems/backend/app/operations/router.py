@@ -6,8 +6,10 @@ import json
 import time
 import uuid
 
+from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -17,8 +19,9 @@ from app.common.rate_limit import RateLimitRule, RateLimiter
 from app.common.runtime_settings import project_root
 from app.equipment.equipment_router import register_equipment_routes
 
-from .contracts import AgentQueryRequest, DecisionRequest, FollowUpRequest, LayoutRequest, NoteRequest, ReportRequest
 from .agent_context_tool_pipeline import run_read_only_tool_pipeline
+from .agent_response_contract import plan_agent_response_contract, route_for_response_contract
+from .contracts import AgentQueryRequest, DecisionRequest, FollowUpRequest, LayoutRequest, NoteRequest, ReportRequest
 from .agent_review_summary import compose_deterministic_agent_review_summary, validate_agent_review_summary_contract
 from .asset_detail_view_model import AssetDetailViewModelService, compose_asset_detail_view_model
 from app.dependencies import (
@@ -40,6 +43,7 @@ from app.diagnosis.runtime_service import PredictiveMaintenanceRuntimeService
 from app.diagnosis.presentation_dictionary import presentation_field
 from app.identity import AuthError, IdentityService, Principal
 from app.infra.db.agent_run_repository import AgentRunRepository
+from app.infra.external.project3 import Project3Client, Project3Error
 from app.ontology.ontology_domain import ActionInvocation
 from app.ontology.projection import inspection_object_id, risk_event_object_id
 from app.ontology.ontology_service import OntologyService
@@ -55,6 +59,7 @@ from .sop_retrieval import retrieve_inspection_sops
 router = APIRouter(prefix="/api", tags=["manufacturing-domain-pack"])
 AGENT_REVIEW_SUMMARY_MATERIALIZE_RATE = RateLimitRule(limit=12, window_seconds=60)
 DECISION_SUPPORT_MATERIALIZE_RATE = RateLimitRule(limit=12, window_seconds=60)
+AGENT_GRAPH_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="agent-project3-graph")
 register_equipment_routes(
     router,
     service_dependency=get_service,
@@ -281,6 +286,159 @@ def _packet_dataset_version(packet: dict[str, Any]) -> str | None:
     return str(value) if value else None
 
 
+def _graph_row_summary(row: dict[str, Any]) -> str:
+    safe_items: list[str] = []
+    for key, value in row.items():
+        normalized = str(key).lower()
+        if any(token in normalized for token in ("cypher", "embedding", "vector", "password", "secret")):
+            continue
+        if value is None or isinstance(value, (dict, list, tuple, set)):
+            continue
+        safe_items.append(f"{key}: {value}")
+        if len(safe_items) >= 6:
+            break
+    return " · ".join(safe_items) or "Ontology relationship result"
+
+
+@lru_cache(maxsize=1)
+def _agent_project3_client() -> Project3Client:
+    return Project3Client.from_environment()
+
+
+def _project3_graph_evidence(
+    *,
+    question: str,
+    project_id: str,
+    workspace_id: str,
+    object_id: str | None,
+    top_k: int,
+) -> dict[str, Any]:
+    started = time.perf_counter()
+    client = _agent_project3_client()
+    try:
+        qualified_question = (
+            f"선택된 설비 {object_id} 기준으로 다음 관계 질문에 답해줘: {question}"
+            if object_id
+            else question
+        )
+        result = client.query(project_id, question=qualified_question)
+        evidence: list[dict[str, Any]] = []
+        if result.answer.strip():
+            evidence.append({
+                "evidence_id": "project3-graph-answer",
+                "store": "neo4j",
+                "reference": str(result.run_id or "project3-graph-query"),
+                "project_id": project_id,
+                "workspace_id": workspace_id,
+                "dataset_version_id": None,
+                "object_id": object_id,
+                "title": "Ontology relationship summary",
+                "content": result.answer.strip(),
+                "score": None,
+                "metadata": {
+                    "provider": result.provider,
+                    "row_count": result.row_count,
+                    "run_id": result.run_id,
+                    "status": result.status,
+                    "validation": result.validation,
+                },
+            })
+        for index, row in enumerate(result.rows[: max(0, top_k - len(evidence))], start=1):
+            evidence.append({
+                "evidence_id": f"project3-graph-row-{index}",
+                "store": "neo4j",
+                "reference": str(result.run_id or f"project3-graph-row-{index}"),
+                "project_id": project_id,
+                "workspace_id": workspace_id,
+                "dataset_version_id": None,
+                "object_id": object_id,
+                "title": f"Ontology relationship {index}",
+                "content": _graph_row_summary(row),
+                "score": None,
+                "metadata": {
+                    "provider": result.provider,
+                    "run_id": result.run_id,
+                    "status": result.status,
+                },
+            })
+        return {
+            "status": "succeeded",
+            "evidence": evidence,
+            "row_count": result.row_count,
+            "provider": result.provider,
+            "run_id": result.run_id,
+            "caveat": result.caveat,
+            "latency_ms": int((time.perf_counter() - started) * 1000),
+        }
+    except Project3Error as exc:
+        return {
+            "status": "failed",
+            "evidence": [],
+            "row_count": 0,
+            "provider": "project3",
+            "run_id": None,
+            "caveat": str(exc),
+            "latency_ms": int((time.perf_counter() - started) * 1000),
+        }
+
+
+def _start_graph_evidence(
+    *,
+    stores: tuple[str, ...],
+    question: str,
+    project_id: str,
+    workspace_id: str,
+    object_id: str | None,
+    top_k: int,
+) -> Future[dict[str, Any]] | None:
+    if "graph" not in stores:
+        return None
+    return AGENT_GRAPH_EXECUTOR.submit(
+        _project3_graph_evidence,
+        question=question,
+        project_id=project_id,
+        workspace_id=workspace_id,
+        object_id=object_id,
+        top_k=min(top_k, 3),
+    )
+
+
+def _resolve_graph_evidence(future: Future[dict[str, Any]] | None) -> dict[str, Any]:
+    if future is None:
+        return {
+            "status": "skipped",
+            "evidence": [],
+            "row_count": 0,
+            "provider": None,
+            "run_id": None,
+            "caveat": None,
+            "latency_ms": 0,
+        }
+    try:
+        return future.result(timeout=3.2)
+    except FutureTimeoutError:
+        future.cancel()
+        return {
+            "status": "failed",
+            "evidence": [],
+            "row_count": 0,
+            "provider": "project3",
+            "run_id": None,
+            "caveat": "Project 3 graph lookup exceeded the 3.2 second assistant budget.",
+            "latency_ms": 3200,
+        }
+    except Exception as exc:  # pragma: no cover - executor/process guard
+        return {
+            "status": "failed",
+            "evidence": [],
+            "row_count": 0,
+            "provider": "project3",
+            "run_id": None,
+            "caveat": f"{type(exc).__name__}: {exc}",
+            "latency_ms": 0,
+        }
+
+
 def _packet_evidence(
     packet: dict[str, Any],
     *,
@@ -290,10 +448,12 @@ def _packet_evidence(
     question: str = "",
     roles: list[str] | None = None,
     top_k: int,
+    allowed_stores: tuple[str, ...] = ("relational", "vector"),
 ) -> list[dict[str, Any]]:
     evidence: list[dict[str, Any]] = []
     model_context = packet.get("model_expression_context") or {}
-    for index, factor in enumerate((model_context.get("top_factors") or [])[:top_k], start=1):
+    factors = (model_context.get("top_factors") or [])[:top_k] if "relational" in allowed_stores else []
+    for index, factor in enumerate(factors, start=1):
         if not isinstance(factor, dict):
             continue
         feature = str(factor.get("display_name") or factor.get("feature") or f"factor {index}")
@@ -316,13 +476,14 @@ def _packet_evidence(
 
     sop_items = []
     sop_retrieval = packet.get("sop_retrieval") or {}
-    for key in ("items", "results", "documents"):
-        items = sop_retrieval.get(key)
-        if isinstance(items, list):
-            sop_items = items
-            break
-    if not sop_items and isinstance(packet.get("sop_guidance"), list):
-        sop_items = packet.get("sop_guidance") or []
+    if "vector" in allowed_stores:
+        for key in ("items", "results", "documents"):
+            items = sop_retrieval.get(key)
+            if isinstance(items, list):
+                sop_items = items
+                break
+        if not sop_items and isinstance(packet.get("sop_guidance"), list):
+            sop_items = packet.get("sop_guidance") or []
     for index, item in enumerate(sop_items[: max(0, top_k - len(evidence))], start=1):
         if not isinstance(item, dict):
             continue
@@ -362,7 +523,7 @@ def _packet_evidence(
         })
     asset_id = _packet_asset_id(packet)
     remaining = max(0, top_k - len(evidence))
-    if remaining:
+    if remaining and "vector" in allowed_stores:
         for index, item in enumerate(
             service.company_context_documents(
                 question,
@@ -720,6 +881,45 @@ def _workspace_company_evidence(
             },
         })
     return evidence[:top_k]
+
+
+def _workspace_relational_evidence(
+    *,
+    service: ManufacturingPredictiveMaintenanceService,
+    project_id: str,
+    workspace_id: str,
+    top_k: int,
+) -> list[dict[str, Any]]:
+    evidence: list[dict[str, Any]] = []
+    for index, event in enumerate(service.list_events(project_id)[:top_k], start=1):
+        equipment = event.get("equipment") if isinstance(event.get("equipment"), dict) else {}
+        asset_id = str(equipment.get("equipment_id") or event.get("scenario_id") or f"asset-{index}")
+        asset_name = str(equipment.get("display_name") or asset_id)
+        probability = _coerce_float(event.get("failure_probability"))
+        risk = f"{round(probability * 100)}%" if probability is not None else "unavailable"
+        status = str(event.get("status") or "unknown")
+        recommendation = str(event.get("recommended_decision") or "unavailable")
+        evidence.append({
+            "evidence_id": f"workspace-relational-{index}",
+            "store": "postgresql",
+            "reference": str(event.get("event_id") or asset_id),
+            "project_id": project_id,
+            "workspace_id": workspace_id,
+            "dataset_version_id": None,
+            "object_id": asset_id,
+            "title": asset_name,
+            "content": (
+                f"{asset_name}: risk {risk} · status {status} · "
+                f"recommended decision {recommendation}"
+            ),
+            "score": probability,
+            "metadata": {
+                "event_id": event.get("event_id"),
+                "status": status,
+                "recommended_decision": recommendation,
+            },
+        })
+    return evidence
 
 
 def _workspace_answer_from_evidence(
@@ -1892,18 +2092,52 @@ def run_agent_query(
     now = _utc_now()
     query_started = time.perf_counter()
     run_id = f"agent-{uuid.uuid4()}"
-    route = "hybrid" if request.route == "auto" else request.route
+    response_contract = plan_agent_response_contract(
+        request.question,
+        route=request.route,
+        object_id=request.object_id,
+    )
+    route = route_for_response_contract(response_contract)
+    graph_future = _start_graph_evidence(
+        stores=response_contract.stores,
+        question=request.question,
+        project_id=request.project_id,
+        workspace_id=request.workspace_id,
+        object_id=request.object_id,
+        top_k=request.top_k,
+    )
 
     if not request.object_id:
         evidence_started = time.perf_counter()
-        evidence = _workspace_company_evidence(
-            service=service,
-            question=request.question,
-            project_id=request.project_id,
-            workspace_id=request.workspace_id,
-            roles=principal.roles,
-            top_k=request.top_k,
+        relational_evidence = (
+            _workspace_relational_evidence(
+                service=service,
+                project_id=request.project_id,
+                workspace_id=request.workspace_id,
+                top_k=request.top_k,
+            )
+            if "relational" in response_contract.stores
+            else []
         )
+        vector_evidence = (
+            _workspace_company_evidence(
+                service=service,
+                question=request.question,
+                project_id=request.project_id,
+                workspace_id=request.workspace_id,
+                roles=principal.roles,
+                top_k=request.top_k,
+            )
+            if "vector" in response_contract.stores
+            else []
+        )
+        base_evidence = [*relational_evidence, *vector_evidence][: request.top_k]
+        graph_result = _resolve_graph_evidence(graph_future)
+        graph_evidence = list(graph_result.get("evidence") or [])
+        evidence = [
+            *graph_evidence,
+            *base_evidence[: max(0, request.top_k - len(graph_evidence))],
+        ][: request.top_k]
         evidence_latency_ms = int((time.perf_counter() - evidence_started) * 1000)
         baseline_answer = _workspace_answer_from_evidence(request.question, evidence, request.audience)
         answer = baseline_answer
@@ -1940,9 +2174,11 @@ def run_agent_query(
         answer_latency_ms = int((time.perf_counter() - answer_started) * 1000)
         duration_ms = int((time.perf_counter() - query_started) * 1000)
         claim_ids = answer_citations or [item["evidence_id"] for item in evidence[:4]]
-        evidence_store = "company_context"
-        if any(item.get("store") == "pgvector" for item in evidence):
+        evidence_store = "postgresql"
+        if any(item.get("store") == "pgvector" for item in base_evidence):
             evidence_store = "pgvector"
+        elif vector_evidence:
+            evidence_store = "company_context"
         steps = [
             {
                 "name": "workspace_context",
@@ -1952,11 +2188,29 @@ def run_agent_query(
                 "detail": "Using project/workspace scope without requiring a selected asset.",
             },
             {
+                "name": "response_contract",
+                "store": None,
+                "status": "succeeded",
+                "latency_ms": 0,
+                "detail": f"Planned {len(response_contract.required_facts)} required fact(s) across {len(response_contract.stores)} governed source group(s).",
+            },
+            *([{
+                "name": "graph_retrieval",
+                "store": "neo4j",
+                "status": graph_result["status"],
+                "latency_ms": graph_result["latency_ms"],
+                "detail": (
+                    f"Ontology Graph returned {graph_result['row_count']} validated relationship row(s)."
+                    if graph_result["status"] == "succeeded"
+                    else "Ontology relationship evidence is temporarily unavailable; other governed sources remain usable."
+                ),
+            }] if "graph" in response_contract.stores else []),
+            {
                 "name": "evidence_retrieval",
                 "store": evidence_store,
-                "status": "succeeded" if evidence else "skipped",
+                "status": "succeeded" if base_evidence else "skipped",
                 "latency_ms": evidence_latency_ms,
-                "detail": f"Retrieved {len(evidence)} governed company evidence item(s) for workspace-scope answering.",
+                "detail": f"Retrieved {len(base_evidence)} relational/vector evidence item(s) for workspace-scope answering.",
             },
             {
                 "name": "grounded_answer",
@@ -1978,6 +2232,27 @@ def run_agent_query(
             "object_type": request.object_type or "workspace",
             "object_id": None,
             "event_id": request.event_id,
+            "response_contract": response_contract.as_payload(),
+            "source_results": {
+                "relational": {
+                    "status": "succeeded" if relational_evidence else (
+                        "not_requested" if "relational" not in response_contract.stores else "empty"
+                    ),
+                    "evidence_count": len(relational_evidence),
+                },
+                "graph": {
+                    "status": graph_result["status"],
+                    "row_count": graph_result["row_count"],
+                    "provider": graph_result["provider"],
+                    "run_id": graph_result["run_id"],
+                },
+                "vector": {
+                    "status": "succeeded" if vector_evidence else (
+                        "not_requested" if "vector" not in response_contract.stores else "empty"
+                    ),
+                    "evidence_count": len(vector_evidence),
+                },
+            },
             "evidence": evidence,
             "claims": [{
                 "claim_id": "claim-workspace-grounded-answer",
@@ -1990,6 +2265,7 @@ def run_agent_query(
             "answer": answer,
             "caveats": [
                 "Workspace-scope read only: no individual asset failure, workflow state, approval, or execution was inferred.",
+                *([f"Graph evidence degraded: {graph_result['caveat']}"] if graph_result.get("caveat") else []),
                 *answer_caveats,
             ],
             "error": None,
@@ -2007,6 +2283,11 @@ def run_agent_query(
                 "output": {
                     "evidence_count": len(evidence),
                     "answer_mode": answer_trace.get("mode"),
+                    **(
+                        {"response_contract": response_contract.as_payload()}
+                        if step["name"] == "response_contract"
+                        else {}
+                    ),
                 },
                 "latency_ms": step["latency_ms"],
                 "created_at": now,
@@ -2059,7 +2340,7 @@ def run_agent_query(
     packet_latency_ms = int((time.perf_counter() - packet_started) * 1000)
 
     evidence_started = time.perf_counter()
-    evidence = _packet_evidence(
+    base_evidence = _packet_evidence(
         packet,
         service=service,
         project_id=request.project_id,
@@ -2067,7 +2348,14 @@ def run_agent_query(
         question=request.question,
         roles=principal.roles,
         top_k=request.top_k,
+        allowed_stores=response_contract.stores,
     )
+    graph_result = _resolve_graph_evidence(graph_future)
+    graph_evidence = list(graph_result.get("evidence") or [])
+    evidence = [
+        *base_evidence[: max(0, request.top_k - len(graph_evidence))],
+        *graph_evidence,
+    ][: request.top_k]
     evidence_latency_ms = int((time.perf_counter() - evidence_started) * 1000)
     evidence_stores = [str(item.get("store") or "") for item in evidence]
     retrieval_store = (
@@ -2079,16 +2367,21 @@ def run_agent_query(
     )
 
     tool_started = time.perf_counter()
-    try:
-        tool_result = run_read_only_tool_pipeline(packet)
-    except Exception as exc:  # pragma: no cover - defensive runtime guard
-        tool_result = {"terminal_status": "failed", "error": f"{type(exc).__name__}: {exc}", "steps": []}
+    if "relational" in response_contract.stores:
+        try:
+            tool_result = run_read_only_tool_pipeline(packet)
+        except Exception as exc:  # pragma: no cover - defensive runtime guard
+            tool_result = {"terminal_status": "failed", "error": f"{type(exc).__name__}: {exc}", "steps": []}
+    else:
+        tool_result = {"terminal_status": "skipped", "steps": []}
     tool_latency_ms = int((time.perf_counter() - tool_started) * 1000)
 
     summary_started = time.perf_counter()
     summary: dict[str, Any] | None = None
     summary_trace: dict[str, Any] = {}
-    if principal.is_admin or "agent.review.materialize" in principal.permissions:
+    if "relational" in response_contract.stores and (
+        principal.is_admin or "agent.review.materialize" in principal.permissions
+    ):
         try:
             if packet_source == "runtime-product-result":
                 summary, summary_trace = _dynamic_summary_from_packet(service=service, packet=packet)
@@ -2132,6 +2425,13 @@ def run_agent_query(
     claim_ids = answer_citations or [item["evidence_id"] for item in evidence[:4]]
     steps = [
         {
+            "name": "response_contract",
+            "store": None,
+            "status": "succeeded",
+            "latency_ms": 0,
+            "detail": f"Planned {len(response_contract.required_facts)} required fact(s) across {len(response_contract.stores)} governed source group(s).",
+        },
+        {
             "name": "agent_review_packet",
             "store": "postgresql",
             "status": "succeeded",
@@ -2141,14 +2441,31 @@ def run_agent_query(
         {
             "name": "evidence_retrieval",
             "store": retrieval_store,
-            "status": "succeeded" if evidence else "skipped",
+            "status": "succeeded" if base_evidence else "skipped",
             "latency_ms": evidence_latency_ms,
-            "detail": f"Retrieved {len(evidence)} grounded evidence item(s) from governed company and runtime sources.",
+            "detail": f"Retrieved {len(base_evidence)} relational/vector evidence item(s) from governed sources.",
         },
+        *([{
+            "name": "graph_retrieval",
+            "store": "neo4j",
+            "status": graph_result["status"],
+            "latency_ms": graph_result["latency_ms"],
+            "detail": (
+                f"Ontology Graph returned {graph_result['row_count']} validated relationship row(s)."
+                if graph_result["status"] == "succeeded"
+                else "Ontology relationship evidence is temporarily unavailable; other governed sources remain usable."
+            ),
+        }] if "graph" in response_contract.stores else []),
         {
             "name": "read_only_tool_pipeline",
             "store": "postgresql",
-            "status": "succeeded" if not (tool_result.get("validation_errors") or tool_result.get("error")) else "failed",
+            "status": (
+                "skipped"
+                if tool_result.get("terminal_status") == "skipped"
+                else "succeeded"
+                if not (tool_result.get("validation_errors") or tool_result.get("error"))
+                else "failed"
+            ),
             "latency_ms": tool_latency_ms,
             "detail": str(tool_result.get("terminal_status") or "completed"),
         },
@@ -2179,6 +2496,36 @@ def run_agent_query(
         "object_type": request.object_type or "asset",
         "object_id": request.object_id,
         "event_id": request.event_id,
+        "response_contract": response_contract.as_payload(),
+        "source_results": {
+            "relational": {
+                "status": "succeeded" if "relational" in response_contract.stores else "not_requested",
+                "packet_source": packet_source,
+            },
+            "graph": {
+                "status": graph_result["status"],
+                "row_count": graph_result["row_count"],
+                "provider": graph_result["provider"],
+                "run_id": graph_result["run_id"],
+            },
+            "vector": {
+                "status": (
+                    "succeeded"
+                    if any(
+                        item.get("store") in {"pgvector", "project3_rag", "company_context"}
+                        for item in base_evidence
+                    )
+                    else "not_requested"
+                    if "vector" not in response_contract.stores
+                    else "empty"
+                ),
+                "evidence_count": sum(
+                    1
+                    for item in base_evidence
+                    if item.get("store") in {"pgvector", "project3_rag", "company_context"}
+                ),
+            },
+        },
         "evidence": evidence,
         "claims": [{
             "claim_id": "claim-grounded-answer",
@@ -2191,6 +2538,7 @@ def run_agent_query(
         "answer": answer,
         "caveats": [
             "Read-only Operations assistant: no workflow approval, execution, or state mutation was performed.",
+            *([f"Graph evidence degraded: {graph_result['caveat']}"] if graph_result.get("caveat") else []),
             *answer_caveats,
         ],
         "error": None,
@@ -2205,7 +2553,14 @@ def run_agent_query(
             "store_kind": step["store"],
             "status": step["status"],
             "input": {"question": request.question, "object_id": request.object_id} if step["name"] == "agent_review_packet" else {},
-            "output": {"detail": step["detail"]},
+            "output": {
+                "detail": step["detail"],
+                **(
+                    {"response_contract": response_contract.as_payload()}
+                    if step["name"] == "response_contract"
+                    else {}
+                ),
+            },
             "latency_ms": step["latency_ms"],
             "created_at": now,
         }

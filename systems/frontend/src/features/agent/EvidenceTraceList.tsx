@@ -14,6 +14,7 @@ const STORE_LABELS: Record<EvidenceStore, string> = {
   neo4j: "Neo4j",
   pgvector: "pgvector",
   project3_rag: "Project 3 RAG",
+  company_context: "Company context",
 };
 
 function StoreIcon({ store }: { store: EvidenceStore }) {

@@ -32,12 +32,16 @@ if [[ ! "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]; then
   exit 1
 fi
 
-EVALUATED_SHA=""
+FRONTEND_EVALUATED_SHA=""
 if [[ -f "$PROD_ROOT/frontend-deploy-base-sha" ]]; then
-  EVALUATED_SHA="$(tr -d '[:space:]' < "$PROD_ROOT/frontend-deploy-base-sha")"
+  FRONTEND_EVALUATED_SHA="$(tr -d '[:space:]' < "$PROD_ROOT/frontend-deploy-base-sha")"
+fi
+BACKEND_EVALUATED_SHA=""
+if [[ -f "$PROD_ROOT/backend-deploy-base-sha" ]]; then
+  BACKEND_EVALUATED_SHA="$(tr -d '[:space:]' < "$PROD_ROOT/backend-deploy-base-sha")"
 fi
 
-if [[ "$EVALUATED_SHA" == "$TARGET_SHA" ]]; then
+if [[ "$FRONTEND_EVALUATED_SHA" == "$TARGET_SHA" && "$BACKEND_EVALUATED_SHA" == "$TARGET_SHA" ]]; then
   echo "main already evaluated at $TARGET_SHA"
   exit 0
 fi
@@ -93,12 +97,16 @@ fi
 git -C "$SOURCE_ROOT" checkout --detach --force "$TARGET_SHA"
 git -C "$SOURCE_ROOT" clean -ffd
 
-if [[ ! -x "$SOURCE_ROOT/scripts/deploy_macmini_frontend.sh" ]]; then
-  echo "verified main does not contain the Mac mini frontend deployment script yet; waiting"
+if [[ ! -x "$SOURCE_ROOT/scripts/deploy_macmini_frontend.sh" ]] \
+  || [[ ! -x "$SOURCE_ROOT/scripts/deploy_macmini_backend.sh" ]]; then
+  echo "verified main does not contain the Mac mini deployment scripts yet; waiting"
   exit 0
 fi
 
 echo "Deploying CI-verified main $TARGET_SHA"
+GITHUB_SHA="$TARGET_SHA" \
+ONTOLOGY_MACMINI_PROD_ROOT="$PROD_ROOT" \
+  "$SOURCE_ROOT/scripts/deploy_macmini_backend.sh"
 GITHUB_SHA="$TARGET_SHA" \
 ONTOLOGY_MACMINI_PROD_ROOT="$PROD_ROOT" \
   "$SOURCE_ROOT/scripts/deploy_macmini_frontend.sh"

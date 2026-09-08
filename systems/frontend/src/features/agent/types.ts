@@ -1,6 +1,25 @@
 export type AgentRoute = "relational" | "graph" | "vector" | "hybrid";
 export type AgentStatus = "running" | "succeeded" | "failed" | "awaiting_approval";
-export type EvidenceStore = "postgresql" | "neo4j" | "pgvector" | "project3_rag";
+export type EvidenceStore = "postgresql" | "neo4j" | "pgvector" | "project3_rag" | "company_context";
+
+export interface AgentResponseContract {
+  version: string;
+  intent: string;
+  scope: "workspace" | "object";
+  required_facts: string[];
+  required_entities: string[];
+  stores: Array<"relational" | "graph" | "vector">;
+  presentation: "metric_summary" | "risk_ranking" | "comparison" | "relationship" | "evidence" | "narrative";
+}
+
+export interface AgentSourceResult {
+  status: string;
+  evidence_count?: number;
+  row_count?: number;
+  provider?: string | null;
+  run_id?: string | null;
+  packet_source?: string;
+}
 
 export interface AgentEvidenceItem {
   evidence_id: string;
@@ -56,6 +75,8 @@ export interface AgentState {
   object_type: string | null;
   object_id: string | null;
   event_id?: string | null;
+  response_contract?: AgentResponseContract;
+  source_results?: Partial<Record<"relational" | "graph" | "vector", AgentSourceResult>>;
   evidence: AgentEvidenceItem[];
   claims: GroundedClaim[];
   steps: OrchestrationStep[];

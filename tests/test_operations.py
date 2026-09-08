@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
+import app.operations.router as operations_router
 from app.diagnosis.evidence import FixtureContextProvider
 from app.infra.context import Project3HttpContextProvider, ResilientContextProvider
 from app.operations.contracts import LayoutRequest, ReportRequest, UIBlock, UILayout
@@ -663,11 +664,72 @@ def test_workspace_scope_agent_query_does_not_require_asset_selection(client: Te
     assert state["status"] == "succeeded"
     assert state["object_type"] == "workspace"
     assert state["object_id"] is None
+    assert state["response_contract"]["version"] == "1.0"
+    assert state["response_contract"]["scope"] == "workspace"
+    assert "relational" in state["response_contract"]["stores"]
+    assert state["source_results"]["relational"]["status"] == "succeeded"
     assert state["evidence"]
     assert state["claims"]
     assert state["steps"][0]["name"] == "workspace_context"
+    assert any(step["name"] == "response_contract" for step in state["steps"])
     assert "먼저 설비" not in state["answer"]
     assert "object_id_required" not in str(state)
+
+
+def test_agent_graph_contract_merges_validated_neo4j_evidence_without_exposing_cypher(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeGraphResult:
+        answer = "선택 설비는 spindle bearing을 통해 HX-M 생산 경로와 연결됩니다."
+        status = "succeeded"
+        cypher = "MATCH (asset)-[:HAS_COMPONENT]->(component) RETURN asset, component"
+        rows = [{"asset": "CNC-S04-L04-01", "component": "spindle bearing", "product": "HX-M"}]
+        row_count = 1
+        metadata = {}
+        evidence = {}
+        validation = {"validated": True}
+        usage = {}
+        caveat = None
+        provider = "project3-test"
+        fallback_reason = None
+        run_id = "graph-run-api-test"
+        thread_id = None
+
+    class FakeGraphClient:
+        def query(self, project_id: str, *, question: str):
+            assert project_id == "manufacturing-demo-project"
+            assert "CNC-S04-L04-01" in question
+            return FakeGraphResult()
+
+    monkeypatch.setattr(operations_router, "_agent_project3_client", lambda: FakeGraphClient())
+
+    response = client.post(
+        "/api/agent/query",
+        headers=csrf_headers(client),
+        json={
+            "project_id": "manufacturing-demo-project",
+            "workspace_id": "manufacturing-demo",
+            "question": "이 설비와 연결된 부품과 제품 경로를 보여줘",
+            "route": "auto",
+            "audience": "engineering",
+            "object_type": "equipment",
+            "object_id": "CNC-S04-L04-01",
+            "top_k": 8,
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    state = response.json()["state"]
+    assert state["route"] == "hybrid"
+    assert state["response_contract"]["stores"] == ["relational", "graph"]
+    assert state["response_contract"]["presentation"] == "relationship"
+    assert state["source_results"]["graph"]["status"] == "succeeded"
+    assert state["source_results"]["graph"]["row_count"] == 1
+    assert any(item["store"] == "neo4j" for item in state["evidence"])
+    assert any(step["name"] == "graph_retrieval" for step in state["steps"])
+    assert "MATCH (asset)" not in response.text
+    assert "cypher" not in response.text.lower()
 
 
 def test_api_contract_and_state_changes(client: TestClient, service: FactorySignalService) -> None:
