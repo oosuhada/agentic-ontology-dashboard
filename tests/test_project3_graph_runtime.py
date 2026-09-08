@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.project3_runtime.main import app, get_service
 from app.project3_runtime.service import GraphRuntimeService
+from app.project3_runtime.store import Neo4jGraphStore
 
 
 class FakeGraphStore:
@@ -85,6 +86,53 @@ class FakeGraphStore:
                 "dataset_version_id": "dsv-1",
             },
         ]
+
+
+class _FakeNeo4jResult:
+    def data(self):
+        return [{"node": {"source_identity": "CNC-S04-L04-01"}}]
+
+
+class _FakeNeo4jSession:
+    def __init__(self) -> None:
+        self.parameters = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def run(self, query, **parameters):
+        self.parameters = parameters
+        return _FakeNeo4jResult()
+
+
+class _FakeNeo4jDriver:
+    def __init__(self) -> None:
+        self.last_session = None
+
+    def session(self, *, database):
+        del database
+        self.last_session = _FakeNeo4jSession()
+        return self.last_session
+
+
+def test_graph_store_search_does_not_shadow_neo4j_query_argument() -> None:
+    store = Neo4jGraphStore.__new__(Neo4jGraphStore)
+    store.database = "neo4j"
+    store._driver = _FakeNeo4jDriver()
+
+    rows = store.search(
+        project_id="manufacturing-demo-project",
+        label="equipment",
+        query="CNC",
+        limit=8,
+    )
+
+    assert rows[0]["node"]["source_identity"] == "CNC-S04-L04-01"
+    assert store._driver.last_session.parameters["search_query"] == "CNC"
+    assert "query" not in store._driver.last_session.parameters
 
 
 def test_graph_runtime_service_uses_bounded_relationship_query_without_raw_cypher() -> None:

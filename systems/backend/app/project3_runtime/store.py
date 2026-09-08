@@ -263,16 +263,16 @@ class Neo4jGraphStore:
                 MATCH (n:GraphNode {project_id:$project_id, is_current:true})
                 WHERE ($dataset_version_id IS NULL OR n.dataset_version_id=$dataset_version_id)
                   AND ($label='' OR toLower(n.object_type)=toLower($label))
-                  AND (toLower(n.source_identity) CONTAINS toLower($query)
-                    OR toLower(coalesce(n.display_name,'')) CONTAINS toLower($query)
-                    OR toLower(coalesce(n.asset_id,'')) CONTAINS toLower($query)
-                    OR toLower(coalesce(n.product_id,'')) CONTAINS toLower($query))
+                  AND (toLower(n.source_identity) CONTAINS toLower($search_query)
+                    OR toLower(coalesce(n.display_name,'')) CONTAINS toLower($search_query)
+                    OR toLower(coalesce(n.asset_id,'')) CONTAINS toLower($search_query)
+                    OR toLower(coalesce(n.product_id,'')) CONTAINS toLower($search_query))
                 RETURN properties(n) AS node ORDER BY n.source_identity LIMIT $limit
                 """,
                 project_id=project_id,
                 dataset_version_id=dataset_version_id,
                 label=label,
-                query=query,
+                search_query=query,
                 limit=limit,
             ).data()
 
