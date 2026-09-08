@@ -3,7 +3,11 @@ set -Eeuo pipefail
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.orbstack/bin:${PATH}"
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="${ONTOLOGY_MACMINI_SOURCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+if [[ ! -f "$ROOT/infra/macmini/docker-compose.yml" ]]; then
+  echo "Ontology source root is invalid: $ROOT" >&2
+  exit 1
+fi
 PROD_ROOT="${ONTOLOGY_MACMINI_PROD_ROOT:-$HOME/Services/ontology-dashboard-prod}"
 COMPOSE_FILE="$ROOT/infra/macmini/docker-compose.yml"
 BACKEND_CONTAINER="ontology-dashboard-macmini-backend-1"

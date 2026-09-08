@@ -191,5 +191,17 @@ GENERATOR_RUNTIME_IMAGE="$TARGET_GENERATOR_IMAGE" \
     -f "$COMPOSE_FILE" \
     stop -t 20 live-ingestor knowledge-indexer generator-runtime >/dev/null 2>&1 || true
 
+# Remove legacy persistent worker containers created before these workloads
+# became one-shot/cadence services. `docker compose run --rm` creates fresh
+# ephemeral workers from the current release image, so retaining old stopped
+# containers only preserves misleading restart metadata across host restarts.
+BACKEND_IMAGE="$TARGET_IMAGE" \
+GENERATOR_RUNTIME_IMAGE="$TARGET_GENERATOR_IMAGE" \
+  docker compose \
+    --env-file "$ENV_FILE" \
+    -p ontology-dashboard-macmini \
+    -f "$COMPOSE_FILE" \
+    rm -f -s live-ingestor knowledge-indexer generator-runtime >/dev/null 2>&1 || true
+
 printf '%s\n' "$TARGET_SHA" > "$STATE_FILE"
 echo "Mac mini backend deployment succeeded: $TARGET_SHA"

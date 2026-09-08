@@ -9,6 +9,7 @@ LOG_ROOT="$HOME/Library/Logs/dev.oosu.ontology-dashboard-background-refresh"
 DOMAIN="gui/$(id -u)"
 INTERVAL="${ONTOLOGY_MACMINI_BACKGROUND_REFRESH_SECONDS:-600}"
 PROD_ROOT="${ONTOLOGY_MACMINI_PROD_ROOT:-$HOME/Services/ontology-dashboard-prod}"
+SOURCE_ROOT="$ROOT"
 
 if ! [[ "$INTERVAL" =~ ^[0-9]+$ ]] || (( INTERVAL < 300 )); then
   echo "ONTOLOGY_MACMINI_BACKGROUND_REFRESH_SECONDS must be an integer >= 300" >&2
@@ -38,6 +39,8 @@ cat > "$PLIST" <<EOF
   <dict>
     <key>ONTOLOGY_MACMINI_PROD_ROOT</key>
     <string>$PROD_ROOT</string>
+    <key>ONTOLOGY_MACMINI_SOURCE_ROOT</key>
+    <string>$SOURCE_ROOT</string>
   </dict>
   <key>StandardOutPath</key>
   <string>$LOG_ROOT/stdout.log</string>

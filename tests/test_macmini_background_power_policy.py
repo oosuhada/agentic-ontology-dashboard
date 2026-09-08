@@ -35,6 +35,7 @@ def test_backend_deploy_only_recreates_request_path_backend() -> None:
     assert "up -d --no-deps --no-build backend\n" in script
     assert "backend live-ingestor knowledge-indexer" not in script
     assert "stop -t 20 live-ingestor knowledge-indexer generator-runtime" in script
+    assert "rm -f -s live-ingestor knowledge-indexer generator-runtime" in script
     assert 'TARGET_GENERATOR_IMAGE="$GENERATOR_IMAGE_REPO:$TARGET_SHA"' in script
 
 
@@ -63,7 +64,17 @@ def test_background_refresh_launch_agent_defaults_to_ten_minutes() -> None:
     assert 'ONTOLOGY_MACMINI_BACKGROUND_REFRESH_SECONDS:-600' in installer
     assert "<key>RunAtLoad</key>\n  <false/>" in installer
     assert "<key>StartInterval</key>" in installer
+    assert "ONTOLOGY_MACMINI_SOURCE_ROOT" in installer
     assert "install-background-refresh.sh" in watcher
+
+
+def test_installed_background_runner_accepts_explicit_source_root() -> None:
+    runner = (ROOT / "scripts" / "run_macmini_background_refresh.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "ONTOLOGY_MACMINI_SOURCE_ROOT" in runner
+    assert "Ontology source root is invalid" in runner
 
 
 def test_knowledge_worker_run_once_skips_clean_index(monkeypatch) -> None:
