@@ -65,7 +65,9 @@ def main() -> int:
     client = Project3Client(
         base_url=project3_url,
         project_mapping={},
-        timeout_seconds=float(os.getenv("ONTOLOGY_DASHBOARD_PROJECT3_TIMEOUT_SECONDS", "4")),
+        timeout_seconds=float(
+            os.getenv("ONTOLOGY_DASHBOARD_PROJECT3_PROJECTION_TIMEOUT_SECONDS", "30")
+        ),
         max_retries=int(os.getenv("ONTOLOGY_DASHBOARD_PROJECT3_MAX_RETRIES", "1")),
     )
     handler = PredictiveMaintenanceProject3ProjectionHandler(database_url, client)
