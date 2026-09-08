@@ -44,10 +44,15 @@ GRAPH_EVALUATED_SHA=""
 if [[ -f "$PROD_ROOT/graph-deploy-base-sha" ]]; then
   GRAPH_EVALUATED_SHA="$(tr -d '[:space:]' < "$PROD_ROOT/graph-deploy-base-sha")"
 fi
+HOST_POLICY_EVALUATED_SHA=""
+if [[ -f "$PROD_ROOT/host-policy-base-sha" ]]; then
+  HOST_POLICY_EVALUATED_SHA="$(tr -d '[:space:]' < "$PROD_ROOT/host-policy-base-sha")"
+fi
 
 if [[ "$FRONTEND_EVALUATED_SHA" == "$TARGET_SHA" \
   && "$BACKEND_EVALUATED_SHA" == "$TARGET_SHA" \
-  && "$GRAPH_EVALUATED_SHA" == "$TARGET_SHA" ]]; then
+  && "$GRAPH_EVALUATED_SHA" == "$TARGET_SHA" \
+  && "$HOST_POLICY_EVALUATED_SHA" == "$TARGET_SHA" ]]; then
   echo "main already evaluated at $TARGET_SHA"
   exit 0
 fi
@@ -138,3 +143,7 @@ fi
 if [[ -f "$SOURCE_ROOT/infra/macmini/install-idle-demo-supervisors.sh" ]]; then
   /bin/bash "$SOURCE_ROOT/infra/macmini/install-idle-demo-supervisors.sh"
 fi
+
+# Host-level launchd/nginx/cloudflared policy is part of the release contract,
+# not an untracked side effect. Record it only after every installer succeeds.
+printf '%s\n' "$TARGET_SHA" > "$PROD_ROOT/host-policy-base-sha"

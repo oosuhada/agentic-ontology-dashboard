@@ -78,3 +78,5 @@ def test_release_watcher_reinstalls_idle_demo_policy() -> None:
 
     assert "install-idle-demo-supervisors.sh" in watcher
     assert '/bin/bash "$SOURCE_ROOT/infra/macmini/install-idle-demo-supervisors.sh"' in watcher
+    assert "HOST_POLICY_EVALUATED_SHA" in watcher
+    assert '"$PROD_ROOT/host-policy-base-sha"' in watcher
