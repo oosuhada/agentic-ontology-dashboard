@@ -25,7 +25,10 @@ from app.infra.external.project3 import (
     Project3ProjectionDeliveryError,
 )
 from app.infra.messaging.outbox import OutboxMessage
-from app.project3_projection_worker import _latest_materialization_message
+from app.project3_projection_worker import (
+    _latest_materialization_message,
+    _supersede_stale_materialization_messages,
+)
 from predictive_maintenance_v3_helpers import create_small_v3_package
 from test_predictive_maintenance_bundle_adapter import create_small_package
 from test_predictive_maintenance_postgresql import (
@@ -136,6 +139,29 @@ def test_graph_bootstrap_selects_current_materialization_and_rejects_stale_event
         ).build_request(stale_message)
     assert exc_info.value.retryable is False
     assert "stale ontology materialization event" in str(exc_info.value)
+
+    assert _supersede_stale_materialization_messages(
+        postgresql_database,
+        organization_id="org-test",
+        project_id="project-test",
+    ) == 1
+    with psycopg.connect(postgresql_database, row_factory=dict_row) as connection:
+        stale_state = connection.execute(
+            "SELECT status,processed_at,last_error FROM transactional_outbox WHERE id=%s",
+            (stale_id,),
+        ).fetchone()
+        delivery = connection.execute(
+            "SELECT handler_code FROM outbox_delivery_log WHERE outbox_id=%s",
+            (stale_id,),
+        ).fetchone()
+    assert stale_state is not None
+    assert stale_state["status"] == "processed"
+    assert stale_state["processed_at"] is not None
+    assert stale_state["last_error"] is None
+    assert delivery is not None
+    assert delivery["handler_code"] == (
+        "project3-versioned-graph-projection-v1:superseded"
+    )
 
 
 def ingest(database_url: str, root: Path):

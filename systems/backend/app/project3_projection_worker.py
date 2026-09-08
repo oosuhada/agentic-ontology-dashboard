@@ -12,6 +12,85 @@ from app.infra.external.project3 import (
 from app.infra.messaging.outbox import OutboxMessage, ProjectOutboxRepository, ProjectOutboxWorker
 
 
+def _supersede_stale_materialization_messages(
+    database_url: str,
+    *,
+    organization_id: str,
+    project_id: str,
+) -> int:
+    try:
+        import psycopg
+        from psycopg.rows import dict_row
+    except ImportError as exc:  # pragma: no cover - production extra guard
+        raise RuntimeError("graph projection worker requires the postgres extra") from exc
+    normalized = database_url.replace("postgresql+psycopg://", "postgresql://", 1)
+    with psycopg.connect(normalized, row_factory=dict_row) as connection:
+        connection.execute("SELECT set_config('app.organization_id',%s,true)", (organization_id,))
+        connection.execute("SELECT set_config('app.project_id',%s,true)", (project_id,))
+        connection.execute(
+            """
+            WITH current_materializations AS (
+                SELECT DISTINCT ON (dataset_version_id)
+                    dataset_version_id,workspace_id,materialization_checksum_sha256
+                FROM ontology_ingestion_runs
+                WHERE organization_id=%s AND project_id=%s
+                  AND status='completed'
+                  AND materialization_checksum_sha256 IS NOT NULL
+                ORDER BY dataset_version_id,completed_at DESC,id DESC
+            ), stale AS (
+                SELECT o.*
+                FROM transactional_outbox o
+                JOIN current_materializations m
+                  ON o.aggregate_id=m.dataset_version_id
+                 AND o.workspace_id=m.workspace_id
+                WHERE o.organization_id=%s AND o.project_id=%s
+                  AND o.event_type='ontology.materialization.completed'
+                  AND o.status<>'processed'
+                  AND coalesce(o.payload_json->>'materialization_checksum_sha256','')
+                      <> m.materialization_checksum_sha256
+            )
+            INSERT INTO outbox_delivery_log(
+                id,organization_id,project_id,workspace_id,outbox_id,event_type,
+                handler_code,payload_json,delivered_at
+            )
+            SELECT 'graph-superseded-' || id::text,organization_id,project_id,
+                   workspace_id,id,event_type,
+                   'project3-versioned-graph-projection-v1:superseded',payload_json,now()
+            FROM stale
+            ON CONFLICT(outbox_id) DO NOTHING
+            """,
+            (organization_id, project_id, organization_id, project_id),
+        )
+        rows = connection.execute(
+            """
+            WITH current_materializations AS (
+                SELECT DISTINCT ON (dataset_version_id)
+                    dataset_version_id,workspace_id,materialization_checksum_sha256
+                FROM ontology_ingestion_runs
+                WHERE organization_id=%s AND project_id=%s
+                  AND status='completed'
+                  AND materialization_checksum_sha256 IS NOT NULL
+                ORDER BY dataset_version_id,completed_at DESC,id DESC
+            )
+            UPDATE transactional_outbox o
+            SET status='processed',processed_at=now(),last_error=NULL,
+                lease_owner=NULL,lease_token=NULL,lease_expires_at=NULL,heartbeat_at=NULL
+            FROM current_materializations m
+            WHERE o.organization_id=%s AND o.project_id=%s
+              AND o.event_type='ontology.materialization.completed'
+              AND o.status<>'processed'
+              AND o.aggregate_id=m.dataset_version_id
+              AND o.workspace_id=m.workspace_id
+              AND coalesce(o.payload_json->>'materialization_checksum_sha256','')
+                  <> m.materialization_checksum_sha256
+            RETURNING o.id
+            """,
+            (organization_id, project_id, organization_id, project_id),
+        ).fetchall()
+        connection.commit()
+    return len(rows)
+
+
 def _latest_materialization_message(
     database_url: str,
     *,
@@ -96,6 +175,11 @@ def main() -> int:
         lease_seconds=120,
     )
     try:
+        _supersede_stale_materialization_messages(
+            database_url,
+            organization_id=organization_id,
+            project_id=project_id,
+        )
         if os.getenv("ONTOLOGY_DASHBOARD_GRAPH_BOOTSTRAP_ON_START", "1").strip().lower() not in {"0", "false", "no"}:
             message = _latest_materialization_message(
                 database_url,
