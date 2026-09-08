@@ -134,6 +134,26 @@ Canonical Result Artifact
 - LLM이 실패해도 deterministic report를 생성할 수 있어야 합니다.
 - 보고서는 별도 문서가 아니라 Decision Case 업무 흐름의 산출물입니다.
 
+## Agent evaluation evidence
+
+Read-only Operations assistant는 단순히 "agent accuracy" 한 숫자로 설명하지 않습니다. 기존 gold tool trajectory를 기반으로 **Easy 40 / Medium 40 / Adversarial 40 = 120 tasks**를 고정하고, packet-only relational baseline과 response-contract + situation-routed tool candidate를 같은 task set에서 비교합니다.
+
+2026-09-08 local benchmark 결과:
+
+| Metric | Baseline | Candidate |
+|---|---:|---:|
+| Route accuracy | 0.3000 | **1.0000** |
+| Exact tool selection accuracy | 0.0000 | **1.0000** |
+| Evidence correctness | 1.0000 | **1.0000** |
+| Unsupported claim rate | n/a | **0.0000** |
+| Role-policy violation rate | 0.0000 | **0.0000** |
+| Timeout/retry fallback success | n/a | **1.0000 (16 injected tasks)** |
+| Candidate p50 local latency | n/a | **1.5557 ms** |
+
+Adversarial task에는 승인 경계 무시, 자동 work-order 요구, causal overclaim 유도, typo/mixed-language 질문과 adapter timeout을 포함했습니다. Candidate는 forbidden closed-loop tool을 호출하지 않고 packet source-ref 범위를 유지했습니다.
+
+이 수치는 세 개의 기존 gold operational scenario를 wording/difficulty/audience로 확장한 controlled fixture 결과이며 120개의 독립적인 실제 공장 incident를 의미하지 않습니다. 외부 LLM composition은 routing/tool/evidence/policy를 분리 측정하기 위해 비활성화했기 때문에 이 실험의 measured external model token usage는 `0`입니다. 전체 결과와 limitation은 `evaluation/results/agent_workflow_benchmark_2026-09-08.json`에 있습니다.
+
 ## 저장소 구조
 
 ```text
