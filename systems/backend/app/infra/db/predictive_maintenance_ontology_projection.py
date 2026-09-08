@@ -13,6 +13,7 @@ import json
 import math
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -20,7 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.ontology.ontology_domain import LinkRecord, ObjectRecord
 
 
-DEFAULT_MAPPING_VERSION = "predictive-maintenance-v3.1"
+DEFAULT_MAPPING_VERSION = "predictive-maintenance-v3.2"
 SOURCE_SYSTEM = "predictive-maintenance-postgresql-materialization"
 
 DEFAULT_MAPPING: dict[str, Any] = {
@@ -30,6 +31,9 @@ DEFAULT_MAPPING: dict[str, Any] = {
         "site",
         "production_cell",
         "equipment",
+        "component",
+        "product",
+        "sop",
         "risk_event",
         "prediction_result",
         "work_order",
@@ -39,6 +43,8 @@ DEFAULT_MAPPING: dict[str, Any] = {
     "link_types": [
         "site_contains_cell",
         "cell_contains_equipment",
+        "equipment_has_component",
+        "component_inspected_by_sop",
         "equipment_supplies_air_to_equipment",
         "equipment_has_risk_event",
         "equipment_has_prediction_result",
@@ -46,6 +52,8 @@ DEFAULT_MAPPING: dict[str, Any] = {
         "equipment_has_work_order",
         "work_order_has_maintenance_action",
         "equipment_completed_production_cycle",
+        "production_cycle_produces_product",
+        "equipment_produces_product",
     ],
     "result_artifact_precedence": True,
     "recommended_action_semantics": "policy_recommendation_not_execution",
@@ -136,6 +144,34 @@ def _source_ref(
         f"object:{object_type}:{source_identity}"
     )
     return reference + suffix
+
+
+def _reference_fixture(relative_path: str) -> tuple[dict[str, Any], str]:
+    path = Path(__file__).resolve().parents[5] / relative_path
+    payload = path.read_bytes()
+    value = json.loads(payload.decode("utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(f"reference fixture must be an object: {relative_path}")
+    return value, hashlib.sha256(payload).hexdigest()
+
+
+def _component_reference_contracts() -> dict[str, tuple[dict[str, Any], str]]:
+    return {
+        "cnc": _reference_fixture(
+            "data/fixtures/inspection_location/demo-cnc-inspection-location-reference-v1.json"
+        ),
+        "compressor": _reference_fixture(
+            "data/fixtures/inspection_location/demo-compressor-inspection-location-reference-v1.json"
+        ),
+    }
+
+
+def _sop_reference_contracts() -> list[tuple[dict[str, Any], str]]:
+    return [
+        _reference_fixture(
+            "data/fixtures/inspection_sop/demo-cnc-inspection-guidance-v1-1.json"
+        )
+    ]
 
 
 class PredictiveMaintenanceOntologyMaterializer:
@@ -642,13 +678,14 @@ class PredictiveMaintenanceOntologyMaterializer:
             )
         for row in assets:
             asset_id = str(row["asset_id"])
+            asset_type = str(row["asset_type"])
             equipment_oid = add_object(
                 "equipment",
                 asset_id,
                 {
                     "display_name": asset_id,
                     "asset_id": asset_id,
-                    "asset_type": str(row["asset_type"]),
+                    "asset_type": asset_type,
                     "site_id": str(row["site_id"]),
                     "cell_id": str(row["cell_id"]),
                     "line": str(row["cell_id"]),
@@ -671,6 +708,96 @@ class PredictiveMaintenanceOntologyMaterializer:
                 object_ids[("production_cell", str(row["cell_id"]))],
                 equipment_oid,
             )
+
+        component_contracts = _component_reference_contracts()
+        component_oids: dict[tuple[str, str], str] = {}
+        for row in assets:
+            asset_id = str(row["asset_id"])
+            asset_type = str(row["asset_type"])
+            contract_entry = component_contracts.get(asset_type)
+            if contract_entry is None:
+                continue
+            contract, contract_sha = contract_entry
+            source_uri = str(contract.get("source_uri") or "inspection-location-reference")
+            for location in contract.get("locations") or []:
+                if not isinstance(location, dict) or not location.get("component_id"):
+                    continue
+                component_id = str(location["component_id"])
+                source_identity = f"{asset_id}:{component_id}"
+                component_oid = add_object(
+                    "component",
+                    source_identity,
+                    {
+                        "asset_id": asset_id,
+                        "asset_type": asset_type,
+                        "component_id": component_id,
+                        "component_label": str(location.get("component_label") or component_id),
+                        "display_name": str(location.get("component_label") or component_id),
+                        "location_label": str(location.get("location_label") or ""),
+                        "inspection_method": str(location.get("inspection_method") or ""),
+                        "reference_contract_id": str(contract.get("contract_id") or ""),
+                        "reference_maturity": str(contract.get("maturity") or "fixture"),
+                        "claim_scope": "inspection_reference_not_failure_truth",
+                    },
+                    [f"{source_uri}:sha256:{contract_sha}:component:{component_id}"],
+                )
+                component_oids[(asset_id, component_id)] = component_oid
+                add_link(
+                    "equipment_has_component",
+                    f"{asset_id}->{component_id}",
+                    object_ids[("equipment", asset_id)],
+                    component_oid,
+                    {
+                        "semantics": "inspection_reference_topology",
+                        "causal_claim_allowed": False,
+                        "source_ref": f"{source_uri}:sha256:{contract_sha}:component:{component_id}",
+                    },
+                )
+
+        sop_contracts = _sop_reference_contracts()
+        sop_oids: dict[str, str] = {}
+        for sop, sop_sha in sop_contracts:
+            sop_id = str(sop.get("sop_id") or "")
+            if not sop_id:
+                continue
+            source_uri = str(sop.get("source_uri") or "inspection-sop")
+            sop_oids[sop_id] = add_object(
+                "sop",
+                sop_id,
+                {
+                    "sop_id": sop_id,
+                    "title": str(sop.get("title") or sop_id),
+                    "display_name": str(sop.get("title") or sop_id),
+                    "version": str(sop.get("version") or ""),
+                    "maturity": str(sop.get("maturity") or "fixture"),
+                    "asset_types": [str(value) for value in sop.get("asset_types") or []],
+                    "component_ids": [str(value) for value in sop.get("component_ids") or []],
+                    "requires_human_approval": bool(sop.get("requires_human_approval", True)),
+                    "claim_scope": "procedure_reference_not_execution_authority",
+                },
+                [f"{source_uri}:sha256:{sop_sha}:sop:{sop_id}"],
+            )
+            supported_asset_types = {str(value) for value in sop.get("asset_types") or []}
+            supported_components = {str(value) for value in sop.get("component_ids") or []}
+            for row in assets:
+                asset_id = str(row["asset_id"])
+                if str(row["asset_type"]) not in supported_asset_types:
+                    continue
+                for component_id in supported_components:
+                    component_oid = component_oids.get((asset_id, component_id))
+                    if component_oid is None:
+                        continue
+                    add_link(
+                        "component_inspected_by_sop",
+                        f"{asset_id}:{component_id}->{sop_id}",
+                        component_oid,
+                        sop_oids[sop_id],
+                        {
+                            "semantics": "inspection_guidance_reference",
+                            "requires_human_approval": True,
+                            "source_ref": f"{source_uri}:sha256:{sop_sha}:sop:{sop_id}",
+                        },
+                    )
 
         for row in connection.execute(
             """
@@ -895,9 +1022,34 @@ class PredictiveMaintenanceOntologyMaterializer:
             """,
             (dataset_version_id,),
         ).fetchall()
+        product_oids: dict[str, str] = {}
         for row in latest_cycles:
             product_id = str(row["product_id"])
             asset_id = str(row["cnc_asset_id"])
+            product_type = str(row["product_type"])
+            product_oid = product_oids.get(product_type)
+            if product_oid is None:
+                product_oid = add_object(
+                    "product",
+                    product_type,
+                    {
+                        "product_id": product_type,
+                        "product_type": product_type,
+                        "display_name": f"Product {product_type}",
+                        "source_role": "cnc_production_cycle",
+                    },
+                    [
+                        _source_ref(
+                            dataset_id,
+                            dataset_version_id,
+                            "cnc_production_cycle",
+                            role_checksums["cnc_production_cycle"],
+                            "product",
+                            product_type,
+                        )
+                    ],
+                )
+                product_oids[product_type] = product_oid
             cycle_oid = add_object(
                 "production_cycle",
                 product_id,
@@ -906,7 +1058,7 @@ class PredictiveMaintenanceOntologyMaterializer:
                     "asset_id": asset_id,
                     "cycle_started_at": row["cycle_started_at"].isoformat(),
                     "cycle_completed_at": row["cycle_completed_at"].isoformat(),
-                    "product_type": str(row["product_type"]),
+                    "product_type": product_type,
                     "cutting_minutes": float(row["cutting_minutes"]),
                     "tool_wear_increment_min": float(row["tool_wear_increment_min"]),
                     "selection_policy": "latest_cycle_per_cnc",
@@ -928,6 +1080,20 @@ class PredictiveMaintenanceOntologyMaterializer:
                 object_ids[("equipment", asset_id)],
                 cycle_oid,
                 {"selection_policy": "latest_cycle_per_cnc"},
+            )
+            add_link(
+                "production_cycle_produces_product",
+                f"{product_id}->{product_type}",
+                cycle_oid,
+                product_oid,
+                {"selection_policy": "latest_cycle_per_cnc"},
+            )
+            add_link(
+                "equipment_produces_product",
+                f"{asset_id}->{product_type}",
+                object_ids[("equipment", asset_id)],
+                product_oid,
+                {"basis": "latest_completed_production_cycle"},
             )
 
         return objects, links

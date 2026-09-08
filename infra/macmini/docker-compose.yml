@@ -37,6 +37,54 @@ services:
       start_period: 5s
     networks: [private]
 
+  neo4j:
+    image: neo4j:5.26-community
+    restart: unless-stopped
+    cpus: 0.75
+    mem_limit: 1400m
+    environment:
+      NEO4J_AUTH: ${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-}
+      NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-}
+      NEO4J_server_memory_heap_initial__size: 384m
+      NEO4J_server_memory_heap_max__size: 512m
+      NEO4J_server_memory_pagecache_size: 384m
+    volumes:
+      - ${ONTOLOGY_DATA_ROOT}/neo4j/data:/data
+      - ${ONTOLOGY_DATA_ROOT}/neo4j/logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -a bolt://127.0.0.1:7687 -u $${NEO4J_USERNAME:-neo4j} -p '$${NEO4J_PASSWORD}' 'RETURN 1 AS ok' >/dev/null"]
+      interval: 8s
+      timeout: 5s
+      retries: 25
+      start_period: 20s
+    networks: [private]
+
+  project3:
+    image: ${PROJECT3_IMAGE:-ontology-dashboard-macmini-project3:latest}
+    restart: unless-stopped
+    cpus: 0.5
+    mem_limit: 512m
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      ONTOLOGY_DASHBOARD_NEO4J_URI: bolt://neo4j:7687
+      ONTOLOGY_DASHBOARD_NEO4J_DATABASE: ${ONTOLOGY_DASHBOARD_NEO4J_DATABASE:-neo4j}
+      ONTOLOGY_DASHBOARD_NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
+      ONTOLOGY_DASHBOARD_NEO4J_PASSWORD: ${NEO4J_PASSWORD:-}
+    command: ["python", "-m", "uvicorn", "app.project3_runtime.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header"]
+    ports:
+      - 127.0.0.1:${PROJECT3_PORT:-8130}:8000
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 15s
+    networks: [private]
+
   backend:
     image: ${BACKEND_IMAGE:-ontology-dashboard-macmini-backend:latest}
     build:
@@ -80,8 +128,8 @@ services:
       ONTOLOGY_DASHBOARD_RAG_EMBEDDING_PROVIDER: ${ONTOLOGY_DASHBOARD_RAG_EMBEDDING_PROVIDER:-hashing}
       ONTOLOGY_DASHBOARD_RAG_EMBEDDING_MODEL: ${ONTOLOGY_DASHBOARD_RAG_EMBEDDING_MODEL:-gemini-embedding-001}
       ONTOLOGY_DASHBOARD_RAG_EMBEDDING_API_KEY: ${ONTOLOGY_DASHBOARD_RAG_EMBEDDING_API_KEY:-}
-      ONTOLOGY_DASHBOARD_PROJECT3_URL: ${ONTOLOGY_DASHBOARD_PROJECT3_URL:-http://host.docker.internal:8001}
-      ONTOLOGY_DASHBOARD_PROJECT3_PROJECT_MAP: ${ONTOLOGY_DASHBOARD_PROJECT3_PROJECT_MAP:-{"manufacturing-demo-project":"cip-dmd"}}
+      ONTOLOGY_DASHBOARD_PROJECT3_URL: ${ONTOLOGY_DASHBOARD_PROJECT3_URL:-http://project3:8000}
+      ONTOLOGY_DASHBOARD_PROJECT3_PROJECT_MAP: ${ONTOLOGY_DASHBOARD_PROJECT3_PROJECT_MAP:-}
       ONTOLOGY_DASHBOARD_PROJECT3_TIMEOUT_SECONDS: ${ONTOLOGY_DASHBOARD_PROJECT3_TIMEOUT_SECONDS:-4}
       ONTOLOGY_DASHBOARD_PROJECT3_MAX_RETRIES: ${ONTOLOGY_DASHBOARD_PROJECT3_MAX_RETRIES:-1}
       ONTOLOGY_DASHBOARD_PROJECT3_CIRCUIT_FAILURES: ${ONTOLOGY_DASHBOARD_PROJECT3_CIRCUIT_FAILURES:-3}
@@ -101,6 +149,29 @@ services:
     networks:
       private:
         aliases: [api]
+
+  graph-projector:
+    image: ${BACKEND_IMAGE:-ontology-dashboard-macmini-backend:latest}
+    restart: unless-stopped
+    cpus: 0.35
+    mem_limit: 384m
+    depends_on:
+      postgres:
+        condition: service_healthy
+      project3:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      ONTOLOGY_DASHBOARD_DATABASE_URL: ${ONTOLOGY_DASHBOARD_DATABASE_URL}
+      ONTOLOGY_DASHBOARD_PROJECT3_URL: http://project3:8000
+      ONTOLOGY_DASHBOARD_PROJECT3_TIMEOUT_SECONDS: ${ONTOLOGY_DASHBOARD_PROJECT3_TIMEOUT_SECONDS:-4}
+      ONTOLOGY_DASHBOARD_PROJECT3_MAX_RETRIES: ${ONTOLOGY_DASHBOARD_PROJECT3_MAX_RETRIES:-1}
+      ONTOLOGY_DASHBOARD_GRAPH_ORGANIZATION_ID: ${ONTOLOGY_DASHBOARD_GRAPH_ORGANIZATION_ID:-org-ontology-demo}
+      ONTOLOGY_DASHBOARD_GRAPH_PROJECT_ID: ${ONTOLOGY_DASHBOARD_GRAPH_PROJECT_ID:-manufacturing-demo-project}
+      ONTOLOGY_DASHBOARD_GRAPH_PROJECTION_POLL_SECONDS: ${ONTOLOGY_DASHBOARD_GRAPH_PROJECTION_POLL_SECONDS:-5}
+      ONTOLOGY_DASHBOARD_GRAPH_BOOTSTRAP_ON_START: "1"
+    command: ["python", "-m", "app.project3_projection_worker"]
+    networks: [private]
 
   knowledge-indexer:
     image: ontology-dashboard-macmini-backend:latest

@@ -1,8 +1,9 @@
 # Mac mini production stack
 
-This stack runs Frontend, Backend, PostgreSQL and the batch Generator on the Mac
-mini. Vercel remains available for CI/preview validation; Render and Neon remain
-untouched rollback sources during the validation period.
+This stack runs Frontend, Backend, PostgreSQL, a versioned Neo4j read projection,
+and the batch Generator on the Mac mini. Vercel remains available for CI/preview
+validation; Render and Neon remain untouched rollback sources during the
+validation period.
 
 ## Services and boundary
 
@@ -12,6 +13,16 @@ untouched rollback sources during the validation period.
 - `redis`: private-network-only ephemeral Redis used by the Backend's
   distributed production rate limiter. It exposes no host port and contains no
   authoritative application data.
+- `neo4j`: private-network-only versioned ontology read projection. PostgreSQL
+  remains authoritative; graph nodes carry Dataset Version identity and only
+  the newest successful projection is marked current.
+- `project3`: bounded graph query service compatible with the Project 3 HTTP
+  contract. It accepts governed graph projections and exposes search/subgraph
+  plus depth-limited relationship questions; it does not expose raw Cypher to
+  the product Assistant.
+- `graph-projector`: durable outbox consumer that delivers approved ontology
+  materializations from PostgreSQL to Project 3. Graph delivery can fail or
+  retry without blocking Backend or Frontend availability.
 - `backend`: canonical `systems/backend`, published only to `127.0.0.1:8110` for
   Cloudflare Tunnel. It reads `/artifacts/.../current` read-only via
   `MODEL_ARTIFACT_URI`.
@@ -47,7 +58,7 @@ endpoint is absent or unreachable.
 ## Startup / shutdown / logs
 
 ```sh
-docker compose --env-file .env -f docker-compose.yml up -d postgres redis backend frontend
+docker compose --env-file .env -f docker-compose.yml up -d postgres redis neo4j project3 backend graph-projector frontend
 docker compose --env-file .env -f docker-compose.yml ps
 docker compose --env-file .env -f docker-compose.yml logs -f frontend backend
 docker compose --env-file .env -f docker-compose.yml stop frontend backend redis postgres

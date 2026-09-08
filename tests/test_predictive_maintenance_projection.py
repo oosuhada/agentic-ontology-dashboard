@@ -18,6 +18,8 @@ from app.infra.db.predictive_maintenance_ontology_projection import (
 from app.infra.db.postgresql_ontology_repository import (
     PostgreSQLOntologyInstanceRepository,
 )
+from app.infra.external.project3 import PredictiveMaintenanceProject3ProjectionHandler
+from app.infra.messaging.outbox import OutboxMessage
 from predictive_maintenance_v3_helpers import create_small_v3_package
 from test_predictive_maintenance_bundle_adapter import create_small_package
 from test_predictive_maintenance_postgresql import (
@@ -106,19 +108,22 @@ def test_v2_v3_materialization_is_versioned_governed_and_idempotent(
         dataset_version_id=v3_ingestion.dataset_version_id,
     )
     assert first.object_counts == second.object_counts == {
+        "component": 8,
         "equipment": 2,
         "maintenance_action": 1,
         "prediction_result": 2,
+        "product": 1,
         "production_cell": 1,
         "production_cycle": 1,
         "risk_event": 2,
         "site": 1,
+        "sop": 1,
         "work_order": 1,
     }
-    assert first.link_count == second.link_count == 13
+    assert first.link_count == second.link_count == 27
     assert first.materialization_checksum_sha256 == second.materialization_checksum_sha256
     assert first.outbox_event_id == second.outbox_event_id
-    assert first.mapping_version == "predictive-maintenance-v3.1"
+    assert first.mapping_version == "predictive-maintenance-v3.2"
 
     with psycopg.connect(postgresql_database, row_factory=dict_row) as connection:
         outbox_payload = connection.execute(
@@ -160,6 +165,35 @@ def test_v2_v3_materialization_is_versioned_governed_and_idempotent(
     }
     assert "canonical/evaluation_truth" in outbox_payload["excluded_sources"]
 
+    projection_request = PredictiveMaintenanceProject3ProjectionHandler(
+        postgresql_database,
+        client=object(),  # build_request is a pure PostgreSQL -> contract translation.
+    ).build_request(
+        OutboxMessage(
+            id=first.outbox_event_id,
+            organization_id="org-test",
+            project_id="project-test",
+            workspace_id="workspace-test",
+            aggregate_type="dataset_version",
+            aggregate_id=v3_ingestion.dataset_version_id,
+            event_type="ontology.materialization.completed",
+            payload=outbox_payload,
+            attempt_count=0,
+            lease_token="projection-contract-test",
+        )
+    )
+    assert {node.identity.object_type for node in projection_request.nodes}.issuperset(
+        {"equipment", "component", "product", "sop", "risk_event"}
+    )
+    relationship_types = {
+        relationship.relationship_type
+        for relationship in projection_request.relationships
+    }
+    assert {"HAS_COMPONENT", "INSPECTED_BY", "PRODUCES_PRODUCT", "CURRENTLY_PRODUCES"}.issubset(
+        relationship_types
+    )
+    assert all(node.identity.dataset_version_id == v3_ingestion.dataset_version_id for node in projection_request.nodes)
+
     repository = PostgreSQLOntologyInstanceRepository(
         postgresql_database,
         organization_id="org-test",
@@ -182,6 +216,12 @@ def test_v2_v3_materialization_is_versioned_governed_and_idempotent(
     assert not any(item.object_type in {"sensor_observation", "prediction_timeline"} for item in v3_objects)
     risk_events = [item for item in v3_objects if item.object_type == "risk_event"]
     assert len(risk_events) == 2
+    assert len([item for item in v3_objects if item.object_type == "component"]) == 8
+    assert len([item for item in v3_objects if item.object_type == "product"]) == 1
+    assert len([item for item in v3_objects if item.object_type == "sop"]) == 1
+    assert len([item for item in v3_links if item.link_type == "equipment_has_component"]) == 8
+    assert len([item for item in v3_links if item.link_type == "component_inspected_by_sop"]) == 4
+    assert len([item for item in v3_links if item.link_type == "equipment_produces_product"]) == 1
     assert all(item.properties["result_contract_source"] == "result_artifact" for item in risk_events)
     assert all(item.properties["recommendation_execution_state"] == "not_executed" for item in risk_events)
     assert not any(item.link_type == "risk_event_requires_work_order" for item in v3_links)
@@ -233,7 +273,15 @@ def test_v2_v3_materialization_is_versioned_governed_and_idempotent(
         if item.object_type == "risk_event"
         and item.properties.get("dataset_version_id") == v2_ingestion.dataset_version_id
     ]
-    assert v2_result.object_count == 11
+    assert v2_result.object_count == 21
+    v2_components = [
+        item
+        for item in all_objects
+        if item.object_type == "component"
+        and item.properties.get("dataset_version_id") == v2_ingestion.dataset_version_id
+    ]
+    assert len(v2_components) == 8
+    assert all(v2_ingestion.dataset_version_id in item.id for item in v2_components)
     assert all(item.properties["result_contract_source"] == "prediction_snapshot" for item in v2_risk)
 
     revised_manifest = _changed_schema_manifest(v3_manifest)

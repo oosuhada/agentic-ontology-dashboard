@@ -40,8 +40,14 @@ BACKEND_EVALUATED_SHA=""
 if [[ -f "$PROD_ROOT/backend-deploy-base-sha" ]]; then
   BACKEND_EVALUATED_SHA="$(tr -d '[:space:]' < "$PROD_ROOT/backend-deploy-base-sha")"
 fi
+GRAPH_EVALUATED_SHA=""
+if [[ -f "$PROD_ROOT/graph-deploy-base-sha" ]]; then
+  GRAPH_EVALUATED_SHA="$(tr -d '[:space:]' < "$PROD_ROOT/graph-deploy-base-sha")"
+fi
 
-if [[ "$FRONTEND_EVALUATED_SHA" == "$TARGET_SHA" && "$BACKEND_EVALUATED_SHA" == "$TARGET_SHA" ]]; then
+if [[ "$FRONTEND_EVALUATED_SHA" == "$TARGET_SHA" \
+  && "$BACKEND_EVALUATED_SHA" == "$TARGET_SHA" \
+  && "$GRAPH_EVALUATED_SHA" == "$TARGET_SHA" ]]; then
   echo "main already evaluated at $TARGET_SHA"
   exit 0
 fi
@@ -107,6 +113,11 @@ echo "Deploying CI-verified main $TARGET_SHA"
 GITHUB_SHA="$TARGET_SHA" \
 ONTOLOGY_MACMINI_PROD_ROOT="$PROD_ROOT" \
   "$SOURCE_ROOT/scripts/deploy_macmini_backend.sh"
+if [[ -x "$SOURCE_ROOT/scripts/deploy_macmini_graph.sh" ]]; then
+  GITHUB_SHA="$TARGET_SHA" \
+  ONTOLOGY_MACMINI_PROD_ROOT="$PROD_ROOT" \
+    "$SOURCE_ROOT/scripts/deploy_macmini_graph.sh"
+fi
 GITHUB_SHA="$TARGET_SHA" \
 ONTOLOGY_MACMINI_PROD_ROOT="$PROD_ROOT" \
   "$SOURCE_ROOT/scripts/deploy_macmini_frontend.sh"
