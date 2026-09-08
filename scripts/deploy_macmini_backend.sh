@@ -13,6 +13,8 @@ COMPOSE_FILE="$ROOT/infra/macmini/docker-compose.yml"
 IMAGE_REPO="ontology-dashboard-macmini-backend"
 TARGET_IMAGE="$IMAGE_REPO:$TARGET_SHA"
 CONTAINER_NAME="ontology-dashboard-macmini-backend-1"
+LIVE_INGESTOR_CONTAINER_NAME="ontology-dashboard-macmini-live-ingestor-1"
+KNOWLEDGE_INDEXER_CONTAINER_NAME="ontology-dashboard-macmini-knowledge-indexer-1"
 
 mkdir -p "$PROD_ROOT"
 
@@ -114,7 +116,7 @@ deploy_image() {
       --env-file "$ENV_FILE" \
       -p ontology-dashboard-macmini \
       -f "$COMPOSE_FILE" \
-      up -d --no-deps --no-build backend
+      up -d --no-deps --no-build backend live-ingestor knowledge-indexer
 }
 
 wait_for_health() {
@@ -124,6 +126,16 @@ wait_for_health() {
   for ((attempt = 1; attempt <= attempts; attempt++)); do
     status="$(docker inspect "$CONTAINER_NAME" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' 2>/dev/null || true)"
     if [[ "$status" == "healthy" ]]; then
+      live_running="$(docker inspect "$LIVE_INGESTOR_CONTAINER_NAME" --format '{{.State.Running}}' 2>/dev/null || true)"
+      if [[ "$live_running" != "true" ]]; then
+        sleep 2
+        continue
+      fi
+      knowledge_status="$(docker inspect "$KNOWLEDGE_INDEXER_CONTAINER_NAME" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' 2>/dev/null || true)"
+      if [[ "$knowledge_status" != "healthy" ]]; then
+        sleep 2
+        continue
+      fi
       host_port="$(
         docker inspect "$CONTAINER_NAME" \
           --format '{{with (index .NetworkSettings.Ports "8000/tcp")}}{{(index . 0).HostPort}}{{end}}' \

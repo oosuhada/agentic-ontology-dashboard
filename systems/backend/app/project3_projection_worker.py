@@ -29,12 +29,27 @@ def _latest_materialization_message(
         connection.execute("SELECT set_config('app.project_id',%s,true)", (project_id,))
         row = connection.execute(
             """
-            SELECT * FROM transactional_outbox
-            WHERE organization_id=%s AND project_id=%s
-              AND event_type='ontology.materialization.completed'
-            ORDER BY created_at DESC,id DESC LIMIT 1
+            WITH current_materialization AS (
+                SELECT dataset_version_id,workspace_id,materialization_checksum_sha256
+                FROM ontology_ingestion_runs
+                WHERE organization_id=%s AND project_id=%s
+                  AND status='completed'
+                  AND materialization_checksum_sha256 IS NOT NULL
+                ORDER BY completed_at DESC,id DESC
+                LIMIT 1
+            )
+            SELECT o.*
+            FROM transactional_outbox o
+            JOIN current_materialization m
+              ON o.aggregate_id=m.dataset_version_id
+             AND o.workspace_id=m.workspace_id
+             AND o.payload_json->>'materialization_checksum_sha256'=m.materialization_checksum_sha256
+            WHERE o.organization_id=%s AND o.project_id=%s
+              AND o.event_type='ontology.materialization.completed'
+            ORDER BY o.created_at DESC,o.id DESC
+            LIMIT 1
             """,
-            (organization_id, project_id),
+            (organization_id, project_id, organization_id, project_id),
         ).fetchone()
     if row is None:
         return None

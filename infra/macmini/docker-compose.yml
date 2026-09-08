@@ -178,7 +178,7 @@ services:
     networks: [private]
 
   knowledge-indexer:
-    image: ontology-dashboard-macmini-backend:latest
+    image: ${BACKEND_IMAGE:-ontology-dashboard-macmini-backend:latest}
     restart: unless-stopped
     cpus: 0.75
     mem_limit: 1g
@@ -233,6 +233,7 @@ services:
     networks: [private]
 
   live-ingestor:
+    image: ${BACKEND_IMAGE:-ontology-dashboard-macmini-backend:latest}
     build:
       context: ../..
       dockerfile: systems/backend/Dockerfile

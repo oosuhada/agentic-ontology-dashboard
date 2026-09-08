@@ -143,6 +143,35 @@ class PredictiveMaintenanceProject3ProjectionHandler:
                 ).fetchone()
                 if version is None:
                     raise ValueError("Dataset Version is outside graph projection scope")
+                current_materialization = connection.execute(
+                    """
+                    SELECT materialization_checksum_sha256,object_count,link_count
+                    FROM ontology_ingestion_runs
+                    WHERE organization_id=%s AND project_id=%s AND workspace_id=%s
+                      AND dataset_version_id=%s AND status='completed'
+                      AND materialization_checksum_sha256 IS NOT NULL
+                    ORDER BY completed_at DESC,id DESC
+                    LIMIT 1
+                    """,
+                    (
+                        message.organization_id,
+                        message.project_id,
+                        message.workspace_id,
+                        payload["dataset_version_id"],
+                    ),
+                ).fetchone()
+                if current_materialization is None:
+                    raise Project3ProjectionDeliveryError(
+                        "current ontology materialization is unavailable",
+                        retryable=False,
+                    )
+                if str(current_materialization["materialization_checksum_sha256"]) != str(
+                    payload["materialization_checksum_sha256"]
+                ):
+                    raise Project3ProjectionDeliveryError(
+                        "stale ontology materialization event does not match the current snapshot",
+                        retryable=False,
+                    )
                 object_rows = connection.execute(
                     "SELECT object_id,object_type,payload_json,source_sha256 FROM ontology_objects WHERE dataset_version_id=%s ORDER BY object_type,object_id",
                     (payload["dataset_version_id"],),
@@ -213,7 +242,17 @@ class PredictiveMaintenanceProject3ProjectionHandler:
         object_counts = {str(key): int(value) for key, value in dict(payload["object_counts"]).items()}
         link_counts = {RELATIONSHIP_TYPES[str(key)]: int(value) for key, value in dict(payload["link_counts"]).items()}
         if sum(object_counts.values()) != len(nodes) or sum(link_counts.values()) != len(relationships):
-            raise ValueError("materialized projection counts differ from ontology snapshot")
+            raise Project3ProjectionDeliveryError(
+                "stale ontology materialization counts differ from the current snapshot",
+                retryable=False,
+            )
+        if int(current_materialization["object_count"]) != len(nodes) or int(
+            current_materialization["link_count"]
+        ) != len(relationships):
+            raise Project3ProjectionDeliveryError(
+                "current ontology materialization counts differ from the current snapshot",
+                retryable=False,
+            )
         return Project3GraphProjectionRequest(
             projection_id=f"projection-{uuid.uuid5(uuid.NAMESPACE_URL, message.id)}",
             idempotency_key=f"graph-projection:{message.project_id}:{payload['dataset_version_id']}:{payload['mapping_version']}:{payload['materialization_checksum_sha256']}",

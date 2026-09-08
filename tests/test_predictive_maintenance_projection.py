@@ -20,8 +20,12 @@ from app.infra.db.predictive_maintenance_ontology_projection import (
 from app.infra.db.postgresql_ontology_repository import (
     PostgreSQLOntologyInstanceRepository,
 )
-from app.infra.external.project3 import PredictiveMaintenanceProject3ProjectionHandler
+from app.infra.external.project3 import (
+    PredictiveMaintenanceProject3ProjectionHandler,
+    Project3ProjectionDeliveryError,
+)
 from app.infra.messaging.outbox import OutboxMessage
+from app.project3_projection_worker import _latest_materialization_message
 from predictive_maintenance_v3_helpers import create_small_v3_package
 from test_predictive_maintenance_bundle_adapter import create_small_package
 from test_predictive_maintenance_postgresql import (
@@ -49,6 +53,89 @@ def test_runtime_result_source_checksums_are_aggregated_deterministically() -> N
     assert _aggregate_source_sha256([first]) == first
     with pytest.raises(ValueError, match="at least one SHA-256"):
         _aggregate_source_sha256([])
+
+
+def test_graph_bootstrap_selects_current_materialization_and_rejects_stale_event(
+    tmp_path: Path,
+    postgresql_database: str,
+) -> None:
+    import psycopg
+    from psycopg.rows import dict_row
+    from psycopg.types.json import Jsonb
+
+    root = create_small_v3_package(tmp_path / "v3-current")
+    _manifest, ingestion = ingest(postgresql_database, root)
+    materializer = PredictiveMaintenanceOntologyMaterializer(postgresql_database)
+    materializer.ensure_default_mapping(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        dataset_id=ingestion.dataset_id,
+        dataset_version_id=ingestion.dataset_version_id,
+        approve=True,
+        approved_by="test-current-materialization",
+    )
+    current = materializer.materialize(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        dataset_id=ingestion.dataset_id,
+        dataset_version_id=ingestion.dataset_version_id,
+    )
+
+    with psycopg.connect(postgresql_database, row_factory=dict_row) as connection:
+        current_row = connection.execute(
+            "SELECT payload_json FROM transactional_outbox WHERE id=%s",
+            (current.outbox_event_id,),
+        ).fetchone()
+        assert current_row is not None
+        stale_payload = dict(current_row["payload_json"])
+        stale_payload["materialization_checksum_sha256"] = "0" * 64
+        stale_payload["object_counts"] = {"equipment": 1}
+        stale_payload["link_counts"] = {}
+        stale_id = uuid.uuid4()
+        connection.execute(
+            """
+            INSERT INTO transactional_outbox(
+                id,organization_id,project_id,workspace_id,aggregate_type,aggregate_id,
+                event_type,payload_json,status,created_at,available_at
+            ) VALUES (%s,'org-test','project-test','workspace-test','dataset_version',%s,
+                      'ontology.materialization.completed',%s,'pending',now()+interval '10 minutes',now())
+            """,
+            (stale_id, ingestion.dataset_version_id, Jsonb(stale_payload)),
+        )
+        connection.commit()
+
+    selected = _latest_materialization_message(
+        postgresql_database,
+        organization_id="org-test",
+        project_id="project-test",
+    )
+    assert selected is not None
+    assert selected.id == current.outbox_event_id
+    assert selected.payload["materialization_checksum_sha256"] == (
+        current.materialization_checksum_sha256
+    )
+
+    stale_message = OutboxMessage(
+        id=str(stale_id),
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        aggregate_type="dataset_version",
+        aggregate_id=ingestion.dataset_version_id,
+        event_type="ontology.materialization.completed",
+        payload=stale_payload,
+        attempt_count=0,
+        lease_token="stale-projection-test",
+    )
+    with pytest.raises(Project3ProjectionDeliveryError) as exc_info:
+        PredictiveMaintenanceProject3ProjectionHandler(
+            postgresql_database,
+            client=object(),
+        ).build_request(stale_message)
+    assert exc_info.value.retryable is False
+    assert "stale ontology materialization event" in str(exc_info.value)
 
 
 def ingest(database_url: str, root: Path):
