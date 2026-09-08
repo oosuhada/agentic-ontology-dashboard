@@ -25,8 +25,8 @@ services:
     profiles: ["polyglot"]
     environment:
       NEO4J_AUTH: ${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-ontology-local-only}
-      NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
-      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-ontology-local-only}
+      GRAPH_NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
+      GRAPH_NEO4J_PASSWORD: ${NEO4J_PASSWORD:-ontology-local-only}
       NEO4J_server_memory_heap_initial__size: ${NEO4J_HEAP_INITIAL:-512m}
       NEO4J_server_memory_heap_max__size: ${NEO4J_HEAP_MAX:-1G}
       NEO4J_server_memory_pagecache_size: ${NEO4J_PAGECACHE:-512m}
@@ -43,8 +43,11 @@ services:
     healthcheck:
       test:
         [
-          "CMD-SHELL",
-          "cypher-shell -a bolt://127.0.0.1:7687 -u $${NEO4J_USERNAME} -p $${NEO4J_PASSWORD} 'RETURN 1 AS ok' >/dev/null",
+          "CMD",
+          "wget",
+          "-q",
+          "--spider",
+          "http://127.0.0.1:7474/",
         ]
       interval: 8s
       timeout: 5s

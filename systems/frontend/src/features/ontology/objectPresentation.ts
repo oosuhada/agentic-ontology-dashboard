@@ -7,7 +7,23 @@ export function displayObjectValue(value: unknown): string {
 }
 
 export function objectIdentity(record: ObjectRecord): string {
-  const preferred = ["equipment_id", "event_id", "work_order_id", "inspection_id", "action_id", "evidence_id", "name"];
+  const preferred = [
+    "equipment_id",
+    "asset_id",
+    "event_id",
+    "work_order_id",
+    "maintenance_action_id",
+    "component_label",
+    "component_id",
+    "sop_id",
+    "product_id",
+    "inspection_id",
+    "action_id",
+    "evidence_id",
+    "display_name",
+    "title",
+    "name",
+  ];
   for (const key of preferred) {
     const value = record.properties[key];
     if (typeof value === "string" && value.trim()) return value;

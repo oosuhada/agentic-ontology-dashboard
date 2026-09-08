@@ -3,6 +3,9 @@ export type ReliabilityAssistantLocale = "ko-KR" | "en-US";
 export interface ReliabilityAssistantContext {
   roleKind?: "executive" | "operations" | "engineering" | "maintenance" | null;
   workspaceName?: string | null;
+  surfaceId?: string | null;
+  surfaceLabel?: string | null;
+  surfaceDetail?: string | null;
   statusCode?: string | null;
   recommendedDecisionCode?: string | null;
   workspaceMetrics?: {
@@ -20,6 +23,14 @@ export interface ReliabilityAssistantContext {
     assetLabel: string;
     risk: number | null;
     status: string;
+  }>;
+  workspaceAssets?: Array<{
+    assetId: string;
+    assetLabel: string;
+    eventId: string;
+    risk: number | null;
+    status: string;
+    lineLabel?: string | null;
   }>;
   assetId?: string | null;
   assetName?: string | null;
@@ -60,7 +71,63 @@ export interface ReliabilityAssistantMessage {
   role: "user" | "assistant";
   text: string;
   contextHint?: string | null;
+  blocks?: ReliabilityAssistantResponseBlock[];
   activityTrace?: ReliabilityAssistantActivityTrace | null;
+}
+
+export interface ReliabilityAssistantMetric {
+  label: string;
+  value: string;
+  tone?: "critical" | "warning" | "positive" | "neutral";
+}
+
+export type ReliabilityAssistantResponseBlock =
+  | {
+    id: string;
+    type: "metric_strip";
+    title: string;
+    metrics: ReliabilityAssistantMetric[];
+  }
+  | {
+    id: string;
+    type: "ranked_risk";
+    title: string;
+    items: Array<{
+      label: string;
+      risk: number;
+      status: string;
+    }>;
+  }
+  | {
+    id: string;
+    type: "evidence_list";
+    title: string;
+    items: string[];
+  }
+  | {
+    id: string;
+    type: "relationship_paths";
+    title: string;
+    items: Array<{
+      label: string;
+      relatedType: string;
+      path: string[];
+      depth: number | null;
+    }>;
+  };
+
+export interface ReliabilityAssistantEvidenceItem {
+  store: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface ReliabilityAssistantEntityCandidate {
+  assetId: string;
+  assetLabel: string;
+  eventId: string;
+  risk: number | null;
+  status: string;
+  lineLabel?: string | null;
 }
 
 export interface ReliabilityAssistantActivityStep {
@@ -87,6 +154,272 @@ export interface ReliabilityAssistantActivityTrace {
 export interface ReliabilityAssistantPrompt {
   id: string;
   label: string;
+}
+
+function riskTone(status: string | null | undefined): ReliabilityAssistantMetric["tone"] {
+  const normalized = (status ?? "").toLowerCase();
+  if (normalized === "critical") return "critical";
+  if (normalized === "warning" || normalized === "attention") return "warning";
+  if (normalized === "normal") return "positive";
+  return "neutral";
+}
+
+function formatMinutes(value: number, english: boolean) {
+  if (value < 60) return english ? `${Math.round(value)} min` : `${Math.round(value)}분`;
+  const hours = value / 60;
+  const formatted = Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(1);
+  return english ? `${formatted} hr` : `${formatted}시간`;
+}
+
+/**
+ * Build compact, factual UI blocks from already-validated Reliability context.
+ * The model can explain the result, but it does not choose chart types or invent
+ * metric values. This keeps the answer UI deterministic and grounded.
+ */
+export function reliabilityAssistantResponseBlocks(
+  context: ReliabilityAssistantContext | null | undefined,
+  question: string,
+  locale: ReliabilityAssistantLocale = "ko-KR",
+): ReliabilityAssistantResponseBlock[] {
+  if (!context) return [];
+  const english = locale === "en-US";
+  const query = question.toLowerCase();
+  const wantsRisk = /위험|리스크|우선|먼저|상위|risk|priority|highest|top/.test(query);
+  const wantsImpact = /영향|생산|손실|비가동|가치|비용|impact|production|loss|downtime|value|cost/.test(query);
+  const wantsEvidence = /근거|왜|원인|센서|신호|evidence|why|cause|sensor|signal/.test(query);
+  const wantsHistory = /이력|과거|재발|정비 전후|history|previous|recurrence|before|after/.test(query);
+  const selected = hasReliabilityAssistantSelection(context);
+  const blocks: ReliabilityAssistantResponseBlock[] = [];
+
+  if (!selected && context.workspaceMetrics) {
+    const metrics: ReliabilityAssistantMetric[] = [
+      {
+        label: english ? "Critical" : "고위험",
+        value: String(context.workspaceMetrics.critical),
+        tone: context.workspaceMetrics.critical > 0 ? "critical" : "positive",
+      },
+      {
+        label: english ? "Warning" : "경고",
+        value: String(context.workspaceMetrics.warning),
+        tone: context.workspaceMetrics.warning > 0 ? "warning" : "positive",
+      },
+      {
+        label: english ? "Pending" : "판단 대기",
+        value: String(context.workspaceMetrics.pendingDecisions),
+        tone: context.workspaceMetrics.pendingDecisions > 0 ? "warning" : "positive",
+      },
+      {
+        label: english ? "Data holds" : "품질 보류",
+        value: String(context.workspaceMetrics.dataQualityHold),
+        tone: context.workspaceMetrics.dataQualityHold > 0 ? "warning" : "positive",
+      },
+    ];
+    if (context.workspaceMetrics.averageRisk !== null) {
+      metrics.push({
+        label: english ? "Avg risk" : "평균 위험",
+        value: `${Math.round(context.workspaceMetrics.averageRisk * 100)}%`,
+        tone: context.workspaceMetrics.averageRisk >= 0.7
+          ? "critical"
+          : context.workspaceMetrics.averageRisk >= 0.4
+            ? "warning"
+            : "neutral",
+      });
+    }
+    blocks.push({
+      id: "workspace-metrics",
+      type: "metric_strip",
+      title: english ? "Live operating snapshot" : "현재 운영 스냅샷",
+      metrics,
+    });
+  }
+
+  if (!selected && wantsRisk) {
+    const items = (context.workspaceTopRisks ?? [])
+      .filter((item): item is typeof item & { risk: number } => typeof item.risk === "number")
+      .slice(0, 5)
+      .map((item) => ({ label: item.assetLabel, risk: item.risk, status: item.status }));
+    if (items.length) {
+      blocks.push({
+        id: "workspace-risk-ranking",
+        type: "ranked_risk",
+        title: english ? "Highest current risk" : "현재 위험 우선순위",
+        items,
+      });
+    }
+  }
+
+  if (selected) {
+    const metrics: ReliabilityAssistantMetric[] = [];
+    if (typeof context.failureProbability === "number") {
+      metrics.push({
+        label: english ? "Risk" : "위험도",
+        value: `${Math.round(context.failureProbability * 100)}%`,
+        tone: riskTone(context.statusCode),
+      });
+    }
+    if (typeof context.estimatedDowntimeMinutes === "number") {
+      metrics.push({
+        label: english ? "Downtime exposure" : "비가동 노출",
+        value: formatMinutes(context.estimatedDowntimeMinutes, english),
+        tone: context.estimatedDowntimeMinutes > 0 ? "warning" : "positive",
+      });
+    }
+    if (typeof context.estimatedLostUnits === "number") {
+      metrics.push({
+        label: english ? "Units exposed" : "생산 손실 노출",
+        value: context.estimatedLostUnits.toLocaleString(english ? "en-US" : "ko-KR"),
+        tone: context.estimatedLostUnits > 0 ? "warning" : "positive",
+      });
+    }
+    if (typeof context.workOrderCount === "number") {
+      metrics.push({
+        label: english ? "Work items" : "작업 건수",
+        value: String(context.workOrderCount),
+        tone: "neutral",
+      });
+    }
+    if (metrics.length && (wantsRisk || wantsImpact || (!wantsEvidence && !wantsHistory))) {
+      blocks.push({
+        id: "case-metrics",
+        type: "metric_strip",
+        title: english ? "Selected case signals" : "선택 Case 핵심 지표",
+        metrics: metrics.slice(0, 4),
+      });
+    }
+  }
+
+  if (selected && context.evidenceItems?.length && (wantsEvidence || wantsRisk)) {
+    blocks.push({
+      id: "case-evidence",
+      type: "evidence_list",
+      title: english ? "Grounded evidence" : "확인된 근거",
+      items: context.evidenceItems.slice(0, 4),
+    });
+  }
+
+  if (selected && context.historyItems?.length && wantsHistory) {
+    blocks.push({
+      id: "case-history",
+      type: "evidence_list",
+      title: english ? "Related history" : "관련 이력",
+      items: context.historyItems.slice(0, 4),
+    });
+  }
+
+  return blocks.slice(0, 3);
+}
+
+function graphTypeLabel(type: string, english: boolean) {
+  const labels: Record<string, [string, string]> = {
+    component: ["부품", "Component"],
+    sop: ["점검 절차", "SOP"],
+    product: ["생산 제품", "Product"],
+    production_cycle: ["생산 사이클", "Production cycle"],
+    production_cell: ["생산 라인", "Production line"],
+    maintenance_case: ["정비 Case", "Maintenance case"],
+    work_order: ["작업요청", "Work order"],
+    maintenance_action: ["정비 작업", "Maintenance action"],
+    risk_event: ["위험 Event", "Risk event"],
+  };
+  return labels[type]?.[english ? 1 : 0] ?? type;
+}
+
+/** Convert governed Neo4j evidence into compact path cards without exposing Cypher. */
+export function reliabilityAssistantGraphResponseBlocks(
+  evidence: ReliabilityAssistantEvidenceItem[] | null | undefined,
+  locale: ReliabilityAssistantLocale = "ko-KR",
+): ReliabilityAssistantResponseBlock[] {
+  const english = locale === "en-US";
+  const graphRows = (evidence ?? [])
+    .filter((item) => item.store === "neo4j")
+    .map((item) => item.metadata.relationship)
+    .filter((value): value is Record<string, unknown> => Boolean(value && typeof value === "object"));
+  if (!graphRows.length) return [];
+
+  const normalized = graphRows.map((row) => ({
+    label: String(row.related_label ?? row.related_id ?? "Ontology relation"),
+    relatedType: String(row.related_type ?? "relationship"),
+    path: Array.isArray(row.relationship_path)
+      ? row.relationship_path.map((value) => String(value))
+      : [],
+    depth: typeof row.depth === "number" ? row.depth : Number.isFinite(Number(row.depth)) ? Number(row.depth) : null,
+  }));
+  const cases = normalized.filter((item) => item.relatedType === "maintenance_case");
+  const impact = normalized.filter((item) => ["product", "production_cycle", "production_cell"].includes(item.relatedType));
+  const technical = normalized.filter((item) => ["component", "sop"].includes(item.relatedType));
+  const blocks: ReliabilityAssistantResponseBlock[] = [];
+
+  if (impact.length) {
+    blocks.push({
+      id: "graph-production-impact",
+      type: "relationship_paths",
+      title: english ? "Production impact path" : "생산 영향 경로",
+      items: impact.slice(0, 4).map((item) => ({
+        ...item,
+        label: `${graphTypeLabel(item.relatedType, english)} · ${item.label}`,
+      })),
+    });
+  }
+  if (technical.length) {
+    blocks.push({
+      id: "graph-technical-path",
+      type: "relationship_paths",
+      title: english ? "Component and procedure links" : "부품 · 점검 절차 연결",
+      items: technical.slice(0, 4).map((item) => ({
+        ...item,
+        label: `${graphTypeLabel(item.relatedType, english)} · ${item.label}`,
+      })),
+    });
+  }
+  if (cases.length) {
+    blocks.push({
+      id: "graph-maintenance-cases",
+      type: "relationship_paths",
+      title: english ? "Related maintenance cases" : "관련 정비 Case",
+      items: cases.slice(0, 4).map((item) => ({
+        ...item,
+        label: `${graphTypeLabel(item.relatedType, english)} · ${item.label}`,
+      })),
+    });
+  }
+  return blocks.slice(0, 2);
+}
+
+const SET_SCOPE_QUESTION = /전체|모든|목록|상위|가장|어떤|몇|중에서|설비들|장비들|fleet|all|which|top|highest|list/;
+
+/**
+ * Preflight ambiguous workspace questions without asking the model to guess an
+ * asset. Exact asset IDs keep flowing directly; broad set questions also stay
+ * workspace-scoped. Only a singular-looking fragment that matches multiple
+ * live assets asks the user to choose.
+ */
+export function reliabilityAssistantClarificationCandidates(
+  context: ReliabilityAssistantContext | null | undefined,
+  question: string,
+): ReliabilityAssistantEntityCandidate[] {
+  if (!context || hasReliabilityAssistantSelection(context) || !context.workspaceAssets?.length) return [];
+  const normalized = question.toLowerCase().trim();
+  if (!normalized || SET_SCOPE_QUESTION.test(normalized)) return [];
+
+  const exact = context.workspaceAssets.filter((item) => (
+    normalized.includes(item.assetId.toLowerCase())
+    || normalized.includes(item.assetLabel.toLowerCase())
+  ));
+  if (exact.length <= 1 && exact.length > 0) return [];
+
+  const terms = normalized.match(/[a-z]{3,}|\d+구역|\d+셀/g) ?? [];
+  const meaningfulTerms = [...new Set(terms.filter((term) => !["asset", "machine"].includes(term)))];
+  if (!meaningfulTerms.length) return [];
+
+  const matches = context.workspaceAssets.filter((item) => {
+    const searchable = `${item.assetId} ${item.assetLabel} ${item.lineLabel ?? ""}`.toLowerCase();
+    return meaningfulTerms.some((term) => searchable.includes(term));
+  });
+  if (matches.length < 2) return [];
+
+  return [...matches]
+    .sort((left, right) => (right.risk ?? -1) - (left.risk ?? -1))
+    .slice(0, 6);
 }
 
 function hasText(value: string | null | undefined): value is string {

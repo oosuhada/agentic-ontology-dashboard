@@ -40,36 +40,64 @@ def healthcheck() -> int:
     return 1 if state.get("status") == "failed" else 0
 
 
+def _run_once_with_scope(
+    service,
+    organization_id: str,
+    project_id: str,
+    workspace_id: str,
+) -> dict[str, object]:
+    state = service.repository.index_state(
+        organization_id=organization_id,
+        project_id=project_id,
+        workspace_id=workspace_id,
+    )
+    if state.get("status") != "dirty":
+        LOGGER.info(
+            "knowledge index already current",
+            extra={"project_id": project_id, "workspace_id": workspace_id},
+        )
+        return {
+            "status": str(state.get("status") or "unknown"),
+            "reindexed": False,
+        }
+
+    result = service.reindex(
+        organization_id=organization_id,
+        project_id=project_id,
+        workspace_id=workspace_id,
+        actor_user_id="knowledge-indexer",
+        force=False,
+    )
+    LOGGER.info(
+        "knowledge index refreshed",
+        extra={
+            "project_id": project_id,
+            "workspace_id": workspace_id,
+            "chunk_count": result.get("chunk_count"),
+            "status": result.get("status"),
+        },
+    )
+    return {**result, "reindexed": True}
+
+
+def run_once() -> dict[str, object]:
+    return _run_once_with_scope(*_scope())
+
+
 def run_forever() -> None:
     interval = max(1.0, float(os.getenv("ONTOLOGY_DASHBOARD_KNOWLEDGE_INDEX_POLL_SECONDS", "5")))
     service, organization_id, project_id, workspace_id = _scope()
     LOGGER.info("knowledge indexer started", extra={"project_id": project_id, "workspace_id": workspace_id})
     while True:
-        state = service.repository.index_state(
-            organization_id=organization_id,
-            project_id=project_id,
-            workspace_id=workspace_id,
-        )
-        if state.get("status") == "dirty":
-            try:
-                result = service.reindex(
-                    organization_id=organization_id,
-                    project_id=project_id,
-                    workspace_id=workspace_id,
-                    actor_user_id="knowledge-indexer",
-                    force=False,
-                )
-                LOGGER.info(
-                    "knowledge index refreshed",
-                    extra={
-                        "project_id": project_id,
-                        "workspace_id": workspace_id,
-                        "chunk_count": result.get("chunk_count"),
-                        "status": result.get("status"),
-                    },
-                )
-            except Exception:
-                LOGGER.exception("knowledge index refresh failed")
+        try:
+            _run_once_with_scope(
+                service,
+                organization_id,
+                project_id,
+                workspace_id,
+            )
+        except Exception:
+            LOGGER.exception("knowledge index refresh failed")
         time.sleep(interval)
 
 
@@ -77,6 +105,9 @@ def main() -> None:
     logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
     if "--healthcheck" in sys.argv:
         raise SystemExit(healthcheck())
+    if "--once" in sys.argv:
+        run_once()
+        return
     run_forever()
 
 

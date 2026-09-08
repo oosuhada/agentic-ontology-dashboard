@@ -1,4 +1,4 @@
-import { Check, ChevronDown, ChevronRight, CircleAlert, Clock3, Database, PanelRightClose, Send, Sparkles } from "lucide-react";
+import { BarChart3, Check, ChevronDown, ChevronRight, CircleAlert, Clock3, Database, Gauge, ListChecks, Network, PanelRightClose, Send, Sparkles } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   hasReliabilityAssistantSelection,
@@ -8,9 +8,11 @@ import {
   reliabilityAssistantRiskLabel,
   type ReliabilityAssistantContext,
   type ReliabilityAssistantActivityTrace,
+  type ReliabilityAssistantEntityCandidate,
   type ReliabilityAssistantLocale,
   type ReliabilityAssistantMessage,
   type ReliabilityAssistantPrompt,
+  type ReliabilityAssistantResponseBlock,
 } from "./assistantContext";
 import "./context-assistant.css";
 
@@ -25,6 +27,12 @@ export interface ContextAssistantDrawerProps {
   loading?: boolean;
   submitting?: boolean;
   error?: string | null;
+  clarification?: {
+    question: string;
+    candidates: ReliabilityAssistantEntityCandidate[];
+  } | null;
+  onClarificationSelect?: (candidate: ReliabilityAssistantEntityCandidate) => void;
+  onClarificationContinue?: (question: string) => void;
   actions?: Array<{
     id: string;
     label: string;
@@ -104,6 +112,86 @@ function AssistantActivityTrace({
   );
 }
 
+function AssistantResponseBlock({
+  block,
+  english,
+}: {
+  block: ReliabilityAssistantResponseBlock;
+  english: boolean;
+}) {
+  if (block.type === "metric_strip") {
+    return (
+      <section className="rw-assistant-response-block is-metrics" aria-label={block.title}>
+        <header><Gauge size={11} aria-hidden="true" /><strong>{block.title}</strong></header>
+        <div>
+          {block.metrics.map((metric) => (
+            <article key={`${metric.label}:${metric.value}`} className={metric.tone ? `tone-${metric.tone}` : "tone-neutral"}>
+              <span>{metric.label}</span>
+              <strong>{metric.value}</strong>
+            </article>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (block.type === "ranked_risk") {
+    return (
+      <section className="rw-assistant-response-block is-ranking" aria-label={block.title}>
+        <header><BarChart3 size={11} aria-hidden="true" /><strong>{block.title}</strong></header>
+        <ol>
+          {block.items.map((item, index) => (
+            <li key={`${item.label}:${index}`}>
+              <span className="rw-assistant-response-rank">{index + 1}</span>
+              <div>
+                <span><strong>{item.label}</strong><small>{Math.round(item.risk * 100)}%</small></span>
+                <i aria-hidden="true"><b style={{ width: `${Math.max(3, Math.min(100, item.risk * 100))}%` }} /></i>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+    );
+  }
+
+  if (block.type === "relationship_paths") {
+    return (
+      <section className="rw-assistant-response-block is-relationships" aria-label={block.title}>
+        <header><Network size={11} aria-hidden="true" /><strong>{block.title}</strong></header>
+        <ul>
+          {block.items.map((item, index) => (
+            <li key={`${item.relatedType}:${item.label}:${index}`}>
+              <div>
+                <strong>{item.label}</strong>
+                <small>{item.depth ? (english ? `${item.depth}-hop verified path` : `${item.depth}-hop 검증 경로`) : (english ? "Verified relation" : "검증 관계")}</small>
+              </div>
+              {item.path.length ? (
+                <p aria-label={english ? "Relationship path" : "관계 경로"}>
+                  {item.path.map((step, stepIndex) => (
+                    <span key={`${step}:${stepIndex}`}>
+                      {stepIndex > 0 ? <i aria-hidden="true">→</i> : null}
+                      <b>{step.replaceAll("_", " ")}</b>
+                    </span>
+                  ))}
+                </p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rw-assistant-response-block is-evidence" aria-label={block.title}>
+      <header><ListChecks size={11} aria-hidden="true" /><strong>{block.title}</strong></header>
+      <ul>
+        {block.items.map((item, index) => <li key={`${index}:${item}`}><i aria-hidden="true" />{item}</li>)}
+      </ul>
+    </section>
+  );
+}
+
 export function ContextAssistantDrawer({
   open = false,
   onClose,
@@ -115,6 +203,9 @@ export function ContextAssistantDrawer({
   loading = false,
   submitting = false,
   error = null,
+  clarification = null,
+  onClarificationSelect,
+  onClarificationContinue,
   actions = [],
 }: ContextAssistantDrawerProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -220,6 +311,13 @@ export function ContextAssistantDrawer({
             {context?.maintenanceState && context.maintenanceState !== context.currentLifecycleLabel ? <div><dt>{english ? "Maintenance status" : "정비 상태"}</dt><dd>{context.maintenanceState}</dd></div> : null}
           </dl>
         )}
+        {context?.surfaceLabel ? (
+          <div className="rw-context-assistant__surface-context">
+            <span>{english ? "Current surface" : "현재 화면"}</span>
+            <strong>{context.surfaceLabel}</strong>
+            {context.surfaceDetail ? <small>{context.surfaceDetail}</small> : null}
+          </div>
+        ) : null}
         {contextSummary ? <p className="rw-context-assistant__evidence-summary">{contextSummary}</p> : null}
         {context ? (
           <div className="rw-context-assistant__sources" aria-label={english ? "Assistant grounding sources" : "Assistant 근거 소스"}>
@@ -240,7 +338,30 @@ export function ContextAssistantDrawer({
         {actions.length ? <div className="rw-context-assistant__actions" aria-label={english ? "Connected workspace actions" : "연결된 화면으로 이동"}>{actions.map((action) => <button type="button" key={action.id} onClick={action.onClick}><span><strong>{action.label}</strong>{action.detail ? <small>{action.detail}</small> : null}</span><ChevronRight size={13} /></button>)}</div> : null}
       </section>
 
-      {suggestedPrompts.length ? (
+      {clarification?.candidates.length ? (
+        <section className="rw-context-assistant__prompts rw-context-assistant__clarification" aria-labelledby="rw-context-assistant-clarification-title">
+          <div className="rw-context-assistant__section-heading">
+            <span id="rw-context-assistant-clarification-title">{english ? "CHOOSE ASSET" : "대상 확인"}</span>
+            <small>{english ? "Multiple live assets matched" : "여러 설비가 일치합니다"}</small>
+          </div>
+          <p>{english ? "Which asset did you mean?" : "어느 설비를 의미하셨나요?"}</p>
+          <div>
+            {clarification.candidates.map((candidate) => (
+              <button type="button" key={`${candidate.assetId}:${candidate.eventId}`} onClick={() => onClarificationSelect?.(candidate)}>
+                <span>
+                  <strong>{candidate.assetLabel}</strong>
+                  <small>{candidate.assetId}{candidate.lineLabel ? ` · ${candidate.lineLabel}` : ""}</small>
+                </span>
+                <em>{typeof candidate.risk === "number" ? `${Math.round(candidate.risk * 100)}%` : "—"}</em>
+              </button>
+            ))}
+            <button type="button" className="is-workspace" onClick={() => onClarificationContinue?.(clarification.question)}>
+              <span><strong>{english ? "Keep workspace scope" : "전체 범위로 계속"}</strong><small>{english ? "Do not choose a single asset" : "특정 설비를 고르지 않고 질문"}</small></span>
+              <ChevronRight size={13} aria-hidden="true" />
+            </button>
+          </div>
+        </section>
+      ) : suggestedPrompts.length ? (
         <section className="rw-context-assistant__prompts" aria-labelledby="rw-context-assistant-prompts-title">
           <div className="rw-context-assistant__section-heading">
             <span id="rw-context-assistant-prompts-title">{english ? "CONTEXT QUESTIONS" : "문맥 질문"}</span>
@@ -260,6 +381,11 @@ export function ContextAssistantDrawer({
           <article key={message.id} className={`rw-context-assistant__message is-${message.role}`}>
             <span>{message.role === "user" ? (english ? "QUESTION" : "질문") : (english ? "OPERATIONAL INTERPRETATION" : "운영 해석")}</span>
             <p>{message.text}</p>
+            {message.role === "assistant" && message.blocks?.length ? (
+              <div className="rw-assistant-response-blocks">
+                {message.blocks.map((block) => <AssistantResponseBlock key={block.id} block={block} english={english} />)}
+              </div>
+            ) : null}
             {message.contextHint ? <small>{message.contextHint}</small> : null}
             {message.role === "assistant" && message.activityTrace ? (
               <AssistantActivityTrace

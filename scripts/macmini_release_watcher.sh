@@ -32,12 +32,27 @@ if [[ ! "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]; then
   exit 1
 fi
 
-EVALUATED_SHA=""
+FRONTEND_EVALUATED_SHA=""
 if [[ -f "$PROD_ROOT/frontend-deploy-base-sha" ]]; then
-  EVALUATED_SHA="$(tr -d '[:space:]' < "$PROD_ROOT/frontend-deploy-base-sha")"
+  FRONTEND_EVALUATED_SHA="$(tr -d '[:space:]' < "$PROD_ROOT/frontend-deploy-base-sha")"
+fi
+BACKEND_EVALUATED_SHA=""
+if [[ -f "$PROD_ROOT/backend-deploy-base-sha" ]]; then
+  BACKEND_EVALUATED_SHA="$(tr -d '[:space:]' < "$PROD_ROOT/backend-deploy-base-sha")"
+fi
+GRAPH_EVALUATED_SHA=""
+if [[ -f "$PROD_ROOT/graph-deploy-base-sha" ]]; then
+  GRAPH_EVALUATED_SHA="$(tr -d '[:space:]' < "$PROD_ROOT/graph-deploy-base-sha")"
+fi
+HOST_POLICY_EVALUATED_SHA=""
+if [[ -f "$PROD_ROOT/host-policy-base-sha" ]]; then
+  HOST_POLICY_EVALUATED_SHA="$(tr -d '[:space:]' < "$PROD_ROOT/host-policy-base-sha")"
 fi
 
-if [[ "$EVALUATED_SHA" == "$TARGET_SHA" ]]; then
+if [[ "$FRONTEND_EVALUATED_SHA" == "$TARGET_SHA" \
+  && "$BACKEND_EVALUATED_SHA" == "$TARGET_SHA" \
+  && "$GRAPH_EVALUATED_SHA" == "$TARGET_SHA" \
+  && "$HOST_POLICY_EVALUATED_SHA" == "$TARGET_SHA" ]]; then
   echo "main already evaluated at $TARGET_SHA"
   exit 0
 fi
@@ -93,12 +108,42 @@ fi
 git -C "$SOURCE_ROOT" checkout --detach --force "$TARGET_SHA"
 git -C "$SOURCE_ROOT" clean -ffd
 
-if [[ ! -x "$SOURCE_ROOT/scripts/deploy_macmini_frontend.sh" ]]; then
-  echo "verified main does not contain the Mac mini frontend deployment script yet; waiting"
+if [[ ! -x "$SOURCE_ROOT/scripts/deploy_macmini_frontend.sh" ]] \
+  || [[ ! -x "$SOURCE_ROOT/scripts/deploy_macmini_backend.sh" ]]; then
+  echo "verified main does not contain the Mac mini deployment scripts yet; waiting"
   exit 0
 fi
 
 echo "Deploying CI-verified main $TARGET_SHA"
 GITHUB_SHA="$TARGET_SHA" \
 ONTOLOGY_MACMINI_PROD_ROOT="$PROD_ROOT" \
+  "$SOURCE_ROOT/scripts/deploy_macmini_backend.sh"
+if [[ -x "$SOURCE_ROOT/scripts/deploy_macmini_graph.sh" ]]; then
+  GITHUB_SHA="$TARGET_SHA" \
+  ONTOLOGY_MACMINI_PROD_ROOT="$PROD_ROOT" \
+    "$SOURCE_ROOT/scripts/deploy_macmini_graph.sh"
+fi
+GITHUB_SHA="$TARGET_SHA" \
+ONTOLOGY_MACMINI_PROD_ROOT="$PROD_ROOT" \
   "$SOURCE_ROOT/scripts/deploy_macmini_frontend.sh"
+
+# Install/update the cadence-based home-server refresh only after Backend,
+# Graph, and Frontend have all converged on the same verified SHA. This avoids
+# waking a new Generator against an older graph projection during deployment.
+if [[ -f "$SOURCE_ROOT/infra/macmini/install-background-refresh.sh" ]]; then
+  ONTOLOGY_MACMINI_WATCH_ROOT="$WATCH_ROOT" \
+  ONTOLOGY_MACMINI_PROD_ROOT="$PROD_ROOT" \
+    /bin/bash "$SOURCE_ROOT/infra/macmini/install-background-refresh.sh"
+fi
+
+# Keep the low-traffic public demo ingress/supervisors under the same
+# CI-verified release source. The installer is idempotent and keeps timestamped
+# nginx/cloudflared backups so a failed reload rolls back to the previous host
+# configuration instead of leaving a sleeping demo unreachable.
+if [[ -f "$SOURCE_ROOT/infra/macmini/install-idle-demo-supervisors.sh" ]]; then
+  /bin/bash "$SOURCE_ROOT/infra/macmini/install-idle-demo-supervisors.sh"
+fi
+
+# Host-level launchd/nginx/cloudflared policy is part of the release contract,
+# not an untracked side effect. Record it only after every installer succeeds.
+printf '%s\n' "$TARGET_SHA" > "$PROD_ROOT/host-policy-base-sha"

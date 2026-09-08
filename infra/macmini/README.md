@@ -1,8 +1,9 @@
 # Mac mini production stack
 
-This stack runs Frontend, Backend, PostgreSQL and the batch Generator on the Mac
-mini. Vercel remains available for CI/preview validation; Render and Neon remain
-untouched rollback sources during the validation period.
+This stack runs Frontend, Backend, PostgreSQL, a versioned Neo4j read projection,
+and the batch Generator on the Mac mini. Vercel remains available for CI/preview
+validation; Render and Neon remain untouched rollback sources during the
+validation period.
 
 ## Services and boundary
 
@@ -12,9 +13,27 @@ untouched rollback sources during the validation period.
 - `redis`: private-network-only ephemeral Redis used by the Backend's
   distributed production rate limiter. It exposes no host port and contains no
   authoritative application data.
+- `neo4j`: private-network-only versioned ontology read projection. PostgreSQL
+  remains authoritative; graph nodes carry Dataset Version identity and only
+  the newest successful projection is marked current.
+- `project3`: bounded graph query service compatible with the Project 3 HTTP
+  contract. It accepts governed graph projections and exposes search/subgraph
+  plus depth-limited relationship questions; it does not expose raw Cypher to
+  the product Assistant.
+- `graph-projector`: durable outbox consumer that delivers approved ontology
+  materializations from PostgreSQL to Project 3. Graph delivery can fail or
+  retry without blocking Backend or Frontend availability.
 - `backend`: canonical `systems/backend`, published only to `127.0.0.1:8110` for
   Cloudflare Tunnel. It reads `/artifacts/.../current` read-only via
   `MODEL_ARTIFACT_URI`.
+- `generator-runtime`: on-demand runtime inference API. Mac mini production
+  does not keep it resident; the background refresh LaunchAgent starts it only
+  for a cadence-aligned inference batch, waits for delivery to drain, then
+  stops it.
+- `live-ingestor`: one-shot live Dataset refresh used by the same scheduled
+  background job. It is not a restart daemon on the home server.
+- `knowledge-indexer`: one-shot dirty-state check/reindex job. When the index is
+  already current it exits without rebuilding embeddings.
 - `generator`: one-shot batch profile. It owns extraction, ontology mapping,
   feature/label processing and immutable Model Artifact publication. It is not a
   continuously spinning API server.
@@ -35,19 +54,19 @@ and the source snapshot metadata are backup-worthy.
 
 `GEN_DATA_RUNTIME_OUTPUT_ROOT` remains producer-owned and read-only to the
 live-ingestor. The live-ingestor writes immutable, content-addressed Runtime
-Prediction inputs only to `RUNTIME_PIPELINE_INPUT_ROOT`; Generator mounts that
-same host directory at `/runtime-pipeline-input` read-only.
+Prediction inputs only to `RUNTIME_PIPELINE_INPUT_ROOT`; the on-demand Generator
+runtime mounts that same host directory at `/runtime-pipeline-input` read-only.
 
 Create `RUNTIME_PIPELINE_INPUT_ROOT` with permissions that allow the
 `live-ingestor` container to write and the Generator runtime to read. Set
-`ONTOLOGY_DASHBOARD_GENERATOR_RUNTIME_ENQUEUE_URL` only when the persistent
-Generator Runtime API is deployed; an Overlay event fails closed while that
-endpoint is absent or unreachable.
+`ONTOLOGY_DASHBOARD_GENERATOR_RUNTIME_ENQUEUE_URL` points at the private Compose
+service name. The scheduled refresh starts Generator before invoking the
+live-ingestor, so Overlay enqueue still fails closed if the runtime cannot wake.
 
 ## Startup / shutdown / logs
 
 ```sh
-docker compose --env-file .env -f docker-compose.yml up -d postgres redis backend frontend
+docker compose --env-file .env -f docker-compose.yml up -d postgres redis neo4j project3 backend graph-projector frontend
 docker compose --env-file .env -f docker-compose.yml ps
 docker compose --env-file .env -f docker-compose.yml logs -f frontend backend
 docker compose --env-file .env -f docker-compose.yml stop frontend backend redis postgres
@@ -56,7 +75,40 @@ docker compose --env-file .env -f docker-compose.yml stop frontend backend redis
 Do not publish port 5432. Cloudflare routes the product hostname only to the
 frontend localhost port and may keep the dedicated Backend health/API hostname
 on its backend localhost port. `restart: unless-stopped` makes the long-running
-services return after OrbStack/host restart.
+services return after OrbStack/host restart. `generator-runtime`, `live-ingestor`,
+and `knowledge-indexer` intentionally use `restart: "no"` and are started only
+by the background refresh job.
+
+Low-traffic public demos can use the same home-server policy without changing
+their public hostnames. `install-idle-demo-supervisors.sh` installs localhost-only
+supervisors plus wake-aware nginx routing for FactoryGraph and Aigram. FactoryGraph
+sleeps after 45 minutes without proxied traffic; Aigram sleeps after 60 minutes.
+Wake always reuses existing Compose images with `--no-build`. Every nginx and
+cloudflared file is backed up first, and a failed install automatically restores
+the previous routing configuration.
+
+```bash
+/bin/bash infra/macmini/install-idle-demo-supervisors.sh
+curl http://127.0.0.1:8232/status  # FactoryGraph
+curl http://127.0.0.1:8233/status  # Aigram
+```
+
+Install the home-server background refresh with:
+
+```bash
+ONTOLOGY_MACMINI_BACKGROUND_REFRESH_SECONDS=600 \
+  /bin/bash infra/macmini/install-background-refresh.sh
+```
+
+The release watcher also refreshes this LaunchAgent after a successful
+Backend/Graph/Frontend deployment. A lock prevents overlapping runs. Each run:
+
+1. starts the exact-release Generator runtime image;
+2. runs `live-ingestor` once;
+3. waits for Generator queue + Prediction Result delivery to drain;
+4. re-materializes the current ontology so Neo4j sees the new Result Artifacts;
+5. runs one knowledge dirty-state check/reindex;
+6. stops Generator again.
 
 ## Generator
 
@@ -119,10 +171,10 @@ sensor stream. Production live data is a separate loop:
 
 1. the `Biz-CollabCraft/gen_data` daemon runs under launchd and appends one
    complete 100-asset sensor tick every 10 wall-clock minutes by default;
-2. `live-ingestor` watches those JSONL streams and publishes them into a
-   separate `gen-data-wall-clock-live-v2` Dataset Version;
-3. Backend diagnosis invokes the currently promoted CNC and compressor Model
-   Artifacts and atomically refreshes the 100 current Result Artifacts;
+2. every 10 minutes the Mac mini background LaunchAgent wakes the Generator
+   runtime and runs `live-ingestor` once against those JSONL streams;
+3. Generator invokes the currently promoted CNC and compressor Model Artifacts
+   and atomically delivers the 100 current Result Artifacts back to Backend;
 4. the Operations frontend refreshes its governed runtime view every 30 seconds.
 
 The immutable Canonical V3.1 Dataset Version remains the training/regression
@@ -152,11 +204,11 @@ Runtime Overlay remains stricter: its post-maintenance branch uses only that
 branch's post-maintenance observations and never mixes pre-maintenance history.
 
 After the production `.env` is configured, install/reload the source daemon and
-start the ingestor with:
+the cadence-based Ontology background refresh with:
 
 ```bash
 infra/macmini/scripts/install-live-runtime.sh
-docker compose --env-file infra/macmini/.env -f infra/macmini/docker-compose.yml up -d live-ingestor
+/bin/bash infra/macmini/install-background-refresh.sh
 ```
 
 ## PostgreSQL migration, backup, restore
