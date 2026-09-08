@@ -52,7 +52,10 @@ def test_background_refresh_wakes_drains_and_stops_generator() -> None:
     assert "app.project3_refresh_current_projection" in script
     assert "compose run --rm --no-deps knowledge-indexer" in script
     assert "compose stop -t 20 generator-runtime" in script
+    assert "compose rm -f generator-runtime" in script
     assert ".background-refresh-lock" in script
+    assert "backend-deploy-base-sha" in script
+    assert 'BACKEND_IMAGE="ontology-dashboard-macmini-backend:$RELEASE_TAG"' in script
 
 
 def test_background_refresh_launch_agent_defaults_to_ten_minutes() -> None:

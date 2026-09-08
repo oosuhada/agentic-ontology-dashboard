@@ -26,6 +26,7 @@ fi
 cleanup() {
   if [[ "$GENERATOR_STARTED" == "1" ]]; then
     compose stop -t 20 generator-runtime >/dev/null 2>&1 || true
+    compose rm -f generator-runtime >/dev/null 2>&1 || true
   fi
   rm -rf "$LOCK_DIR"
 }
@@ -52,8 +53,8 @@ if [[ -z "$ENV_FILE" || ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-BACKEND_IMAGE="$(docker inspect "$BACKEND_CONTAINER" --format '{{.Config.Image}}' 2>/dev/null || true)"
-if [[ -z "$BACKEND_IMAGE" ]]; then
+RUNNING_BACKEND_IMAGE="$(docker inspect "$BACKEND_CONTAINER" --format '{{.Config.Image}}' 2>/dev/null || true)"
+if [[ -z "$RUNNING_BACKEND_IMAGE" ]]; then
   echo "Mac mini backend container is not available" >&2
   exit 1
 fi
@@ -67,7 +68,18 @@ if [[ "$BACKEND_STATUS" != "healthy" ]]; then
   exit 1
 fi
 
-RELEASE_TAG="${BACKEND_IMAGE##*:}"
+RELEASE_TAG=""
+if [[ -f "$PROD_ROOT/backend-deploy-base-sha" ]]; then
+  candidate_release_tag="$(tr -d '[:space:]' < "$PROD_ROOT/backend-deploy-base-sha")"
+  if [[ "$candidate_release_tag" =~ ^[0-9a-f]{40}$ ]] \
+    && docker image inspect "ontology-dashboard-macmini-backend:$candidate_release_tag" >/dev/null 2>&1; then
+    RELEASE_TAG="$candidate_release_tag"
+  fi
+fi
+if [[ -z "$RELEASE_TAG" ]]; then
+  RELEASE_TAG="${RUNNING_BACKEND_IMAGE##*:}"
+fi
+BACKEND_IMAGE="ontology-dashboard-macmini-backend:$RELEASE_TAG"
 GENERATOR_RUNTIME_IMAGE="$GENERATOR_IMAGE_REPO:$RELEASE_TAG"
 if ! docker image inspect "$GENERATOR_RUNTIME_IMAGE" >/dev/null 2>&1; then
   GENERATOR_RUNTIME_IMAGE="$GENERATOR_IMAGE_REPO:latest"

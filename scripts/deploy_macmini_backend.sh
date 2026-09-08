@@ -103,6 +103,11 @@ if [[ -n "$PREVIOUS_BASE_SHA" ]] \
     echo "generator build inputs are unchanged but the current Generator image is missing" >&2
     exit 1
   fi
+  docker rm -f \
+    ontology-dashboard-macmini-live-ingestor-1 \
+    ontology-dashboard-macmini-knowledge-indexer-1 \
+    ontology-dashboard-macmini-generator-runtime-1 \
+    >/dev/null 2>&1 || true
   printf '%s\n' "$TARGET_SHA" > "$STATE_FILE"
   echo "No backend build inputs changed since $PREVIOUS_BASE_SHA; reused current images for $TARGET_SHA."
   exit 0
