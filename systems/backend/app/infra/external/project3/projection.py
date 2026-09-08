@@ -30,6 +30,11 @@ RELATIONSHIP_TYPES = {
     "risk_event_supported_by_prediction_result": "SUPPORTED_BY_PREDICTION_RESULT",
     "equipment_has_work_order": "HAS_WORK_ORDER",
     "work_order_has_maintenance_action": "HAS_MAINTENANCE_ACTION",
+    "equipment_has_maintenance_case": "HAS_MAINTENANCE_CASE",
+    "risk_event_led_to_maintenance_case": "LED_TO_MAINTENANCE_CASE",
+    "maintenance_case_has_work_order": "CASE_HAS_WORK_ORDER",
+    "maintenance_case_has_maintenance_action": "CASE_HAS_MAINTENANCE_ACTION",
+    "maintenance_case_similar_to": "SIMILAR_MAINTENANCE_CASE",
     "equipment_completed_production_cycle": "COMPLETED_PRODUCTION_CYCLE",
     "production_cycle_produces_product": "PRODUCES_PRODUCT",
     "equipment_produces_product": "CURRENTLY_PRODUCES",
@@ -45,6 +50,7 @@ ALLOWED_OBJECT_TYPES = {
     "prediction_result",
     "work_order",
     "maintenance_action",
+    "maintenance_case",
     "production_cycle",
 }
 SHA_REFERENCE = re.compile(r":sha256:([a-f0-9]{64})(?::|$)")

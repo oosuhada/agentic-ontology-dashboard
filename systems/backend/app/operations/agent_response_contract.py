@@ -90,6 +90,10 @@ def plan_agent_response_contract(
         "supplier",
         "depends on",
         "dependency",
+        "유사",
+        "사례",
+        "similar",
+        "case",
     )
     asks_document = _contains(
         question,
@@ -210,6 +214,8 @@ def plan_agent_response_contract(
     required_entities = ["asset" if object_id else "workspace"]
     if asks_relationship:
         required_entities.extend(("component", "line", "product"))
+    if asks_history or (asks_relationship and asks_workflow):
+        required_entities.append("maintenance_case")
     if asks_document:
         required_entities.append("knowledge_document")
     if asks_company_context:

@@ -344,13 +344,26 @@ def _project3_graph_evidence(
                 },
             })
         for index, row in enumerate(result.rows[: max(0, top_k - len(evidence))], start=1):
+            relationship = {
+                "root_id": row.get("root_id"),
+                "related_type": row.get("related_type"),
+                "related_id": row.get("related_id"),
+                "related_label": row.get("related_label"),
+                "relationship_path": list(row.get("relationship_path") or []),
+                "depth": row.get("depth"),
+                "dataset_version_id": row.get("dataset_version_id"),
+            }
             evidence.append({
                 "evidence_id": f"project3-graph-row-{index}",
                 "store": "neo4j",
                 "reference": str(result.run_id or f"project3-graph-row-{index}"),
                 "project_id": project_id,
                 "workspace_id": workspace_id,
-                "dataset_version_id": None,
+                "dataset_version_id": (
+                    str(row.get("dataset_version_id"))
+                    if row.get("dataset_version_id")
+                    else None
+                ),
                 "object_id": object_id,
                 "title": f"Ontology relationship {index}",
                 "content": _graph_row_summary(row),
@@ -359,6 +372,7 @@ def _project3_graph_evidence(
                     "provider": result.provider,
                     "run_id": result.run_id,
                     "status": result.status,
+                    "relationship": relationship,
                 },
             })
         return {
@@ -399,7 +413,7 @@ def _start_graph_evidence(
         project_id=project_id,
         workspace_id=workspace_id,
         object_id=object_id,
-        top_k=min(top_k, 3),
+        top_k=min(top_k, 6),
     )
 
 

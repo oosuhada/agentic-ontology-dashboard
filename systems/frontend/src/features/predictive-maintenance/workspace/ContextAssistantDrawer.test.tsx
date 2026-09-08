@@ -6,6 +6,7 @@ import {
   deterministicReliabilityAssistantAnswer,
   groundedReliabilityAssistantAnswer,
   reliabilityAssistantClarificationCandidates,
+  reliabilityAssistantGraphResponseBlocks,
   reliabilityAssistantPrompts,
   reliabilityAssistantResponseBlocks,
   type ReliabilityAssistantContext,
@@ -69,6 +70,37 @@ afterEach(async () => {
 });
 
 describe("ContextAssistantDrawer", () => {
+  it("turns governed graph evidence into production and maintenance path blocks", () => {
+    const blocks = reliabilityAssistantGraphResponseBlocks([
+      {
+        store: "neo4j",
+        metadata: {
+          relationship: {
+            related_type: "product",
+            related_label: "Product M",
+            relationship_path: ["CURRENTLY_PRODUCES"],
+            depth: 1,
+          },
+        },
+      },
+      {
+        store: "neo4j",
+        metadata: {
+          relationship: {
+            related_type: "maintenance_case",
+            related_label: "Maintenance Case · CNC-03",
+            relationship_path: ["HAS_MAINTENANCE_CASE", "SIMILAR_MAINTENANCE_CASE"],
+            depth: 2,
+          },
+        },
+      },
+    ]);
+
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0]).toMatchObject({ type: "relationship_paths", title: "생산 영향 경로" });
+    expect(blocks[1]).toMatchObject({ type: "relationship_paths", title: "관련 정비 Case" });
+  });
+
   it("renders nothing in the closed state", async () => {
     await renderDrawer({ open: false });
     expect(container.querySelector('[role="dialog"]')).toBeNull();

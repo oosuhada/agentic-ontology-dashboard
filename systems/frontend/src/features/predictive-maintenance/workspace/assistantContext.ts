@@ -103,7 +103,23 @@ export type ReliabilityAssistantResponseBlock =
     type: "evidence_list";
     title: string;
     items: string[];
+  }
+  | {
+    id: string;
+    type: "relationship_paths";
+    title: string;
+    items: Array<{
+      label: string;
+      relatedType: string;
+      path: string[];
+      depth: number | null;
+    }>;
   };
+
+export interface ReliabilityAssistantEvidenceItem {
+  store: string;
+  metadata: Record<string, unknown>;
+}
 
 export interface ReliabilityAssistantEntityCandidate {
   assetId: string;
@@ -291,6 +307,82 @@ export function reliabilityAssistantResponseBlocks(
   }
 
   return blocks.slice(0, 3);
+}
+
+function graphTypeLabel(type: string, english: boolean) {
+  const labels: Record<string, [string, string]> = {
+    component: ["부품", "Component"],
+    sop: ["점검 절차", "SOP"],
+    product: ["생산 제품", "Product"],
+    production_cycle: ["생산 사이클", "Production cycle"],
+    production_cell: ["생산 라인", "Production line"],
+    maintenance_case: ["정비 Case", "Maintenance case"],
+    work_order: ["작업요청", "Work order"],
+    maintenance_action: ["정비 작업", "Maintenance action"],
+    risk_event: ["위험 Event", "Risk event"],
+  };
+  return labels[type]?.[english ? 1 : 0] ?? type;
+}
+
+/** Convert governed Neo4j evidence into compact path cards without exposing Cypher. */
+export function reliabilityAssistantGraphResponseBlocks(
+  evidence: ReliabilityAssistantEvidenceItem[] | null | undefined,
+  locale: ReliabilityAssistantLocale = "ko-KR",
+): ReliabilityAssistantResponseBlock[] {
+  const english = locale === "en-US";
+  const graphRows = (evidence ?? [])
+    .filter((item) => item.store === "neo4j")
+    .map((item) => item.metadata.relationship)
+    .filter((value): value is Record<string, unknown> => Boolean(value && typeof value === "object"));
+  if (!graphRows.length) return [];
+
+  const normalized = graphRows.map((row) => ({
+    label: String(row.related_label ?? row.related_id ?? "Ontology relation"),
+    relatedType: String(row.related_type ?? "relationship"),
+    path: Array.isArray(row.relationship_path)
+      ? row.relationship_path.map((value) => String(value))
+      : [],
+    depth: typeof row.depth === "number" ? row.depth : Number.isFinite(Number(row.depth)) ? Number(row.depth) : null,
+  }));
+  const cases = normalized.filter((item) => item.relatedType === "maintenance_case");
+  const impact = normalized.filter((item) => ["product", "production_cycle", "production_cell"].includes(item.relatedType));
+  const technical = normalized.filter((item) => ["component", "sop"].includes(item.relatedType));
+  const blocks: ReliabilityAssistantResponseBlock[] = [];
+
+  if (impact.length) {
+    blocks.push({
+      id: "graph-production-impact",
+      type: "relationship_paths",
+      title: english ? "Production impact path" : "생산 영향 경로",
+      items: impact.slice(0, 4).map((item) => ({
+        ...item,
+        label: `${graphTypeLabel(item.relatedType, english)} · ${item.label}`,
+      })),
+    });
+  }
+  if (technical.length) {
+    blocks.push({
+      id: "graph-technical-path",
+      type: "relationship_paths",
+      title: english ? "Component and procedure links" : "부품 · 점검 절차 연결",
+      items: technical.slice(0, 4).map((item) => ({
+        ...item,
+        label: `${graphTypeLabel(item.relatedType, english)} · ${item.label}`,
+      })),
+    });
+  }
+  if (cases.length) {
+    blocks.push({
+      id: "graph-maintenance-cases",
+      type: "relationship_paths",
+      title: english ? "Related maintenance cases" : "관련 정비 Case",
+      items: cases.slice(0, 4).map((item) => ({
+        ...item,
+        label: `${graphTypeLabel(item.relatedType, english)} · ${item.label}`,
+      })),
+    });
+  }
+  return blocks.slice(0, 2);
 }
 
 const SET_SCOPE_QUESTION = /전체|모든|목록|상위|가장|어떤|몇|중에서|설비들|장비들|fleet|all|which|top|highest|list/;

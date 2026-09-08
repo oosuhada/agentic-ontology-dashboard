@@ -62,7 +62,20 @@ function normalized(value: string) {
 }
 
 function graphNodeId(row: Record<string, unknown>, index: number): string {
-  for (const key of ["id", "identity", "element_id", "equipment_id", "event_id", "name"]) {
+  for (const key of [
+    "node_key",
+    "id",
+    "source_identity",
+    "identity",
+    "element_id",
+    "asset_id",
+    "equipment_id",
+    "event_id",
+    "product_id",
+    "component_id",
+    "sop_id",
+    "name",
+  ]) {
     const value = row[key];
     if (typeof value === "string" && value) return value;
   }
@@ -70,7 +83,21 @@ function graphNodeId(row: Record<string, unknown>, index: number): string {
 }
 
 function graphNodeLabel(row: Record<string, unknown>, fallback: string): string {
-  for (const key of ["display_name", "name", "identity", "equipment_id", "event_id", "id"]) {
+  for (const key of [
+    "display_name",
+    "component_label",
+    "title",
+    "name",
+    "source_identity",
+    "asset_id",
+    "equipment_id",
+    "event_id",
+    "product_id",
+    "component_id",
+    "sop_id",
+    "identity",
+    "id",
+  ]) {
     const value = row[key];
     if (typeof value === "string" && value) return value;
   }

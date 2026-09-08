@@ -21,10 +21,14 @@ def _interests(question: str) -> set[str]:
         result.add("sop")
     if any(token in lower for token in ("제품", "생산", "product")):
         result.update({"product", "production_cycle"})
+    if any(token in lower for token in ("라인", "셀", "line", "cell")):
+        result.add("production_cell")
     if any(token in lower for token in ("위험", "리스크", "risk", "event")):
         result.update({"risk_event", "prediction_result"})
     if any(token in lower for token in ("정비", "maintenance", "work order", "workorder")):
-        result.update({"work_order", "maintenance_action"})
+        result.update({"maintenance_case", "work_order", "maintenance_action"})
+    if any(token in lower for token in ("유사", "비슷", "과거 사례", "similar", "case", "history")):
+        result.add("maintenance_case")
     return result
 
 

@@ -22,7 +22,7 @@ from app.common.runtime_settings import project_root
 from app.ontology.ontology_domain import LinkRecord, ObjectRecord
 
 
-DEFAULT_MAPPING_VERSION = "predictive-maintenance-v3.2"
+DEFAULT_MAPPING_VERSION = "predictive-maintenance-v3.3"
 SOURCE_SYSTEM = "predictive-maintenance-postgresql-materialization"
 
 DEFAULT_MAPPING: dict[str, Any] = {
@@ -39,6 +39,7 @@ DEFAULT_MAPPING: dict[str, Any] = {
         "prediction_result",
         "work_order",
         "maintenance_action",
+        "maintenance_case",
         "production_cycle",
     ],
     "link_types": [
@@ -52,6 +53,11 @@ DEFAULT_MAPPING: dict[str, Any] = {
         "risk_event_supported_by_prediction_result",
         "equipment_has_work_order",
         "work_order_has_maintenance_action",
+        "equipment_has_maintenance_case",
+        "risk_event_led_to_maintenance_case",
+        "maintenance_case_has_work_order",
+        "maintenance_case_has_maintenance_action",
+        "maintenance_case_similar_to",
         "equipment_completed_production_cycle",
         "production_cycle_produces_product",
         "equipment_produces_product",
@@ -178,6 +184,12 @@ def _aggregate_source_sha256(values: list[Any]) -> str:
     if len(checksums) == 1:
         return checksums[0]
     return hashlib.sha256("\n".join(checksums).encode("ascii")).hexdigest()
+
+
+def _operational_source_ref(kind: str, identity: str, payload: dict[str, Any]) -> str:
+    rendered = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    checksum = hashlib.sha256(rendered.encode("utf-8")).hexdigest()
+    return f"closed-loop:{kind}:{identity}:sha256:{checksum}"
 
 
 def _component_reference_contracts() -> dict[str, tuple[dict[str, Any], str]]:
@@ -606,7 +618,7 @@ class PredictiveMaintenanceOntologyMaterializer:
         source_version: str,
         role_checksums: dict[str, str],
     ) -> tuple[list[ObjectRecord], list[LinkRecord]]:
-        del organization_id, source_version
+        del source_version
         objects: list[ObjectRecord] = []
         links: list[LinkRecord] = []
         object_ids: dict[tuple[str, str], str] = {}
@@ -1044,6 +1056,284 @@ class PredictiveMaintenanceOntologyMaterializer:
                 {"actual_maintenance_event": True},
             )
 
+        # Project the live closed-loop operational cases as read-only graph
+        # context. PostgreSQL remains authoritative; these nodes are rebuilt on
+        # every materialization and are scoped to the current project/workspace.
+        closed_loop_work_orders = connection.execute(
+            """
+            SELECT work_order_id,event_id,asset_id,work_type,status,
+                   authorization_json,created_at,updated_at
+            FROM closed_loop_work_orders
+            WHERE organization_id=%s AND project_id=%s AND workspace_id=%s
+            ORDER BY event_id,created_at,work_order_id
+            """,
+            (organization_id, project_id, workspace_id),
+        ).fetchall()
+        closed_loop_actions = connection.execute(
+            """
+            SELECT maintenance_action_id,work_order_id,event_id,asset_id,
+                   action_code,status,started_at,completed_at,created_at,updated_at
+            FROM closed_loop_maintenance_actions
+            WHERE organization_id=%s AND project_id=%s AND workspace_id=%s
+            ORDER BY event_id,created_at,maintenance_action_id
+            """,
+            (organization_id, project_id, workspace_id),
+        ).fetchall()
+        closed_loop_events = connection.execute(
+            """
+            SELECT maintenance_event_id,maintenance_action_id,work_order_id,
+                   event_id,asset_id,action_code,outcome,completed_at,created_at
+            FROM closed_loop_maintenance_events
+            WHERE organization_id=%s AND project_id=%s AND workspace_id=%s
+            ORDER BY event_id,completed_at,maintenance_event_id
+            """,
+            (organization_id, project_id, workspace_id),
+        ).fetchall()
+
+        case_records: dict[str, dict[str, Any]] = {}
+        for row in closed_loop_work_orders:
+            asset_id = str(row["asset_id"])
+            event_id = str(row["event_id"])
+            if ("equipment", asset_id) not in object_ids:
+                continue
+            payload = {
+                "work_order_id": str(row["work_order_id"]),
+                "event_id": event_id,
+                "asset_id": asset_id,
+                "work_type": str(row["work_type"]),
+                "status": str(row["status"]),
+                "created_at": row["created_at"].isoformat(),
+                "updated_at": row["updated_at"].isoformat(),
+            }
+            source_ref = _operational_source_ref("work-order", payload["work_order_id"], payload)
+            work_oid = object_ids.get(("work_order", payload["work_order_id"]))
+            if work_oid is None:
+                work_oid = add_object(
+                    "work_order",
+                    payload["work_order_id"],
+                    {
+                        **payload,
+                        "authorization": dict(row["authorization_json"] or {}),
+                        "actual_closed_loop_record": True,
+                        "origin": "closed_loop_work_order",
+                        "display_name": f"{payload['work_type'].title()} · {payload['work_order_id']}",
+                    },
+                    [source_ref],
+                )
+                add_link(
+                    "equipment_has_work_order",
+                    f"{asset_id}->{payload['work_order_id']}",
+                    object_ids[("equipment", asset_id)],
+                    work_oid,
+                    {"source_ref": source_ref, "actual_closed_loop_record": True},
+                )
+            record = case_records.setdefault(
+                event_id,
+                {
+                    "event_id": event_id,
+                    "asset_id": asset_id,
+                    "work_orders": [],
+                    "actions": [],
+                    "events": [],
+                    "source_refs": [],
+                },
+            )
+            record["work_orders"].append({**payload, "object_id": work_oid})
+            record["source_refs"].append(source_ref)
+
+        for row in closed_loop_actions:
+            asset_id = str(row["asset_id"])
+            event_id = str(row["event_id"])
+            if ("equipment", asset_id) not in object_ids:
+                continue
+            payload = {
+                "maintenance_action_id": str(row["maintenance_action_id"]),
+                "work_order_id": str(row["work_order_id"]),
+                "event_id": event_id,
+                "asset_id": asset_id,
+                "action_code": str(row["action_code"]),
+                "status": str(row["status"]),
+                "started_at": row["started_at"].isoformat() if row["started_at"] else None,
+                "completed_at": row["completed_at"].isoformat() if row["completed_at"] else None,
+                "updated_at": row["updated_at"].isoformat(),
+            }
+            source_ref = _operational_source_ref(
+                "maintenance-action", payload["maintenance_action_id"], payload
+            )
+            action_oid = object_ids.get(("maintenance_action", payload["maintenance_action_id"]))
+            if action_oid is None:
+                action_oid = add_object(
+                    "maintenance_action",
+                    payload["maintenance_action_id"],
+                    {
+                        **payload,
+                        "action": payload["action_code"],
+                        "actor": "closed_loop_runtime",
+                        "actual_closed_loop_record": True,
+                        "display_name": f"{payload['action_code']} · {payload['status']}",
+                    },
+                    [source_ref],
+                )
+                work_oid = object_ids.get(("work_order", payload["work_order_id"]))
+                if work_oid is not None:
+                    add_link(
+                        "work_order_has_maintenance_action",
+                        f"{payload['work_order_id']}->{payload['maintenance_action_id']}",
+                        work_oid,
+                        action_oid,
+                        {"source_ref": source_ref, "actual_closed_loop_record": True},
+                    )
+            record = case_records.setdefault(
+                event_id,
+                {
+                    "event_id": event_id,
+                    "asset_id": asset_id,
+                    "work_orders": [],
+                    "actions": [],
+                    "events": [],
+                    "source_refs": [],
+                },
+            )
+            record["actions"].append({**payload, "object_id": action_oid})
+            record["source_refs"].append(source_ref)
+
+        for row in closed_loop_events:
+            event_id = str(row["event_id"])
+            asset_id = str(row["asset_id"])
+            if ("equipment", asset_id) not in object_ids:
+                continue
+            payload = {
+                "maintenance_event_id": str(row["maintenance_event_id"]),
+                "maintenance_action_id": str(row["maintenance_action_id"]),
+                "work_order_id": str(row["work_order_id"]),
+                "event_id": event_id,
+                "asset_id": asset_id,
+                "action_code": str(row["action_code"]),
+                "outcome": str(row["outcome"]),
+                "completed_at": row["completed_at"].isoformat(),
+            }
+            source_ref = _operational_source_ref(
+                "maintenance-event", payload["maintenance_event_id"], payload
+            )
+            record = case_records.setdefault(
+                event_id,
+                {
+                    "event_id": event_id,
+                    "asset_id": asset_id,
+                    "work_orders": [],
+                    "actions": [],
+                    "events": [],
+                    "source_refs": [],
+                },
+            )
+            record["events"].append(payload)
+            record["source_refs"].append(source_ref)
+
+        asset_types = {str(row["asset_id"]): str(row["asset_type"]) for row in assets}
+        case_oids: dict[str, str] = {}
+        for event_id, record in sorted(case_records.items()):
+            asset_id = str(record["asset_id"])
+            work_orders = list(record["work_orders"])
+            actions = list(record["actions"])
+            events = list(record["events"])
+            latest_status = str(work_orders[-1]["status"]) if work_orders else "recorded"
+            completed = bool(work_orders) and all(
+                str(item["status"]) in {"completed", "cancelled"} for item in work_orders
+            )
+            outcomes = [str(item["outcome"]) for item in events if item.get("outcome")]
+            action_codes = sorted({str(item["action_code"]) for item in actions if item.get("action_code")})
+            work_types = sorted({str(item["work_type"]) for item in work_orders if item.get("work_type")})
+            case_oid = add_object(
+                "maintenance_case",
+                event_id,
+                {
+                    "event_id": event_id,
+                    "asset_id": asset_id,
+                    "asset_type": asset_types.get(asset_id, "unknown"),
+                    "display_name": f"Maintenance Case · {asset_id}",
+                    "status": "completed" if completed else latest_status,
+                    "work_order_count": len(work_orders),
+                    "maintenance_action_count": len(actions),
+                    "work_types": work_types,
+                    "action_codes": action_codes,
+                    "outcomes": outcomes,
+                    "latest_completed_at": max(
+                        [str(item.get("completed_at") or "") for item in [*actions, *events]],
+                        default="",
+                    ),
+                    "claim_scope": "operational_case_history_not_causal_equivalence",
+                    "actual_closed_loop_record": True,
+                },
+                list(dict.fromkeys(record["source_refs"])),
+            )
+            case_oids[event_id] = case_oid
+            add_link(
+                "equipment_has_maintenance_case",
+                f"{asset_id}->{event_id}",
+                object_ids[("equipment", asset_id)],
+                case_oid,
+                {"semantics": "closed_loop_case_history"},
+            )
+            risk_oid = object_ids.get(("risk_event", event_id))
+            if risk_oid is not None:
+                add_link(
+                    "risk_event_led_to_maintenance_case",
+                    f"{event_id}->{event_id}",
+                    risk_oid,
+                    case_oid,
+                    {"semantics": "same_event_closed_loop_trace"},
+                )
+            for item in work_orders:
+                add_link(
+                    "maintenance_case_has_work_order",
+                    f"{event_id}->{item['work_order_id']}",
+                    case_oid,
+                    str(item["object_id"]),
+                    {"semantics": "closed_loop_case_membership"},
+                )
+            for item in actions:
+                add_link(
+                    "maintenance_case_has_maintenance_action",
+                    f"{event_id}->{item['maintenance_action_id']}",
+                    case_oid,
+                    str(item["object_id"]),
+                    {"semantics": "closed_loop_case_membership"},
+                )
+
+        case_ids = sorted(case_oids)
+        for index, left_id in enumerate(case_ids):
+            left = case_records[left_id]
+            left_asset_type = asset_types.get(str(left["asset_id"]), "unknown")
+            left_codes = {str(item["action_code"]) for item in left["actions"] if item.get("action_code")}
+            left_work_types = {str(item["work_type"]) for item in left["work_orders"] if item.get("work_type")}
+            for right_id in case_ids[index + 1 :]:
+                right = case_records[right_id]
+                if asset_types.get(str(right["asset_id"]), "unknown") != left_asset_type:
+                    continue
+                right_codes = {str(item["action_code"]) for item in right["actions"] if item.get("action_code")}
+                right_work_types = {str(item["work_type"]) for item in right["work_orders"] if item.get("work_type")}
+                shared_codes = sorted(left_codes & right_codes)
+                shared_work_types = sorted(left_work_types & right_work_types)
+                if not shared_codes and not shared_work_types:
+                    continue
+                add_link(
+                    "maintenance_case_similar_to",
+                    f"{left_id}<->{right_id}",
+                    case_oids[left_id],
+                    case_oids[right_id],
+                    {
+                        "similarity_score": 1.0 if shared_codes else 0.7,
+                        "basis": [
+                            "same_asset_type",
+                            *( ["shared_action_code"] if shared_codes else [] ),
+                            *( ["shared_work_type"] if shared_work_types else [] ),
+                        ],
+                        "shared_action_codes": shared_codes,
+                        "shared_work_types": shared_work_types,
+                        "claim_scope": "operational_similarity_not_causal_equivalence",
+                    },
+                )
+
         latest_cycles = connection.execute(
             """
             SELECT DISTINCT ON (cnc_asset_id)
@@ -1055,6 +1345,7 @@ class PredictiveMaintenanceOntologyMaterializer:
             (dataset_version_id,),
         ).fetchall()
         product_oids: dict[str, str] = {}
+        production_linked_assets: set[str] = set()
         for row in latest_cycles:
             product_id = str(row["product_id"])
             asset_id = str(row["cnc_asset_id"])
@@ -1067,8 +1358,11 @@ class PredictiveMaintenanceOntologyMaterializer:
                     {
                         "product_id": product_type,
                         "product_type": product_type,
+                        "variant": product_type,
+                        "name": f"Product {product_type}",
                         "display_name": f"Product {product_type}",
                         "source_role": "cnc_production_cycle",
+                        "context_kind": "versioned_production_projection",
                     },
                     [
                         _source_ref(
@@ -1127,6 +1421,76 @@ class PredictiveMaintenanceOntologyMaterializer:
                 product_oid,
                 {"basis": "latest_completed_production_cycle"},
             )
+            production_linked_assets.add(asset_id)
+
+        # Live generated Dataset Versions do not always carry historical cycle
+        # rows. In that case the latest governed CNC observation still provides
+        # the current product type, which is useful as a read projection while
+        # remaining explicitly weaker than a completed production-cycle fact.
+        latest_observed_products = connection.execute(
+            """
+            SELECT DISTINCT ON (asset_id) asset_id,product_type,observed_at
+            FROM pm_cnc_observations
+            WHERE dataset_version_id=%s
+            ORDER BY asset_id,observed_at DESC
+            """,
+            (dataset_version_id,),
+        ).fetchall()
+        cnc_observation_sha = role_checksums.get("cnc_sensor_observation")
+        if cnc_observation_sha:
+            for row in latest_observed_products:
+                asset_id = str(row["asset_id"])
+                if asset_id in production_linked_assets or ("equipment", asset_id) not in object_ids:
+                    continue
+                product_type = str(row["product_type"])
+                product_oid = product_oids.get(product_type)
+                if product_oid is None:
+                    product_oid = add_object(
+                        "product",
+                        product_type,
+                        {
+                            "product_id": product_type,
+                            "product_type": product_type,
+                            "variant": product_type,
+                            "name": f"Product {product_type}",
+                            "display_name": f"Product {product_type}",
+                            "source_role": "cnc_sensor_observation",
+                            "context_kind": "versioned_production_projection",
+                            "claim_scope": "current_product_type_observation_not_completed_cycle",
+                        },
+                        [
+                            _source_ref(
+                                dataset_id,
+                                dataset_version_id,
+                                "cnc_sensor_observation",
+                                cnc_observation_sha,
+                                "product",
+                                product_type,
+                            )
+                        ],
+                    )
+                    product_oids[product_type] = product_oid
+                source_ref = _source_ref(
+                    dataset_id,
+                    dataset_version_id,
+                    "cnc_sensor_observation",
+                    cnc_observation_sha,
+                    "equipment",
+                    asset_id,
+                    suffix=f":observed_at:{row['observed_at'].isoformat()}",
+                )
+                add_link(
+                    "equipment_produces_product",
+                    f"{asset_id}->{product_type}",
+                    object_ids[("equipment", asset_id)],
+                    product_oid,
+                    {
+                        "basis": "latest_cnc_observation_product_type",
+                        "observed_at": row["observed_at"].isoformat(),
+                        "source_ref": source_ref,
+                        "claim_scope": "current_product_type_observation_not_completed_cycle",
+                    },
+                )
 
         return objects, links
 

@@ -58,6 +58,163 @@ def test_runtime_result_source_checksums_are_aggregated_deterministically() -> N
         _aggregate_source_sha256([])
 
 
+def test_closed_loop_cases_are_projected_as_versioned_graph_history(
+    tmp_path: Path,
+    postgresql_database: str,
+) -> None:
+    import psycopg
+    from psycopg.rows import dict_row
+    from psycopg.types.json import Jsonb
+
+    root = create_small_v3_package(tmp_path / "v3-cases")
+    _manifest, ingestion = ingest(postgresql_database, root)
+    with psycopg.connect(postgresql_database, row_factory=dict_row) as connection:
+        current_risk = connection.execute(
+            """
+            SELECT artifact_id,asset_id FROM pm_result_artifacts
+            WHERE dataset_version_id=%s ORDER BY asset_id LIMIT 1
+            """,
+            (ingestion.dataset_version_id,),
+        ).fetchone()
+        assert current_risk is not None
+        asset_id = str(current_risk["asset_id"])
+        current_event_id = str(current_risk["artifact_id"])
+        historical_event_id = f"historical-case:{asset_id}"
+        for index, event_id in enumerate((historical_event_id, current_event_id), start=1):
+            connection.execute(
+                """
+                INSERT INTO closed_loop_work_orders(
+                    work_order_id,organization_id,project_id,workspace_id,event_id,
+                    asset_id,equipment_id,work_type,status,idempotency_key,
+                    authorization_json,created_at,updated_at
+                ) VALUES (%s,'org-test','project-test','workspace-test',%s,%s,%s,
+                          'maintenance','completed',%s,%s,
+                          now()-(%s || ' days')::interval,now()-(%s || ' days')::interval)
+                """,
+                (
+                    f"case-work-order-{index}",
+                    event_id,
+                    asset_id,
+                    asset_id,
+                    f"case-work-order-key-{index}",
+                    Jsonb({"source": "test-case-history"}),
+                    3 - index,
+                    3 - index,
+                ),
+            )
+        connection.commit()
+
+    materializer = PredictiveMaintenanceOntologyMaterializer(postgresql_database)
+    materializer.ensure_default_mapping(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        dataset_id=ingestion.dataset_id,
+        dataset_version_id=ingestion.dataset_version_id,
+        approve=True,
+        approved_by="case-history-test",
+    )
+    result = materializer.materialize(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        dataset_id=ingestion.dataset_id,
+        dataset_version_id=ingestion.dataset_version_id,
+    )
+    assert result.object_counts["maintenance_case"] == 2
+    assert result.link_counts["equipment_has_maintenance_case"] == 2
+    assert result.link_counts["maintenance_case_has_work_order"] == 2
+    assert result.link_counts["maintenance_case_similar_to"] == 1
+    assert result.link_counts["risk_event_led_to_maintenance_case"] == 1
+
+    repository = PostgreSQLOntologyInstanceRepository(
+        postgresql_database,
+        organization_id="org-test",
+        project_id="project-test",
+    )
+    cases = [
+        item
+        for item in repository.list_objects(workspace_id="workspace-test")
+        if item.properties.get("dataset_version_id") == ingestion.dataset_version_id
+        and item.object_type == "maintenance_case"
+    ]
+    assert {item.properties["event_id"] for item in cases} == {
+        historical_event_id,
+        current_event_id,
+    }
+    assert all(
+        item.properties["claim_scope"] == "operational_case_history_not_causal_equivalence"
+        for item in cases
+    )
+
+
+def test_live_cnc_observation_projects_current_product_when_cycles_are_absent(
+    tmp_path: Path,
+    postgresql_database: str,
+) -> None:
+    import psycopg
+    from psycopg.rows import dict_row
+
+    root = create_small_v3_package(tmp_path / "v3-live-product")
+    _manifest, ingestion = ingest(postgresql_database, root)
+    with psycopg.connect(postgresql_database, row_factory=dict_row) as connection:
+        connection.execute(
+            "DELETE FROM pm_production_cycles WHERE dataset_version_id=%s",
+            (ingestion.dataset_version_id,),
+        )
+        expected = connection.execute(
+            """
+            SELECT DISTINCT ON (asset_id) asset_id,product_type
+            FROM pm_cnc_observations
+            WHERE dataset_version_id=%s
+            ORDER BY asset_id,observed_at DESC
+            """,
+            (ingestion.dataset_version_id,),
+        ).fetchall()
+        connection.commit()
+    assert expected
+
+    materializer = PredictiveMaintenanceOntologyMaterializer(postgresql_database)
+    materializer.ensure_default_mapping(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        dataset_id=ingestion.dataset_id,
+        dataset_version_id=ingestion.dataset_version_id,
+        approve=True,
+        approved_by="live-product-test",
+    )
+    result = materializer.materialize(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        dataset_id=ingestion.dataset_id,
+        dataset_version_id=ingestion.dataset_version_id,
+    )
+
+    assert result.object_counts.get("production_cycle", 0) == 0
+    assert result.object_counts["product"] == len({str(row["product_type"]) for row in expected})
+    assert result.link_counts["equipment_produces_product"] == len(expected)
+
+    repository = PostgreSQLOntologyInstanceRepository(
+        postgresql_database,
+        organization_id="org-test",
+        project_id="project-test",
+    )
+    links = [
+        item
+        for item in repository.list_links(workspace_id="workspace-test")
+        if item.properties.get("dataset_version_id") == ingestion.dataset_version_id
+        and item.link_type == "equipment_produces_product"
+    ]
+    assert len(links) == len(expected)
+    assert all(item.properties["basis"] == "latest_cnc_observation_product_type" for item in links)
+    assert all(
+        item.properties["claim_scope"] == "current_product_type_observation_not_completed_cycle"
+        for item in links
+    )
+
+
 def test_graph_bootstrap_selects_current_materialization_and_rejects_stale_event(
     tmp_path: Path,
     postgresql_database: str,
@@ -280,7 +437,7 @@ def test_v2_v3_materialization_is_versioned_governed_and_idempotent(
     assert first.link_count == second.link_count == 27
     assert first.materialization_checksum_sha256 == second.materialization_checksum_sha256
     assert first.outbox_event_id == second.outbox_event_id
-    assert first.mapping_version == "predictive-maintenance-v3.2"
+    assert first.mapping_version == "predictive-maintenance-v3.3"
 
     with psycopg.connect(postgresql_database, row_factory=dict_row) as connection:
         outbox_payload = connection.execute(

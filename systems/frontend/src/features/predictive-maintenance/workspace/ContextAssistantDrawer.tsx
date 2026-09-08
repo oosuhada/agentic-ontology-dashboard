@@ -1,4 +1,4 @@
-import { BarChart3, Check, ChevronDown, ChevronRight, CircleAlert, Clock3, Database, Gauge, ListChecks, PanelRightClose, Send, Sparkles } from "lucide-react";
+import { BarChart3, Check, ChevronDown, ChevronRight, CircleAlert, Clock3, Database, Gauge, ListChecks, Network, PanelRightClose, Send, Sparkles } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   hasReliabilityAssistantSelection,
@@ -150,6 +150,34 @@ function AssistantResponseBlock({
             </li>
           ))}
         </ol>
+      </section>
+    );
+  }
+
+  if (block.type === "relationship_paths") {
+    return (
+      <section className="rw-assistant-response-block is-relationships" aria-label={block.title}>
+        <header><Network size={11} aria-hidden="true" /><strong>{block.title}</strong></header>
+        <ul>
+          {block.items.map((item, index) => (
+            <li key={`${item.relatedType}:${item.label}:${index}`}>
+              <div>
+                <strong>{item.label}</strong>
+                <small>{item.depth ? (english ? `${item.depth}-hop verified path` : `${item.depth}-hop 검증 경로`) : (english ? "Verified relation" : "검증 관계")}</small>
+              </div>
+              {item.path.length ? (
+                <p aria-label={english ? "Relationship path" : "관계 경로"}>
+                  {item.path.map((step, stepIndex) => (
+                    <span key={`${step}:${stepIndex}`}>
+                      {stepIndex > 0 ? <i aria-hidden="true">→</i> : null}
+                      <b>{step.replaceAll("_", " ")}</b>
+                    </span>
+                  ))}
+                </p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
       </section>
     );
   }

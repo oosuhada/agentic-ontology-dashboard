@@ -9,7 +9,15 @@ class _FakeGraphQueryResult:
     answer = "CNC-03은 Line-4와 Product-HX를 통해 연결됩니다."
     status = "succeeded"
     cypher = "MATCH (n) RETURN n"
-    rows = [{"asset": "CNC-03", "line": "Line-4", "product": "Product-HX"}]
+    rows = [{
+        "root_id": "CNC-03",
+        "related_type": "product",
+        "related_id": "HX",
+        "related_label": "Product HX",
+        "relationship_path": ["CURRENTLY_PRODUCES"],
+        "depth": 1,
+        "dataset_version_id": "dsv-test",
+    }]
     row_count = 1
     metadata = {}
     evidence = {}
@@ -93,6 +101,19 @@ def test_combined_relationship_and_sop_question_plans_all_three_stores() -> None
     assert set(contract.required_entities) >= {"asset", "component", "product", "knowledge_document"}
 
 
+def test_similar_maintenance_case_question_routes_through_graph_history() -> None:
+    contract = plan_agent_response_contract(
+        "이 설비와 비슷한 과거 정비 사례와 그때 작업 이력을 보여줘",
+        object_id="CNC-03",
+    )
+
+    assert contract.presentation == "relationship"
+    assert contract.stores == ("relational", "graph", "vector")
+    assert "maintenance_history" in contract.required_facts
+    assert "relationship_paths" in contract.required_facts
+    assert "maintenance_case" in contract.required_entities
+
+
 def test_project3_graph_evidence_uses_validated_boundary_without_exposing_cypher(monkeypatch) -> None:
     monkeypatch.setattr(operations_router, "_agent_project3_client", lambda: _FakeProject3Client())
 
@@ -108,4 +129,15 @@ def test_project3_graph_evidence_uses_validated_boundary_without_exposing_cypher
     assert result["row_count"] == 1
     assert result["evidence"][0]["store"] == "neo4j"
     assert result["evidence"][0]["metadata"]["validation"] == {"validated": True}
+    row_evidence = result["evidence"][1]
+    assert row_evidence["dataset_version_id"] == "dsv-test"
+    assert row_evidence["metadata"]["relationship"] == {
+        "root_id": "CNC-03",
+        "related_type": "product",
+        "related_id": "HX",
+        "related_label": "Product HX",
+        "relationship_path": ["CURRENTLY_PRODUCES"],
+        "depth": 1,
+        "dataset_version_id": "dsv-test",
+    }
     assert "cypher" not in str(result["evidence"]).lower()

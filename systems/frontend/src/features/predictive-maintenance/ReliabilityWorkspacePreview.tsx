@@ -47,6 +47,7 @@ import {
   groundedReliabilityAssistantAnswer,
   isUserFacingReliabilityAssistantAnswer,
   reliabilityAssistantClarificationCandidates,
+  reliabilityAssistantGraphResponseBlocks,
   reliabilityAssistantResponseBlocks,
   type ReliabilityAssistantContext,
   type ReliabilityAssistantEntityCandidate,
@@ -1070,11 +1071,16 @@ export function ReliabilityWorkspacePreview({
         status: step.status,
         latencyMs: step.latency_ms,
       }));
+      const localBlocks = reliabilityAssistantResponseBlocks(assistantContext, trimmed, locale);
+      const graphBlocks = reliabilityAssistantGraphResponseBlocks(run.state.evidence, locale);
+      const responseBlocks = run.state.response_contract?.presentation === "relationship"
+        ? [...graphBlocks, ...localBlocks].slice(0, 4)
+        : [...localBlocks, ...graphBlocks].slice(0, 4);
       setMessages((current) => [...current, {
         id: `assistant-${timestamp}`,
         role: "assistant",
         text: answer,
-        blocks: reliabilityAssistantResponseBlocks(assistantContext, trimmed, locale),
+        blocks: responseBlocks,
         contextHint: hintParts.join(" · "),
         activityTrace: {
           ...assistantActivityFromRun(run, english),

@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from app.project3_runtime.main import app, get_service
-from app.project3_runtime.service import GraphRuntimeService
+from app.project3_runtime.service import GraphRuntimeService, _interests
 from app.project3_runtime.store import Neo4jGraphStore
 
 
@@ -149,6 +149,14 @@ def test_graph_runtime_service_uses_bounded_relationship_query_without_raw_cyphe
     assert result["metadata"]["identity"] == "CNC-S04-L04-01"
     assert "component" in result["metadata"]["interests"]
     assert "sop" in result["metadata"]["interests"]
+
+
+def test_graph_runtime_maps_product_line_and_similar_case_language_to_graph_entities() -> None:
+    impact = _interests("이 설비가 현재 생산하는 제품과 라인 경로를 보여줘")
+    history = _interests("이 설비와 비슷한 과거 정비 사례를 보여줘")
+
+    assert {"product", "production_cycle", "production_cell"}.issubset(impact)
+    assert {"maintenance_case", "work_order", "maintenance_action"}.issubset(history)
 
 
 def test_project3_compatible_http_contract_exposes_health_search_subgraph_and_query() -> None:
