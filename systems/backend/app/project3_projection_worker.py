@@ -29,25 +29,27 @@ def _supersede_stale_materialization_messages(
         connection.execute("SELECT set_config('app.project_id',%s,true)", (project_id,))
         connection.execute(
             """
-            WITH current_materializations AS (
-                SELECT DISTINCT ON (dataset_version_id)
-                    dataset_version_id,workspace_id,materialization_checksum_sha256
+            WITH current_materialization AS (
+                SELECT dataset_version_id,workspace_id,materialization_checksum_sha256
                 FROM ontology_ingestion_runs
                 WHERE organization_id=%s AND project_id=%s
                   AND status='completed'
                   AND materialization_checksum_sha256 IS NOT NULL
-                ORDER BY dataset_version_id,completed_at DESC,id DESC
+                ORDER BY completed_at DESC,id DESC
+                LIMIT 1
             ), stale AS (
                 SELECT o.*
                 FROM transactional_outbox o
-                JOIN current_materializations m
-                  ON o.aggregate_id=m.dataset_version_id
-                 AND o.workspace_id=m.workspace_id
+                CROSS JOIN current_materialization m
                 WHERE o.organization_id=%s AND o.project_id=%s
                   AND o.event_type='ontology.materialization.completed'
                   AND o.status<>'processed'
-                  AND coalesce(o.payload_json->>'materialization_checksum_sha256','')
-                      <> m.materialization_checksum_sha256
+                  AND (
+                    o.aggregate_id<>m.dataset_version_id
+                    OR o.workspace_id IS DISTINCT FROM m.workspace_id
+                    OR coalesce(o.payload_json->>'materialization_checksum_sha256','')
+                       <> m.materialization_checksum_sha256
+                  )
             )
             INSERT INTO outbox_delivery_log(
                 id,organization_id,project_id,workspace_id,outbox_id,event_type,
@@ -63,26 +65,28 @@ def _supersede_stale_materialization_messages(
         )
         rows = connection.execute(
             """
-            WITH current_materializations AS (
-                SELECT DISTINCT ON (dataset_version_id)
-                    dataset_version_id,workspace_id,materialization_checksum_sha256
+            WITH current_materialization AS (
+                SELECT dataset_version_id,workspace_id,materialization_checksum_sha256
                 FROM ontology_ingestion_runs
                 WHERE organization_id=%s AND project_id=%s
                   AND status='completed'
                   AND materialization_checksum_sha256 IS NOT NULL
-                ORDER BY dataset_version_id,completed_at DESC,id DESC
+                ORDER BY completed_at DESC,id DESC
+                LIMIT 1
             )
             UPDATE transactional_outbox o
             SET status='processed',processed_at=now(),last_error=NULL,
                 lease_owner=NULL,lease_token=NULL,lease_expires_at=NULL,heartbeat_at=NULL
-            FROM current_materializations m
+            FROM current_materialization m
             WHERE o.organization_id=%s AND o.project_id=%s
               AND o.event_type='ontology.materialization.completed'
               AND o.status<>'processed'
-              AND o.aggregate_id=m.dataset_version_id
-              AND o.workspace_id=m.workspace_id
-              AND coalesce(o.payload_json->>'materialization_checksum_sha256','')
-                  <> m.materialization_checksum_sha256
+              AND (
+                o.aggregate_id<>m.dataset_version_id
+                OR o.workspace_id IS DISTINCT FROM m.workspace_id
+                OR coalesce(o.payload_json->>'materialization_checksum_sha256','')
+                   <> m.materialization_checksum_sha256
+              )
             RETURNING o.id
             """,
             (organization_id, project_id, organization_id, project_id),

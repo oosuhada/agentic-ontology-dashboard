@@ -97,6 +97,10 @@ def test_graph_bootstrap_selects_current_materialization_and_rejects_stale_event
         stale_payload["object_counts"] = {"equipment": 1}
         stale_payload["link_counts"] = {}
         stale_id = uuid.uuid4()
+        historical_payload = dict(current_row["payload_json"])
+        historical_payload["dataset_version_id"] = "dsv-historical"
+        historical_payload["materialization_checksum_sha256"] = "1" * 64
+        historical_id = uuid.uuid4()
         connection.execute(
             """
             INSERT INTO transactional_outbox(
@@ -106,6 +110,17 @@ def test_graph_bootstrap_selects_current_materialization_and_rejects_stale_event
                       'ontology.materialization.completed',%s,'pending',now()+interval '10 minutes',now())
             """,
             (stale_id, ingestion.dataset_version_id, Jsonb(stale_payload)),
+        )
+        connection.execute(
+            """
+            INSERT INTO transactional_outbox(
+                id,organization_id,project_id,workspace_id,aggregate_type,aggregate_id,
+                event_type,payload_json,status,attempt_count,created_at,available_at,last_error
+            ) VALUES (%s,'org-test','project-test','workspace-test','dataset_version','dsv-historical',
+                      'ontology.materialization.completed',%s,'dead_letter',5,
+                      now()-interval '10 minutes',now(),'historical projection failure')
+            """,
+            (historical_id, Jsonb(historical_payload)),
         )
         connection.commit()
 
@@ -144,7 +159,7 @@ def test_graph_bootstrap_selects_current_materialization_and_rejects_stale_event
         postgresql_database,
         organization_id="org-test",
         project_id="project-test",
-    ) == 1
+    ) == 2
     with psycopg.connect(postgresql_database, row_factory=dict_row) as connection:
         stale_state = connection.execute(
             "SELECT status,processed_at,last_error FROM transactional_outbox WHERE id=%s",
@@ -154,12 +169,28 @@ def test_graph_bootstrap_selects_current_materialization_and_rejects_stale_event
             "SELECT handler_code FROM outbox_delivery_log WHERE outbox_id=%s",
             (stale_id,),
         ).fetchone()
+        historical_state = connection.execute(
+            "SELECT status,processed_at,last_error FROM transactional_outbox WHERE id=%s",
+            (historical_id,),
+        ).fetchone()
+        historical_delivery = connection.execute(
+            "SELECT handler_code FROM outbox_delivery_log WHERE outbox_id=%s",
+            (historical_id,),
+        ).fetchone()
     assert stale_state is not None
     assert stale_state["status"] == "processed"
     assert stale_state["processed_at"] is not None
     assert stale_state["last_error"] is None
     assert delivery is not None
     assert delivery["handler_code"] == (
+        "project3-versioned-graph-projection-v1:superseded"
+    )
+    assert historical_state is not None
+    assert historical_state["status"] == "processed"
+    assert historical_state["processed_at"] is not None
+    assert historical_state["last_error"] is None
+    assert historical_delivery is not None
+    assert historical_delivery["handler_code"] == (
         "project3-versioned-graph-projection-v1:superseded"
     )
 
