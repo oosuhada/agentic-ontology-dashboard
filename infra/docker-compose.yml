@@ -44,7 +44,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "cypher-shell -a bolt://127.0.0.1:7687 -u $${GRAPH_NEO4J_USERNAME} -p $${GRAPH_NEO4J_PASSWORD} 'RETURN 1 AS ok' >/dev/null",
+          "cypher-shell -a bolt://127.0.0.1:7687 -u $${GRAPH_NEO4J_USERNAME} -p \"$${GRAPH_NEO4J_PASSWORD}\" 'RETURN 1 AS ok' >/dev/null",
         ]
       interval: 8s
       timeout: 5s
