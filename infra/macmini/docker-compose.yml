@@ -44,8 +44,12 @@ services:
     mem_limit: 1400m
     environment:
       NEO4J_AUTH: ${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-}
-      NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
-      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-}
+      # The official Neo4j image interprets every NEO4J_* variable as a
+      # server setting. Keep health-check credentials under a neutral prefix;
+      # passing NEO4J_PASSWORD/NEO4J_USERNAME here becomes invalid PASSWORD /
+      # USERNAME config when strict validation is enabled.
+      GRAPH_NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
+      GRAPH_NEO4J_PASSWORD: ${NEO4J_PASSWORD:-}
       NEO4J_server_memory_heap_initial__size: 384m
       NEO4J_server_memory_heap_max__size: 512m
       NEO4J_server_memory_pagecache_size: 384m
@@ -53,7 +57,7 @@ services:
       - ${ONTOLOGY_DATA_ROOT}/neo4j/data:/data
       - ${ONTOLOGY_DATA_ROOT}/neo4j/logs:/logs
     healthcheck:
-      test: ["CMD-SHELL", "cypher-shell -a bolt://127.0.0.1:7687 -u $${NEO4J_USERNAME:-neo4j} -p '$${NEO4J_PASSWORD}' 'RETURN 1 AS ok' >/dev/null"]
+      test: ["CMD-SHELL", "cypher-shell -a bolt://127.0.0.1:7687 -u $${GRAPH_NEO4J_USERNAME:-neo4j} -p '$${GRAPH_NEO4J_PASSWORD}' 'RETURN 1 AS ok' >/dev/null"]
       interval: 8s
       timeout: 5s
       retries: 25
