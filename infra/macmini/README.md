@@ -79,6 +79,20 @@ services return after OrbStack/host restart. `generator-runtime`, `live-ingestor
 and `knowledge-indexer` intentionally use `restart: "no"` and are started only
 by the background refresh job.
 
+Low-traffic public demos can use the same home-server policy without changing
+their public hostnames. `install-idle-demo-supervisors.sh` installs localhost-only
+supervisors plus wake-aware nginx routing for FactoryGraph and Aigram. FactoryGraph
+sleeps after 45 minutes without proxied traffic; Aigram sleeps after 60 minutes.
+Wake always reuses existing Compose images with `--no-build`. Every nginx and
+cloudflared file is backed up first, and a failed install automatically restores
+the previous routing configuration.
+
+```bash
+/bin/bash infra/macmini/install-idle-demo-supervisors.sh
+curl http://127.0.0.1:8232/status  # FactoryGraph
+curl http://127.0.0.1:8233/status  # Aigram
+```
+
 Install the home-server background refresh with:
 
 ```bash

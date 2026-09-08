@@ -130,3 +130,11 @@ if [[ -f "$SOURCE_ROOT/infra/macmini/install-background-refresh.sh" ]]; then
   ONTOLOGY_MACMINI_PROD_ROOT="$PROD_ROOT" \
     /bin/bash "$SOURCE_ROOT/infra/macmini/install-background-refresh.sh"
 fi
+
+# Keep the low-traffic public demo ingress/supervisors under the same
+# CI-verified release source. The installer is idempotent and keeps timestamped
+# nginx/cloudflared backups so a failed reload rolls back to the previous host
+# configuration instead of leaving a sleeping demo unreachable.
+if [[ -f "$SOURCE_ROOT/infra/macmini/install-idle-demo-supervisors.sh" ]]; then
+  /bin/bash "$SOURCE_ROOT/infra/macmini/install-idle-demo-supervisors.sh"
+fi
