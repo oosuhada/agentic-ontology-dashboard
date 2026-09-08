@@ -90,8 +90,21 @@ if [[ -n "$PREVIOUS_BASE_SHA" ]] \
   && git diff --quiet "$PREVIOUS_BASE_SHA" "$TARGET_SHA" -- \
       systems/backend systems/generator contracts/schemas \
       infra/macmini/docker-compose.yml requirements; then
+  if docker inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
+    current_backend_image_id="$(docker inspect "$CONTAINER_NAME" --format '{{.Image}}')"
+    docker tag "$current_backend_image_id" "$TARGET_IMAGE"
+  else
+    echo "backend build inputs are unchanged but the running backend container is missing" >&2
+    exit 1
+  fi
+  if docker image inspect "$GENERATOR_IMAGE_REPO:latest" >/dev/null 2>&1; then
+    docker tag "$GENERATOR_IMAGE_REPO:latest" "$TARGET_GENERATOR_IMAGE"
+  else
+    echo "generator build inputs are unchanged but the current Generator image is missing" >&2
+    exit 1
+  fi
   printf '%s\n' "$TARGET_SHA" > "$STATE_FILE"
-  echo "No backend build inputs changed since $PREVIOUS_BASE_SHA; deployment skipped."
+  echo "No backend build inputs changed since $PREVIOUS_BASE_SHA; reused current images for $TARGET_SHA."
   exit 0
 fi
 
