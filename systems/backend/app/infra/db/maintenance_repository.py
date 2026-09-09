@@ -2179,6 +2179,69 @@ class MaintenanceRepository:
                 """,
                 parameters,
             ).fetchall()
+            runtime_delivery_rows = connection.execute(
+                """
+                SELECT
+                    o.id AS outbox_id,o.event_type,o.payload_json,o.status,
+                    o.attempt_count,o.last_error,o.available_at,o.processed_at,
+                    o.created_at AS queued_at,
+                    d.handler_code,
+                    r.transport,r.external_delivery_id,r.overlay_branch_id,
+                    r.history_segment_id,r.response_json,r.delivered_at
+                FROM transactional_outbox o
+                LEFT JOIN outbox_delivery_log d
+                  ON d.outbox_id=o.id
+                LEFT JOIN maintenance_runtime_delivery_receipts r
+                  ON r.outbox_id=o.id
+                WHERE o.organization_id=? AND o.project_id=?
+                  AND o.workspace_id=? AND o.event_type LIKE 'maintenance.%'
+                ORDER BY o.created_at,o.id
+                """,
+                (scope.organization_id, scope.project_id, workspace_id),
+            ).fetchall()
+            value_realizations = connection.execute(
+                """
+                SELECT * FROM maintenance_value_realizations
+                WHERE organization_id=? AND project_id=? AND workspace_id=?
+                  AND event_id=? ORDER BY measured_at,realization_id
+                """,
+                parameters,
+            ).fetchall()
+        runtime_deliveries: list[dict[str, Any]] = []
+        for row in runtime_delivery_rows:
+            payload = self._decoded(row["payload_json"])
+            if not isinstance(payload, Mapping) or str(payload.get("event_id") or "") != event_id:
+                continue
+            runtime_deliveries.append(
+                {
+                    "organization_id": scope.organization_id,
+                    "project_id": scope.project_id,
+                    "workspace_id": workspace_id,
+                    "event_id": event_id,
+                    "outbox_id": str(row["outbox_id"]),
+                    "event_type": str(row["event_type"]),
+                    "state_version": payload.get("state_version"),
+                    "equipment_id": payload.get("equipment_id"),
+                    "maintenance_action_id": payload.get("maintenance_action_id"),
+                    "maintenance_event_id": payload.get("maintenance_event_id"),
+                    "delivery_status": str(row["status"]),
+                    "attempt_count": int(row["attempt_count"] or 0),
+                    "last_error": row["last_error"],
+                    "available_at": row["available_at"],
+                    "processed_at": row["processed_at"],
+                    "queued_at": row["queued_at"],
+                    "transport": row["transport"] or row["handler_code"],
+                    "external_delivery_id": row["external_delivery_id"],
+                    "overlay_branch_id": row["overlay_branch_id"],
+                    "history_segment_id": row["history_segment_id"],
+                    "response": (
+                        {}
+                        if row["response_json"] is None
+                        else self._decoded(row["response_json"])
+                    ),
+                    "delivered_at": row["delivered_at"],
+                }
+            )
         return {
             "event_id": event_id,
             "recommendations": [
@@ -2208,9 +2271,115 @@ class MaintenanceRepository:
                 ).model_dump(mode="json")
                 for row in cost_analyses
             ],
+            "runtime_deliveries": runtime_deliveries,
+            "value_realizations": [
+                {
+                    **dict(row),
+                    "basis": self._decoded(row["basis_json"]),
+                    "recurrence_observed": (
+                        None
+                        if row["recurrence_observed"] is None
+                        else bool(row["recurrence_observed"])
+                    ),
+                }
+                for row in value_realizations
+            ],
             "activities": self.list_event_activity(
                 workspace_id=workspace_id,
                 event_id=event_id,
+            ),
+        }
+
+    def record_value_realization(
+        self,
+        *,
+        workspace_id: str,
+        event_id: str,
+        equipment_id: str,
+        maintenance_event_id: str,
+        source_product_result_id: str,
+        post_product_result_id: str,
+        predicted_downtime_minutes: float | None,
+        actual_downtime_minutes: float | None,
+        predicted_loss_exposure_minor: int | None,
+        realized_avoided_exposure_minor: int | None,
+        currency: str,
+        before_risk_score: float | None,
+        after_risk_score: float | None,
+        recurrence_observed: bool | None,
+        basis: Mapping[str, Any],
+        measured_at: str,
+        created_by: str,
+    ) -> dict[str, Any]:
+        realization_id = str(
+            uuid.uuid5(
+                uuid.NAMESPACE_URL,
+                f"maintenance-value:{workspace_id}:{maintenance_event_id}:{post_product_result_id}",
+            )
+        )
+        now = self._now()
+        with self._connect() as connection:
+            scope = self.project_context.resolve(workspace_id, connection=connection)
+            connection.execute(
+                """
+                INSERT INTO maintenance_value_realizations(
+                    realization_id,organization_id,project_id,workspace_id,event_id,
+                    equipment_id,maintenance_event_id,source_product_result_id,
+                    post_product_result_id,predicted_downtime_minutes,actual_downtime_minutes,
+                    predicted_loss_exposure_minor,realized_avoided_exposure_minor,currency,
+                    before_risk_score,after_risk_score,recurrence_observed,basis_json,
+                    measured_at,created_by,created_at
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(organization_id,project_id,workspace_id,maintenance_event_id,post_product_result_id)
+                DO NOTHING
+                """,
+                (
+                    realization_id,
+                    scope.organization_id,
+                    scope.project_id,
+                    workspace_id,
+                    event_id,
+                    equipment_id,
+                    maintenance_event_id,
+                    source_product_result_id,
+                    post_product_result_id,
+                    predicted_downtime_minutes,
+                    actual_downtime_minutes,
+                    predicted_loss_exposure_minor,
+                    realized_avoided_exposure_minor,
+                    currency,
+                    before_risk_score,
+                    after_risk_score,
+                    recurrence_observed,
+                    self._json(dict(basis)),
+                    measured_at,
+                    created_by,
+                    now,
+                ),
+            )
+            row = connection.execute(
+                """
+                SELECT * FROM maintenance_value_realizations
+                WHERE organization_id=? AND project_id=? AND workspace_id=?
+                  AND maintenance_event_id=? AND post_product_result_id=?
+                """,
+                (
+                    scope.organization_id,
+                    scope.project_id,
+                    workspace_id,
+                    maintenance_event_id,
+                    post_product_result_id,
+                ),
+            ).fetchone()
+        if row is None:
+            raise RuntimeError("value realization insert did not produce a record")
+        return {
+            **dict(row),
+            "basis": self._decoded(row["basis_json"]),
+            "recurrence_observed": (
+                None
+                if row["recurrence_observed"] is None
+                else bool(row["recurrence_observed"])
             ),
         }
 

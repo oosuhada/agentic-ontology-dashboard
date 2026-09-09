@@ -17,6 +17,7 @@ from systems.generator.app.extraction.extraction_manager import (
 )
 from systems.generator.app.extraction.extraction_schema import (
     ExtractionManagerStatus,
+    ExtractionReplayRequest,
     ExtractionRequest,
     ExtractionResponse,
     ExtractionRuntimeHandoff,
@@ -24,11 +25,13 @@ from systems.generator.app.extraction.extraction_schema import (
     GenDataExtractionResponse,
 )
 from systems.generator.app.extraction.extraction_service import ExtractionService
+from systems.generator.app.extraction.mapping_repository import MappingRepository
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["extraction"])
 _extraction_service: Optional[ExtractionService] = None
+_mapping_repository: Optional[MappingRepository] = None
 
 
 def get_extraction_service() -> ExtractionService:
@@ -43,6 +46,13 @@ def set_extraction_service(service: Optional[ExtractionService]) -> None:
     _extraction_service = service
 
 
+def get_mapping_repository() -> MappingRepository:
+    global _mapping_repository
+    if _mapping_repository is None:
+        _mapping_repository = MappingRepository()
+    return _mapping_repository
+
+
 @router.get(
     "/extraction/status",
     response_model=ExtractionManagerStatus,
@@ -55,6 +65,46 @@ def get_extraction_status(
 ) -> ExtractionManagerStatus:
     """Return extraction manager and background worker status."""
     return manager.get_status()
+
+
+@router.get("/extraction/mappings")
+def list_mapping_versions(
+    repository: MappingRepository = Depends(get_mapping_repository),
+):
+    return {"items": repository.list_mappings()}
+
+
+@router.get("/extraction/mappings/{mapping_id}/versions/{mapping_version}")
+def get_mapping_version(
+    mapping_id: str,
+    mapping_version: str,
+    repository: MappingRepository = Depends(get_mapping_repository),
+):
+    data, _path = repository.load_mapping(mapping_id, mapping_version)
+    return {
+        "mapping_id": mapping_id,
+        "mapping_version": mapping_version,
+        "status": data.get("status"),
+        "mapping": data,
+    }
+
+
+@router.post(
+    "/extraction/replays",
+    response_model=ExtractionResponse,
+    summary="Replay an approved Mapping into a new immutable Dataset version",
+)
+def replay_extraction(
+    request_body: ExtractionReplayRequest,
+    service: ExtractionService = Depends(get_extraction_service),
+) -> ExtractionResponse:
+    """Replay from source offset zero using a fresh run_id and Dataset version.
+
+    Existing Dataset versions are never edited.  The normal Extraction service
+    still performs source checksum, approved Mapping, single-writer and
+    provenance validation.
+    """
+    return service.execute_extraction(request_body.extraction)
 
 
 @router.post(

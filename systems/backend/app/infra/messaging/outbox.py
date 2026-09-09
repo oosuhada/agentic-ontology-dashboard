@@ -21,6 +21,7 @@ from typing import Any
 
 from app.infra.db.postgresql_compat import postgres_repository_connection
 from app.infra.db.postgresql_repositories import is_postgresql
+from app.infra.observability.runtime import METRICS
 
 
 class OutboxLeaseLost(RuntimeError):
@@ -526,10 +527,20 @@ class ProjectOutboxWorker:
         if message is None:
             return False
         handler_code, handler = self.handlers[message.event_type]
+        metric_labels = {
+            "event_type": message.event_type,
+            "handler": handler_code,
+        }
+        METRICS.inc("ontology_outbox_delivery_attempts_total", labels=metric_labels)
         try:
             handler(message)
         except Exception as exc:
             retryable = bool(getattr(exc, "retryable", True))
+            outcome = (
+                "retry"
+                if retryable and message.attempt_count < self.max_attempts
+                else "dead_letter"
+            )
             delay = min(
                 3600,
                 self.retry_delay_seconds * (2 ** max(0, message.attempt_count - 1)),
@@ -541,8 +552,16 @@ class ProjectOutboxWorker:
                 retry_delay_seconds=delay,
                 retryable=retryable,
             )
+            METRICS.inc(
+                "ontology_outbox_delivery_outcomes_total",
+                labels={**metric_labels, "outcome": outcome},
+            )
             return True
         self.repository.mark_delivered(message, handler_code=handler_code)
+        METRICS.inc(
+            "ontology_outbox_delivery_outcomes_total",
+            labels={**metric_labels, "outcome": "processed"},
+        )
         return True
 
     def drain(self, *, max_messages: int = 1000) -> int:

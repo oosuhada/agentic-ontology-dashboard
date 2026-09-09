@@ -13,6 +13,7 @@ from app.dependencies import (
 )
 from app.infra.db.project_repository import ProjectRepository
 from app.main import app
+from app.infra.observability.runtime import observability_readiness
 from app.project import ProjectService
 from identity_test_support import build_identity_service
 
@@ -37,8 +38,20 @@ def client(tmp_path: Path):
 
 
 def test_health_and_main_operations_flow(client: TestClient) -> None:
-    assert client.get("/health/live").json()["status"] == "ok"
-    assert client.get("/health/ready").json()["status"] == "ready"
+    live = client.get("/health/live")
+    ready = client.get("/health/ready")
+    assert live.json()["status"] == "ok"
+    assert ready.json()["status"] == "ready"
+    assert "build_sha" in live.json()
+    assert "build_sha" in ready.json()
+
+    observability = client.get("/health/observability")
+    assert observability.status_code == 200
+    assert observability.json()["metrics"]["endpoint"] == "/metrics"
+    metrics = client.get("/metrics")
+    assert metrics.status_code == 200
+    assert "ontology_build_info" in metrics.text
+    assert "ontology_http_requests_total" in metrics.text
 
     login = client.post(
         "/api/auth/login",
@@ -71,5 +84,22 @@ def test_openapi_keeps_current_product_routes() -> None:
         "/api/dashboards/resolved",
         "/api/reports/draft",
         "/api/planner/object-query",
+        "/metrics",
     }
     assert required <= set(paths)
+
+
+def test_production_observability_degrades_without_optional_trace_export(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("ONTOLOGY_DASHBOARD_METRICS_TOKEN", "test-metrics-token")
+    monkeypatch.setenv("ONTOLOGY_DASHBOARD_ALERT_DESTINATION_REF", "structured-log")
+    monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
+
+    readiness = observability_readiness()
+    assert readiness.state == "degraded"
+    assert readiness.tracing["state"] == "not_configured"
+
+    monkeypatch.delenv("ONTOLOGY_DASHBOARD_METRICS_TOKEN")
+    assert observability_readiness().state == "blocked"

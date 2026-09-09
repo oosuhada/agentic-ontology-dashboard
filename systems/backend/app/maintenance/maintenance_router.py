@@ -16,6 +16,7 @@ from .api_schema import (
     MaintenanceActionStartRequest,
     MaintenanceCostAnalysisCreateRequest,
     MaintenanceReplayRequest,
+    MaintenanceValueRealizationCreateRequest,
     MaintenanceWorkOrderApproveRequest,
     OperationsManualRecommendationCreateRequest,
     RecommendationDecisionCreateRequest,
@@ -575,6 +576,35 @@ def create_maintenance_router(
                 project_id=project_id,
                 workspace_id=workspace_id,
                 event_id=event_id,
+            )
+        )
+
+    @router.post("/maintenance-events/{maintenance_event_id}/value-realizations")
+    def record_value_realization(
+        project_id: str,
+        workspace_id: str,
+        maintenance_event_id: str,
+        payload: MaintenanceValueRealizationCreateRequest,
+        principal: Any = Depends(manager_command),
+        _: None = Depends(require_csrf),
+        identity: Any = Depends(get_identity_service),
+        service: MaintenanceLoopService = Depends(get_maintenance_service),
+    ):
+        _require_scope(
+            principal=principal,
+            identity=identity,
+            project_id=project_id,
+            workspace_id=workspace_id,
+        )
+        _require_product_role(principal, project_id, "process_manager")
+        return _execute(
+            lambda: service.record_value_realization(
+                organization_id=principal.organization_id,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                maintenance_event_id=maintenance_event_id,
+                payload=payload,
+                actor_id=principal.user_id,
             )
         )
 

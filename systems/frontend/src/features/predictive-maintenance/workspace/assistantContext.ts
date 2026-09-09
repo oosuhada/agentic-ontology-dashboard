@@ -775,6 +775,7 @@ function conciseEvidenceItems(
     .filter((item) => item.trim())
     .filter((item) => !/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/i.test(item))
     .filter((item) => !/model unit|source[_ ]?ref|artifact manifest|deterministic/i.test(item))
+    .map((item) => item.trim().replace(/[.!。]+$/, ""))
     .slice(0, limit);
 }
 

@@ -66,7 +66,9 @@ def test_generator_daemon_health(client):
     """Test GET /health returns 200 with system identifier."""
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "system": "generator"}
+    assert response.json()["status"] == "ok"
+    assert response.json()["system"] == "generator"
+    assert response.json()["build_sha"]
 
 
 def test_generator_daemon_train_success(client):

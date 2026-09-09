@@ -522,6 +522,25 @@ class ExtractionService:
                 rejected_count=stats["rejected_records"],
                 asset_ids=stats["asset_ids"],
                 time_range=time_range,
+                quality_summary={
+                    "status": (
+                        "clean"
+                        if stats["rejected_records"] == 0
+                        else "degraded"
+                    ),
+                    "processed_records": stats["parsed_records"],
+                    "accepted_observations": stats["observations_count"],
+                    "rejected_records": stats["rejected_records"],
+                    "rejected_ratio": (
+                        0.0
+                        if stats["parsed_records"] == 0
+                        else round(
+                            stats["rejected_records"] / stats["parsed_records"],
+                            6,
+                        )
+                    ),
+                    "asset_count": len(stats["asset_ids"]),
+                },
             )
 
             response = ExtractionResponse(

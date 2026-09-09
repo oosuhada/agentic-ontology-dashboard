@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 from typing import Any
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from contextlib import asynccontextmanager
@@ -28,6 +29,7 @@ from systems.generator.app.extraction.extraction_manager import ExtractionManage
 from systems.generator.app.runtime_pipeline.pipeline_router import router as runtime_pipeline_router
 from systems.generator.app.runtime_pipeline.pipeline_exception import PipelineBaseError
 from systems.generator.app.runtime_pipeline.pipeline_manager import PipelineManager
+from systems.generator.app.model_artifacts.model_artifact_router import router as model_artifact_router
 
 logger = logging.getLogger(__name__)
 
@@ -223,13 +225,44 @@ def register_routers(app: FastAPI) -> None:
     """Register all domain and compatibility routers."""
     @app.get("/health", tags=["system"])
     def health() -> dict[str, str]:
-        return {"status": "ok", "system": "generator"}
+        return {
+            "status": "ok",
+            "system": "generator",
+            "build_sha": os.getenv("ONTOLOGY_DASHBOARD_BUILD_SHA", "unknown"),
+        }
+
+    @app.get("/metrics", tags=["system"], response_class=PlainTextResponse)
+    def metrics() -> PlainTextResponse:
+        """Bounded-cardinality operational metrics for the Generator runtime."""
+        extraction = ExtractionManager.get_instance().get_status()
+        pipeline = PipelineManager.get_instance().get_status()
+        build_sha = os.getenv("ONTOLOGY_DASHBOARD_BUILD_SHA", "unknown")[:64]
+        lines = [
+            f'generator_build_info{{sha="{build_sha}"}} 1',
+            f"generator_extraction_sources {extraction.discovered_source_count}",
+            f'generator_extraction_source_state{{state="queued"}} {extraction.queued_source_count}',
+            f'generator_extraction_source_state{{state="processing"}} {extraction.processing_source_count}',
+            f'generator_extraction_source_state{{state="blocked"}} {extraction.blocked_source_count}',
+            f'generator_runtime_queue_depth{{state="queued"}} {int(pipeline.get("queued_count") or 0)}',
+            f'generator_runtime_queue_depth{{state="running"}} {int(pipeline.get("running_count") or 0)}',
+            f'generator_runtime_worker_active{{worker="prediction"}} {1 if pipeline.get("worker_active") else 0}',
+            f'generator_runtime_worker_active{{worker="delivery"}} {1 if pipeline.get("delivery_worker_active") else 0}',
+            f'generator_handoff_state{{state="pending"}} {extraction.runtime_handoff.pending}',
+            f'generator_handoff_state{{state="retry_wait"}} {extraction.runtime_handoff.retry_wait}',
+            f'generator_handoff_state{{state="blocked"}} {extraction.runtime_handoff.blocked}',
+            f'generator_handoff_state{{state="retry_exhausted"}} {extraction.runtime_handoff.retry_exhausted}',
+        ]
+        return PlainTextResponse(
+            "\n".join(lines) + "\n",
+            media_type="text/plain; version=0.0.4; charset=utf-8",
+        )
 
     app.include_router(extraction_router)
     app.include_router(preprocessing_router)
     app.include_router(feature_router)
     app.include_router(training_router)
     app.include_router(runtime_pipeline_router)
+    app.include_router(model_artifact_router)
     app.include_router(training_compat_router)
 
 

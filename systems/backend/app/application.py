@@ -11,6 +11,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.common.runtime_settings import allowed_origin_regex, allowed_origins, project_root
 from app.infra.db.pool import close_pools
+from app.infra.observability.runtime import (
+    METRICS,
+    ObservabilityMiddleware,
+    configure_structured_logging,
+)
 from app.infra.observability.runtime_validation import validate_runtime_environment
 
 
@@ -27,12 +32,22 @@ async def application_lifespan(_: FastAPI):
 
 def create_app() -> FastAPI:
     validate_runtime_environment(ROOT)
+    configure_structured_logging()
+    METRICS.set_gauge(
+        "ontology_build_info",
+        1,
+        labels={
+            "service": "backend",
+            "sha": os.getenv("ONTOLOGY_DASHBOARD_BUILD_SHA", "unknown")[:64],
+        },
+    )
     application = FastAPI(
         title="Ontology Dashboard API",
         version="0.8.0",
         description="Predictive-maintenance Operations backend.",
         lifespan=application_lifespan,
     )
+    application.add_middleware(ObservabilityMiddleware)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins(),

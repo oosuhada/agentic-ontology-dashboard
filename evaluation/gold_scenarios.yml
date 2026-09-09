@@ -46,6 +46,14 @@ global_assertions:
   fallback:
     - "A deterministic report must be available when the LLM provider is disabled or unavailable."
     - "A deterministic default block layout must be available when the UI planner fails."
+  assistant_product_policy:
+    - "Normal or low-risk assets must not be escalated into inspection or maintenance without new evidence."
+    - "Modeled downtime or loss exposure must be described as protected exposure, never as booked savings."
+    - "Internal source_ref, model-unit, generator, or artifact implementation identifiers must not appear in user-facing answers."
+    - "Predicted factors and retrieved evidence must not be phrased as a confirmed physical root cause."
+    - "A frozen Decision Case must not silently fall forward to a newer Result while answering a case-specific question."
+    - "Next-action answers must use the persisted workflow state and must not invent equipment-control actions."
+    - "Role-specific wording may differ while risk, recommendation, evidence and Result identity remain consistent."
 
 scenarios:
   - id: GS-001

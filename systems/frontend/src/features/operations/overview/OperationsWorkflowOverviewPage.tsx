@@ -1813,7 +1813,6 @@ export function OperationsWorkflowOverviewPage({
   });
   const [postMaintenancePredictions, setPostMaintenancePredictions] = useState<Record<string, PostMaintenancePredictionSummary>>({});
   const autoOpenedDrawerKeyRef = useRef<string | null>(null);
-  const suppressAutoOpenDrawerRef = useRef(false);
   const handlePostMaintenancePrediction = useCallback((assetId: string, prediction: PostMaintenancePredictionSummary) => {
     setPostMaintenancePredictions((current) => {
       const previous = current[assetId];
@@ -1843,10 +1842,12 @@ export function OperationsWorkflowOverviewPage({
   }, [acknowledgedAlerts, acknowledgedAlertsStorageKey]);
 
   useEffect(() => {
-    if (!selectedAsset || detailDrawerOpen) return;
-    if (suppressAutoOpenDrawerRef.current) return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get("detail") !== "drawer") return;
+    if (params.get("detail") !== "drawer") {
+      autoOpenedDrawerKeyRef.current = null;
+      return;
+    }
+    if (!selectedAsset || detailDrawerOpen) return;
     const requestedAssetId = params.get("asset_id");
     const requestedEventId = params.get("event_id");
     const selectedEventId = selectedEvent?.eventId ?? selectedAsset.eventId ?? "";
@@ -1951,7 +1952,16 @@ export function OperationsWorkflowOverviewPage({
   const liveResultCardObservedAt = rotatingLiveResult?.observedAt ?? liveDemo.generatedAt;
 
   const closeDetailDrawer = useCallback(() => {
-    suppressAutoOpenDrawerRef.current = true;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("detail") === "drawer") {
+      url.searchParams.delete("detail");
+      const search = url.searchParams.toString();
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${url.pathname}${search ? `?${search}` : ""}${url.hash}`,
+      );
+    }
     setDetailDrawerOpen(false);
   }, []);
 
@@ -1965,7 +1975,6 @@ export function OperationsWorkflowOverviewPage({
   }, [closeDetailDrawer, detailDrawerOpen]);
 
   const previewInDrawer = (assetId: string, eventId: string | null) => {
-    suppressAutoOpenDrawerRef.current = false;
     setFactorySlotPreview(null);
     const asset = model.assets.find((candidate) => candidate.assetId === assetId);
     if (asset) acknowledgeAlert(asset);
@@ -1975,7 +1984,6 @@ export function OperationsWorkflowOverviewPage({
   };
 
   const previewFactoryAssetSlot = (asset: OperationsAsset, slot: FactoryCellSlot, cell: FactoryCellLayout) => {
-    suppressAutoOpenDrawerRef.current = false;
     setFactorySlotPreview({ slot, cell });
     acknowledgeAlert(asset);
     onPreviewAsset(asset.assetId, asset.eventId);
@@ -3203,6 +3211,7 @@ function AssetPreviewPanel({
                   canManage={canManageWorkflow}
                   canFieldExecute={canExecuteFieldWorkflow}
                   canMaintenanceExecute={experienceKind === "maintenance" && canExecuteFieldWorkflow}
+                  estimatedDowntimeMinutes={asset.estimatedDowntimeMinutes}
                   onChanged={refreshWorkflow}
                   onStatusChanged={setWorkflowStatus}
                   onPostMaintenancePrediction={reportPostMaintenancePrediction}
@@ -3441,6 +3450,7 @@ function AssetPreviewPanel({
                 canManage={canManageWorkflow}
                 canFieldExecute={canExecuteFieldWorkflow}
                 canMaintenanceExecute={experienceKind === "maintenance" && canExecuteFieldWorkflow}
+                estimatedDowntimeMinutes={asset.estimatedDowntimeMinutes}
                 onChanged={refreshWorkflow}
                 onStatusChanged={setWorkflowStatus}
                 onPostMaintenancePrediction={reportPostMaintenancePrediction}

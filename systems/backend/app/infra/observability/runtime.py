@@ -475,10 +475,12 @@ def observability_readiness() -> ObservabilityReadiness:
     metrics_token = os.getenv("ONTOLOGY_DASHBOARD_METRICS_TOKEN", "").strip()
     alert_destination = os.getenv("ONTOLOGY_DASHBOARD_ALERT_DESTINATION_REF", "").strip()
     blockers: list[str] = []
+    hard_blocked = False
     if not endpoint:
         blockers.append("OpenTelemetry collector endpoint is not configured.")
     if environment == "production" and not metrics_token:
         blockers.append("Production metrics scrape token is not configured.")
+        hard_blocked = True
     if not alert_destination:
         blockers.append("Alert destination reference is not configured.")
     snapshot = METRICS.snapshot()
@@ -489,7 +491,7 @@ def observability_readiness() -> ObservabilityReadiness:
         for slo in SLOS
     )
     state: Literal["ready", "degraded", "not_configured", "blocked"]
-    if environment == "production" and blockers:
+    if hard_blocked:
         state = "blocked"
     elif blockers:
         state = "degraded"

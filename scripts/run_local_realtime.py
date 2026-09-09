@@ -29,11 +29,11 @@ MODEL_MINIMUM_HISTORY_ROWS = 36
 MODEL_MINIMUM_HISTORY_HOURS = (
     MODEL_MINIMUM_HISTORY_ROWS * OBSERVATION_INTERVAL_MINUTES // 60
 )
-DEFAULT_HISTORY_BACKFILL_HOURS = 168
+DEFAULT_HISTORY_BACKFILL_HOURS = 720
 # Backward-compatible import name for older local demo helpers.  The value is
 # historical backfill, not the model warm-up requirement.
 DEFAULT_INITIAL_HISTORY_HOURS = DEFAULT_HISTORY_BACKFILL_HOURS
-DEFAULT_SIMULATION_HOURS = 336
+DEFAULT_SIMULATION_HOURS = 1440
 
 
 def _wait(url: str, *, seconds: int = 90) -> None:
@@ -418,7 +418,7 @@ def main() -> int:
         default=DEFAULT_HISTORY_BACKFILL_HOURS,
         help=(
             "Historical backfill generated before the live demo reaches the "
-            "current-time boundary. Defaults to 168 hours (7 days). The model "
+            "current-time boundary. Defaults to 720 hours (30 days). The model "
             "itself requires only 36 ten-minute rows (6 hours)."
         ),
     )

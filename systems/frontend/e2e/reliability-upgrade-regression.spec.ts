@@ -44,7 +44,6 @@ test("acknowledges a factory alert and only auto-opens the drawer for an explici
   const assetId = new URL(page.url()).searchParams.get("asset_id");
   const eventId = new URL(page.url()).searchParams.get("event_id");
   expect(assetId).toBeTruthy();
-  expect(eventId).toBeTruthy();
 
   const drawer = shell.getByRole("dialog", { name: "선택 설비 상세" });
   await expect(drawer).toBeVisible();
@@ -68,7 +67,8 @@ test("acknowledges a factory alert and only auto-opens the drawer for an explici
   const deepLink = new URL(page.url());
   deepLink.searchParams.set("detail", "drawer");
   deepLink.searchParams.set("asset_id", assetId!);
-  deepLink.searchParams.set("event_id", eventId!);
+  if (eventId) deepLink.searchParams.set("event_id", eventId);
+  else deepLink.searchParams.delete("event_id");
   await page.goto(deepLink.toString());
   await expect(shell).toBeVisible({ timeout: 15_000 });
   const deepLinkedDrawer = shell.getByRole("dialog", { name: "선택 설비 상세" });

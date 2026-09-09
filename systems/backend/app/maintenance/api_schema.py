@@ -179,6 +179,43 @@ class MaintenanceReplayRequest(StrictCommand):
         return value
 
 
+class MaintenanceValueRealizationCreateRequest(StrictCommand):
+    """Append actual outcome evidence after a post-maintenance Product Result.
+
+    Predicted exposure remains a Case snapshot.  Actual downtime, avoided
+    exposure and recurrence are explicitly supplied from audited operational
+    or financial sources and are never inferred from the model score alone.
+    """
+
+    predicted_downtime_minutes: float | None = Field(default=None, ge=0)
+    actual_downtime_minutes: float | None = Field(default=None, ge=0)
+    predicted_loss_exposure_minor: int | None = Field(default=None, ge=0)
+    realized_avoided_exposure_minor: int | None = Field(default=None, ge=0)
+    currency: str = Field(default="KRW", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
+    recurrence_observed: bool | None = None
+    basis: tuple[str, ...] = Field(min_length=1)
+    measured_at: datetime
+
+    @field_validator("measured_at")
+    @classmethod
+    def require_measured_timezone(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("measured_at must include timezone")
+        return value
+
+    @model_validator(mode="after")
+    def require_actual_evidence(self) -> "MaintenanceValueRealizationCreateRequest":
+        if (
+            self.actual_downtime_minutes is None
+            and self.realized_avoided_exposure_minor is None
+            and self.recurrence_observed is None
+        ):
+            raise ValueError(
+                "value realization requires actual downtime, avoided exposure, or recurrence evidence"
+            )
+        return self
+
+
 __all__ = [
     "EvidenceSnapshotBasis",
     "InspectionResultCreateRequest",
@@ -187,6 +224,7 @@ __all__ = [
     "MaintenanceActionStartRequest",
     "MaintenanceCostAnalysisCreateRequest",
     "MaintenanceReplayRequest",
+    "MaintenanceValueRealizationCreateRequest",
     "MaintenanceWorkOrderApproveRequest",
     "OperationsManualRecommendationCreateRequest",
     "RecommendationInput",

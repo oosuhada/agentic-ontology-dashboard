@@ -95,6 +95,7 @@ _RISK_INDEX_WINDOWS: dict[str, tuple[timedelta, str]] = {
     "24h": (timedelta(hours=24), "30 minutes"),
     "7d": (timedelta(days=7), "2 hours"),
     "30d": (timedelta(days=30), "6 hours"),
+    "90d": (timedelta(days=90), "12 hours"),
 }
 
 
@@ -1556,6 +1557,36 @@ class PredictiveMaintenanceRuntimeService:
             source_contract="result_artifact",
         )
 
+    def product_result_by_artifact(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        artifact_id: str,
+    ) -> GovernedProductResult | None:
+        """Resolve one immutable Product Result by its canonical artifact id."""
+
+        row = self.repository.result_artifact_row(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            artifact_id=artifact_id,
+        )
+        if row is None:
+            return None
+        context = self.context(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            dataset_version_id=str(row["dataset_version_id"]),
+        )
+        return self._product_result(
+            context=context,
+            row=row,
+            source_contract="result_artifact",
+        )
+
     def post_maintenance_runtime_status(
         self,
         *,
@@ -2297,7 +2328,7 @@ class PredictiveMaintenanceRuntimeService:
         source_mode: Literal["live", "workspace"],
         workspace_dataset_version_id: str | None,
         asset_id: str | None,
-        window: Literal["1h", "6h", "24h", "7d", "30d"],
+        window: Literal["1h", "6h", "24h", "7d", "30d", "90d"],
     ) -> dict[str, Any]:
         """Return a monitoring-grade risk time series with explicit provenance.
 
@@ -2474,7 +2505,7 @@ class PredictiveMaintenanceRuntimeService:
             raise ValueError("time-window timestamps must include timezone")
         if end < start:
             raise ValueError("window_end must not precede window_start")
-        maximum = 7 * 24 if grain in {"raw", "10m"} else 31 * 24
+        maximum = 7 * 24 if grain in {"raw", "10m"} else 90 * 24
         if (end - start).total_seconds() > maximum * 3600:
             raise ValueError(
                 f"{grain} query window exceeds safe maximum of {maximum} hours"

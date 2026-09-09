@@ -282,7 +282,7 @@ export function ImmersiveRiskWorkbench({
         </header>
 
         <div className="rw-market-workbench__range" role="group" aria-label={english ? "Risk history range" : "위험 이력 범위"}>
-          {(["1h", "6h", "24h", "7d", "30d"] as const).map((item) => (
+          {(["1h", "6h", "24h", "7d", "30d", "90d"] as const).map((item) => (
             <motion.button
               type="button"
               key={item}

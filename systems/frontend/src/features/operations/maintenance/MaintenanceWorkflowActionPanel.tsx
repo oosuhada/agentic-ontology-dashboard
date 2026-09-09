@@ -21,6 +21,7 @@ import {
   type MaintenanceEventLineageReadModel,
 } from "../../../api";
 import type { OperationsEvidenceSnapshotBasis, OperationsRoleLens } from "../api/operationsContracts";
+import { MaintenanceRuntimeOutcomePanel } from "./MaintenanceRuntimeOutcomePanel";
 
 function commandKey(eventId: string, action: string, target: string): string {
   return `operations-${eventId}-${action}-${target}`.replace(/[^a-zA-Z0-9_.:-]/g, "-").slice(0, 190);
@@ -123,6 +124,7 @@ export function MaintenanceWorkflowActionPanel({
   canManage,
   canFieldExecute,
   canMaintenanceExecute,
+  estimatedDowntimeMinutes = null,
   locale = "ko-KR",
   onChanged,
   onStatusChanged,
@@ -140,6 +142,7 @@ export function MaintenanceWorkflowActionPanel({
   canManage: boolean;
   canFieldExecute: boolean;
   canMaintenanceExecute: boolean;
+  estimatedDowntimeMinutes?: number | null;
   locale?: "ko-KR" | "en-US";
   onChanged?: () => void;
   onStatusChanged?: (status: MaintenanceWorkflowDisplayStatus) => void;
@@ -713,6 +716,16 @@ export function MaintenanceWorkflowActionPanel({
         </fieldset>
       ) : null}
       {hasActionEditor ? actionControl : null}
+      <MaintenanceRuntimeOutcomePanel
+        projectId={projectId}
+        workspaceId={workspaceId}
+        role={role}
+        lineage={lineage}
+        postMaintenancePredictionAvailable={Boolean(postMaintenancePrediction)}
+        estimatedDowntimeMinutes={estimatedDowntimeMinutes}
+        locale={locale}
+        onChanged={() => void refresh()}
+      />
       {message ? <small className={message.tone === "error" ? "operations-cost-error" : "operations-workflow-success"}>{message.text}</small> : null}
       {pollingError ? <small className="operations-cost-error">{pollingError}</small> : null}
     </section>

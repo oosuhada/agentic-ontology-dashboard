@@ -280,7 +280,7 @@ const ENGLISH_FACTOR_LABELS: Record<string, string> = {
 
 function englishFactorLabel(key: string) {
   const base = key
-    .replace(/_(1h|6h|12h|24h|7d|30d)_(max_abs|abs_max|abs_mean|change|max|min|mean|std|last)$/, "")
+    .replace(/_(1h|6h|12h|24h|7d|30d|90d)_(max_abs|abs_max|abs_mean|change|max|min|mean|std|last)$/, "")
     .replace(/_(abs_current|current)$/, "");
   return ENGLISH_FACTOR_LABELS[key] ?? ENGLISH_FACTOR_LABELS[base] ?? base.replaceAll("_", " ");
 }
@@ -1237,7 +1237,7 @@ export function ReliabilityWorkspacePreview({
             <button type="button" onClick={onFollowLatestEvent}>{english ? "Open latest Event" : "최신 Event 열기"}</button>
           </section> : null}
           {showImmersiveRiskWorkbench ? (
-            <div data-section-index-id="risk-workbench">
+            <div className="rw-preview-immersive-workbench" data-section-index-id="risk-workbench">
               <Suspense
                 fallback={<div className="rw-preview-immersive-loading" aria-busy="true">{english ? "Preparing live risk workbench" : "실시간 위험 워크벤치 준비 중"}</div>}
               >

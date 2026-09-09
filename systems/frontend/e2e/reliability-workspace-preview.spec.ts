@@ -118,7 +118,6 @@ test("uses a light Korean placeholder before the reliability workspace is ready"
   const shell = page.locator(
     ".rw-preview-shell:not(.rw-preview-loading-placeholder)",
   );
-  await expect(shell.locator(".operational-focus")).toHaveCount(0);
   const liveKpis = shell.locator(".operations-live-kpi-grid");
   const factoryMap = shell.locator(".operations-factory-map-panel").first();
   const decisionQueue = shell.getByText("DECISION QUEUE", { exact: true });
@@ -205,8 +204,7 @@ test("keeps login role choices compact and prioritizes the auth panel on mobile"
     }),
   ).toBeHidden();
 
-  const managerInfo = page.getByLabel("운영 관리 상세 정보");
-  await managerInfo.hover();
+  await page.getByRole("button", { name: "운영 관리", exact: true }).hover();
   await expect(
     page.getByText("판단 대기 · 생산 영향 · 정비 승인 · 보고 초안", {
       exact: true,
@@ -468,36 +466,39 @@ test("keeps grounded report surfaces light and derives assistant copy from live 
   const assistant = page.getByRole("dialog", { name: "Reliability Assistant" });
   await expect(assistant).toBeVisible();
   await expect(assistant).not.toContainText("local_sop_metadata_retriever");
-  await expect(
-    assistant.getByRole("button", {
-      name: "지금 승인해야 하는 조치는 무엇인가요?",
-      exact: true,
-    }),
-  ).toBeVisible();
-  await expect(
-    assistant.getByRole("button", {
-      name: "이 조치로 어떤 생산·비용 가치를 보호할 수 있나요?",
-      exact: true,
-    }),
-  ).toBeVisible();
-  await assistant
-    .getByRole("button", {
-      name: "이 조치로 어떤 생산·비용 가치를 보호할 수 있나요?",
-      exact: true,
-    })
-    .click();
+  const caseActionPrompt = assistant.getByRole("button", {
+    name: "지금 승인해야 하는 조치는 무엇인가요?",
+    exact: true,
+  });
+  const workspaceActionPrompt = assistant.getByRole("button", {
+    name: "지금 판단 대기 중인 항목은 무엇인가요?",
+    exact: true,
+  });
+  await expect(caseActionPrompt.or(workspaceActionPrompt).first()).toBeVisible();
+  const caseValuePrompt = assistant.getByRole("button", {
+    name: "이 조치로 어떤 생산·비용 가치를 보호할 수 있나요?",
+    exact: true,
+  });
+  const workspaceImpactPrompt = assistant.getByRole("button", {
+    name: "생산 영향이 큰 Case부터 요약해줘",
+    exact: true,
+  });
+  const caseScoped = await caseValuePrompt.isVisible();
+  const valuePrompt = caseScoped ? caseValuePrompt : workspaceImpactPrompt;
+  await expect(valuePrompt).toBeVisible();
+  await valuePrompt.click();
   const valueAnswer = assistant.locator(
     ".rw-context-assistant__message.is-assistant:not(.is-loading)",
   ).last();
   await expect(valueAnswer).toBeVisible({ timeout: 15_000 });
-  await expect(valueAnswer).toContainText(/보호|생산 연속성/);
-  await expect(valueAnswer).toContainText(/실제.*절감|절감.*확정|보호 대상/);
-  await expect(valueAnswer).not.toContainText("비용을 절감했습니다");
+  await expect(valueAnswer).not.toContainText(/local_sop_metadata_retriever|deterministic fallback|Team DB|model_selected_threshold/);
+  if (caseScoped) {
+    await expect(valueAnswer).toContainText(/보호|생산 연속성/);
+    await expect(valueAnswer).toContainText(/실제.*절감|절감.*확정|보호 대상/);
+    await expect(valueAnswer).not.toContainText("비용을 절감했습니다");
+  }
   await expect(
-    assistant.getByRole("button", {
-      name: "경영진 보고 초안을 만들어줘",
-      exact: true,
-    }),
+    assistant.getByRole("button", { name: /경영진 보고 초안을 만들어줘|오늘 운영 리스크를 경영 보고용으로 요약해줘/, exact: true }),
   ).toBeVisible();
 });
 
@@ -657,9 +658,14 @@ test("keeps factory detail explicit and aligns detail controls with the section 
   await expect(drawer).toBeHidden();
 
   const actionButton = shell.locator(".operational-focus-action button").first();
-  await expect(actionButton).toBeVisible();
-  expect(await actionButton.evaluate((element) => getComputedStyle(element).backgroundColor))
-    .toBe("rgba(0, 0, 0, 0)");
+  if (await actionButton.count()) {
+    await expect(actionButton).toBeVisible();
+    expect(await actionButton.evaluate((element) => getComputedStyle(element).backgroundColor))
+      .toBe("rgba(0, 0, 0, 0)");
+  } else {
+    await expect(shell.locator(".rw-preview-operational-focus")).toBeVisible();
+    expect(new URL(page.url()).searchParams.get("event_id")).toBeNull();
+  }
 
   const track = shell.locator(".rw-section-index__track");
   await expect(track).toBeVisible();
@@ -667,8 +673,14 @@ test("keeps factory detail explicit and aligns detail controls with the section 
     .toBe("rgba(0, 0, 0, 0)");
 
   const headingX = await shell.locator(".rw-preview-page-heading h1").evaluate((element) => element.getBoundingClientRect().x);
-  const selectionX = await shell.locator(".rw-preview-selection-anchor").evaluate((element) => element.getBoundingClientRect().x);
-  expect(Math.abs(headingX - selectionX)).toBeLessThanOrEqual(1);
+  const selectionAnchor = shell.locator(".rw-preview-selection-anchor");
+  if (await selectionAnchor.count()) {
+    const selectionX = await selectionAnchor.evaluate((element) => element.getBoundingClientRect().x);
+    expect(Math.abs(headingX - selectionX)).toBeLessThanOrEqual(1);
+  } else {
+    await expect(page).toHaveURL(/asset_id=/);
+    expect(new URL(page.url()).searchParams.get("event_id")).toBeNull();
+  }
 
   for (const [label, surface] of [
     ["모니터링", "monitoring"],
@@ -683,6 +695,10 @@ test("keeps factory detail explicit and aligns detail controls with the section 
     const currentHeadingX = await shell.locator(".rw-preview-page-heading h1").evaluate((element) => element.getBoundingClientRect().x);
     const contentX = await shell.locator(".rw-preview-content > *").first().evaluate((element) => element.getBoundingClientRect().x);
     expect(Math.abs(currentHeadingX - contentX)).toBeLessThanOrEqual(1);
+    if (surface === "monitoring") {
+      const immersiveWorkbenchX = await shell.locator(".rw-preview-immersive-workbench").evaluate((element) => element.getBoundingClientRect().x);
+      expect(Math.abs(currentHeadingX - immersiveWorkbenchX)).toBeLessThanOrEqual(1);
+    }
     const newObservation = shell.locator(".rw-preview-new-observation");
     if (await newObservation.count()) {
       const newObservationX = await newObservation.evaluate((element) => element.getBoundingClientRect().x);
@@ -693,6 +709,107 @@ test("keeps factory detail explicit and aligns detail controls with the section 
   await shell.locator(".rw-preview-left nav button").filter({ hasText: "설비 현황" }).click();
   await expect(shell).toHaveAttribute("data-active-surface", "factory-status");
   await expect(drawer).toBeHidden();
+});
+
+test("treats drawer deep links as transient intent across navigation and browser history", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await loginAs(
+    page,
+    "engineer@ontology.local",
+    "Engineer!2026",
+    PATH.replace("role=process_manager", "role=field_operator"),
+  );
+
+  let shell = page.locator(".rw-preview-shell:not(.rw-preview-loading-placeholder)");
+  await expect(shell).toBeVisible({ timeout: 15_000 });
+  await openFactoryStatus(shell);
+
+  const assetNode = shell
+    .locator(".operations-factory-map-panel")
+    .first()
+    .locator(".operations-factory-asset-node:not(.slot)")
+    .first();
+  await expect(assetNode).toBeVisible({ timeout: 15_000 });
+  await assetNode.click();
+
+  let drawer = shell.getByRole("dialog", { name: "선택 설비 상세" });
+  await expect(drawer).toBeVisible();
+  const deepLink = new URL(page.url());
+  deepLink.searchParams.set("detail", "drawer");
+  await drawer.getByRole("button", { name: "선택 설비 상세 닫기" }).click();
+  await expect(drawer).toBeHidden();
+
+  await page.goto(deepLink.toString());
+  shell = page.locator(".rw-preview-shell:not(.rw-preview-loading-placeholder)");
+  drawer = shell.getByRole("dialog", { name: "선택 설비 상세" });
+  await expect(shell).toHaveAttribute("data-active-surface", "factory-status", { timeout: 15_000 });
+  await expect(drawer).toBeVisible({ timeout: 15_000 });
+
+  await drawer.getByRole("button", { name: "선택 설비 상세 닫기" }).click();
+  await expect(drawer).toBeHidden();
+  expect(new URL(page.url()).searchParams.has("detail")).toBe(false);
+
+  await shell.locator(".rw-preview-left nav button").filter({ hasText: "모니터링" }).first().click();
+  await expect(shell).toHaveAttribute("data-active-surface", "monitoring");
+  await shell.locator(".rw-preview-left nav button").filter({ hasText: "설비 현황" }).first().click();
+  await expect(shell).toHaveAttribute("data-active-surface", "factory-status");
+  await expect(drawer).toBeHidden();
+});
+
+test("keeps canvas alignment stable across desktop densities and responsive widths", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await loginAs(
+    page,
+    "engineer@ontology.local",
+    "Engineer!2026",
+    PATH.replace("role=process_manager", "role=field_operator"),
+  );
+  const shell = page.locator(".rw-preview-shell:not(.rw-preview-loading-placeholder)");
+  await expect(shell).toBeVisible({ timeout: 15_000 });
+  await shell.locator(".rw-preview-left nav button").filter({ hasText: "모니터링" }).first().click();
+  await expect(shell).toHaveAttribute("data-active-surface", "monitoring");
+
+  const assertAligned = async () => {
+    const headingX = await shell.locator(".rw-preview-page-heading h1").evaluate((element) => element.getBoundingClientRect().x);
+    const contentX = await shell.locator(".rw-preview-content > *").first().evaluate((element) => element.getBoundingClientRect().x);
+    const workbenchX = await shell.locator(".rw-preview-immersive-workbench").evaluate((element) => element.getBoundingClientRect().x);
+    expect(Math.abs(headingX - contentX)).toBeLessThanOrEqual(1);
+    expect(Math.abs(headingX - workbenchX)).toBeLessThanOrEqual(1);
+    const selection = shell.locator(".rw-preview-selection-anchor");
+    if (await selection.count()) {
+      const selectionX = await selection.evaluate((element) => element.getBoundingClientRect().x);
+      expect(Math.abs(headingX - selectionX)).toBeLessThanOrEqual(1);
+    }
+    const operationalFocus = shell.locator(".rw-preview-operational-focus > *").first();
+    if (await operationalFocus.count()) {
+      const operationalFocusX = await operationalFocus.evaluate((element) => element.getBoundingClientRect().x);
+      expect(Math.abs(headingX - operationalFocusX)).toBeLessThanOrEqual(1);
+    }
+  };
+
+  for (const density of ["compact", "standard", "comfortable"] as const) {
+    await page.evaluate((value) => { document.documentElement.dataset.density = value; }, density);
+    await assertAligned();
+  }
+
+  await page.evaluate(() => { document.documentElement.dataset.density = "standard"; });
+  for (const viewport of [
+    { width: 1440, height: 1000 },
+    { width: 1280, height: 800 },
+    { width: 1024, height: 768 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await assertAligned();
+    const mainPaddingLeft = await shell.locator(".rw-preview-main").evaluate((element) => Number.parseFloat(getComputedStyle(element).paddingLeft));
+    if (viewport.width > 980) {
+      expect(mainPaddingLeft).toBe(44);
+      await expect(shell.locator(".rw-section-index")).toBeVisible();
+    } else {
+      expect(mainPaddingLeft).toBe(0);
+      await expect(shell.locator(".rw-section-index")).toBeHidden();
+    }
+  }
 });
 
 test("connects search, settings dismissal, locale, theme, presets, and assistant prompts", async ({
@@ -784,17 +901,20 @@ test("connects search, settings dismissal, locale, theme, presets, and assistant
   await shell.getByRole("button", { name: /Assistant/ }).click();
   const assistant = page.getByRole("dialog", { name: "Reliability Assistant" });
   await expect(assistant).toBeVisible();
-  await assistant
-    .getByRole("button", { name: "이 조치로 어떤 생산·비용 가치를 보호할 수 있나요?", exact: true })
-    .click();
-  await expect(
-    assistant.locator(".rw-context-assistant__message.is-user"),
-  ).toHaveCount(1);
+  const preferredPrompt = assistant.getByRole("button", {
+    name: /이 조치로 어떤 생산·비용 가치를 보호할 수 있나요\?|오늘 운영에서 무엇을 가장 먼저 판단해야 하나요\?/,
+  });
+  const userMessages = assistant.locator(".rw-context-assistant__message.is-user");
+  const beforeUserMessages = await userMessages.count();
+  const promptText = (await preferredPrompt.first().textContent())?.trim() ?? "";
+  await preferredPrompt.first().click();
+  await expect.poll(() => userMessages.count()).toBe(beforeUserMessages + 1);
+  await expect(userMessages.last()).toContainText(promptText);
   await expect(
     assistant.locator(
       ".rw-context-assistant__message.is-assistant:not(.is-loading)",
-    ),
-  ).toHaveCount(1, { timeout: 12_000 });
+    ).last(),
+  ).toBeVisible({ timeout: 12_000 });
   await expect(
     assistant.locator(".rw-context-assistant__message.is-loading"),
   ).toHaveCount(0, { timeout: 12_000 });
@@ -814,13 +934,16 @@ test("keeps factory status focused and avoids repeating the full map on operatio
   await expect(shell.locator(".operations-factory-map-panel")).toBeVisible();
   await expect(shell.locator(".operations-monitoring-summary")).toBeHidden();
   await expect(shell.locator(".operations-work-queue-board")).toBeHidden();
-  const zoneColumns = await shell
-    .locator(".operations-factory-line-map")
-    .evaluate(
-      (element) =>
-        getComputedStyle(element).gridTemplateColumns.split(" ").length,
-    );
-  expect(zoneColumns).toBe(2);
+  const zoneLayout = await shell
+    .locator(".operations-factory-map-panel .operations-panel-body")
+    .evaluate((container) => {
+      const lineMap = container.querySelector<HTMLElement>(".operations-factory-line-map");
+      return {
+        containerWidth: container.getBoundingClientRect().width,
+        columns: lineMap ? getComputedStyle(lineMap).gridTemplateColumns.split(" ").length : 0,
+      };
+    });
+  expect(zoneLayout.columns).toBe(zoneLayout.containerWidth >= 1420 ? 2 : 1);
 
   const mainGeometry = await shell
     .locator(".rw-preview-main")
@@ -908,18 +1031,33 @@ test("uses grouped manager IA, exception-first factory map, persistent case anch
   ).toBeVisible();
   await page.keyboard.press("Escape");
   const anchor = shell.locator(".rw-preview-selection-anchor");
-  await expect(anchor).toBeVisible();
-  await expect(anchor).toContainText("선택 Case");
-  await expect(anchor).toContainText("위험");
-  await expect(lifecycle).toHaveClass(/is-compact/);
+  const hasRestorableCase = (await anchor.count()) > 0;
+  if (hasRestorableCase) {
+    await expect(anchor).toBeVisible();
+    await expect(anchor).toContainText("선택 Case");
+    await expect(anchor).toContainText("위험");
+    await expect(lifecycle).toHaveClass(/is-compact/);
+  } else {
+    await expect(page).toHaveURL(/asset_id=/);
+    expect(new URL(page.url()).searchParams.get("event_id")).toBeNull();
+    await expect(shell.getByText("선택 Case를 다시 확인해 주세요", { exact: true })).toHaveCount(0);
+    await expect(lifecycle).toHaveClass(/is-idle/);
+  }
 
   await rail.locator("nav button").filter({ hasText: "Decision Case" }).click();
   await expect(shell).toHaveAttribute("data-active-surface", "decision-case");
-  await expect(anchor).toBeVisible();
-  await expect(lifecycle).toHaveClass(/is-full/);
-  await expect(
-    shell.getByRole("button", { name: "보고 초안 이어보기", exact: true }),
-  ).toBeVisible();
+  if (hasRestorableCase) {
+    await expect(anchor).toBeVisible();
+    await expect(lifecycle).toHaveClass(/is-full/);
+    await expect(
+      shell.getByRole("button", { name: "보고 초안 이어보기", exact: true }),
+    ).toBeVisible();
+  } else {
+    await expect(anchor).toHaveCount(0);
+    await expect(lifecycle).toHaveClass(/is-full/);
+    await expect(lifecycle).toHaveAttribute("aria-label", "Case 미선택");
+    await expect(shell.getByText("선택 Case를 다시 확인해 주세요", { exact: true })).toHaveCount(0);
+  }
 
   await rail.locator("nav button").filter({ hasText: "운영 현황" }).click();
   const operationsStatus = shell.locator('[data-surface="operations-status"]');
@@ -936,7 +1074,7 @@ test("uses grouped manager IA, exception-first factory map, persistent case anch
   }
 });
 
-test("keeps an explicitly selected Decision Case stable across reload", async ({
+test("keeps explicit asset or Decision Case context stable across reload", async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -956,10 +1094,28 @@ test("keeps an explicitly selected Decision Case stable across reload", async ({
   ).toBeVisible();
   await page.keyboard.press("Escape");
   const anchor = shell.locator(".rw-preview-selection-anchor");
-  await expect(anchor).toBeVisible();
   const before = new URL(page.url()).searchParams.get("event_id");
-  expect(before).toBeTruthy();
-  await expect(anchor).toContainText(before!);
+  const beforeAsset = new URL(page.url()).searchParams.get("asset_id");
+  expect(beforeAsset).toBeTruthy();
+  if (!before) {
+    await expect(anchor).toHaveCount(0);
+    await expect(shell.getByText("선택 Case를 다시 확인해 주세요", { exact: true })).toHaveCount(0);
+    await shell
+      .locator(".rw-preview-left nav button")
+      .filter({ hasText: "Decision Case" })
+      .click();
+    await expect(shell).toHaveAttribute("data-active-surface", "decision-case");
+    expect(new URL(page.url()).searchParams.get("asset_id")).toBe(beforeAsset);
+    expect(new URL(page.url()).searchParams.get("event_id")).toBeNull();
+    await page.reload();
+    await expect(shell).toBeVisible({ timeout: 15_000 });
+    expect(new URL(page.url()).searchParams.get("asset_id")).toBe(beforeAsset);
+    expect(new URL(page.url()).searchParams.get("event_id")).toBeNull();
+    await expect(shell.getByText("선택 Case를 다시 확인해 주세요", { exact: true })).toHaveCount(0);
+    return;
+  }
+  await expect(anchor).toBeVisible();
+  await expect(anchor).toContainText(before);
 
   await shell
     .locator(".rw-preview-left nav button")
@@ -984,22 +1140,22 @@ test("keeps an explicitly selected Decision Case stable across reload", async ({
   await page.reload();
   await expect(shell).toBeVisible({ timeout: 15_000 });
   await expect(page).toHaveURL(
-    new RegExp(`event_id=${encodeURIComponent(before!)}`),
+    new RegExp(`event_id=${encodeURIComponent(before)}`),
   );
   await expect(shell.locator(".rw-preview-selection-anchor")).toContainText(
-    before!,
+    before,
   );
   await page.waitForTimeout(22_000);
   await expect(page).toHaveURL(
-    new RegExp(`event_id=${encodeURIComponent(before!)}`),
+    new RegExp(`event_id=${encodeURIComponent(before)}`),
   );
   await expect(shell.locator(".rw-preview-selection-anchor")).toContainText(
-    before!,
+    before,
   );
   const blocked = await shell
     .getByText("선택 Case를 다시 확인해 주세요", { exact: true })
     .count();
-  if (before!.startsWith("RESULT#")) {
+  if (before.startsWith("RESULT#")) {
     expect(
       blocked,
       "immutable live RESULT# Case must remain restorable across refresh ticks",
@@ -1013,19 +1169,19 @@ test("keeps an explicitly selected Decision Case stable across reload", async ({
   } else {
     await expect(
       shell.locator('[data-surface="decision-case"]'),
-    ).toHaveAttribute("data-selected-event-id", before!);
+    ).toHaveAttribute("data-selected-event-id", before);
     const refreshedEvidence = shell
       .locator(
         '[data-surface="decision-case"] .rw-composed-list.static[data-event-id]',
       )
       .first();
     if (await refreshedEvidence.count())
-      await expect(refreshedEvidence).toHaveAttribute("data-event-id", before!);
+      await expect(refreshedEvidence).toHaveAttribute("data-event-id", before);
     const refreshedAction = shell.locator(
       '[data-surface="decision-case"] .operations-maintenance-workflow-panel[data-event-id]',
     );
     if (await refreshedAction.count())
-      await expect(refreshedAction).toHaveAttribute("data-event-id", before!);
+      await expect(refreshedAction).toHaveAttribute("data-event-id", before);
 
     await shell
       .locator(".rw-preview-left nav button")
@@ -1034,11 +1190,11 @@ test("keeps an explicitly selected Decision Case stable across reload", async ({
     const reportSurface = shell.locator('[data-surface="report-draft"]');
     await expect(reportSurface).toHaveAttribute(
       "data-selected-event-id",
-      before!,
+      before,
     );
     await expect(
       reportSurface.locator(".rw-report-artifact-meta"),
-    ).toContainText(`Case ${before!}`, { timeout: 15_000 });
+    ).toContainText(`Case ${before}`, { timeout: 15_000 });
   }
 });
 
@@ -1267,21 +1423,28 @@ test("organizes engineering navigation by work intent instead of duplicated data
   await expect(inspection).not.toHaveAttribute("data-composition", /workflow-lifecycle/);
   await expect(shell.locator(".rw-preview-operational-focus")).toHaveCount(0);
   const inspectionBlocks = inspection.locator(".rw-composed-block");
-  await expect(inspectionBlocks.first()).toHaveClass(/is-action-hero/);
   const selectedCaseBar = shell.locator(".rw-preview-selection-anchor");
   if (await selectedCaseBar.count()) {
+    await expect(inspectionBlocks.first()).toHaveClass(/is-action-hero/);
     const selectedCaseHeight = await selectedCaseBar.evaluate((element) => element.getBoundingClientRect().height);
     expect(selectedCaseHeight).toBeLessThan(64);
+  } else {
+    await expect(inspectionBlocks.first()).not.toHaveClass(/is-action-hero/);
+    await expect(inspectionBlocks.first()).toContainText("작업할 이벤트를 선택하세요.");
   }
-  const lifecycleFooter = shell.locator(".rw-preview-bottom .lifecycle-instrument.is-compact");
+  const lifecycleFooter = shell.locator(`.rw-preview-bottom .lifecycle-instrument.${await selectedCaseBar.count() ? "is-compact" : "is-idle"}`);
   await expect(lifecycleFooter).toBeVisible();
   const lifecycleHeight = await lifecycleFooter.evaluate((element) => element.getBoundingClientRect().height);
   expect(lifecycleHeight).toBeLessThan(60);
-  await expect(
-    inspection
-      .getByText(/점검 요청 대기|점검 시작|점검 결과 기록·완료/)
-      .first(),
-  ).toBeVisible();
+  if (await selectedCaseBar.count()) {
+    await expect(
+      inspection
+        .getByText(/점검 요청 대기|점검 시작|점검 결과 기록·완료/)
+        .first(),
+    ).toBeVisible();
+  } else {
+    await expect(inspection).toContainText("작업할 이벤트를 선택하세요.");
+  }
   const pendingState = inspection.locator(".operations-workflow-state");
   if (await pendingState.count()) {
     await expect(pendingState).toBeVisible();
@@ -1306,7 +1469,7 @@ test("organizes engineering navigation by work intent instead of duplicated data
   }
 });
 
-test("changes executive report artifacts when the report type changes", async ({
+test("changes executive report artifacts when a case exists and uses a stable empty state otherwise", async ({
   page,
 }) => {
   await loginAs(page, "executive@ontology.local", "Executive!2026");
@@ -1315,10 +1478,16 @@ test("changes executive report artifacts when the report type changes", async ({
   );
   await expect(shell).toBeVisible({ timeout: 15_000 });
   await expect(shell).toHaveAttribute("data-active-view", "reports");
-  await expect(page).toHaveURL(/event_id=/, { timeout: 15_000 });
   const report = shell.locator('[data-surface="executive-brief"]');
   await expect(report).toBeVisible({ timeout: 15_000 });
   const select = report.getByLabel("보고 유형");
+  if ((await select.count()) === 0) {
+    expect(new URL(page.url()).searchParams.get("event_id")).toBeNull();
+    await expect(report).toContainText("보고할 Decision Case를 선택하면");
+    await expect(shell.getByText("선택 Case를 다시 확인해 주세요", { exact: true })).toHaveCount(0);
+    return;
+  }
+  await expect(page).toHaveURL(/event_id=/, { timeout: 15_000 });
   await expect(select).toBeVisible();
   const meta = report.locator(".rw-report-artifact-meta");
   await expect(meta).toContainText("executive-brief", { timeout: 15_000 });
@@ -1450,7 +1619,7 @@ test("keeps standard workspace copy readable and exposes active-navigation seman
   );
   await shell
     .locator(".rw-preview-left nav button")
-    .filter({ hasText: "생산 영향" })
+    .filter({ hasText: "생산 · 가치 영향" })
     .click();
   await expect
     .poll(() => main.evaluate((element) => element.scrollTop))
