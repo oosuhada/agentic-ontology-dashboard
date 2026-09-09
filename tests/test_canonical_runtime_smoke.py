@@ -13,6 +13,7 @@ from app.dependencies import (
 )
 from app.infra.db.project_repository import ProjectRepository
 from app.main import app
+from app.infra.observability.runtime import observability_readiness
 from app.project import ProjectService
 from identity_test_support import build_identity_service
 
@@ -86,3 +87,19 @@ def test_openapi_keeps_current_product_routes() -> None:
         "/metrics",
     }
     assert required <= set(paths)
+
+
+def test_production_observability_degrades_without_optional_trace_export(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("ONTOLOGY_DASHBOARD_METRICS_TOKEN", "test-metrics-token")
+    monkeypatch.setenv("ONTOLOGY_DASHBOARD_ALERT_DESTINATION_REF", "structured-log")
+    monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
+
+    readiness = observability_readiness()
+    assert readiness.state == "degraded"
+    assert readiness.tracing["state"] == "not_configured"
+
+    monkeypatch.delenv("ONTOLOGY_DASHBOARD_METRICS_TOKEN")
+    assert observability_readiness().state == "blocked"
