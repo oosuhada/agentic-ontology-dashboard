@@ -24,6 +24,7 @@ from app.infra.db.diagnosis_runtime_repository import (
 from app.infra.db.migrations import migrate
 from app.infra.db.postgresql_bundle_ingestion import PostgreSQLPredictiveMaintenanceBundleIngestor
 from app.infra.db.pool import close_pools
+from app.observation_rollup_worker import refresh_once as refresh_observation_rollups
 from app.infra.live_predictive_maintenance_runtime import (
     _consume_overlay_event,
     _persist_overlay_product_result,
@@ -38,6 +39,98 @@ from tests.test_predictive_maintenance_bundle_adapter import (
     create_small_package,
 )
 from tests.test_prediction_result_inbox import load_payload
+
+
+def test_hourly_observation_rollup_refresh_and_long_window_read(postgresql_database) -> None:
+    import psycopg
+
+    observed_at = datetime(2026, 9, 1, 0, 10, tzinfo=timezone.utc)
+    with psycopg.connect(postgresql_database) as connection:
+        connection.execute(
+            """
+            INSERT INTO datasets(
+                id,organization_id,project_id,workspace_id,slug,display_name,source_type,status
+            ) VALUES ('dataset-rollup','org-test','project-test','workspace-test',
+                      'dataset-rollup','Rollup Test','generated','active')
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO dataset_versions(
+                id,organization_id,project_id,workspace_id,dataset_id,version_number,
+                version_label,source_version,checksum_sha256,schema_json,profile_json,
+                record_count,status
+            ) VALUES ('dataset-rollup-v1','org-test','project-test','workspace-test',
+                      'dataset-rollup',1,'v1','rollup-test-source',%s,'{}','{}',3,'published')
+            """,
+            ("a" * 64,),
+        )
+        connection.execute(
+            """
+            INSERT INTO pm_assets(
+                organization_id,project_id,workspace_id,dataset_version_id,asset_id,
+                asset_type,site_id,cell_id,source_sha256
+            ) VALUES ('org-test','project-test','workspace-test','dataset-rollup-v1',
+                      'CNC-ROLLUP-1','cnc','S01','C01',%s)
+            """,
+            ("b" * 64,),
+        )
+        for index, minute in enumerate((10, 40, 70), start=1):
+            ts = observed_at + timedelta(minutes=minute - 10)
+            connection.execute(
+                """
+                INSERT INTO pm_cnc_observations(
+                    organization_id,project_id,workspace_id,dataset_version_id,observed_at,
+                    asset_id,site_id,cell_id,is_operating,operating_state,product_type,
+                    air_temperature_k,process_temperature_k,rotational_speed_rpm,torque_nm,
+                    tool_wear_min,generator_version,source_sha256
+                ) VALUES (
+                    'org-test','project-test','workspace-test','dataset-rollup-v1',%s,
+                    'CNC-ROLLUP-1','S01','C01',true,'running','P1',
+                    %s,%s,%s,%s,%s,'rollup-test',%s
+                )
+                """,
+                (
+                    ts,
+                    295.0 + index,
+                    310.0 + index,
+                    1200.0 + index,
+                    40.0 + index,
+                    100.0 + index,
+                    f"{index}" * 64,
+                ),
+            )
+
+    refreshed = refresh_observation_rollups(
+        database=postgresql_database,
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        history_hours=90 * 24,
+    )
+    assert refreshed["cnc_rows"] >= 2
+
+    repository = PredictiveMaintenanceRuntimeRepository(postgresql_database)
+    rows = repository.observation_rows(
+        organization_id="org-test",
+        project_id="project-test",
+        workspace_id="workspace-test",
+        dataset_version_id="dataset-rollup-v1",
+        start=observed_at - timedelta(days=30),
+        end=observed_at + timedelta(hours=2),
+        asset_id="CNC-ROLLUP-1",
+        site_id=None,
+        cell_id=None,
+        asset_type="cnc",
+        grain="1h",
+        derived_measures={"power_w", "temperature_gap_k"},
+        limit=100,
+    )
+    assert len(rows) == 2
+    assert rows[0]["operating_state"] == "aggregated_1h"
+    assert rows[0]["measurements"]["torque_nm"] == pytest.approx(41.5)
+    assert set(rows[0]["derived_measures"]) == {"power_w", "temperature_gap_k"}
+    assert rows[1]["measurements"]["tool_wear_min"] == pytest.approx(103.0)
 from tests.test_runtime_overlay_output_contract import (
     available_event as runtime_overlay_available_event,
     observation as runtime_overlay_observation,

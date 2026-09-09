@@ -107,6 +107,7 @@ class ExtractionResultPayload(BaseModel):
     rejected_count: int = Field(..., ge=0)
     asset_ids: list[str] = Field(default_factory=list)
     time_range: Optional[ExtractionTimeRange] = None
+    quality_summary: dict[str, Any] = Field(default_factory=dict)
 
 
 class ExtractionResponse(BaseModel):
@@ -121,6 +122,20 @@ class ExtractionResponse(BaseModel):
     dataset_id: str
     dataset_version: str
     result: ExtractionResultPayload
+
+
+class ExtractionReplayRequest(BaseModel):
+    """Deterministic Mapping replay into a new immutable Dataset version."""
+
+    model_config = ConfigDict(extra="forbid")
+    replay_of_dataset_version: str = Field(..., pattern=IDENTIFIER_PATTERN)
+    extraction: ExtractionRequest
+
+    @model_validator(mode="after")
+    def require_new_dataset_version(self) -> "ExtractionReplayRequest":
+        if self.extraction.dataset_version == self.replay_of_dataset_version:
+            raise ValueError("Mapping replay must publish a new dataset_version")
+        return self
 
 
 # --- Internal Domain Record Models ---

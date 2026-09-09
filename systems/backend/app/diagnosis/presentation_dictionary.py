@@ -40,7 +40,7 @@ _FIELD_CATALOG: dict[str, dict[str, Any]] = {
     "generator_model_artifact_manifest": {"kind": "provenance", "ko": "모델 릴리스 정보", "en": "Model release metadata"},
 }
 
-_WINDOW_SUFFIX = re.compile(r"_(?:1h|3h|6h|12h|24h|7d|30d)_(?:max_abs|abs_max|abs_mean|change|max|min|mean|std|last)$")
+_WINDOW_SUFFIX = re.compile(r"_(?:1h|3h|6h|12h|24h|7d|30d|90d)_(?:max_abs|abs_max|abs_mean|change|max|min|mean|std|last)$")
 
 
 def normalized_field_key(value: str) -> str:

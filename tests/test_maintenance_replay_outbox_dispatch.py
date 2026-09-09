@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 import uuid
 from datetime import datetime, timedelta, timezone
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from app.infra.db.migrations import migrate
@@ -11,6 +13,10 @@ from app.infra.messaging.maintenance_replay_jsonl import (
     MAINTENANCE_REPLAY_EVENT_TYPES,
     MaintenanceReplayDeliveryConflict,
     MaintenanceReplayJsonlHandler,
+)
+from app.infra.messaging.maintenance_delivery import (
+    MaintenanceReplayHttpHandler,
+    MaintenanceRuntimeDeliveryReceiptRepository,
 )
 from app.infra.messaging.outbox import (
     OutboxMessage,
@@ -486,3 +492,89 @@ def test_retrying_equipment_does_not_block_another_equipment(tmp_path: Path) -> 
         EQUIPMENT_ID: "retry",
         "CNC-S02-L04-04": "processed",
     }
+
+
+def test_http_dispatch_records_downstream_receipt_and_is_idempotent(tmp_path: Path) -> None:
+    database = setup_database(tmp_path)
+    payload = replay_events()[1]
+    insert_outbox(database, payload)
+    received: list[dict[str, object]] = []
+    idempotency_keys: list[str] = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):  # noqa: N802 - stdlib callback name
+            length = int(self.headers.get("Content-Length") or 0)
+            body = json.loads(self.rfile.read(length).decode("utf-8"))
+            received.append(body)
+            idempotency_keys.append(str(self.headers.get("Idempotency-Key")))
+            response = json.dumps(
+                {
+                    "event_id": body["event_id"],
+                    "delivery_id": "GEN-DLV-001",
+                    "overlay_branch_id": "overlay-after-maintenance",
+                    "history_segment_id": "history-after-maintenance",
+                }
+            ).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(response)))
+            self.end_headers()
+            self.wfile.write(response)
+
+        def log_message(self, *_args):
+            return
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        handler = MaintenanceReplayHttpHandler(
+            f"http://127.0.0.1:{server.server_port}/maintenance-events",
+            receipt_repository=MaintenanceRuntimeDeliveryReceiptRepository(database),
+        )
+        dispatcher = ProjectOutboxWorker(
+            ProjectOutboxRepository(database),
+            organization_id=ORGANIZATION_ID,
+            project_id=PROJECT_ID,
+            handlers={payload["event_type"]: (handler.handler_code, handler)},
+            max_attempts=3,
+            retry_delay_seconds=1,
+            worker_id="http-maintenance-dispatch-test",
+            lease_seconds=5,
+        )
+
+        assert dispatcher.process_once() is True
+        assert received == [payload]
+        assert idempotency_keys == [payload["idempotency_key"]]
+        with sqlite3.connect(database) as connection:
+            connection.row_factory = sqlite3.Row
+            receipt = connection.execute(
+                "SELECT * FROM maintenance_runtime_delivery_receipts"
+            ).fetchone()
+            state = connection.execute(
+                "SELECT status,attempt_count FROM transactional_outbox"
+            ).fetchone()
+        assert tuple(state) == ("processed", 1)
+        assert dict(receipt)["external_delivery_id"] == "GEN-DLV-001"
+        assert dict(receipt)["overlay_branch_id"] == "overlay-after-maintenance"
+        assert dict(receipt)["history_segment_id"] == "history-after-maintenance"
+
+        # A crash after the remote acknowledgement but before outbox settlement
+        # is recovered from the local receipt without a second HTTP request.
+        message = OutboxMessage(
+            id=str(payload["event_id"]),
+            organization_id=ORGANIZATION_ID,
+            project_id=PROJECT_ID,
+            workspace_id=WORKSPACE_ID,
+            aggregate_type="maintenance_action",
+            aggregate_id=ACTION_ID,
+            event_type=str(payload["event_type"]),
+            payload=payload,
+            attempt_count=2,
+            lease_token="unused-after-receipt",
+        )
+        handler(message)
+        assert received == [payload]
+    finally:
+        server.shutdown()
+        server.server_close()

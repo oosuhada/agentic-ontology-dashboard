@@ -629,9 +629,53 @@ export interface MaintenanceEventLineageReadModel {
     completed_at: string;
     restart_at?: string | null;
   }>;
+  runtime_deliveries?: Array<{
+    organization_id: string;
+    project_id: string;
+    workspace_id: string;
+    event_id: string;
+    outbox_id: string;
+    event_type: string;
+    state_version?: number | null;
+    equipment_id?: string | null;
+    maintenance_action_id?: string | null;
+    maintenance_event_id?: string | null;
+    delivery_status: string;
+    attempt_count: number;
+    last_error?: string | null;
+    transport?: string | null;
+    external_delivery_id?: string | null;
+    overlay_branch_id?: string | null;
+    history_segment_id?: string | null;
+    delivered_at?: string | null;
+  }>;
+  value_realizations?: Array<{
+    realization_id: string;
+    organization_id: string;
+    project_id: string;
+    workspace_id: string;
+    event_id: string;
+    equipment_id: string;
+    maintenance_event_id: string;
+    source_product_result_id: string;
+    post_product_result_id: string;
+    predicted_downtime_minutes?: number | null;
+    actual_downtime_minutes?: number | null;
+    predicted_loss_exposure_minor?: number | null;
+    realized_avoided_exposure_minor?: number | null;
+    currency: string;
+    before_risk_score?: number | null;
+    after_risk_score?: number | null;
+    recurrence_observed?: boolean | null;
+    basis: { references?: string[] };
+    measured_at: string;
+    created_by: string;
+  }>;
   activities?: Array<Record<string, unknown>>;
   runtime_status?:
     | "predicted"
+    | "ready"
+    | "equipment_under_maintenance"
     | "warming_up"
     | "history_insufficient"
     | "failed_source_unavailable"
@@ -646,6 +690,17 @@ export interface MaintenanceEventLineageReadModel {
     model_id?: string | null;
     model_version?: string | null;
   } | null;
+}
+
+export interface MaintenanceValueRealizationRequest {
+  predicted_downtime_minutes?: number | null;
+  actual_downtime_minutes?: number | null;
+  predicted_loss_exposure_minor?: number | null;
+  realized_avoided_exposure_minor?: number | null;
+  currency: string;
+  recurrence_observed?: boolean | null;
+  basis: string[];
+  measured_at: string;
 }
 
 export interface OpenInspectionWorkOrderReadModel {
@@ -693,6 +748,18 @@ export function getMaintenanceEventLineage(
   return request<MaintenanceEventLineageReadModel>(
     `${maintenanceBase(projectId, workspaceId)}/events/${encodeURIComponent(eventId)}/lineage`,
     { signal },
+  );
+}
+
+export function recordMaintenanceValueRealization(
+  projectId: string,
+  workspaceId: string,
+  maintenanceEventId: string,
+  payload: MaintenanceValueRealizationRequest,
+): Promise<Record<string, unknown>> {
+  return request(
+    `${maintenanceBase(projectId, workspaceId)}/maintenance-events/${encodeURIComponent(maintenanceEventId)}/value-realizations`,
+    { method: "POST", body: JSON.stringify(payload) },
   );
 }
 

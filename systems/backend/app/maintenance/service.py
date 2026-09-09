@@ -19,6 +19,7 @@ from .api_schema import (
     MaintenanceActionStartRequest,
     MaintenanceCostAnalysisCreateRequest,
     MaintenanceReplayRequest,
+    MaintenanceValueRealizationCreateRequest,
     MaintenanceWorkOrderApproveRequest,
     OperationsManualRecommendationCreateRequest,
     RecommendationDecisionCreateRequest,
@@ -1573,6 +1574,8 @@ class MaintenanceLoopService:
             "maintenance_actions",
             "maintenance_events",
             "cost_analyses",
+            "runtime_deliveries",
+            "value_realizations",
             "activities",
         ):
             for record in lineage[collection]:
@@ -1594,6 +1597,147 @@ class MaintenanceLoopService:
             runtime_state.get("status") if runtime_state else None
         )
         return lineage
+
+    def record_value_realization(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        maintenance_event_id: str,
+        payload: MaintenanceValueRealizationCreateRequest,
+        actor_id: str,
+    ) -> dict[str, Any]:
+        if self.replay_session_query is None:
+            raise InvalidTransition("post-maintenance runtime query is unavailable")
+        # The originating Decision Case is discovered from immutable lineage;
+        # callers cannot choose an unrelated before/after Result pair.
+        matching_lineage: dict[str, Any] | None = None
+        maintenance_event: Mapping[str, Any] | None = None
+        event_id: str | None = None
+        # A maintenance event id is globally stable inside the scoped workspace,
+        # but the repository query is Case-oriented. Resolve the owning Case from
+        # the current open/closed work-order universe without trusting client ids.
+        candidate_orders = self.repository.list_open_inspection_work_orders(
+            workspace_id=workspace_id,
+        )
+        candidate_event_ids = {item.event_id for item in candidate_orders}
+        # Completed cases are not part of the open queue. The canonical event id
+        # is also encoded on the maintenance action/event persisted row, exposed
+        # through repository lookup when available.
+        lookup = getattr(self.repository, "get_maintenance_event", None)
+        stored_event = (
+            lookup(workspace_id=workspace_id, maintenance_event_id=maintenance_event_id)
+            if callable(lookup)
+            else None
+        )
+        if stored_event is not None and stored_event.get("event_id"):
+            candidate_event_ids.add(str(stored_event["event_id"]))
+        for candidate_event_id in candidate_event_ids:
+            lineage = self.repository.event_lineage(
+                workspace_id=workspace_id,
+                event_id=candidate_event_id,
+            )
+            match = next(
+                (
+                    item
+                    for item in lineage.get("maintenance_events") or []
+                    if item.get("maintenance_event_id") == maintenance_event_id
+                ),
+                None,
+            )
+            if match is not None:
+                matching_lineage = lineage
+                maintenance_event = match
+                event_id = candidate_event_id
+                break
+        if matching_lineage is None or maintenance_event is None or event_id is None:
+            raise KeyError(maintenance_event_id)
+
+        action_id = str(maintenance_event.get("maintenance_action_id") or "")
+        action = next(
+            (
+                item
+                for item in matching_lineage.get("maintenance_actions") or []
+                if str(item.get("maintenance_action_id") or "") == action_id
+            ),
+            None,
+        )
+        if action is None:
+            raise InvalidTransition("maintenance action lineage is unavailable")
+        recommendation_id = str(action.get("recommendation_id") or "")
+        recommendation = next(
+            (
+                item
+                for item in matching_lineage.get("recommendations") or []
+                if str(item.get("recommendation_id") or "") == recommendation_id
+            ),
+            None,
+        )
+        if recommendation is None:
+            raise InvalidTransition("maintenance recommendation lineage is unavailable")
+        source_product_result_id = str(
+            recommendation.get("source_product_result_id") or ""
+        )
+        if not source_product_result_id:
+            raise InvalidTransition("source Product Result lineage is unavailable")
+        equipment_id = str(
+            maintenance_event.get("equipment_id")
+            or action.get("equipment_id")
+            or recommendation.get("equipment_id")
+            or ""
+        )
+        if not equipment_id:
+            raise InvalidTransition("maintenance equipment lineage is unavailable")
+
+        post_result = self.replay_session_query.post_maintenance_result(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            asset_id=equipment_id,
+            maintenance_event_id=maintenance_event_id,
+        )
+        if post_result is None:
+            raise InvalidTransition(
+                "value realization requires a promoted post-maintenance Product Result"
+            )
+        post_product_result_id = str(
+            getattr(post_result, "artifact_id", None)
+            or getattr(getattr(post_result, "provenance", None), "prediction_id", "")
+        )
+        if not post_product_result_id:
+            raise InvalidTransition("post-maintenance Product Result id is unavailable")
+        before_result = self.replay_session_query.product_result_by_artifact(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            artifact_id=source_product_result_id,
+        )
+        before_risk = (
+            None
+            if before_result is None
+            else getattr(before_result, "failure_probability", None)
+        )
+        after_risk = getattr(post_result, "failure_probability", None)
+        return self.repository.record_value_realization(
+            workspace_id=workspace_id,
+            event_id=event_id,
+            equipment_id=equipment_id,
+            maintenance_event_id=maintenance_event_id,
+            source_product_result_id=source_product_result_id,
+            post_product_result_id=post_product_result_id,
+            predicted_downtime_minutes=payload.predicted_downtime_minutes,
+            actual_downtime_minutes=payload.actual_downtime_minutes,
+            predicted_loss_exposure_minor=payload.predicted_loss_exposure_minor,
+            realized_avoided_exposure_minor=payload.realized_avoided_exposure_minor,
+            currency=payload.currency,
+            before_risk_score=(None if before_risk is None else float(before_risk)),
+            after_risk_score=(None if after_risk is None else float(after_risk)),
+            recurrence_observed=payload.recurrence_observed,
+            basis={"references": list(payload.basis)},
+            measured_at=payload.measured_at.isoformat(),
+            created_by=actor_id,
+        )
 
 
 __all__ = ["MaintenanceLoopService"]

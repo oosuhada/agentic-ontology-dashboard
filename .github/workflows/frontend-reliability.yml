@@ -1,0 +1,80 @@
+name: frontend-reliability
+
+on:
+  pull_request:
+    paths:
+      - "systems/frontend/**"
+      - "systems/backend/**"
+      - "ml/**"
+      - "scripts/seed_demo_dataset_catalog.py"
+      - ".github/workflows/frontend-reliability.yml"
+  push:
+    branches: [main, demo]
+    paths:
+      - "systems/frontend/**"
+      - "systems/backend/**"
+      - "ml/**"
+      - "scripts/seed_demo_dataset_catalog.py"
+      - ".github/workflows/frontend-reliability.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-reliability-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-and-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: systems/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.13.0"
+          cache: npm
+          cache-dependency-path: systems/frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run test -- --run
+      - run: npm run build
+
+  reliability-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: systems/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.13.0"
+          cache: npm
+          cache-dependency-path: systems/frontend/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install backend and ML test runtime
+        working-directory: .
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -e './systems/backend[dev]' -e ./ml
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Run Reliability Operations browser contract
+        env:
+          PLAYWRIGHT_PYTHON_BIN: ${{ github.workspace }}/.venv/bin/python
+        run: >-
+          npx playwright test
+          e2e/reliability-workspace-preview.spec.ts
+          e2e/reliability-upgrade-regression.spec.ts
+          e2e/reliability-immersive-ui.spec.ts
+          --project=chromium

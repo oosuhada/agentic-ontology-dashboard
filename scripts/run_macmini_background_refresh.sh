@@ -176,6 +176,9 @@ fi
 echo "Refreshing current ontology graph after prediction delivery"
 compose run --rm --no-deps graph-projector python -m app.project3_refresh_current_projection
 
+echo "Refreshing 90-day hourly observation rollups"
+compose run --rm --no-deps observation-rollup
+
 echo "Checking knowledge dirty state once"
 compose run --rm --no-deps knowledge-indexer
 

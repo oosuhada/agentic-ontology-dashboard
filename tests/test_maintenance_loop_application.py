@@ -5,6 +5,7 @@ import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from jsonschema import Draft202012Validator
@@ -18,6 +19,7 @@ from app.maintenance.api_schema import (
     MaintenanceActionStartRequest,
     MaintenanceCostAnalysisCreateRequest,
     MaintenanceReplayRequest,
+    MaintenanceValueRealizationCreateRequest,
     MaintenanceWorkOrderApproveRequest,
     OperationsManualRecommendationCreateRequest,
     RecommendationInput,
@@ -109,6 +111,26 @@ class SequencedProjectionQuery(ProjectionQuery):
         if len(self.calls) <= len(self.projections):
             return self.projections[len(self.calls) - 1]
         return self.projections[-1] if self.projections else None
+
+
+class ValueProjectionQuery(ProjectionQuery):
+    def post_maintenance_result(self, **_scope):
+        return SimpleNamespace(
+            artifact_id="RESULT-AFTER-001",
+            failure_probability=0.08,
+            provenance=SimpleNamespace(prediction_id="PRED-AFTER-001"),
+        )
+
+    def product_result_by_artifact(self, *, artifact_id: str, **_scope):
+        assert artifact_id == "RESULT-001"
+        return SimpleNamespace(
+            artifact_id="RESULT-001",
+            failure_probability=0.91,
+            provenance=SimpleNamespace(prediction_id="PRED-BEFORE-001"),
+        )
+
+    def post_maintenance_runtime_status(self, **_scope):
+        return {"status": "predicted"}
 
 
 def canonical_projection(
@@ -601,6 +623,86 @@ def test_maintenance_execution_uses_persisted_lineage_and_emits_replay_events(tm
         "maintenance.replay_requested": 3,
     }
     assert all("SIMULATION-SESSION-001" in row["payload_json"] for row in outbox)
+
+
+def test_value_realization_binds_before_and_after_product_results(tmp_path) -> None:
+    diagnosis = ValueProjectionQuery()
+    loop = service(tmp_path, query=diagnosis)
+    work_order_id = run_requested_maintenance(loop)
+    started_at = datetime(2026, 8, 24, 9, 0, tzinfo=timezone.utc)
+    approved = loop.approve_maintenance_work_order(
+        organization_id="org-1",
+        project_id="project-1",
+        workspace_id="workspace-1",
+        work_order_id=work_order_id,
+        payload=MaintenanceWorkOrderApproveRequest(
+            simulation_session_id="SIMULATION-SESSION-001"
+        ),
+        actor_id="manager-1",
+        actor_display_name="Manager One",
+        idempotency_key="maintenance-value-approve-001",
+        approved_at=started_at - timedelta(minutes=5),
+    )
+    action_id = approved["maintenance_action_id"]
+    loop.start_maintenance(
+        organization_id="org-1",
+        project_id="project-1",
+        workspace_id="workspace-1",
+        maintenance_action_id=action_id,
+        payload=MaintenanceActionStartRequest(),
+        actor_id="technician-1",
+        actor_display_name="Technician One",
+        idempotency_key="maintenance-value-start-001",
+        started_at=started_at,
+    )
+    completed = loop.complete_maintenance(
+        organization_id="org-1",
+        project_id="project-1",
+        workspace_id="workspace-1",
+        maintenance_action_id=action_id,
+        payload=MaintenanceActionCompleteRequest(outcome="tool replaced"),
+        actor_id="technician-1",
+        actor_display_name="Technician One",
+        idempotency_key="maintenance-value-complete-001",
+        completed_at=started_at + timedelta(minutes=30),
+    )
+
+    realization = loop.record_value_realization(
+        organization_id="org-1",
+        project_id="project-1",
+        workspace_id="workspace-1",
+        maintenance_event_id=completed["maintenance_event_id"],
+        payload=MaintenanceValueRealizationCreateRequest(
+            predicted_downtime_minutes=85,
+            actual_downtime_minutes=24,
+            predicted_loss_exposure_minor=8_200_000,
+            realized_avoided_exposure_minor=4_600_000,
+            currency="KRW",
+            recurrence_observed=False,
+            basis=("erp://downtime/2026-08-24", "mes://production/CNC-001"),
+            measured_at=started_at + timedelta(hours=12),
+        ),
+        actor_id="manager-1",
+    )
+
+    assert realization["source_product_result_id"] == "RESULT-001"
+    assert realization["post_product_result_id"] == "RESULT-AFTER-001"
+    assert realization["before_risk_score"] == pytest.approx(0.91)
+    assert realization["after_risk_score"] == pytest.approx(0.08)
+    assert realization["actual_downtime_minutes"] == 24
+    assert realization["realized_avoided_exposure_minor"] == 4_600_000
+
+    lineage = loop.event_lineage(
+        organization_id="org-1",
+        project_id="project-1",
+        workspace_id="workspace-1",
+        event_id="EVT-RESULT-001",
+    )
+    assert len(lineage["value_realizations"]) == 1
+    assert lineage["value_realizations"][0]["basis"] == {
+        "references": ["erp://downtime/2026-08-24", "mes://production/CNC-001"]
+    }
+    assert lineage["runtime_status"] == "predicted"
 
 
 def test_live_maintenance_approval_uses_authorized_product_result_source_session(

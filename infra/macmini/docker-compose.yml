@@ -107,6 +107,7 @@ services:
     environment:
       APP_ENV: production
       PORT: 8000
+      ONTOLOGY_DASHBOARD_BUILD_SHA: ${ONTOLOGY_DASHBOARD_BUILD_SHA:-unknown}
       # Restored production data is authoritative on the Mac mini.  Seed/demo
       # bootstrap must be an explicit opt-in rather than silently mutating it.
       SEED_DEMO_ACCOUNTS: ${SEED_DEMO_ACCOUNTS:-0}
@@ -123,6 +124,8 @@ services:
       ONTOLOGY_DASHBOARD_REDIS_URL: redis://redis:6379/0
       ONTOLOGY_DASHBOARD_ALLOWED_ORIGINS: ${ONTOLOGY_DASHBOARD_ALLOWED_ORIGINS:-}
       ONTOLOGY_DASHBOARD_ALLOWED_ORIGIN_REGEX: ${ONTOLOGY_DASHBOARD_ALLOWED_ORIGIN_REGEX}
+      ONTOLOGY_DASHBOARD_METRICS_TOKEN: ${ONTOLOGY_DASHBOARD_METRICS_TOKEN:?ONTOLOGY_DASHBOARD_METRICS_TOKEN is required}
+      ONTOLOGY_DASHBOARD_ALERT_DESTINATION_REF: ${ONTOLOGY_DASHBOARD_ALERT_DESTINATION_REF:-structured-log}
       ONTOLOGY_DASHBOARD_ALLOW_HEURISTIC_MODEL_FALLBACK: ${ONTOLOGY_DASHBOARD_ALLOW_HEURISTIC_MODEL_FALLBACK:-0}
       MODEL_ARTIFACT_URI: ${BACKEND_MODEL_ARTIFACT_URI:-/artifacts/compressor-failure-risk/current}
       CNC_MODEL_ARTIFACT_URI: ${BACKEND_CNC_MODEL_ARTIFACT_URI:-/artifacts/cnc-failure-risk/current}
@@ -209,6 +212,52 @@ services:
       start_period: 10s
     networks: [private]
 
+  observation-rollup:
+    image: ${BACKEND_IMAGE:-ontology-dashboard-macmini-backend:latest}
+    restart: "no"
+    cpus: 0.5
+    mem_limit: 512m
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      ONTOLOGY_DASHBOARD_BUILD_SHA: ${ONTOLOGY_DASHBOARD_BUILD_SHA:-unknown}
+      ONTOLOGY_DASHBOARD_DATABASE_URL: ${ONTOLOGY_DASHBOARD_DATABASE_URL}
+      ONTOLOGY_DASHBOARD_OUTBOX_ORGANIZATION_ID: ${ONTOLOGY_DASHBOARD_OUTBOX_ORGANIZATION_ID:-org-ontology-demo}
+      ONTOLOGY_DASHBOARD_OUTBOX_PROJECT_ID: ${ONTOLOGY_DASHBOARD_OUTBOX_PROJECT_ID:-manufacturing-demo-project}
+      ONTOLOGY_DASHBOARD_WORKSPACE_ID: ${ONTOLOGY_DASHBOARD_WORKSPACE_ID:-manufacturing-demo}
+    command: ["python", "-m", "app.observation_rollup_worker", "--history-hours", "2160"]
+    networks: [private]
+
+  maintenance-dispatcher:
+    image: ${BACKEND_IMAGE:-ontology-dashboard-macmini-backend:latest}
+    restart: unless-stopped
+    # gen_data is a host LaunchAgent and owns the shared inbox as the logged-in
+    # Mac mini service account. Match that uid/gid rather than weakening the
+    # inbox permissions for every local process.
+    user: "${ONTOLOGY_MACMINI_HOST_UID:-501}:${ONTOLOGY_MACMINI_HOST_GID:-20}"
+    cpus: 0.25
+    mem_limit: 256m
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      ONTOLOGY_DASHBOARD_BUILD_SHA: ${ONTOLOGY_DASHBOARD_BUILD_SHA:-unknown}
+      ONTOLOGY_DASHBOARD_DATABASE_URL: ${ONTOLOGY_DASHBOARD_DATABASE_URL}
+      ONTOLOGY_DASHBOARD_OUTBOX_ORGANIZATION_ID: ${ONTOLOGY_DASHBOARD_OUTBOX_ORGANIZATION_ID:-org-ontology-demo}
+      ONTOLOGY_DASHBOARD_OUTBOX_PROJECT_ID: ${ONTOLOGY_DASHBOARD_OUTBOX_PROJECT_ID:-manufacturing-demo-project}
+      ONTOLOGY_DASHBOARD_MAINTENANCE_REPLAY_TRANSPORT: jsonl
+      ONTOLOGY_DASHBOARD_MAINTENANCE_REPLAY_EVENT_FILE: /gen-data-runtime-overlay-input/maintenance_events.jsonl
+      ONTOLOGY_DASHBOARD_OUTBOX_MAX_ATTEMPTS: ${ONTOLOGY_DASHBOARD_OUTBOX_MAX_ATTEMPTS:-5}
+      ONTOLOGY_DASHBOARD_OUTBOX_RETRY_SECONDS: ${ONTOLOGY_DASHBOARD_OUTBOX_RETRY_SECONDS:-5}
+      ONTOLOGY_DASHBOARD_OUTBOX_LEASE_SECONDS: ${ONTOLOGY_DASHBOARD_OUTBOX_LEASE_SECONDS:-60}
+    command: ["python", "-m", "app.maintenance_replay_dispatcher", "--poll-seconds", "1"]
+    volumes:
+      - ${ONTOLOGY_DATA_ROOT}/gen_data-runtime-wall-clock-v2/input:/gen-data-runtime-overlay-input
+    networks: [private]
+
   frontend:
     build:
       context: ../..
@@ -290,6 +339,7 @@ services:
     command: ["systems.generator.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     environment:
       APP_ENV: production
+      ONTOLOGY_DASHBOARD_BUILD_SHA: ${ONTOLOGY_DASHBOARD_BUILD_SHA:-unknown}
       GENERATOR_RUNTIME_PREDICTION_ENABLED: "true"
       GENERATOR_EXTRACTION_ENABLED: "false"
       GENERATOR_RUNTIME_VERSION: ${GENERATOR_RUNTIME_VERSION:-hanbit-generator-runtime-v1}

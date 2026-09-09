@@ -1,5 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
 
+test.skip(
+  process.env.PLAYWRIGHT_LEGACY_MAINTENANCE_COST !== "1",
+  "Legacy EVT-GS fixture contract; current Product Result cases are covered by the Reliability closed-loop suite.",
+);
+
 const PROJECT = "manufacturing-demo-project";
 const WORKSPACE = "manufacturing-demo";
 const EVENT = "EVT-GS-004";

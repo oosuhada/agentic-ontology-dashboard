@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from pathlib import Path
@@ -98,3 +99,35 @@ class MappingRepository:
                 f"매핑 파일 로드 실패 ({path.name}): {exc}",
                 details=[{"path": str(path)}],
             ) from exc
+
+    def list_mappings(self) -> list[dict[str, Any]]:
+        """Return deduplicated mapping versions without exposing host paths."""
+        records: dict[tuple[str, str], dict[str, Any]] = {}
+        for root in self.search_roots:
+            if not root.is_dir():
+                continue
+            for path in root.rglob("*.json"):
+                try:
+                    raw = path.read_bytes()
+                    data = json.loads(raw.decode("utf-8"))
+                except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                    continue
+                mapping_id = str(data.get("mapping_id") or "").strip()
+                mapping_version = str(data.get("mapping_version") or "").strip()
+                if not mapping_id or not mapping_version:
+                    continue
+                key = (mapping_id, mapping_version)
+                if key in records:
+                    continue
+                records[key] = {
+                    "mapping_id": mapping_id,
+                    "mapping_version": mapping_version,
+                    "status": str(data.get("status") or "unknown"),
+                    "sha256": hashlib.sha256(raw).hexdigest(),
+                    "source_schema_fingerprint": data.get("source_schema_fingerprint"),
+                    "protocol_type": data.get("protocol_type") or data.get("protocol"),
+                }
+        return sorted(
+            records.values(),
+            key=lambda item: (item["mapping_id"], item["mapping_version"]),
+        )

@@ -94,7 +94,7 @@ export interface PredictiveMaintenanceDatasetVersions {
   rollback_supported: boolean;
 }
 
-export type PredictiveMaintenanceRiskWindow = "1h" | "6h" | "24h" | "7d" | "30d";
+export type PredictiveMaintenanceRiskWindow = "1h" | "6h" | "24h" | "7d" | "30d" | "90d";
 export type PredictiveMaintenanceRiskSourceMode = "live" | "workspace";
 
 export interface PredictiveMaintenanceRiskIndexPoint {

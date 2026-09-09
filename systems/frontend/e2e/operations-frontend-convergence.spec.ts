@@ -1,5 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
 
+test.skip(
+  process.env.PLAYWRIGHT_LEGACY_OPERATIONS !== "1",
+  "Legacy classic Operations contract; run explicitly with PLAYWRIGHT_LEGACY_OPERATIONS=1 while it is migrated to the Reliability workspace contract.",
+);
+
 const PROJECT = "manufacturing-demo-project";
 const OPERATIONS_PATH = `/app/projects/${PROJECT}/operations`;
 const API_URL = process.env.PLAYWRIGHT_API_URL ?? `http://127.0.0.1:${process.env.PLAYWRIGHT_API_PORT ?? "8200"}`;

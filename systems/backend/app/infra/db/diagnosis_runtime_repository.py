@@ -7,6 +7,7 @@ from typing import Any, Callable, Sequence
 
 from app.infra.db.pool import pooled_tenant_connection
 from app.infra.db.settings import is_postgresql_url
+from app.infra.observability.runtime import METRICS
 from app.diagnosis.ports import ALLOWED_DERIVED_MEASURES
 
 
@@ -263,6 +264,11 @@ class PredictiveMaintenanceRuntimeRepository:
                     """,
                     (bucket_interval, origin, *parameters),
                 ).fetchall()
+        METRICS.set_gauge(
+            "ontology_pm_observation_lag_seconds",
+            max(0.0, (self.clock_now() - end).total_seconds()),
+            labels={"scope": "asset" if asset_id else "plant"},
+        )
         return [dict(row) for row in rows]
 
     def list_versions(
@@ -317,7 +323,34 @@ class PredictiveMaintenanceRuntimeRepository:
                 query,
                 (organization_id, project_id, workspace_id),
             ).fetchall()
-        return [dict(row) for row in rows]
+        materialized = [dict(row) for row in rows]
+        graph_row = next(
+            (
+                row
+                for row in materialized
+                if isinstance(row.get("graph_updated_at"), datetime)
+            ),
+            materialized[0] if materialized else None,
+        )
+        if graph_row is not None:
+            graph_updated_at = graph_row.get("graph_updated_at")
+            if isinstance(graph_updated_at, datetime):
+                graph_time = (
+                    graph_updated_at
+                    if graph_updated_at.tzinfo is not None
+                    else graph_updated_at.replace(tzinfo=timezone.utc)
+                )
+                METRICS.set_gauge(
+                    "ontology_graph_projection_age_seconds",
+                    max(0.0, (self.clock_now() - graph_time).total_seconds()),
+                    labels={"domain": "predictive_maintenance"},
+                )
+            METRICS.set_gauge(
+                "ontology_graph_projection_ready",
+                1 if str(graph_row.get("graph_status") or "") == "ready" else 0,
+                labels={"domain": "predictive_maintenance"},
+            )
+        return materialized
 
     def selected_version_for_user(
         self,
@@ -898,8 +931,31 @@ class PredictiveMaintenanceRuntimeRepository:
         invalid = derived_measures - ALLOWED_DERIVED_MEASURES
         if invalid:
             raise ValueError(f"unsupported derived measures: {sorted(invalid)}")
+
+        rollup_rows: list[dict[str, Any]] = []
+        raw_start = start
+        if grain == "1h":
+            rollup_rows = self._observation_hourly_rollup_rows(
+                organization_id=organization_id,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                dataset_version_id=dataset_version_id,
+                start=start,
+                end=end,
+                asset_id=asset_id,
+                site_id=site_id,
+                cell_id=cell_id,
+                asset_type=asset_type,
+                derived_measures=derived_measures,
+                limit=limit,
+            )
+            if rollup_rows:
+                latest_rollup = max(row["observed_at"] for row in rollup_rows)
+                raw_start = max(start, latest_rollup + timedelta(hours=1))
+                if raw_start > end or len(rollup_rows) > limit:
+                    return rollup_rows
         base_clauses, base_parameters = self._observation_filters(
-            start=start,
+            start=raw_start,
             end=end,
             asset_id=asset_id,
             site_id=site_id,
@@ -1043,7 +1099,79 @@ class PredictiveMaintenanceRuntimeRepository:
                 f"SELECT * FROM ({sql}) rows ORDER BY observed_at,asset_id LIMIT %s",
                 (*query_parameters, limit + 1),
             ).fetchall()
-        return [dict(row) for row in rows]
+        combined = [*rollup_rows, *(dict(row) for row in rows)]
+        combined.sort(key=lambda row: (row["observed_at"], str(row["asset_id"])))
+        return combined[: limit + 1]
+
+    def _observation_hourly_rollup_rows(
+        self,
+        *,
+        organization_id: str,
+        project_id: str,
+        workspace_id: str,
+        dataset_version_id: str,
+        start: datetime,
+        end: datetime,
+        asset_id: str | None,
+        site_id: str | None,
+        cell_id: str | None,
+        asset_type: str | None,
+        derived_measures: set[str],
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        clauses = [
+            "organization_id=%s",
+            "project_id=%s",
+            "workspace_id=%s",
+            "dataset_version_id=%s",
+            "bucket_start>=%s",
+            "bucket_start<=%s",
+        ]
+        parameters: list[Any] = [
+            organization_id,
+            project_id,
+            workspace_id,
+            dataset_version_id,
+            start,
+            end,
+        ]
+        for column, value in (
+            ("asset_id", asset_id),
+            ("site_id", site_id),
+            ("cell_id", cell_id),
+            ("asset_type", asset_type),
+        ):
+            if value:
+                clauses.append(f"{column}=%s")
+                parameters.append(value)
+        with self._connection(organization_id, project_id) as connection:
+            rows = connection.execute(
+                f"""
+                SELECT bucket_start AS observed_at,asset_id,asset_type,site_id,cell_id,
+                       is_operating,'aggregated_1h'::text AS operating_state,source_sha256,
+                       measurements_json AS measurements,
+                       derived_measures_json AS derived_measures
+                FROM pm_observation_hourly_rollups
+                WHERE {' AND '.join(clauses)}
+                ORDER BY bucket_start,asset_id
+                LIMIT %s
+                """,
+                (*parameters, limit + 1),
+            ).fetchall()
+        result: list[dict[str, Any]] = []
+        for raw in rows:
+            row = dict(raw)
+            derived = row.get("derived_measures")
+            if isinstance(derived, str):
+                derived = json.loads(derived)
+            if isinstance(derived, dict):
+                row["derived_measures"] = {
+                    key: value
+                    for key, value in derived.items()
+                    if key in derived_measures
+                }
+            result.append(row)
+        return result
 
     def nearest_timeline_rows(
         self,

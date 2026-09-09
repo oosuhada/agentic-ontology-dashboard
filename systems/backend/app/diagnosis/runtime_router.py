@@ -482,7 +482,7 @@ def risk_index(
     source_mode: Literal["live", "workspace"] = Query(default="live"),
     dataset_version_id: str | None = Query(default=None, max_length=160),
     asset_id: str | None = Query(default=None, max_length=160),
-    window: Literal["1h", "6h", "24h", "7d", "30d"] = Query(default="24h"),
+    window: Literal["1h", "6h", "24h", "7d", "30d", "90d"] = Query(default="24h"),
     principal: Principal = Depends(require_permission("events.read")),
     identity: IdentityService = Depends(get_identity_service),
     service: PredictiveMaintenanceRuntimeService = Depends(

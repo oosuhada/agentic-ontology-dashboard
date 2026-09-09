@@ -27,18 +27,18 @@ def test_simulation_continues_exactly_one_cadence_after_persisted_cursor() -> No
     ) == latest + timedelta(minutes=10)
 
 
-def test_first_simulation_run_backfills_seven_days_of_history() -> None:
+def test_first_simulation_run_backfills_thirty_days_of_history() -> None:
     now = datetime(2026, 9, 2, 4, 0, tzinfo=timezone.utc)
 
     assert _simulation_start_at(
         now=now,
         latest_observed_at=None,
         history_backfill_hours=DEFAULT_HISTORY_BACKFILL_HOURS,
-    ) == now - timedelta(hours=168)
+    ) == now - timedelta(hours=720)
 
 
 def test_first_live_run_fast_forwards_the_full_historical_window() -> None:
-    assert _initial_fast_forward_target_hours(latest_observed_at=None) == 168
+    assert _initial_fast_forward_target_hours(latest_observed_at=None) == 720
 
 
 def test_one_year_history_backfill_is_supported_without_changing_model_warmup() -> None:
@@ -60,7 +60,7 @@ def test_one_year_history_backfill_is_supported_without_changing_model_warmup() 
 
 
 def test_history_backfill_is_separate_from_model_minimum_history() -> None:
-    assert DEFAULT_HISTORY_BACKFILL_HOURS == 168
+    assert DEFAULT_HISTORY_BACKFILL_HOURS == 720
     assert MODEL_MINIMUM_HISTORY_ROWS == 36
     assert MODEL_MINIMUM_HISTORY_HOURS == 6
     assert DEFAULT_HISTORY_BACKFILL_HOURS > MODEL_MINIMUM_HISTORY_HOURS
@@ -91,7 +91,7 @@ def test_initial_fast_forward_keeps_the_original_run(monkeypatch) -> None:
     assert calls == [
         (
             "http://127.0.0.1:8300/api/runs/original-run/simulation/fast-forward",
-            {"target_elapsed_hours": 168},
+            {"target_elapsed_hours": 720},
         )
     ]
 
@@ -166,7 +166,7 @@ def test_clean_start_creates_simulation_before_selecting_live_dataset_and_fronte
     assert run_create < dataset_select < frontend_start
     assert '"--speed", type=float, default=60.0' in source
     assert "default=DEFAULT_SIMULATION_HOURS" in source
-    assert DEFAULT_SIMULATION_HOURS == 336
-    assert DEFAULT_HISTORY_BACKFILL_HOURS == 168
+    assert DEFAULT_SIMULATION_HOURS == 1440
+    assert DEFAULT_HISTORY_BACKFILL_HOURS == 720
     assert MODEL_MINIMUM_HISTORY_HOURS == 6
     assert MODEL_MINIMUM_HISTORY_ROWS == 36

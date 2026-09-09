@@ -280,7 +280,7 @@ const ENGLISH_FACTOR_LABELS: Record<string, string> = {
 
 function englishFactorLabel(key: string) {
   const base = key
-    .replace(/_(1h|6h|12h|24h|7d|30d)_(max_abs|abs_max|abs_mean|change|max|min|mean|std|last)$/, "")
+    .replace(/_(1h|6h|12h|24h|7d|30d|90d)_(max_abs|abs_max|abs_mean|change|max|min|mean|std|last)$/, "")
     .replace(/_(abs_current|current)$/, "");
   return ENGLISH_FACTOR_LABELS[key] ?? ENGLISH_FACTOR_LABELS[base] ?? base.replaceAll("_", " ");
 }

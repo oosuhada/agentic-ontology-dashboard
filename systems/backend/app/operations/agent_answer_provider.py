@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.infra.observability.runtime import METRICS
 from app.operations.ports import AgentReviewLLMPort
 
 
@@ -103,6 +104,10 @@ class GroundedAgentAnswerProvider:
         summary: dict[str, Any] | None,
     ) -> tuple[str, list[str], list[str], dict[str, Any]]:
         if self.provider is None:
+            METRICS.inc(
+                "ontology_agent_answer_total",
+                labels={"mode": "deterministic_fallback", "reason": "provider_unavailable"},
+            )
             return baseline_answer, [], [], {
                 "mode": "deterministic_fallback",
                 "provider": "none",
@@ -216,6 +221,10 @@ class GroundedAgentAnswerProvider:
             ):
                 raise ValueError("unsupported_realized_value_claim")
             caveats = [str(item) for item in candidate.get("caveats") or [] if str(item).strip()]
+            METRICS.inc(
+                "ontology_agent_answer_total",
+                labels={"mode": "llm", "reason": "none"},
+            )
             return answer, cited_ids, caveats, {
                 "mode": "llm",
                 "provider": self.name,
@@ -223,6 +232,10 @@ class GroundedAgentAnswerProvider:
                 "prompt_version": AGENT_ANSWER_PROMPT_VERSION,
             }
         except Exception as exc:
+            METRICS.inc(
+                "ontology_agent_answer_total",
+                labels={"mode": "deterministic_fallback", "reason": type(exc).__name__[:80]},
+            )
             return baseline_answer, [], [], {
                 "mode": "deterministic_fallback",
                 "provider": self.name,

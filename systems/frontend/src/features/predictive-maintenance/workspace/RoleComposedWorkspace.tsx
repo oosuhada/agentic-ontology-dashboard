@@ -38,7 +38,6 @@ import type {
   OperationsAsset,
   OperationsBootstrapModel,
   OperationsCompanyContext,
-  OperationsDecisionBriefRole,
   OperationsEvent,
   OperationsEventDetailModel,
   OperationsReportTab,
@@ -54,9 +53,6 @@ import {
   displaySensorFactorLabel,
   fieldFailureLabel,
 } from "../../operations/displayLabels";
-import { MaintenanceWorkflowActionPanel } from "../../operations/maintenance/MaintenanceWorkflowActionPanel";
-import { MaintenanceCostDecisionPanel } from "../../operations/maintenance/MaintenanceCostDecisionPanel";
-import { OperationalDecisionSupportPanel } from "../../operations/overview/OperationalDecisionSupportPanel";
 import { useI18n } from "../../../ui/i18n/I18nProvider";
 import { useDisplayPreferences } from "../../../ui/foundry/displayPreferences";
 import type { ReliabilityExperienceKind } from "./roleExperience";
@@ -72,6 +68,7 @@ import {
   RELIABILITY_MASONRY_ROW_HEIGHT,
 } from "./adaptiveReliabilityLayout";
 import "./role-composed-workspace.css";
+import { GovernedWorkflowActions } from "./GovernedWorkflowActions";
 
 const WorkspaceEnglishContext = createContext(false);
 
@@ -351,12 +348,6 @@ function criticalityLabel(
   return localized(english, "확인 필요", "Needs review");
 }
 
-function operationalDecisionBriefRole(
-  value: OperationsRoleLens,
-): OperationsDecisionBriefRole {
-  return value === "process_manager" ? "process_manager" : "process_engineer";
-}
-
 function factorDirectionLabel(value: "risk_up" | "risk_down", english = false) {
   return value === "risk_up"
     ? localized(english, "위험 증가 방향", "Risk increasing")
@@ -385,10 +376,10 @@ const ENGLISH_SENSOR_LABELS: Record<string, string> = {
 };
 
 function englishSensorFactorLabel(key: string) {
-  const windowMatch = key.match(/_(1h|6h|12h|24h|7d|30d)_(max_abs|abs_max|abs_mean|change|max|min|mean|std|last)$/);
+  const windowMatch = key.match(/_(1h|6h|12h|24h|7d|30d|90d)_(max_abs|abs_max|abs_mean|change|max|min|mean|std|last)$/);
   const currentMatch = key.match(/_(abs_current|current)$/);
   const baseKey = key
-    .replace(/_(1h|6h|12h|24h|7d|30d)_(max_abs|abs_max|abs_mean|change|max|min|mean|std|last)$/, "")
+    .replace(/_(1h|6h|12h|24h|7d|30d|90d)_(max_abs|abs_max|abs_mean|change|max|min|mean|std|last)$/, "")
     .replace(/_(abs_current|current)$/, "");
   const base = ENGLISH_SENSOR_LABELS[key] ?? ENGLISH_SENSOR_LABELS[baseKey] ?? baseKey.replaceAll("_", " ");
   if (windowMatch) {
@@ -2284,40 +2275,21 @@ function WorkflowActionsBlock({
       guidance={localized(english, "선택 Case의 승인 가능한 작업만 실행할 수 있으며 근거 snapshot과 작업 이력이 함께 남습니다.", "Only governed actions for the selected case can be executed, with the evidence snapshot and action history preserved.")}
       className={props.surfaceId === "inspection" ? "span-12 is-action-hero" : "span-12"}
     >
-      <MaintenanceWorkflowActionPanel
+      <GovernedWorkflowActions
+        experienceKind={props.experienceKind}
         projectId={props.model.context.projectId}
         workspaceId={props.model.context.workspaceId}
         datasetVersionId={props.model.context.datasetVersionId}
-        eventId={props.selectedEvent.eventId}
-        assetId={asset.assetId}
-        assetType={asset.assetType}
+        event={props.selectedEvent}
+        asset={asset}
+        detail={props.detail}
         role={props.role}
         currentUserId={props.currentUserId}
-        snapshotBasis={props.detail?.snapshotBasis ?? null}
-        canManage={props.canManageWorkflow}
-        canFieldExecute={props.canExecuteFieldWorkflow}
-        canMaintenanceExecute={props.experienceKind === "maintenance" && props.canExecuteFieldWorkflow}
-        locale={english ? "en-US" : "ko-KR"}
+        canManageWorkflow={props.canManageWorkflow}
+        canExecuteFieldWorkflow={props.canExecuteFieldWorkflow}
+        canMaterializeAgentSummary={props.canMaterializeAgentSummary}
+        english={english}
         onChanged={props.onWorkflowChanged}
-      />
-      <MaintenanceCostDecisionPanel
-        projectId={props.model.context.projectId}
-        workspaceId={props.model.context.workspaceId}
-        eventId={props.selectedEvent.eventId}
-        guidance={props.detail?.inspectionTargets.find((item) => item.inspectionGuidance)?.inspectionGuidance ?? null}
-        locale={english ? "en-US" : "ko-KR"}
-        onChanged={props.onWorkflowChanged}
-      />
-      <OperationalDecisionSupportPanel
-        assetId={asset.assetId}
-        projectId={props.model.context.projectId}
-        workspaceId={props.model.context.workspaceId}
-        evidenceSnapshotId={props.detail?.snapshotBasis?.artifactId ?? null}
-        decisionAsOf={props.selectedEvent.observedAt}
-        riskStatus={props.selectedEvent.status}
-        role={operationalDecisionBriefRole(props.role)}
-        canMaterialize={props.canMaterializeAgentSummary}
-        locale={english ? "en-US" : "ko-KR"}
       />
     </Block>
   );

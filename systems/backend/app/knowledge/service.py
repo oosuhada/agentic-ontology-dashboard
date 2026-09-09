@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 from app.infra.observability.runtime import METRICS
@@ -355,12 +356,33 @@ class KnowledgeService:
         )
 
     def stats(self, *, organization_id: str, project_id: str, workspace_id: str) -> dict[str, Any]:
+        stats = self.repository.stats(
+            organization_id=organization_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+        )
+        index = stats.get("index") or {}
+        requested_generation = int(index.get("requested_generation") or 0)
+        indexed_generation = int(index.get("indexed_generation") or 0)
+        METRICS.set_gauge(
+            "ontology_knowledge_generation_lag",
+            max(0, requested_generation - indexed_generation),
+            labels={"status": str(index.get("status") or "missing")[:40]},
+        )
+        last_indexed_at = index.get("last_indexed_at")
+        if last_indexed_at:
+            try:
+                parsed = datetime.fromisoformat(str(last_indexed_at).replace("Z", "+00:00"))
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=timezone.utc)
+                METRICS.set_gauge(
+                    "ontology_knowledge_index_age_seconds",
+                    max(0.0, (datetime.now(timezone.utc) - parsed).total_seconds()),
+                )
+            except ValueError:
+                pass
         return {
-            **self.repository.stats(
-                organization_id=organization_id,
-                project_id=project_id,
-                workspace_id=workspace_id,
-            ),
+            **stats,
             "embedding_provider": self.embedding_provider.name,
             "embedding_dimensions": self.embedding_provider.dimensions,
         }

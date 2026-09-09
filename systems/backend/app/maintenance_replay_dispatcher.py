@@ -10,7 +10,9 @@ from app.common.runtime_settings import project_root
 from app.infra.db.migrations import migrate
 from app.infra.db.settings import database_location
 from app.infra.messaging import (
+    MaintenanceReplayHttpHandler,
     MaintenanceReplayJsonlHandler,
+    MaintenanceRuntimeDeliveryReceiptRepository,
     ProjectOutboxRepository,
     ProjectOutboxWorker,
 )
@@ -31,10 +33,27 @@ def build_worker() -> ProjectOutboxWorker:
         "ONTOLOGY_DASHBOARD_OUTBOX_ORGANIZATION_ID"
     )
     project_id = _required_environment("ONTOLOGY_DASHBOARD_OUTBOX_PROJECT_ID")
-    event_file = _required_environment(
-        "ONTOLOGY_DASHBOARD_MAINTENANCE_REPLAY_EVENT_FILE"
-    )
-    handler = MaintenanceReplayJsonlHandler(event_file)
+    transport = os.getenv(
+        "ONTOLOGY_DASHBOARD_MAINTENANCE_REPLAY_TRANSPORT", "jsonl"
+    ).strip().lower()
+    if transport == "jsonl":
+        event_file = _required_environment(
+            "ONTOLOGY_DASHBOARD_MAINTENANCE_REPLAY_EVENT_FILE"
+        )
+        handler = MaintenanceReplayJsonlHandler(event_file)
+    elif transport == "http":
+        handler = MaintenanceReplayHttpHandler(
+            _required_environment("ONTOLOGY_DASHBOARD_MAINTENANCE_REPLAY_URL"),
+            receipt_repository=MaintenanceRuntimeDeliveryReceiptRepository(database),
+            bearer_token=os.getenv("ONTOLOGY_DASHBOARD_MAINTENANCE_REPLAY_TOKEN"),
+            timeout_seconds=float(
+                os.getenv("ONTOLOGY_DASHBOARD_MAINTENANCE_REPLAY_TIMEOUT_SECONDS", "10")
+            ),
+        )
+    else:
+        raise ValueError(
+            "ONTOLOGY_DASHBOARD_MAINTENANCE_REPLAY_TRANSPORT must be jsonl or http"
+        )
     handlers = {
         event_type: (handler.handler_code, handler)
         for event_type in MAINTENANCE_REPLAY_EVENT_TYPES

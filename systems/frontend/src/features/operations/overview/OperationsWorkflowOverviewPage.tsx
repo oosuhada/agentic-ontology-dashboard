@@ -3211,6 +3211,7 @@ function AssetPreviewPanel({
                   canManage={canManageWorkflow}
                   canFieldExecute={canExecuteFieldWorkflow}
                   canMaintenanceExecute={experienceKind === "maintenance" && canExecuteFieldWorkflow}
+                  estimatedDowntimeMinutes={asset.estimatedDowntimeMinutes}
                   onChanged={refreshWorkflow}
                   onStatusChanged={setWorkflowStatus}
                   onPostMaintenancePrediction={reportPostMaintenancePrediction}
@@ -3449,6 +3450,7 @@ function AssetPreviewPanel({
                 canManage={canManageWorkflow}
                 canFieldExecute={canExecuteFieldWorkflow}
                 canMaintenanceExecute={experienceKind === "maintenance" && canExecuteFieldWorkflow}
+                estimatedDowntimeMinutes={asset.estimatedDowntimeMinutes}
                 onChanged={refreshWorkflow}
                 onStatusChanged={setWorkflowStatus}
                 onPostMaintenancePrediction={reportPostMaintenancePrediction}
