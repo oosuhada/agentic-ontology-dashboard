@@ -7,6 +7,13 @@
 관측과 모델 결과를 하나의 Decision Case로 묶고, 같은 사건을 엔지니어에게는 점검 근거로,
 운영 관리자에게는 판단 자료로, 경영진에게는 KPI와 보고 언어로 제공합니다.
 
+## Product preview
+
+![Agentic Ontology Dashboard product overview](.github/assets/portfolio/agentic-ontology-dashboard-overview.png)
+
+공개 데모는 역할별 화면, 근거 보존, 판단 대기 상태, 보고 흐름을 하나의 운영 workspace로
+보여줍니다.
+
 ## 해결하려는 문제
 
 제조 현장의 병목은 고장을 예측하지 못하는 것만이 아닙니다. 설비 이상이 발견된 뒤
