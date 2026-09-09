@@ -191,7 +191,12 @@ export function OperationsSelectionProvider({
     const workspaceShell = currentParams.get("workspace_shell");
     if (workspaceShell) params.set("workspace_shell", workspaceShell);
     const detailMode = currentParams.get("detail");
-    if (detailMode === "drawer") params.set("detail", detailMode);
+    // `detail=drawer` is a transient route intent, not part of the durable
+    // asset/case selection. Keep it while the user is still operating on the
+    // same surface, but do not carry it across menu/surface navigation.
+    if (detailMode === "drawer" && next.surface === current.surface) {
+      params.set("detail", detailMode);
+    }
     const targetPath = navigationBasePath ?? operationsSurfacePath(projectId, next.surface);
     navigate(`${targetPath}?${params.toString()}`, { replace: options?.replace });
   }, [navigationBasePath, projectId, readSelection, storageKey]);

@@ -3023,7 +3023,10 @@ function ReportSummaryBlock({
           </div>
         </div>
       ) : (
-        <Empty text={localized(english, "선택 이벤트의 grounded report를 불러오는 중입니다.", "Loading the grounded report for the selected event.")} />
+        <Empty text={event
+          ? localized(english, "선택 Case의 grounded report를 준비하고 있습니다.", "Preparing the grounded report for the selected case.")
+          : localized(english, "보고할 Decision Case를 선택하면 고정 근거 snapshot을 기준으로 보고 산출물을 준비합니다.", "Select a Decision Case to prepare report artifacts from its fixed evidence snapshot.")}
+        />
       )}
     </Block>
   );

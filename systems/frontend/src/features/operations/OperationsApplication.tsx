@@ -90,6 +90,24 @@ function defaultRoleLens(roles: string[]): OperationsRoleLens {
     : "process_manager";
 }
 
+function isRestorableRuntimeEvent(event: OperationsEvent): boolean {
+  return event.scenarioId === "runtime-product-result";
+}
+
+function latestRestorableEventForAsset(
+  model: OperationsBootstrapModel,
+  assetId: string | null | undefined,
+): OperationsEvent | null {
+  if (!assetId) return null;
+  return model.events
+    .filter((event) => event.assetId === assetId && isRestorableRuntimeEvent(event))
+    .sort((left, right) => (right.observedAt ?? "").localeCompare(left.observedAt ?? ""))[0] ?? null;
+}
+
+function firstRestorableEvent(model: OperationsBootstrapModel): OperationsEvent | null {
+  return model.events.find(isRestorableRuntimeEvent) ?? null;
+}
+
 export function OperationsApplication({ projectId, backupMode = false }: { projectId: string; backupMode?: boolean }) {
   const { user } = useAuth();
   const roles = user?.active_project_roles.length ? user.active_project_roles : user?.roles ?? [];
@@ -202,7 +220,9 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
         if (!selection.workspaceId) patch.workspaceId = payload.context.workspaceId;
         // An explicit Event selection is a frozen Decision Case snapshot.
         // Never replace it with the asset's newest Event during refresh.
-        if (!selection.eventId && selectedAsset?.eventId) patch.eventId = selectedAsset.eventId;
+        if (!selection.eventId && selectedAsset) {
+          patch.eventId = latestRestorableEventForAsset(payload, selectedAsset.assetId)?.eventId ?? null;
+        }
         if (!selection.assetId && selectedEvent) patch.assetId = selectedEvent.assetId;
         if (Object.keys(patch).length) updateSelection(patch, { replace: true });
 
@@ -216,8 +236,7 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
             const current = selectionRef.current;
             if (current.assetId || current.eventId) return;
             if (current.view !== "operations" && current.view !== "reports") return;
-            const firstEvent = payload.events[0];
-            if (!firstEvent) return;
+            const fallbackEvent = firstRestorableEvent(payload);
             const stepPriority: Record<string, number> = {
               maintenance_in_progress: 0,
               inspection_in_progress: 1,
@@ -236,11 +255,14 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
                 - (stepPriority[right.current_step ?? ""] ?? 99)
               ))[0] ?? null;
             const activeEvent = activeWorkflow
-              ? payload.events.find((event) => event.eventId === activeWorkflow.event_id) ?? null
+              ? latestRestorableEventForAsset(payload, activeWorkflow.asset_id)
               : null;
+            const nextEvent = activeWorkflow ? activeEvent : fallbackEvent;
+            const nextAssetId = activeWorkflow?.asset_id ?? nextEvent?.assetId ?? null;
+            if (!nextAssetId && !nextEvent) return;
             updateSelection({
-              eventId: activeWorkflow?.event_id ?? activeEvent?.eventId ?? firstEvent.eventId,
-              assetId: activeWorkflow?.asset_id ?? activeEvent?.assetId ?? firstEvent.assetId,
+              eventId: nextEvent?.eventId ?? null,
+              assetId: nextAssetId,
             }, { replace: true });
           });
       })
@@ -266,10 +288,9 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
     if (!model) return null;
     const assetId = selectedEvent?.assetId ?? selection.assetId;
     if (!assetId) return null;
-    const asset = model.assets.find((item) => item.assetId === assetId) ?? null;
-    if (!asset?.eventId) return null;
-    if (selectedEvent && asset.eventId === selectedEvent.eventId) return null;
-    const latest = model.events.find((item) => item.eventId === asset.eventId) ?? null;
+    const latest = latestRestorableEventForAsset(model, assetId);
+    if (!latest) return null;
+    if (selectedEvent && latest.eventId === selectedEvent.eventId) return null;
     if (!selectedEvent) return latest;
     if (!latest?.observedAt || !selectedEvent.observedAt) return latest;
     return Date.parse(latest.observedAt) > Date.parse(selectedEvent.observedAt) ? latest : null;
@@ -356,21 +377,27 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
   const openView = useCallback((view: OperationsView) => {
     const surface = reliabilitySurfaceForView(experienceKind, view, backupMode);
     const patch: Parameters<typeof updateSelection>[0] = { view, surface: surface.id };
-    if ((view === "operations" || view === "reports") && !selection.eventId && model?.events[0]) {
-      patch.eventId = model.events[0].eventId;
-      patch.assetId = model.events[0].assetId;
+    if ((view === "operations" || view === "reports") && !selection.eventId && model) {
+      const fallbackEvent = selection.assetId
+        ? latestRestorableEventForAsset(model, selection.assetId)
+        : firstRestorableEvent(model);
+      patch.eventId = fallbackEvent?.eventId ?? null;
+      if (!selection.assetId && fallbackEvent) patch.assetId = fallbackEvent.assetId;
     }
     updateSelection(patch);
-  }, [backupMode, experienceKind, model?.events, selection.eventId, updateSelection]);
+  }, [backupMode, experienceKind, model, selection.assetId, selection.eventId, updateSelection]);
 
   const openSurface = useCallback((surfaceId: string, view: OperationsView) => {
     const patch: Parameters<typeof updateSelection>[0] = { surface: surfaceId, view };
-    if ((view === "operations" || view === "reports") && !selection.eventId && model?.events[0]) {
-      patch.eventId = model.events[0].eventId;
-      patch.assetId = model.events[0].assetId;
+    if ((view === "operations" || view === "reports") && !selection.eventId && model) {
+      const fallbackEvent = selection.assetId
+        ? latestRestorableEventForAsset(model, selection.assetId)
+        : firstRestorableEvent(model);
+      patch.eventId = fallbackEvent?.eventId ?? null;
+      if (!selection.assetId && fallbackEvent) patch.assetId = fallbackEvent.assetId;
     }
     updateSelection(patch);
-  }, [model?.events, selection.eventId, updateSelection]);
+  }, [model, selection.assetId, selection.eventId, updateSelection]);
 
   const openAsset = useCallback((assetId: string, eventId: string | null) => {
     updateSelection({ view: "objects", surface: reliabilitySurfaceForView(experienceKind, "objects", backupMode).id, assetId, eventId });
@@ -381,32 +408,45 @@ function OperationsApplicationController({ projectId, backupMode }: { projectId:
   }, [backupMode, experienceKind, updateSelection]);
 
   const openReport = useCallback((eventId: string | null, assetId: string | null, reportTab: OperationsReportTab = "executive-brief") => {
-    const fallback = model?.events[0] ?? null;
+    const fallback = model
+      ? assetId
+        ? latestRestorableEventForAsset(model, assetId)
+        : firstRestorableEvent(model)
+      : null;
+    const requestedEvent = eventId && model
+      ? model.events.find((event) => event.eventId === eventId && isRestorableRuntimeEvent(event)) ?? null
+      : null;
     updateSelection({
       view: "reports",
       surface: reliabilitySurfaceForView(experienceKind, "reports", backupMode).id,
       reportTab,
-      eventId: eventId ?? fallback?.eventId ?? null,
-      assetId: assetId ?? fallback?.assetId ?? null,
+      eventId: requestedEvent?.eventId ?? fallback?.eventId ?? null,
+      assetId: assetId ?? requestedEvent?.assetId ?? fallback?.assetId ?? null,
     });
-  }, [backupMode, experienceKind, model?.events, updateSelection]);
+  }, [backupMode, experienceKind, model, updateSelection]);
 
   const previewAsset = useCallback((assetId: string, eventId: string | null) => {
-    updateSelection({ assetId, eventId });
-  }, [updateSelection]);
+    const requestedEvent = eventId && model
+      ? model.events.find((event) => event.eventId === eventId && isRestorableRuntimeEvent(event)) ?? null
+      : null;
+    const restorableEvent = requestedEvent ?? (model ? latestRestorableEventForAsset(model, assetId) : null);
+    updateSelection({ assetId, eventId: restorableEvent?.eventId ?? null });
+  }, [model, updateSelection]);
 
   const selectAsset = useCallback((asset: OperationsAsset) => {
-    updateSelection({ assetId: asset.assetId, eventId: asset.eventId });
-  }, [updateSelection]);
+    const event = model ? latestRestorableEventForAsset(model, asset.assetId) : null;
+    updateSelection({ assetId: asset.assetId, eventId: event?.eventId ?? null });
+  }, [model, updateSelection]);
 
   const openAssetOperations = useCallback((asset: OperationsAsset) => {
-    if (!asset.eventId) return;
-    updateSelection({ view: "operations", assetId: asset.assetId, eventId: asset.eventId });
-  }, [updateSelection]);
+    const event = model ? latestRestorableEventForAsset(model, asset.assetId) : null;
+    updateSelection({ view: "operations", assetId: asset.assetId, eventId: event?.eventId ?? null });
+  }, [model, updateSelection]);
 
   const openAssetReport = useCallback((asset: OperationsAsset) => {
-    updateSelection({ view: "reports", reportTab: "executive-brief", assetId: asset.assetId, eventId: asset.eventId });
-  }, [updateSelection]);
+    const event = model ? latestRestorableEventForAsset(model, asset.assetId) : null;
+    updateSelection({ view: "reports", reportTab: "executive-brief", assetId: asset.assetId, eventId: event?.eventId ?? null });
+  }, [model, updateSelection]);
 
   const selectEvent = useCallback((event: OperationsEvent) => {
     updateSelection({ eventId: event.eventId, assetId: event.assetId });

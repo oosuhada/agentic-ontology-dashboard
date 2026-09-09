@@ -1237,7 +1237,7 @@ export function ReliabilityWorkspacePreview({
             <button type="button" onClick={onFollowLatestEvent}>{english ? "Open latest Event" : "최신 Event 열기"}</button>
           </section> : null}
           {showImmersiveRiskWorkbench ? (
-            <div data-section-index-id="risk-workbench">
+            <div className="rw-preview-immersive-workbench" data-section-index-id="risk-workbench">
               <Suspense
                 fallback={<div className="rw-preview-immersive-loading" aria-busy="true">{english ? "Preparing live risk workbench" : "실시간 위험 워크벤치 준비 중"}</div>}
               >
