@@ -56,4 +56,6 @@ def test_release_watcher_has_failure_backoff_disk_gate_and_artifact_retention() 
     assert "ontology-dashboard-macmini-generator-runtime" in pruner
     assert "ontology-dashboard-macmini-project3" in pruner
     assert 'docker builder prune -f --filter "until=$BUILD_CACHE_MAX_AGE"' in pruner
+    assert 'ONTOLOGY_DOCKER_BUILD_CACHE_MAX_SIZE:-3GB' in pruner
+    assert 'docker builder prune -f --max-used-space "$BUILD_CACHE_MAX_SIZE"' in pruner
     assert "docker volume prune" not in pruner

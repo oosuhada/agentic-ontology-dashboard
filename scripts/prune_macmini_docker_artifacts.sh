@@ -5,6 +5,7 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.orbstack/bin:${PATH}"
 
 TARGET_SHA="${1:?target SHA is required}"
 BUILD_CACHE_MAX_AGE="${ONTOLOGY_DOCKER_BUILD_CACHE_MAX_AGE:-72h}"
+BUILD_CACHE_MAX_SIZE="${ONTOLOGY_DOCKER_BUILD_CACHE_MAX_SIZE:-3GB}"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "docker is required for Mac mini artifact pruning" >&2
@@ -49,5 +50,6 @@ prune_repo ontology-dashboard-macmini-project3 no
 # this script's scope.
 docker image prune -f >/dev/null 2>&1 || true
 docker builder prune -f --filter "until=$BUILD_CACHE_MAX_AGE" >/dev/null 2>&1 || true
+docker builder prune -f --max-used-space "$BUILD_CACHE_MAX_SIZE" >/dev/null 2>&1 || true
 
 echo "Pruned Mac mini Docker artifacts for ontology release $TARGET_SHA"
