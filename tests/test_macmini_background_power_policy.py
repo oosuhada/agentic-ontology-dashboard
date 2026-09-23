@@ -39,6 +39,8 @@ def test_backend_deploy_only_recreates_request_path_backend() -> None:
     assert 'TARGET_GENERATOR_IMAGE="$GENERATOR_IMAGE_REPO:$TARGET_SHA"' in script
     assert 'docker tag "$current_backend_image_id" "$TARGET_IMAGE"' in script
     assert 'docker tag "$GENERATOR_IMAGE_REPO:latest" "$TARGET_GENERATOR_IMAGE"' in script
+    assert "Restored missing evaluated backend image tag" in script
+    assert "required image tags are present" in script
 
 
 def test_background_refresh_wakes_drains_and_stops_generator() -> None:

@@ -81,7 +81,36 @@ else
 fi
 
 if [[ "$PREVIOUS_BASE_SHA" == "$TARGET_SHA" ]]; then
-  echo "Mac mini backend already evaluated at $TARGET_SHA"
+  # The deployment state file is only a record of what was evaluated. Docker
+  # image retention may legitimately prune the SHA tag later while the
+  # running container still keeps the immutable image alive. Downstream graph
+  # deployment requires the SHA tag, so repair missing tags before returning.
+  if ! docker image inspect "$TARGET_IMAGE" >/dev/null 2>&1; then
+    if docker inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
+      current_backend_image_id="$(docker inspect "$CONTAINER_NAME" --format '{{.Image}}')"
+      docker tag "$current_backend_image_id" "$TARGET_IMAGE"
+      echo "Restored missing evaluated backend image tag $TARGET_IMAGE"
+    else
+      echo "backend was evaluated at $TARGET_SHA but neither its image tag nor running container exists" >&2
+      exit 1
+    fi
+  fi
+
+  if ! docker image inspect "$TARGET_GENERATOR_IMAGE" >/dev/null 2>&1; then
+    if docker image inspect "$GENERATOR_IMAGE_REPO:latest" >/dev/null 2>&1; then
+      docker tag "$GENERATOR_IMAGE_REPO:latest" "$TARGET_GENERATOR_IMAGE"
+      echo "Restored missing evaluated Generator image tag $TARGET_GENERATOR_IMAGE"
+    else
+      echo "Generator image tag is missing for evaluated release $TARGET_SHA; rebuilding it"
+      docker build \
+        -f systems/generator/Dockerfile \
+        -t "$TARGET_GENERATOR_IMAGE" \
+        .
+      docker tag "$TARGET_GENERATOR_IMAGE" "$GENERATOR_IMAGE_REPO:latest"
+    fi
+  fi
+
+  echo "Mac mini backend already evaluated at $TARGET_SHA; required image tags are present"
   exit 0
 fi
 
