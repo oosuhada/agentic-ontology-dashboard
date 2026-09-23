@@ -99,9 +99,15 @@ if [[ -n "$PREVIOUS_BASE_SHA" ]] \
   fi
   if docker image inspect "$GENERATOR_IMAGE_REPO:latest" >/dev/null 2>&1; then
     docker tag "$GENERATOR_IMAGE_REPO:latest" "$TARGET_GENERATOR_IMAGE"
+  elif docker image inspect "$TARGET_GENERATOR_IMAGE" >/dev/null 2>&1; then
+    echo "Generator image already exists for $TARGET_SHA"
   else
-    echo "generator build inputs are unchanged but the current Generator image is missing" >&2
-    exit 1
+    echo "Generator build inputs are unchanged but no reusable image exists; rebuilding $TARGET_GENERATOR_IMAGE"
+    docker build \
+      -f systems/generator/Dockerfile \
+      -t "$TARGET_GENERATOR_IMAGE" \
+      .
+    docker tag "$TARGET_GENERATOR_IMAGE" "$GENERATOR_IMAGE_REPO:latest"
   fi
   docker rm -f \
     ontology-dashboard-macmini-live-ingestor-1 \

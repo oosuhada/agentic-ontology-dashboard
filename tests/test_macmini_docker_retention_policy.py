@@ -20,6 +20,7 @@ def test_macmini_deploy_reuses_sha_images_on_retry() -> None:
     assert 'docker image inspect "$TARGET_IMAGE"' in backend
     assert 'Reusing existing backend image $TARGET_IMAGE' in backend
     assert 'docker image inspect "$TARGET_GENERATOR_IMAGE"' in backend
+    assert "no reusable image exists; rebuilding" in backend
     assert 'docker image inspect "$TARGET_IMAGE"' in frontend
     assert 'Reusing existing frontend image $TARGET_IMAGE' in frontend
     assert 'docker image inspect "$PROJECT3_IMAGE"' in graph
