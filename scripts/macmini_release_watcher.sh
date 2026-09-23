@@ -10,6 +10,11 @@ SOURCE_ROOT="$WATCH_ROOT/source"
 PROD_ROOT="${ONTOLOGY_MACMINI_PROD_ROOT:-$HOME/Services/ontology-dashboard-prod}"
 LOCK_DIR="$WATCH_ROOT/.watch-lock"
 RUNS_FILE="$WATCH_ROOT/architecture-runs.json"
+FAILURE_STATE_FILE="$WATCH_ROOT/last-deploy-failure"
+RETRY_SECONDS="${ONTOLOGY_RELEASE_RETRY_SECONDS:-900}"
+MIN_FREE_GB="${ONTOLOGY_RELEASE_MIN_FREE_GB:-20}"
+DEPLOY_STARTED=0
+TARGET_SHA=""
 
 mkdir -p "$WATCH_ROOT" "$PROD_ROOT"
 
@@ -17,7 +22,17 @@ if ! mkdir "$LOCK_DIR" 2>/dev/null; then
   echo "release watcher is already running"
   exit 0
 fi
-trap 'rm -rf "$LOCK_DIR"' EXIT
+
+cleanup() {
+  local status=$?
+  if [[ "$status" -ne 0 && "$DEPLOY_STARTED" -eq 1 && -n "$TARGET_SHA" ]]; then
+    printf '%s %s\n' "$TARGET_SHA" "$(date +%s)" > "$FAILURE_STATE_FILE"
+  fi
+  trap - EXIT
+  rm -rf "$LOCK_DIR"
+  exit "$status"
+}
+trap cleanup EXIT
 
 for command in git curl python3; do
   if ! command -v "$command" >/dev/null 2>&1; then
@@ -30,6 +45,18 @@ TARGET_SHA="$(git ls-remote "$REPO_URL" refs/heads/main | awk '{print $1}')"
 if [[ ! "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]; then
   echo "could not resolve origin/main" >&2
   exit 1
+fi
+
+if [[ -f "$FAILURE_STATE_FILE" ]]; then
+  read -r FAILED_SHA FAILED_AT < "$FAILURE_STATE_FILE" || true
+  if [[ "$FAILED_SHA" == "$TARGET_SHA" && "$FAILED_AT" =~ ^[0-9]+$ ]]; then
+    now="$(date +%s)"
+    age=$((now - FAILED_AT))
+    if (( age < RETRY_SECONDS )); then
+      echo "deployment for $TARGET_SHA is in failure backoff: ${age}s/${RETRY_SECONDS}s"
+      exit 0
+    fi
+  fi
 fi
 
 FRONTEND_EVALUATED_SHA=""
@@ -89,6 +116,13 @@ if [[ "$CI_CONCLUSION" != "success" ]]; then
   exit 0
 fi
 
+free_kb="$(df -Pk /System/Volumes/Data 2>/dev/null | awk 'NR == 2 {print $4}')"
+if [[ "$free_kb" =~ ^[0-9]+$ ]] && (( free_kb < MIN_FREE_GB * 1024 * 1024 )); then
+  free_gb=$((free_kb / 1024 / 1024))
+  echo "refusing ontology deployment with only ${free_gb}GB free; minimum is ${MIN_FREE_GB}GB" >&2
+  exit 75
+fi
+
 if [[ ! -d "$SOURCE_ROOT/.git" ]]; then
   git clone --filter=blob:none --no-checkout "$REPO_URL" "$SOURCE_ROOT"
 else
@@ -115,6 +149,7 @@ if [[ ! -x "$SOURCE_ROOT/scripts/deploy_macmini_frontend.sh" ]] \
 fi
 
 echo "Deploying CI-verified main $TARGET_SHA"
+DEPLOY_STARTED=1
 GITHUB_SHA="$TARGET_SHA" \
 ONTOLOGY_MACMINI_PROD_ROOT="$PROD_ROOT" \
   "$SOURCE_ROOT/scripts/deploy_macmini_backend.sh"
@@ -144,6 +179,12 @@ if [[ -f "$SOURCE_ROOT/infra/macmini/install-idle-demo-supervisors.sh" ]]; then
   /bin/bash "$SOURCE_ROOT/infra/macmini/install-idle-demo-supervisors.sh"
 fi
 
+if [[ -x "$SOURCE_ROOT/scripts/prune_macmini_docker_artifacts.sh" ]]; then
+  "$SOURCE_ROOT/scripts/prune_macmini_docker_artifacts.sh" "$TARGET_SHA" || \
+    echo "warning: ontology Docker artifact pruning failed" >&2
+fi
+
 # Host-level launchd/nginx/cloudflared policy is part of the release contract,
 # not an untracked side effect. Record it only after every installer succeeds.
 printf '%s\n' "$TARGET_SHA" > "$PROD_ROOT/host-policy-base-sha"
+rm -f "$FAILURE_STATE_FILE"

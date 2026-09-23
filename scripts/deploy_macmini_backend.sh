@@ -99,9 +99,15 @@ if [[ -n "$PREVIOUS_BASE_SHA" ]] \
   fi
   if docker image inspect "$GENERATOR_IMAGE_REPO:latest" >/dev/null 2>&1; then
     docker tag "$GENERATOR_IMAGE_REPO:latest" "$TARGET_GENERATOR_IMAGE"
+  elif docker image inspect "$TARGET_GENERATOR_IMAGE" >/dev/null 2>&1; then
+    echo "Generator image already exists for $TARGET_SHA"
   else
-    echo "generator build inputs are unchanged but the current Generator image is missing" >&2
-    exit 1
+    echo "Generator build inputs are unchanged but no reusable image exists; rebuilding $TARGET_GENERATOR_IMAGE"
+    docker build \
+      -f systems/generator/Dockerfile \
+      -t "$TARGET_GENERATOR_IMAGE" \
+      .
+    docker tag "$TARGET_GENERATOR_IMAGE" "$GENERATOR_IMAGE_REPO:latest"
   fi
   docker rm -f \
     ontology-dashboard-macmini-live-ingestor-1 \
@@ -121,12 +127,16 @@ if docker inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
   docker tag "$CURRENT_IMAGE_ID" "$ROLLBACK_IMAGE"
 fi
 
-echo "Building $TARGET_IMAGE from $TARGET_SHA"
-docker build \
-  -f systems/backend/Dockerfile \
-  --build-arg API_EXTRAS=macmini \
-  -t "$TARGET_IMAGE" \
-  .
+if docker image inspect "$TARGET_IMAGE" >/dev/null 2>&1; then
+  echo "Reusing existing backend image $TARGET_IMAGE"
+else
+  echo "Building $TARGET_IMAGE from $TARGET_SHA"
+  docker build \
+    -f systems/backend/Dockerfile \
+    --build-arg API_EXTRAS=macmini \
+    -t "$TARGET_IMAGE" \
+    .
+fi
 
 if [[ -n "$PREVIOUS_BASE_SHA" ]] \
   && git cat-file -e "$PREVIOUS_BASE_SHA^{commit}" 2>/dev/null \
@@ -135,6 +145,8 @@ if [[ -n "$PREVIOUS_BASE_SHA" ]] \
   && docker image inspect "$GENERATOR_IMAGE_REPO:latest" >/dev/null 2>&1; then
   docker tag "$GENERATOR_IMAGE_REPO:latest" "$TARGET_GENERATOR_IMAGE"
   echo "Generator runtime build inputs unchanged; tagged current image as $TARGET_GENERATOR_IMAGE"
+elif docker image inspect "$TARGET_GENERATOR_IMAGE" >/dev/null 2>&1; then
+  echo "Reusing existing Generator image $TARGET_GENERATOR_IMAGE"
 else
   echo "Building $TARGET_GENERATOR_IMAGE from $TARGET_SHA"
   docker build \

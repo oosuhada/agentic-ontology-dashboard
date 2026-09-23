@@ -50,12 +50,16 @@ if ! docker image inspect "$BACKEND_IMAGE" >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "Building $PROJECT3_IMAGE from $TARGET_SHA"
-docker build \
-  -f systems/backend/Dockerfile \
-  --build-arg API_EXTRAS=graph-runtime \
-  -t "$PROJECT3_IMAGE" \
-  .
+if docker image inspect "$PROJECT3_IMAGE" >/dev/null 2>&1; then
+  echo "Reusing existing Project 3 image $PROJECT3_IMAGE"
+else
+  echo "Building $PROJECT3_IMAGE from $TARGET_SHA"
+  docker build \
+    -f systems/backend/Dockerfile \
+    --build-arg API_EXTRAS=graph-runtime \
+    -t "$PROJECT3_IMAGE" \
+    .
+fi
 
 BACKEND_IMAGE="$BACKEND_IMAGE" PROJECT3_IMAGE="$PROJECT3_IMAGE" \
   docker compose --env-file "$ENV_FILE" -p ontology-dashboard-macmini -f "$COMPOSE_FILE" \
