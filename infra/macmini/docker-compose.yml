@@ -29,6 +29,12 @@ services:
     cpus: 0.25
     mem_limit: 128m
     command: ["redis-server", "--save", "", "--appendonly", "no"]
+    # This Redis instance is intentionally cache-only. The upstream image
+    # declares /data as a VOLUME, which otherwise creates an anonymous Docker
+    # volume every time the container is replaced. Keep the cache ephemeral
+    # and bounded instead of accumulating unused volumes on the Mac mini.
+    tmpfs:
+      - /data:size=64m,mode=1777
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -56,6 +62,11 @@ services:
     volumes:
       - ${ONTOLOGY_DATA_ROOT}/neo4j/data:/data
       - ${ONTOLOGY_DATA_ROOT}/neo4j/logs:/logs
+    # Neo4j expands its Browser bundle under /tmp during startup and does not
+    # reliably remove older expansions after a restart. On a long-lived home
+    # server this grows the writable container layer by ~90 MB per restart.
+    tmpfs:
+      - /tmp:size=256m,mode=1777
     healthcheck:
       # Keep the container probe lightweight. Project3 /api/v1/health performs
       # the authenticated Bolt query and is the graph data-plane health gate.

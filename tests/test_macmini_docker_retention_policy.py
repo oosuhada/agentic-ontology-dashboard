@@ -2,8 +2,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import yaml
+
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_ephemeral_runtime_paths_do_not_create_docker_volume_leaks() -> None:
+    compose_path = ROOT / "infra" / "macmini" / "docker-compose.yml"
+    config = yaml.safe_load(compose_path.read_text(encoding="utf-8"))
+
+    assert config["services"]["redis"]["tmpfs"] == ["/data:size=64m,mode=1777"]
+    assert config["services"]["neo4j"]["tmpfs"] == ["/tmp:size=256m,mode=1777"]
 
 
 def test_macmini_deploy_reuses_sha_images_on_retry() -> None:
