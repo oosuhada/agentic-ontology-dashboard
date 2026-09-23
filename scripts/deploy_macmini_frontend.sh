@@ -55,15 +55,19 @@ if docker inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
   docker tag "$CURRENT_IMAGE_ID" "$ROLLBACK_IMAGE"
 fi
 
-echo "Building $TARGET_IMAGE from $TARGET_SHA"
-docker build \
-  -f systems/frontend/Dockerfile \
-  --build-arg VITE_API_BASE_URL= \
-  --build-arg VITE_FEATURE_ONTOLOGY_WORKBENCH=true \
-  --build-arg VITE_FEATURE_DATASET_CATALOG=false \
-  --build-arg VITE_FEATURE_GOVERNANCE_WORKBENCH=false \
-  -t "$TARGET_IMAGE" \
-  .
+if docker image inspect "$TARGET_IMAGE" >/dev/null 2>&1; then
+  echo "Reusing existing frontend image $TARGET_IMAGE"
+else
+  echo "Building $TARGET_IMAGE from $TARGET_SHA"
+  docker build \
+    -f systems/frontend/Dockerfile \
+    --build-arg VITE_API_BASE_URL= \
+    --build-arg VITE_FEATURE_ONTOLOGY_WORKBENCH=true \
+    --build-arg VITE_FEATURE_DATASET_CATALOG=false \
+    --build-arg VITE_FEATURE_GOVERNANCE_WORKBENCH=false \
+    -t "$TARGET_IMAGE" \
+    .
+fi
 
 deploy_image() {
   local image="$1"
